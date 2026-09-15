@@ -429,7 +429,7 @@ vec3 albedo(float m, vec2 pc, vec3 P, vec3 N, vec3 c1, vec3 c2, float seed, floa
     glow = c2 * node * 0.25;
     return mix(col, c2, max(node, ros * 0.75));
   } else if (m < 36.5) {               // 地毯(波斯):中心一朵大团花,四周花边,流苏
-    vec2 p = pc / vec2(2.0, 3.0);
+    vec2 p = pc / vec2(4.0, 5.0);   // 8×10 米的一张大毯,几乎铺满主殿
     float bd = max(abs(p.x), abs(p.y));
     float r = length(p * vec2(1.0, 1.4)), pet = 0.5 + 0.5 * cos(atan(p.y, p.x) * 8.0);
     float med = 1.0 - smoothstep(0.34 + 0.06 * pet, 0.38 + 0.06 * pet, r);

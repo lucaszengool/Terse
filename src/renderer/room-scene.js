@@ -518,7 +518,8 @@ export function createRoom(renderer, dir, opts = {}) {
     for (const l of lights.slice()) {
       G(l.x, l.y, l.z, l.col.map((v) => v * 0.45), 0.3, 0.3, 1);
       G(l.x, l.y, l.z, l.col.map((v) => v * 0.12), 1.1, 0.1, 1);
-      if (l.flame) for (let i = 0; i < 24; i++) G(l.x + (rr() - 0.5) * 0.4, l.y - 0.2, l.z + (rr() - 0.5) * 0.4, [1, 0.6, 0.29], 0.02, 2.5 + rr() * 1.5, 5);
+      // 每团火上一小柱火星,夜里一直往上飘(和主案那柱光一样的动法)
+      if (l.flame) for (let i = 0; i < 70; i++) G(l.x + (rr() - 0.5) * 0.4, l.y - 0.2, l.z + (rr() - 0.5) * 0.4, rr() < 0.3 ? [1, 0.85, 0.5] : [1, 0.55, 0.22], 0.022 + rr() * 0.015, 3 + rr() * 3, 5);
     }
     const hx0 = (hall.x0 + hall.x1) / 2, hz0 = (hall.z0 + hall.z1) / 2, hw = Math.min(hall.x1 - hall.x0, hall.z1 - hall.z0);
     if (!L.open && styleId === 'persia') for (let i = 0; i < 150 * B; i++) {           // 穹顶下一圈慢慢闪的星点

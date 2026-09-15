@@ -172,6 +172,14 @@ function floor(S, A, C, fl) {
         strip(rx - 0.45, rz - 0.45, rx + rw + 0.45, rz + rd + 0.45, MAT.lianzhu, [0.14, 0.22, 0.42], C.gold, 0.005);
         strip(rx, rz, rx + rw, rz + rd, MAT.baoxiang, [0.46, 0.12, 0.08], C.gold, 0.008);
       }
+      if (ip.floor !== 'board') {
+        // 方砖地沿墙内侧一圈联珠纹锦带(离墙 0.6m、宽 0.5m)
+        const m = 0.6, bw = 0.5, LZ = [0.14, 0.22, 0.42];
+        strip(r.x0 + m, r.z0 + m, r.x1 - m, r.z0 + m + bw, MAT.lianzhu, LZ, C.gold, 0.005);
+        strip(r.x0 + m, r.z1 - m - bw, r.x1 - m, r.z1 - m, MAT.lianzhu, LZ, C.gold, 0.005);
+        strip(r.x0 + m, r.z0 + m + bw, r.x0 + m + bw, r.z1 - m - bw, MAT.lianzhu, LZ, C.gold, 0.005);
+        strip(r.x1 - m - bw, r.z0 + m + bw, r.x1 - m, r.z1 - m - bw, MAT.lianzhu, LZ, C.gold, 0.005);
+      }
       break;
     case 'edo': ip.floor === 'tatami' ? q(MAT.tatami, C.floor, C.ink) : q(MAT.wood, C.wood); break;
     case 'giza':
@@ -197,8 +205,9 @@ function floor(S, A, C, fl) {
       } else q(MAT.tile, C.floor, C.stone);
       break;
     case 'maya':
-      q(MAT.plaster, C.floor);
-      strip(r.x0, r.z0, r.x1, r.z0 + 0.35, MAT.lacquer, sh(C.field, 0.9)); strip(r.x0, r.z1 - 0.35, r.x1, r.z1, MAT.lacquer, sh(C.field, 0.9));
+      // 玛雅宫殿的地常是抹灰后刷赤铁矿红;两头一道玛雅蓝的边
+      q(MAT.plaster, sh(C.field, 0.72));
+      strip(r.x0, r.z0, r.x1, r.z0 + 0.35, MAT.lacquer, C.accent); strip(r.x0, r.z1 - 0.35, r.x1, r.z1, MAT.lacquer, C.accent);
       break;
     case 'persia': q(MAT.herringbone, C.floor); break;
     case 'norse':
@@ -800,7 +809,7 @@ function heroes(S, G, A, C, fl) {
       break;
     case 'persia': {
       // 地毯 + 主案背后的伊万:尖拱,拱里一层层蜂窝檐
-      S.quad([cx - 2, 0.008, cz - 3], [4, 0, 0], [0, 0, 6], { mat: MAT.carpet, c1: C.red || [0.6, 0.2, 0.15], c2: C.ink, flags: fl, seed, uv0: [-2, -3] }, [0, 1, 0]);
+      S.quad([cx - 4, 0.008, cz - 5], [8, 0, 0], [0, 0, 10], { mat: MAT.carpet, c1: C.red || [0.6, 0.2, 0.15], c2: C.ink, flags: fl, seed, uv0: [-4, -5] }, [0, 1, 0]);
       const iw = 4.2, ih = Math.min(h - 0.6, 5.2), z = r.z0 + 0.1;
       for (let t = 0; t < 5; t++) {
         const y = ih - 0.9 - t * 0.28, wdt = iw * (0.35 + t * 0.14), n = Math.max(3, Math.round(wdt / 0.32));

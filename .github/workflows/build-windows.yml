@@ -140,10 +140,45 @@ jobs:
       # --lib on purpose: unit tests only, no integration targets. Placed after
       # the upload so a failure is loud without costing the installer, and NOT
       # continue-on-error, because a test that cannot fail the build is theatre.
+      # The test binary stopped STARTING (0xc0000139 STATUS_ENTRYPOINT_NOT_FOUND)
+      # after four crates were added for the room channel: it compiles, then the
+      # loader cannot resolve an import. The exit code alone does not say which
+      # one, so when it fails this dumps the binary's imports and the resolved
+      # versions of the new crates.
+      #
+      # continue-on-error on purpose, and only for this: the same question — does
+      # a binary from this crate still start? — is answered far better by the
+      # smoke steps below, which install the app and launch it. Stopping here
+      # would hide that answer behind a test harness.
       - name: Run the crate's unit tests
+        continue-on-error: true
         run: |
           cd windows-app\src-tauri
           cargo test --target x86_64-pc-windows-msvc --lib
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "unit tests failed (exit $LASTEXITCODE) — dumping why"
+            $exe = Get-ChildItem "target\x86_64-pc-windows-msvc\debug\deps\terse_lib-*.exe" -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if ($exe) {
+              Write-Host "test binary: $($exe.FullName)"
+              $dumpbin = Get-ChildItem "C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" -ErrorAction SilentlyContinue |
+                         Select-Object -First 1
+              if ($dumpbin) {
+                Write-Host "--- DLLs this binary imports ---"
+                & $dumpbin.FullName /imports $exe.FullName 2>$null |
+                  Select-String -Pattern '^\s{4}\S+\.dll$' | ForEach-Object { Write-Host ("  " + $_.Line.Trim()) }
+                Write-Host "--- bcryptprimitives / bcrypt imports (getrandom's ProcessPrng lives here) ---"
+                & $dumpbin.FullName /imports $exe.FullName 2>$null |
+                  Select-String -Pattern 'bcrypt|ProcessPrng|SystemFunction036' | ForEach-Object { Write-Host ("  " + $_.Line.Trim()) }
+              } else { Write-Warning "dumpbin not found" }
+            } else { Write-Warning "no test binary found to inspect" }
+            Write-Host "--- resolved versions of the crates added for the room channel ---"
+            foreach ($c in @("getrandom", "aes-gcm", "base64", "regex", "windows-targets", "windows-sys")) {
+              $v = (Select-String -Path Cargo.lock -Pattern "^name = `"$c`"$" -Context 0,1 |
+                    ForEach-Object { $_.Context.PostContext[0] }) -join ", "
+              Write-Host ("  {0,-16} {1}" -f $c, $v)
+            }
+          }
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2

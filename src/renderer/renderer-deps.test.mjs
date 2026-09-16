@@ -183,12 +183,17 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     }
   }
 
-  // And a bridge entry that names a command NEITHER backend registers is a
-  // typo or a leftover — it would fail at runtime as "command not found".
+  // A bridge entry naming a command NEITHER backend registers is a typo or a
+  // leftover — at runtime it is "command not found".
+  //
+  // EITHER backend, not macOS specifically: the first cut asked macOS, and CI
+  // failed on diag_note, which exists only on Windows. A command living on one
+  // side is the parity question above; this one is only about names that exist
+  // nowhere.
   const bridge = readFileSync(resolve(DIR, 'tauri-bridge.js'), 'utf8');
   for (const m of [...bridge.matchAll(/invoke\(\s*'([a-z0-9_]+)'/g)].map((x) => x[1]).sort()) {
-    if (!macCmd.size) break;
-    ok(`bridge calls "${m}", which macOS registers`, macCmd.has(m));
+    if (!macCmd.size && !winCmd.size) break;
+    ok(`bridge calls "${m}", which at least one backend registers`, macCmd.has(m) || winCmd.has(m));
   }
 }
 

@@ -111,12 +111,6 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ["desk_overlay_visible", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
     ["desk_set_enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
     ["desk_trust", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["feeds_fix_permission", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["feeds_for_wallpaper", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["feeds_resolve_pending", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["feeds_set_auto_add", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["feeds_set_source", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["feeds_sources", "assorted: app_icon (NSWorkspace), messages settings page"],
     ["messages_detected_apps", "assorted: app_icon (NSWorkspace), messages settings page"],
     ["messages_notification_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
     ["messages_open_permission_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
@@ -154,7 +148,6 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   ]);
   const DEFERRED_EVENTS = new Map([
     ["desk-enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["feeds-new", "feeds \u2192 wallpaper (\u4fe1\u606f\u6d41) \u2014 needs a Windows notification source"],
     ["pm-frame", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
     ["pm-lost", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
     ["pm-target", "assorted: app_icon (NSWorkspace), messages settings page"],

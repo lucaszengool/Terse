@@ -145,21 +145,7 @@ fn unescape_xml(s: &str) -> String {
 pub fn recent(limit: usize, chat_only: bool) -> Result<Vec<Message>, String> {
     let path = db_path().ok_or_else(|| "no notification database on this system".to_string())?;
 
-    // Windows holds this database open and writes to it constantly, so a plain
-    // read-only open loses to the lock often enough to look like "the feed is
-    // empty". Copy first, read the copy: a snapshot a few milliseconds old is
-    // the right trade for a feed that refreshes on a timer anyway.
-    let tmp = std::env::temp_dir().join("terse-wpn-snapshot.db");
-    let src = match std::fs::copy(&path, &tmp) {
-        Ok(_) => tmp.clone(),
-        Err(_) => path.clone(),
-    };
-
-    let conn = rusqlite::Connection::open_with_flags(
-        &src,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
-    )
-    .map_err(|e| format!("cannot open the notification database: {e}"))?;
+    let conn = snapshot_conn(&path)?;
 
     // Over-fetch: rows are dropped by the chat filter and by payloads with no
     // text, so asking for exactly `limit` would routinely return fewer.
@@ -220,6 +206,79 @@ pub fn recent(limit: usize, chat_only: bool) -> Result<Vec<Message>, String> {
         }
     }
     Ok(out)
+}
+
+/// Open the Action Center store through a snapshot copy.
+///
+/// Windows holds this database open and writes to it constantly, so a plain
+/// read-only open loses to the lock often enough to look like "the feed is
+/// empty". A snapshot a few milliseconds old is the right trade for a feed that
+/// refreshes on a timer. Shared by every reader here so they cannot drift.
+fn snapshot_conn(path: &std::path::Path) -> Result<rusqlite::Connection, String> {
+    let tmp = std::env::temp_dir().join("terse-wpn-snapshot.db");
+    let src = match std::fs::copy(path, &tmp) { Ok(_) => tmp, Err(_) => path.to_path_buf() };
+    rusqlite::Connection::open_with_flags(
+        &src,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| format!("cannot open the notification database: {e}"))
+}
+
+/// Whether the notification store can be read at all, and if not, why.
+///
+/// Same shape as the macOS version because the frontend renders it, but NOT the
+/// same vocabulary in one place: macOS returns "no_permission" here, since
+/// opening the store read-only IS its Full Disk Access probe. Windows has no
+/// such grant — a desktop app may read its own user's Action Center database —
+/// so a failure here is a lock or a corrupt file, and calling that
+/// "no_permission" would put a "grant access" card in front of a user with
+/// nothing to grant. It reports "error" with the detail instead.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct FeedStatus {
+    pub available: bool,
+    /// "ok" | "no_database" | "error"
+    pub reason: String,
+    pub db_path: Option<String>,
+    pub detail: Option<String>,
+}
+
+pub fn status() -> FeedStatus {
+    let Some(path) = db_path() else {
+        return FeedStatus {
+            available: false,
+            reason: "no_database".into(),
+            db_path: None,
+            detail: Some("No Action Center database on this machine.".into()),
+        };
+    };
+    let p = path.display().to_string();
+    match snapshot_conn(&path) {
+        Ok(conn) => match conn.prepare("SELECT count(*) FROM Notification")
+            .and_then(|mut st| st.query_row([], |r| r.get::<_, i64>(0)))
+        {
+            Ok(_) => FeedStatus { available: true, reason: "ok".into(), db_path: Some(p), detail: None },
+            Err(e) => FeedStatus { available: false, reason: "error".into(), db_path: Some(p), detail: Some(e.to_string()) },
+        },
+        Err(e) => FeedStatus { available: false, reason: "error".into(), db_path: Some(p), detail: Some(e) },
+    }
+}
+
+/// Every app that has ever put a notification in the store — the source list
+/// the feed offers switches for.
+pub fn apps_in_record() -> std::collections::HashSet<String> {
+    let mut set = std::collections::HashSet::new();
+    let Some(path) = db_path() else { return set };
+    let Ok(conn) = snapshot_conn(&path) else { return set };
+    let Ok(mut st) = conn.prepare(
+        "SELECT DISTINCT h.PrimaryId FROM Notification n \
+         JOIN NotificationHandler h ON n.HandlerId = h.RecordId",
+    ) else { return set };
+    if let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) {
+        for id in rows.flatten() {
+            if !id.is_empty() { set.insert(id); }
+        }
+    }
+    set
 }
 
 pub fn recent_for_wallpaper(limit: usize) -> Result<Vec<Message>, String> {

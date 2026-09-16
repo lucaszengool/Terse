@@ -4,7 +4,9 @@
 
 mod capture;
 mod agent_monitor;
+mod ax_read;
 mod dock_hook;
+mod feeds;
 mod hands;
 mod messages;
 mod permission;
@@ -4411,6 +4413,9 @@ pub fn run() {
             // 房间 agent 通道: the hook endpoint agents post to, and the room
             // channel itself (local MCP on 127.0.0.1:47824). Both listen on
             // loopback only and are gated per session — see room_link.rs.
+            // 信息流: notifications, system alerts and window titles, as one
+            // stream for the wallpaper's big text.
+            feeds::start(app.handle().clone());
             dock_hook::start(app.handle().clone());
             room_link::start(app.handle().clone());
 
@@ -4582,6 +4587,12 @@ pub fn run() {
             hands::hands_get_enabled,
             hands::hands_set_enabled,
             hands::hands_line,
+            feeds_sources,
+            feeds_set_source,
+            feeds_set_auto_add,
+            feeds_resolve_pending,
+            feeds_fix_permission,
+            feeds_for_wallpaper,
             dock_hook::sd_queue,
             dock_hook::sd_unqueue,
             dock_hook::sd_answer,
@@ -7795,6 +7806,10 @@ fn start_wallpaper_hot_poll(app: AppHandle) {
 /// Mute or unmute one app for the wallpaper. Does not touch notifications.
 #[tauri::command]
 fn messages_set_app_on_wallpaper(app_id: String, on: bool) -> Result<(), String> {
+    // Keep the feed's own switch for this app in step, as macOS does — two
+    // places remembering whether an app may reach the wallpaper is two places
+    // to disagree.
+    feeds::mirror_notif_switch(&app_id, on);
     messages::set_app_on_wallpaper(&app_id, on)
 }
 
@@ -7940,4 +7955,44 @@ fn cowork_release_owner(id: u64) {
 #[tauri::command]
 fn cowork_relay(app: tauri::AppHandle, payload: serde_json::Value) {
     let _ = app.emit("cowork-peer", payload);
+}
+
+// ── 信息流 commands, copied from the macOS lib.rs ──
+/// 信息流: every source Terse has found (notifications, system, windows, media),
+/// each with its wallpaper switch, plus the auto-add setting.
+#[tauri::command(async)]
+fn feeds_sources() -> serde_json::Value {
+    feeds::sources_json()
+}
+
+/// Switch one source on or off for the wallpaper. Also answers its prompt.
+#[tauri::command]
+fn feeds_set_source(key: String, on: bool) -> Result<(), String> {
+    feeds::set_source(&key, on)
+}
+
+/// Whether a newly found source starts playing before the user answers.
+#[tauri::command]
+fn feeds_set_auto_add(on: bool) {
+    feeds::set_auto_add(on)
+}
+
+/// Answer every open prompt at once (`on` null = keep as they are).
+#[tauri::command]
+fn feeds_resolve_pending(on: Option<bool>) {
+    feeds::resolve_pending(on)
+}
+
+/// "去开启" on the missing-permission card: raise the system prompt
+/// (Accessibility) or open the exact Privacy list (Full Disk Access).
+#[tauri::command]
+fn feeds_fix_permission(which: String) {
+    feeds::fix_permission(&which)
+}
+
+/// What the wallpaper big text plays: every switched-on source, newest first.
+/// `async` (off the main thread): it reads the notification SQLite every 5s.
+#[tauri::command]
+async fn feeds_for_wallpaper(limit: Option<usize>) -> serde_json::Value {
+    serde_json::to_value(feeds::for_wallpaper(limit.unwrap_or(24))).unwrap_or_default()
 }

@@ -13,7 +13,7 @@
  *        人走近了会转过头来看你,打招呼;点一下就聊天。
  */
 import * as THREE from 'three';
-import { personaOf, projectFacts, relationsOf, blockAt, greeting, bark } from './town-folk.mjs';
+import { personaOf, projectFacts, relationsOf, blockAt, greeting, bark, introOffline } from './town-folk.mjs';
 
 const TAU = Math.PI * 2;
 export const HAIRS = ['short', 'long', 'bun', 'braid', 'curly', 'bald'];
@@ -568,6 +568,7 @@ export function createPeople(U, plan, world, houses, opts = {}) {
     },
     greetingFor(f, memory, env) { return greeting(f.persona, memory, env, lang); },
     barkFor(f, env) { return bark(f.persona, env, lang); },
+    introFor(f) { return introOffline(f.persona, f.facts, lang); },
     headAt(f) { return { x: f.x, y: 1.95 * (f.persona.look.height || 1), z: f.z }; },
     peerHead(id) { const pp = peers.get(id); return pp ? { x: pp.sx, y: 1.95, z: pp.sz } : null; },
     dispose() { g.dispose(); mat.dispose(); glowMat.dispose(); },

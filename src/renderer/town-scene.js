@@ -808,7 +808,8 @@ export function createTown(renderer, projects, opts = {}) {
       if (!text || chat.busy) return;
       add('me', text);
       chat.turns++;
-      if (!opts.onNpcSay) { const q = add('npc', people.barkFor(f, envCtx())); sayOver(f, q.textContent); return; }
+      // 没有服务器(原型页、离线):问房子就照事实介绍,别的随口回一句
+      if (!opts.onNpcSay) { const q = add('npc', text === w.town_ask_house ? people.introFor(f) : people.barkFor(f, envCtx())); sayOver(f, q.textContent); return; }
       chat.busy = true;
       const wait = add('npc', '…');
       Promise.resolve(opts.onNpcSay(f.id, text, Object.assign(envCtx(), { place: f.place }))).then((r) => {

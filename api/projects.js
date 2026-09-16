@@ -13,6 +13,7 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('./db');
 const { spamReason, illegalReason, fingerprint } = require('./spam');
+const { geoFromRequest, cleanGeo } = require('./geo');
 
 const router = express.Router();
 
@@ -249,6 +250,10 @@ function sanitize(capsule) {
   if (!out.title) return null;
   if (out.kind === 'text' && !out.desc && !out.subtitle) return null;
   if (out.kind === 'image' && !out.cover && !out.frames.length) return null;
+  /* 星球上的位置:夹过一遍才留(坐标取整到一度,名字去掉尖括号)。发布那条路会拿服务端
+     看到的位置覆盖它;留在这里是为了运维回填(backfill)时不把已经有的位置冲掉。 */
+  const geo = cleanGeo(capsule.geo);
+  if (geo) out.geo = geo;
   return out;
 }
 
@@ -258,6 +263,10 @@ router.post('/', (req, res) => {
   if (!me) return res.status(401).json({ error: 'Missing identity' });
   const capsule = sanitize((req.body || {}).capsule);
   if (!capsule) return res.status(400).json({ error: 'Bad capsule' });
+  /* 星球上的位置只认服务端从 Cloudflare 看到的(城市级、取整到一度),客户端自己写进来的
+     一律不算 —— 否则谁都能把自己的项目摆到任何地方。见 geo.js。 */
+  const geo = geoFromRequest(req);
+  if (geo) capsule.geo = geo; else delete capsule.geo;
 
   const json = JSON.stringify(capsule);
   if (json.length > MAX_CAPSULE_BYTES) {

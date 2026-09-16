@@ -273,3 +273,51 @@ export function layoutOf(dir, opts = {}) {
     blocks: [],
   };
 }
+
+/**
+ * 通往隔壁楼(同一个项目里别的顶层目录)的门框,和一座随机传送门,放在大厅里的哪儿。
+ *
+ * 门框不开在墙上:四合院、庭院的院子四面都是厢房,墙外没有地方可去。门框贴着墙往里
+ * 1.1 米站着,门洞朝着大厅 —— 穿过门洞就是去隔壁那座楼(见 room-travel.js)。
+ * 传送门站在空地上。都躲开子目录的门、走不过去的东西(树、池塘、石头)和进门站的位置。
+ *
+ * @param hall   layoutOf 的大厅(或院子)
+ * @param doors  layoutOf 的门(子目录的门)
+ * @param blocks 已经登记的走不过去的东西 {x, z, rx, rz}
+ * @param start  进门站的位置 {x, z}
+ * @returns {{links: Array<{x,z,nx,nz,tx,tz,side}>, portal: {x,z}|null}}  n 朝大厅里,t 沿着墙
+ */
+export function linkSpots(hall, doors, blocks, start, nLinks, wantPortal) {
+  const W = hall.x1 - hall.x0, D = hall.z1 - hall.z0, IN = 1.1;
+  const st = start || { x: 0, z: 0 };
+  const onWall = (s, f) => (
+    s === 'N' ? { x: hall.x0 + W * f, z: hall.z0 + IN, nx: 0, nz: 1, side: s }
+      : s === 'S' ? { x: hall.x0 + W * f, z: hall.z1 - IN, nx: 0, nz: -1, side: s }
+        : s === 'W' ? { x: hall.x0 + IN, z: hall.z0 + D * f, nx: 1, nz: 0, side: s }
+          : { x: hall.x1 - IN, z: hall.z0 + D * f, nx: -1, nz: 0, side: s });
+  /* 先挑墙边:侧墙优先,每面墙从中间往两头试一串位置(柱廊、火盆、子目录的门会占掉一些)。
+     墙边一个位置都没有(小厅四面都是门、四角都是柱子)就立在地上,门洞朝着进门的人。 */
+  const cand = [];
+  for (const f of [0.5, 0.36, 0.64, 0.24, 0.76, 0.3, 0.7, 0.16, 0.84, 0.42, 0.58, 0.1, 0.9]) for (const s of ['W', 'E', 'N', 'S']) cand.push(onWall(s, f));
+  for (const [fx, fz] of [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7], [0.5, 0.25], [0.2, 0.5], [0.8, 0.5]]) {
+    const x = hall.x0 + W * fx, z = hall.z0 + D * fz, dx = st.x - x, dz = st.z - z;
+    const n = Math.abs(dx) > Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz) || 1];
+    cand.push({ x, z, nx: n[0], nz: n[1], side: 'floor' });
+  }
+  const clear = (p, r) => !(blocks || []).some((b) => Math.hypot(b.x - p.x, b.z - p.z) < Math.max(b.rx, b.rz) + r)
+    && !(doors || []).some((d) => Math.hypot(d.cx - p.x, d.cz - p.z) < r + 1.2)
+    && Math.hypot(st.x - p.x, st.z - p.z) > 2.4;
+  const links = [];
+  for (const c of cand) {
+    if (links.length >= nLinks) break;
+    if (!clear(c, 1.4) || links.some((l) => Math.hypot(l.x - c.x, l.z - c.z) < 3.2)) continue;
+    links.push(Object.assign(c, { tx: Math.abs(c.nz), tz: Math.abs(c.nx) }));
+  }
+  let portal = null;
+  if (wantPortal) {
+    portal = [[0.26, 0.66], [0.74, 0.66], [0.26, 0.36], [0.74, 0.36], [0.5, 0.5], [0.17, 0.5], [0.83, 0.5]]
+      .map(([fx, fz]) => ({ x: hall.x0 + W * fx, z: hall.z0 + D * fz }))
+      .find((p) => clear(p, 1.6) && !links.some((l) => Math.hypot(l.x - p.x, l.z - p.z) < 3)) || null;
+  }
+  return { links, portal };
+}

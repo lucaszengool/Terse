@@ -38,6 +38,7 @@
    脚本一次看遍三种格局 × 昼夜。?deep=0 看"没有深扫数据"时只摆家具的样子。 */
 import * as THREE from 'three';
 import { createRoom } from './room-scene.js';
+import { createWalk } from './room-travel.js';
 
 const S = (name, kind, line, exp) => [name, kind, line, exp ? 1 : 0];
 const F = (n, sub, b, l, sym, imp = 0, out = 0) => ({ n, p: 'src/' + (sub ? sub + '/' : '') + n, sub, b, l, lang: '', sym, imp, out });
@@ -93,7 +94,25 @@ document.body.appendChild(renderer.domElement);
 
 const nameEl = document.getElementById('roomName'), statEl = document.getElementById('roomStats'), card = document.getElementById('card');
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
-const room = createRoom(renderer, DIR, {
+/* 隔壁的楼、随机传送门:原型页没有真项目,拿同一份样例换个名字、换个语言当隔壁;
+   随机传送门随便挑一个风格。?travel=0 关掉。?hour= / ?weather= / ?season= 定住外面的天。 */
+const NEAR = [['api', 12, 'go'], ['server', 20, 'rust'], ['scripts', 6, 'python'], ['lib', 30, 'ts'], ['docs', 8, 'js']];
+const STYLES = ['tang', 'edo', 'giza', 'hellas', 'maya', 'persia', 'norse', 'modern'];
+const LOG = window.__walkLog = [];
+const travel = q.get('travel') === '0' ? null : {
+  links: (name) => NEAR.filter((n) => n[0] !== name).slice(0, 3).map(([n, f, l]) => ({ name: n, files: f, lang: l })),
+  load: (name) => { LOG.push('load:' + name + '@' + Math.round(performance.now())); return new Promise((r) => setTimeout(() => { LOG.push('loaded:' + name); r(Object.assign({}, DIR, { name, lang: (NEAR.find((n) => n[0] === name) || [])[2] || 'ts' })); }, 250)); },
+  random: () => new Promise((r) => setTimeout(() => {
+    const st = STYLES[Math.floor(Math.random() * STYLES.length)];
+    r({ title: 'demo-' + st, style: st, lang: 'rust', dir: Object.assign({}, DIR, { name: 'core' }) });
+  }, 300)),
+  arrived: (i) => { LOG.push('arrived:' + i.kind + ':' + (i.name || (i.target && i.target.title))); console.log('arrived', i.kind, i.name || (i.target && i.target.title)); },
+};
+const num = (k) => (q.get(k) != null ? +q.get(k) : undefined);
+// ?name=api&arrive=src:直接看"从 src 那座门框走过来,刚到 api"的样子(无头截图等不完换场的那几百毫秒)
+if (q.get('name')) DIR.name = q.get('name');
+const room = (travel ? createWalk : createRoom)(renderer, DIR, {
+  travel, arrive: q.get('arrive') || undefined, hour: num('hour'), weather: q.get('weather') || undefined, season: q.get('season') || undefined,
   style: q.get('style') || 'modern', layout: q.get('layout') || undefined, time: q.get('time') || 'auto',
   onHere: (h) => { nameEl.textContent = h.path; statEl.textContent = h.files + ' files'; },
   onPick: (p, d) => {
@@ -113,11 +132,36 @@ function frame(now) {
   room.render();
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+// ?manual=1:用定时器一帧一帧走(无头的 --dump-dom 不出帧,requestAnimationFrame 不会来)
+if (q.get('manual')) setInterval(() => { room.update(1 / 60); room.render(); }, 16);
+else requestAnimationFrame(frame);
 
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); room.resize(innerWidth, innerHeight); });
 
 window.__room = room;
+/* 截图用:?face=link0 / portal 站到那座门框 / 传送门前 4 米看着它;?look=x,z,yaw,pitch 摆到任意位置;
+   ?go=link0 / portal 两秒后穿过去(看换场之后的那间屋子) */
+if (q.get('look')) { const [x, z, y, p] = q.get('look').split(',').map(Number); room.at(x, z, y, p); }
+const face = q.get('face');
+if (face) {
+  const f = face === 'portal' ? room.portal() : (room.frames || [])[+face.replace('link', '')];
+  if (f) {
+    const nx = f.nx != null ? f.nx : 0, nz = f.nz != null ? f.nz : 1;
+    room.at(f.x + nx * 4, f.z + nz * 4, Math.atan2(nx, nz), face === 'portal' ? 0.02 : 0.08);
+  }
+}
+// ?dbg=1:门框、传送门、人在哪 —— 写进页面(无头 --dump-dom 读得到)
+if (q.get('dbg')) {
+  const pre = document.createElement('pre'); pre.id = 'dbg';
+  const dump = () => { try { pre.textContent = 'DBG ' + JSON.stringify({ frames: (room.frames || []).map((f) => ({ x: +f.x.toFixed(2), z: +f.z.toFixed(2), nx: f.nx, nz: f.nz, name: f.link.name })),
+    portal: room.portal && !!room.portal(), where: room.where(), links: room.links ? room.links().map((l) => l.name) : null,
+    traveling: room.traveling ? room.traveling() : null, log: window.__walkLog, now: Math.round(performance.now()), env: room.env && { w: room.env().weather, s: room.env().season, h: room.env().hour, night: room.env().night } }); } catch (e) { pre.textContent = 'DBG ERR ' + e.message; } };
+  document.body.appendChild(pre); dump(); setInterval(dump, 500);
+}
+// ?still=1:一上来就是成形的样子(无头截图里帧很少,聚拢那 2.4 秒走不完)
+if (q.get('still')) room.renderNow();
+const goq = q.get('go');
+if (goq && room.goLink) setTimeout(() => { LOG.push('go@' + Math.round(performance.now())); goq === 'portal' ? room.goPortal() : room.goLink(+goq.replace('link', '')); }, 2000);
 </script>
 </body>
 </html>

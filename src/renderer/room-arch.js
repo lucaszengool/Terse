@@ -1023,19 +1023,7 @@ function roof(S, A, C) {
   else S.aabb(c0 - 0.15, h + rise - 0.05, a0, c0 + 0.15, h + rise + 0.2, a0 + L, RIDGE);
 }
 
-/** 天:夜里星星和月亮,白天几朵云和太阳。发光点;只有露天的格局才画。 */
-export function sky(G, rnd) {
-  for (let i = 0; i < 2600; i++) {
-    const an = rnd() * TAU, el = 0.12 + Math.pow(rnd(), 0.7) * 1.35, R = 110;
-    G(Math.cos(an) * Math.cos(el) * R, 6 + Math.sin(el) * R, Math.sin(an) * Math.cos(el) * R, [0.85, 0.9, 1], 0.25 + rnd() * 0.5, 1, 1);
-  }
-  for (let i = 0; i < 900; i++) { const z = rnd() * 2 - 1, an = rnd() * TAU, q = Math.sqrt(1 - z * z) * Math.sqrt(rnd()); G(-36 + Math.cos(an) * q * 5, 62 + z * 5, -70 + Math.sin(an) * q * 5, [1, 0.97, 0.86], 1.6, 0.1, 1); }
-  for (let c = 0; c < 8; c++) {
-    const an = rnd() * TAU, R = 55 + rnd() * 35, cx = Math.cos(an) * R, cz = Math.sin(an) * R, cy = 30 + rnd() * 12;
-    // 云:很淡的一团(泛光加强以后,亮的云会糊成几大块白光)
-    for (let i = 0; i < 500; i++) { const u = rnd() * 2 - 1, a = rnd() * TAU, q = Math.sqrt(1 - u * u) * Math.pow(rnd(), 0.4); G(cx + Math.cos(a) * q * 11, cy + u * 2.4, cz + Math.sin(a) * q * 6, [0.22, 0.23, 0.27], 3.0, 0.1, 3); }
-  }
-}
+/* 天(星、月、云、太阳)不在这里:它跟着看的人的钟和天气变,由 room-atmos.js 的天穹画。 */
 
 /**
  * 盖一间屋子的建筑。

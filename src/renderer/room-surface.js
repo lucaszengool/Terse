@@ -638,6 +638,11 @@ ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的�
   float fm = clamp(uForm * 1.6 - length(P - cameraPosition) / 30.0, 0.0, 1.0);
   vec3 rv = vec3(h21(position.xy * 17.3 + seed) - 0.5, h21(position.yx * 29.1 + seed), h21(position.xy * 7.7 - seed) - 0.5);
   vec3 Pd = P + (rv * vec3(16.0, 10.0, 16.0) + vec3(0.0, 2.0, 0.0)) * pow(1.0 - fm, 3.0);
+  /* 还在飞的点只留一部分,落定一颗补一颗:聚拢 / 散开的那一两秒里,几百万颗点飞到镜头跟前、
+     每颗画成 64 像素,GPU 一帧要填几十亿个像素 —— 换楼、进门就卡在那里(真机上一样)。 */
+  if (fm < 0.999 && h21(position.xy * 53.1 + seed) > 0.25 + 0.75 * fm) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec3(0.0); vFog = 0.0; return;
+  }
   vec4 mv = modelViewMatrix * vec4(Pd, 1.0);
   vec4 clip = projectionMatrix * mv;
   float d = -mv.z;
@@ -716,7 +721,7 @@ ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的�
   // 点比点距略大一点点:柔光点的芯挨着芯,边上露出黑 —— 看得出一颗颗粒子
   float diam = min(sL * 0.75, max(mn * 0.5, sL * 0.6));
   diam *= 0.9 + 0.2 * h21(position.xy * 37.1 + seed * 3.3);   // 点略有大小:没有网格感,边也不毛
-  gl_PointSize = clamp(diam * stride * uPx / max(d, 0.05), 1.0, 64.0) * clamp((d - 0.25) / 0.6, 0.0, 1.0);
+  gl_PointSize = clamp(diam * stride * uPx / max(d, 0.05), 1.0, 64.0) * clamp((d - 0.25) / 0.6, 0.0, 1.0) * mix(0.35, 1.0, fm);
   gl_Position = clip;
 }`;
 
@@ -784,10 +789,14 @@ void main(){
   // 入场聚拢(和小片那边同一条曲线)
   float fm = clamp(uForm * 1.6 - length(position - cameraPosition) / 30.0, 0.0, 1.0);
   vec3 rv = vec3(h21(position.xz * 17.3) - 0.5, h21(position.zx * 29.1), h21(position.xz * 7.7) - 0.5);
+  // 飞着的点只留一部分、画小一点(和小片那边同一个理由)
+  if (fm < 0.999 && h21(position.xz * 53.1 + 0.7) > 0.25 + 0.75 * fm) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec3(0.0); vFog = 0.0; return;
+  }
   vec4 mv = modelViewMatrix * vec4(position + (rv * vec3(16.0, 10.0, 16.0) + vec3(0.0, 2.0, 0.0)) * pow(1.0 - fm, 3.0), 1.0);
   float d = -mv.z;
   vec3 fc; vFog = 1.0 - fogOf(position, fc); vFogCol = fc;
-  gl_PointSize = clamp(aS * uPx / max(d, 0.05), 1.0, 64.0) * clamp((d - 0.25) / 0.6, 0.0, 1.0);
+  gl_PointSize = clamp(aS * uPx / max(d, 0.05), 1.0, 64.0) * clamp((d - 0.25) / 0.6, 0.0, 1.0) * mix(0.35, 1.0, fm);
   gl_Position = projectionMatrix * mv;
 }`;
 

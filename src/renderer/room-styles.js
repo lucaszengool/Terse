@@ -115,11 +115,13 @@ export const DESIGN = {
 export function designOf(id) { return DESIGN[id] || DESIGN.modern; }
 
 /** 太阳方向(朝向太阳的单位向量)。露天:方位 0 表示太阳在南边(+z)。 */
-export function sunDirOf(D, indoor) {
+export function sunDirOf(D, indoor, elOverride) {
   /* 屋里:太阳挪到主案那一边(北),压低 —— 光从高侧窗斜着穿过大殿正中,迎着进门的人,
      逆光的光柱衬在暗的顶下面。方位只偏一点点,光顺着中轴走,不斜着撞进柱林。
-     古希腊穹顶开天眼,光要从头顶直下来,用它自己的仰角。露天的院子不动。 */
-  const elD = indoor ? (D.light.sunElIn != null ? D.light.sunElIn : Math.min(D.light.sunEl, 40)) : D.light.sunEl;
+     古希腊穹顶开天眼,光要从头顶直下来,用它自己的仰角。露天的院子不动。
+     elOverride:按看的人的钟算出来的仰角(黄昏压低、光柱拉长);方位仍是设计单定的。 */
+  const elDesign = indoor ? (D.light.sunElIn != null ? D.light.sunElIn : Math.min(D.light.sunEl, 40)) : D.light.sunEl;
+  const elD = elOverride != null && Number.isFinite(elOverride) ? elOverride : elDesign;
   const el = elD * Math.PI / 180, az = (indoor ? 180 + D.light.sunAz * 0.3 : D.light.sunAz) * Math.PI / 180;
   return [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)];
 }

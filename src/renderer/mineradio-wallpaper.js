@@ -915,12 +915,13 @@ export default class MineradioWallpaper {
     if (!dir || !this.renderer) return null;
     this.exitRoom();
     const tok = this._roomTok;
-    const { createRoom } = await import('./room-scene.js');
+    // 给了 travel(隔壁的楼、随机传送门):交给 room-travel.js,它在屋子之间换场;不然就是一间屋子
+    const mod = opts.travel ? await import('./room-travel.js') : await import('./room-scene.js');
     if (tok !== this._roomTok) return null;            // 加载的时候已经被叫出来了
     // 正在演的那座城先撤掉 —— 它的轮播计时器会在后台一直重排一座看不见的城。
     this.hideProject();
     const style = opts.style != null ? opts.style : (this._projStyle || '');
-    const room = createRoom(this.renderer, dir, Object.assign({}, opts, { style }));
+    const room = (opts.travel ? mod.createWalk : mod.createRoom)(this.renderer, dir, Object.assign({}, opts, { style }));
     room.resize(this.W, this.H);
     this._room = room;
     this._last = performance.now();
@@ -937,6 +938,34 @@ export default class MineradioWallpaper {
   }
 
   isInRoom() { return !!this._room; }
+
+  /**
+   * 广场的星球:一颗粒子地球,每个项目在它的位置上泛起荧光。和走进楼一样借这块画布
+   * (iPhone 只给一个全屏 WebGL 上下文),占的也是同一个位置 —— exitRoom() 就还回来。
+   * @param {Array} projects 广场列表里的项目(带 capsule.geo 的才上星球)
+   * @param {object} [opts] host / input / budget / onPick(project) / onStats(n)
+   */
+  async enterGlobe(projects, opts = {}) {
+    if (!this.renderer) return null;
+    this.exitRoom();
+    const tok = this._roomTok;
+    const { createGlobe } = await import('./globe-scene.js');
+    if (tok !== this._roomTok) return null;
+    this.hideProject();
+    const globe = createGlobe(this.renderer, projects || [], opts);
+    globe.resize(this.W, this.H);
+    this._room = globe;
+    this._last = performance.now();
+    return globe;
+  }
+
+  /** 正在演的这座城里最高的那栋楼(星球上点一个项目,就直接走进它)。没有城就是 null。 */
+  mainTower() {
+    const L = this._projLayer, towers = (L && L.cityTowers) || [];
+    if (!towers.length) return null;
+    const t = towers.slice().sort((a, b) => (b.top[1] - b.base[1]) - (a.top[1] - a.base[1]))[0];
+    return t && t.dir ? { name: t.name, dir: t.dir, style: this._projStyle || '' } : null;
+  }
 
   /** Brighten the glyph under the cursor so it reads as a target. */
   setHover(glyph) {

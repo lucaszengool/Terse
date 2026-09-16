@@ -24,10 +24,13 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { Pass, FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
-import { interiorOf, interiorVariants, signatureOf, mix, layoutOf, layoutFor, fileLight, DOOR_W, PAD } from './room-interior.js';
-import { Surfaces, makeUniforms, setScene, renderShadowMap } from './room-surface.js';
+import { interiorOf, interiorVariants, signatureOf, mix, asLight, layoutOf, layoutFor, linkSpots, fileLight, DOOR_W, PAD } from './room-interior.js';
+import { Surfaces, makeUniforms, setScene, renderShadowMap, MAT, F } from './room-surface.js';
 import { designOf, sunDirOf, heightOf, kelvin } from './room-styles.js';
-import { buildArchitecture, coloursOf, sky } from './room-arch.js';
+import { buildArchitecture, coloursOf } from './room-arch.js';
+import { envAt, WEATHERS, SEASONS, WEATHER_ICON, SEASON_ICON } from './room-sky.js';
+import { createAtmosphere } from './room-atmos.js';
+import { langRgb } from './lang-colors.js';
 import { FURN, ROLE, ROLE_ICON, ITEM_ICON, WORDS_EN, roleOfName, furnSize } from './room-furniture.js';
 
 const TAU = Math.PI * 2;
@@ -61,6 +64,10 @@ export const UI_EN = {
   lg_size: 'Taller furniture = more code · colour of the things = language',
   lg_threads: 'Glowing threads on the floor = one file imports the other',
   lg_roles: 'Furniture', lg_items: 'On the shelves',
+  ui_link: '{n} files · next door', ui_portal: 'Random portal', ui_portal_sub: 'somewhere else on the plaza',
+  lg_links: 'Glowing doorframes = the other buildings of this project · the swirl = a random project',
+  wx_clear: 'Clear', wx_cloudy: 'Cloudy', wx_overcast: 'Overcast', wx_rain: 'Rain', wx_storm: 'Storm', wx_snow: 'Snow', wx_fog: 'Fog',
+  season_spring: 'Spring', season_summer: 'Summer', season_autumn: 'Autumn', season_winter: 'Winter',
 };
 
 const fmtBytes = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B');
@@ -84,7 +91,7 @@ const CSS = `
 .room-toast small{display:block;font-size:12px;font-weight:600;opacity:.8;margin-top:4px}
 .room-side{position:absolute;right:12px;top:calc(64px + env(safe-area-inset-top,0px));z-index:4;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .room-map{position:static!important;inset:auto!important;width:150px!important;height:150px!important;border-radius:12px;background:rgba(6,8,12,.62);border:1px solid rgba(255,255,255,.12)}
-.room-btns{display:flex;gap:6px}
+.room-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:250px}
 .room-btn{font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;color:#eef4f2;background:rgba(6,8,12,.66);cursor:pointer;
   border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 11px}
 .room-legend{width:min(300px,calc(100vw - 24px));max-height:52vh;overflow:auto;background:rgba(6,8,12,.86);color:#e8eeec;border-radius:12px;
@@ -103,15 +110,14 @@ function injectCss() {
   document.head.appendChild(s);
 }
 
-/** 现在该是白天还是夜里:看的人自己那边的钟。7 点到 18 点是白天。 */
-export function autoTime(now = new Date()) { const h = now.getHours(); return h >= 7 && h < 18 ? 'day' : 'night'; }
 
 /* 发光点的着色器:点的大小按世界尺寸(米),种类决定什么时候亮。 */
 const GLOW_VS = `
 precision highp float;
 attribute vec3 aColor; attribute float aSize; attribute float aPhase; attribute float aTwk; attribute float aKind;
 uniform float uTime, uPx, uNight, uFogA, uFogB, uForm;
-uniform vec3 uSunDir, uHaloC;
+uniform vec3 uSunDir, uHaloC, uPortalC;
+uniform float uSunVis, uSkyAur;
 uniform vec4 uPick;
 varying vec3 vColor; varying float vA;
 void main(){
@@ -119,7 +125,21 @@ void main(){
   float mir = position.y < -0.005 ? 1.0 : 0.0;
   vec3 p = position; p.y = abs(p.y);
   float fade = 1.0, twk = aTwk;
-  if (aKind > 8.5) {
+  if (aKind > 10.5) {
+    /* 11 传送门:永远正对着人的一圈旋涡。position 是圆心,aTwk 是半径,aPhase 是这颗点在哪条旋臂上。
+       aTwk > 0.86 的是亮边,慢慢转;里面的顺着三条旋臂往中心流,越往里越亮,流到中心再从外面出来。 */
+    vec3 Rx = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]), Uy = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+    float r, an;
+    if (aTwk > 0.86) { r = aTwk * (1.0 + 0.03 * sin(uTime * 3.0 + aPhase * 40.0)); an = aPhase * 6.2831 + uTime * 0.5; }
+    else {
+      float life = fract(aPhase * 7.31 + aTwk * 13.7 - uTime * 0.12);
+      r = aTwk * (0.1 + 0.9 * life);
+      an = aPhase * 6.2831 + (0.8 - r) * 4.0 + uTime * 0.8;
+      fade = (0.35 + 1.1 * (1.0 - life)) * smoothstep(0.0, 0.08, life);
+    }
+    p = p + (Rx * cos(an) + Uy * sin(an)) * r;
+    twk = 0.6;
+  } else if (aKind > 8.5) {
     // 9 扫描光(测试多的屋子):一层绿光从地面扫到顶,再从头来 —— 一轮轮在跑的测试。aTwk = 扫多高
     float s = fract(uTime * 0.12);
     p.y = 0.05 + s * aTwk;
@@ -158,13 +178,16 @@ void main(){
   if (mir > 0.5) p.y = -p.y;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float d = -mv.z;
-  gl_PointSize = clamp(aSize * uPx / max(0.2, d), 1.0, 64.0);
+  gl_PointSize = clamp(aSize * uPx / max(0.2, d), 1.0, 64.0) * mix(0.35, 1.0, fm);
   // 1 灯:夜里才亮;2 数据光:一直亮,白天淡一点;3 天光:白天才有;4 光尘:一直有;5 火星:夜里
   float on = aKind < 1.5 ? uNight : aKind < 2.5 ? mix(0.4, 1.0, uNight) : aKind < 3.5 ? 1.0 - uNight : aKind < 4.5 ? mix(0.7, 1.0, uNight) : aKind < 5.5 ? uNight : mix(0.6, 1.0, uNight);
+  if (aKind > 10.5) on = 1.0;
+  // 露天夜空里那三条极光:只有晴朗、该有极光的夜里才亮(见 room-sky.js 的 fx.aurora)
+  if (aKind > 5.5 && aKind < 6.5 && abs(position.y) > 7.5) on *= uSkyAur;
   float tw = 0.75 + 0.25 * sin(uTime * 1.9 + aPhase * 19.0);
   vA = on * fade * mix(1.0, tw, twk);
-  // 光柱:迎着太阳看时整道亮起来,背对太阳几乎看不见(前向散射)—— 光遇逆光的感觉
-  if (aKind > 2.5 && aKind < 3.5) vA *= 0.4 + 0.9 * pow(max(dot(normalize(p - cameraPosition), uSunDir), 0.0), 5.0);
+  // 光柱:迎着太阳看时整道亮起来,背对太阳几乎看不见(前向散射)—— 光遇逆光的感觉;阴天几乎没有
+  if (aKind > 2.5 && aKind < 3.5) vA *= (0.4 + 0.9 * pow(max(dot(normalize(p - cameraPosition), uSunDir), 0.0), 5.0)) * uSunVis;
   // 雾里,光比墙面更穿得透
   float fd = 1.0 - exp(-uFogA * exp(-uFogB * max(cameraPosition.y, 0.0)) * d);
   vA *= 1.0 - 0.55 * fd;
@@ -174,7 +197,7 @@ void main(){
   // 点了一件家具:和表面同一圈光扫过,光环、数据流、光尘被扫到的那一下亮起来
   float pk = uTime - uPick.z, rp = length(p.xz - uPick.xy) - pk * 6.0;
   vA *= 1.0 + 2.5 * uPick.w * exp(-rp * rp * 0.8) * max(0.0, 1.0 - pk / 4.0);
-  vColor = aColor;
+  vColor = aKind > 10.5 ? aColor * uPortalC : aColor;
   gl_Position = projectionMatrix * mv;
 }`;
 /* 一颗发光点:亮的芯 + 一圈柔的晕,边缘淡出 —— 蜡烛、灯、光尘在光遇里都是这样发光的 */
@@ -225,7 +248,7 @@ void main(){
 const GRADE_FS = `
 precision highp float;
 uniform sampler2D tDiffuse, tDepth;
-uniform vec2 uRes; uniform float uNear, uFar, uTime, uK, uNight, uHaloK, uVig;
+uniform vec2 uRes; uniform float uNear, uFar, uTime, uK, uNight, uHaloK, uVig, uFlash;
 uniform vec3 uSh, uHi, uHalo, uVigCol, uTop;
 varying vec2 vUv;
 float lz(float z){ return (2.0 * uNear * uFar) / (uFar + uNear - (z * 2.0 - 1.0) * (uFar - uNear)); }
@@ -248,6 +271,8 @@ void main(){
   c = mix(c, c * mix(uSh, uHi, smoothstep(0.1, 0.8, l)), uK);
   // 光从上面落下来:画面上方淡淡一层暖光
   c += uTop * 0.035 * smoothstep(0.4, 1.0, vUv.y) * (1.0 - 0.6 * uNight);
+  // 闪电:整个画面白一下(外面的天由 room-atmos.js 闪,屋里跟着亮)
+  c += vec3(0.75, 0.82, 1.0) * uFlash * 0.28;
   // 暗角带一点冷色,不压黑
   vec2 q = vUv - 0.5;
   c = mix(c, c * uVigCol, clamp(dot(q, q) * uVig, 0.0, 1.0));
@@ -265,7 +290,7 @@ class GradePass extends Pass {
         uNear: { value: camera.near }, uFar: { value: camera.far }, uTime: U.uTime, uNight: U.uNight,
         uK: { value: grade.k }, uSh: { value: new THREE.Vector3(...grade.sh) }, uHi: { value: new THREE.Vector3(...grade.hi) },
         uHaloK: { value: 0.22 }, uVig: { value: 0.5 }, uHalo: { value: new THREE.Vector3() },
-        uVigCol: { value: new THREE.Vector3(0.86, 0.87, 1) }, uTop: { value: new THREE.Vector3() },
+        uVigCol: { value: new THREE.Vector3(0.86, 0.87, 1) }, uTop: { value: new THREE.Vector3() }, uFlash: { value: 0 },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: GRADE_FS,
@@ -297,6 +322,12 @@ class GradePass extends Pass {
  *   words   翻好的词(WORDS_EN + UI_EN 的键)
  *   onHere(info)  走进了另一间屋子
  *   onPick(prop, desc)  点了一件家具;desc 是 describe(prop) 的结果
+ *   hour / weather / season / seed / lat / lon  外面是什么天(见 room-sky.js);不给就按看的人的钟和当天的签
+ *   links   隔壁的楼(同一个项目里别的顶层目录)[{name, files, lang}] —— 大厅里各立一座门框
+ *   arrive  从哪座楼走过来的(links 里的 name):人站在那座门框前面,背对着它
+ *   portal  立一座随机传送门(setPortal 告诉它通向哪)
+ *   onLink(link) / onPortal(target)  人穿过了门框 / 走进了传送门(见 room-travel.js)
+ *   formIn  进门时粒子聚拢用几秒(默认 2.4)
  */
 export function createRoom(renderer, dir, opts = {}) {
   injectCss();
@@ -314,19 +345,46 @@ export function createRoom(renderer, dir, opts = {}) {
   const S = new Surfaces(spacing);
   const U = makeUniforms();
   U.uForm.value = 0;   // 进门:粒子从 0 聚到 1(update 里走,约 2.4 秒)
+  U.uSunVis = { value: 1 }; U.uSkyAur = { value: 0 }; U.uPortalC = { value: new THREE.Vector3(0.78, 0.62, 1) };
+  const formIn = Math.max(0.3, +opts.formIn || 2.4);
+  let dissolving = false, dissolveT = 0.45, locked = false;
+  const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* 外面是什么天:几点(看的人自己的钟)、什么季节、什么天气(room-sky.js)。
+     时间按钮三档:跟着钟 / 白天 / 夜里;天气、季节按钮一档档换着看。 */
+  let timeMode = opts.time === 'day' || opts.time === 'night' ? opts.time : 'auto';
+  let wxPick = WEATHERS.includes(opts.weather) ? opts.weather : null, seasonPick = SEASONS.includes(opts.season) ? opts.season : null;
+  const envNow = () => envAt(new Date(), {
+    seed: opts.seed || '', lat: opts.lat, lon: opts.lon, weather: wxPick || undefined, season: seasonPick || undefined,
+    hour: timeMode === 'day' ? 12.5 : timeMode === 'night' ? 22.5 : opts.hour,
+  });
+  let env = envNow();
   /* 设计单:这个风格的层高、太阳、补光、灯色(见 room-styles.js)。层高按风格定基准,
      代码量上下浮动 —— 江户的屋子矮,古埃及的殿高,北欧是低墙加一个两坡顶。 */
   const D = designOf(styleId);
   for (const r of rooms) r.h = heightOf(D, r);
-  {
-    const sd = sunDirOf(D, !L.open), sk = kelvin(D.light.sunK), f = D.light.fill;
-    U.uSunDir.value.set(sd[0], sd[1], sd[2]).normalize();
-    U.uSunCol.value.set(sk[0] * D.light.sunI, sk[1] * D.light.sunI, sk[2] * D.light.sunI);
-    // 光遇:天光用这个风格自己的天色(不是一律白);地面反上来的光带着地的颜色 —— 金色的地把顶也染暖
-    const Sk = D.sky, lin = (c) => c.map((v) => Math.pow(v, 2.2));
-    const zen = lin(Sk.zenith), flo = lin(D.pal.floor), sI = D.light.sunI;
+  const Sk = D.sky, lin = (c) => c.map((v) => Math.pow(v, 2.2));
+  const sunK = () => D.light.sunK + (2300 - D.light.sunK) * env.golden;
+  /** 太阳和天光的颜色、强度:跟着钟(黄昏偏橙、低)和天气(阴天没有直射光,天光反而多一点)。
+   *  换天气时直接改 uniform —— 太阳的方向和阴影图是进门时定的,不重画。 */
+  function sunLight() {
+    const fx = env.fx, f = D.light.fill * (1 + 0.35 * fx.cover);
+    const sk = kelvin(sunK()), sI = D.light.sunI * (1 - 0.72 * fx.cover) * (1 - 0.2 * env.golden);
+    U.uSunCol.value.set(sk[0] * sI, sk[1] * sI, sk[2] * sI);
+    // 光遇:天光用这个风格自己的天色,再带三成外面真实的天色;地面反上来的光带着地的颜色
+    const zen = lin(mix(Sk.zenith, env.zen, 0.3)), flo = lin(D.pal.floor);
     U.uSky.value.set(zen[0] * f * 0.75, zen[1] * f * 0.75, zen[2] * f * 0.75);
     U.uGround.value.set(flo[0] * sk[0] * sI * 0.3 * f, flo[1] * sk[1] * sI * 0.3 * f, flo[2] * sk[2] * sI * 0.3 * f);
+    U.uSunVis.value = 1 - 0.85 * fx.cover;
+    const mI = 0.5 - 0.5 * Math.cos(env.moon * Math.PI * 2);
+    U.uMoon.value.set(0.055, 0.065, 0.13).multiplyScalar((0.55 + 0.7 * mI) * (1 - 0.45 * fx.cover));
+    U.uSkyAur.value = fx.aurora ? 1 : 0.2;
+  }
+  {
+    // 太阳的仰角:白天按钟(黄昏压低到 7°,光柱拉得长长的),但不高过设计单 —— 那是这个风格的光
+    const elDesign = L.open ? D.light.sunEl : (D.light.sunElIn != null ? D.light.sunElIn : Math.min(D.light.sunEl, 40));
+    const sd = sunDirOf(D, !L.open, env.night < 0.5 ? Math.max(7, Math.min(elDesign, env.sunEl)) : null), f = D.light.fill;
+    U.uSunDir.value.set(sd[0], sd[1], sd[2]).normalize();
+    sunLight();
     const lk = kelvin(D.light.lampK), lt = D.light.lampTint, rim = lin(Sk.rim);
     U.uRim.value.set(rim[0] * 0.5, rim[1] * 0.5, rim[2] * 0.5);
     U.uRimNight.value.set(lk[0] * lt[0] * 0.18, lk[1] * lt[1] * 0.18, lk[2] * lt[2] * 0.18);
@@ -377,13 +435,12 @@ export function createRoom(renderer, dir, opts = {}) {
     }));
   }
   const kitOf = (r) => decor.get(keyOf(r));
-  if (L.open) { const ip = kitOf(hall); sky(G, () => ip.rnd.f()); }
   if (D.light.soot) U.uSootY.value = Math.max(...rooms.map((r) => r.h)) + Math.min(hall.x1 - hall.x0, hall.z1 - hall.z0) * 0.45;
 
   /* 光柱:阳光从每一扇朝阳的窗(和天眼、烟孔)斜着进来,光里浮着尘。
      尘是白天才有的发光点,再加一层很淡的大点做出"光的体积";夜里换成一缕冷的月光。 */
   {
-    const sd = U.uSunDir.value, d = [-sd.x, -sd.y, -sd.z], sk = kelvin(D.light.sunK);
+    const sd = U.uSunDir.value, d = [-sd.x, -sd.y, -sd.z], sk = kelvin(sunK());
     const rr = () => kitOf(hall).rnd.f();
     for (const win of windows) {
       const facing = d[0] * win.n[0] + d[1] * win.n[1] + d[2] * win.n[2];
@@ -400,6 +457,61 @@ export function createRoom(renderer, dir, opts = {}) {
       }
     }
   }
+
+  /* ── 隔壁的楼、随机传送门 ────────────────────────────────────────────────
+     同一个项目里别的顶层目录是隔壁的楼:大厅里贴着墙各立一座门框,门洞里是一层那座楼
+     主语言颜色的光幕,门楣上写着它叫什么。穿过门洞就走进那座楼(room-travel.js 换屋子,
+     人站在那边通回来的门框前)。传送门是空地上一圈正对着人的旋涡,通向广场上随便哪个项目。 */
+  const links = (Array.isArray(opts.links) ? opts.links : []).filter((l) => l && l.name).slice(0, 4);
+  const frames = [], tempBlocks = [];
+  let portal = null;
+  {
+    const spots = linkSpots(hall, doors, blocks, L.start, links.length, !!opts.portal);
+    const C = cols.get(keyOf(hall)), fl = L.open ? 0 : F.indoor, rr = () => kitOf(hall).rnd.f(), seed = rr() * 10;
+    const sp = (mat, c1, c2) => ({ mat, c1, c2: c2 || c1, flags: fl, seed });
+    const OW = 1.0, OH = 2.7;
+    spots.links.forEach((s, i) => {
+      const l = links[i], rgb = asLight(langRgb(l.lang || ''));
+      const t3 = [s.tx, 0, s.tz], n3 = [s.nx, 0, s.nz];
+      const at = (u, y = 0, v = 0) => [s.x + s.tx * u + s.nx * v, y, s.z + s.tz * u + s.nz * v];
+      for (const u of [-OW - 0.12, OW + 0.12]) {
+        S.box(at(u), t3, n3, 0.24, OH + 0.2, 0.34, sp(MAT.lacquer, C.struct));
+        blocks.push({ x: at(u)[0], z: at(u)[2], rx: 0.26, rz: 0.26 });
+      }
+      S.box(at(0, OH), t3, n3, OW * 2 + 0.7, 0.32, 0.4, sp(MAT.lacquer, C.struct), { bottom: true });
+      S.box(at(0, OH + 0.32), t3, n3, OW * 2 + 0.9, 0.06, 0.46, sp(MAT.metal, C.gold || C.accent));
+      S.box(at(0, 0), t3, n3, OW * 2 + 0.5, 0.05, 0.6, sp(MAT.stone, C.stone));
+      // 光幕:门洞里一层光点,那座楼的主语言色。白天数据光只亮四成,所以这层要够密、够亮才看得出是一道门
+      for (let k = 0, n = Math.round(2400 * B) + 400; k < n; k++) {
+        const br = 0.7 + 1.1 * rr(), p = at((rr() * 2 - 1) * OW, 0.06 + rr() * (OH - 0.1), -0.02 - rr() * 0.06);
+        G(p[0], p[1], p[2], [rgb[0] * br, rgb[1] * br, rgb[2] * br], 0.04 + rr() * 0.035, 0.9, 2);
+      }
+      // 门洞的边亮一圈;门洞里往屋里飘出来的光尘
+      for (let k = 0; k <= 60; k++) {
+        const q = k / 60;
+        for (const p of [at(-OW, q * OH, -0.03), at(OW, q * OH, -0.03), at((q * 2 - 1) * OW, OH - 0.02, -0.03)]) G(p[0], p[1], p[2], rgb.map((v) => Math.min(1, v * 1.4)), 0.045, 0.4, 2);
+      }
+      for (let k = 0, n = Math.round(90 * B) + 20; k < n; k++) { const p = at((rr() * 2 - 1) * OW, 0.1, 0.1 + rr() * 1.2); G(p[0], p[1], p[2], rgb, 0.03, OH * (0.5 + rr() * 0.5), 4); }
+      tempBlocks.push({ x: s.x + s.nx * 0.4, z: s.z + s.nz * 0.4, rx: 1.7, rz: 1.7 });
+      frames.push(Object.assign({}, s, { link: l, rgb, OW, s0: 9, fired: false }));
+    });
+    if (spots.portal) {
+      const P = spots.portal, cy = 1.45;
+      // 旋涡:三条旋臂 + 一圈亮边(顶点着色器 kind 11 让它转、往里流、正对着人);颜色由 uPortalC 染
+      for (let k = 0, n = Math.round(2600 * B) + 500; k < n; k++) {
+        const rim = k % 6 === 0, r = rim ? 0.88 + rr() * 0.06 : 0.05 + Math.pow(rr(), 0.8) * 0.75;
+        G(P.x, cy, P.z, rim ? [0.62, 0.62, 0.62] : [0.36, 0.36, 0.36], 0.025 + rr() * 0.03, r, 11);
+        const ph = rim ? rr() : (k % 3) / 3 + (rr() - 0.5) * 0.05;
+        lPha[NL - 1] = ph - Math.floor(ph);
+      }
+      for (let k = 0; k < 120; k++) { const a = k / 120 * TAU; G(P.x + Math.cos(a) * 1.05, 0.04, P.z + Math.sin(a) * 1.05, [0.5, 0.42, 0.9], 0.045, 0.4, 2); }
+      lit(P.x, 1.5, P.z, 4.5, [0.72, 0.6, 1], 1.2);
+      tempBlocks.push({ x: P.x, z: P.z, rx: 1.8, rz: 1.8 });
+      portal = { x: P.x, z: P.z, y: cy, fired: false, target: null };
+    }
+  }
+  // 家具躲开门框和传送门;摆完就撤,人要走得过去
+  for (const b of tempBlocks) blocks.push(b);
 
   /* ── 陈设:一个文件一件家具 ──────────────────────────────────────────────
      靠墙的(柜、书架、画、抽屉)沿墙一排,朝屋里;站在中间的(实验台、展柜、绘图桌)
@@ -523,6 +635,7 @@ export function createRoom(renderer, dir, opts = {}) {
     }
   }
   for (const [k, files] of L.byRoom) placeFiles(k ? rooms.find((r) => r.name === k && !r.isHall) || hall : hall, files);
+  for (const b of tempBlocks) { const i = blocks.indexOf(b); if (i >= 0) blocks.splice(i, 1); }
 
   /* import 连线:地上一道淡淡的弧,从引用的一方到被引用的一方,颜色从一门语言过渡到
      另一门。一眼看过去,哪几件家具是一伙的就在地上。 */
@@ -768,30 +881,40 @@ export function createRoom(renderer, dir, opts = {}) {
   const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.5, 0.85, 0.7);
   composer.addPass(bloom);
 
-  /* ── 白天 / 夜里 ── */
-  const SKY_DAY = new THREE.Color(0.58, 0.68, 0.8), SKY_NIGHT = new THREE.Color(0.012, 0.016, 0.03);
-  const IN_DAY = new THREE.Color(0.2, 0.2, 0.22);
+  /* ── 白天 / 夜里 / 天气 ──
+     天(天穹、云、雨雪、闪电)由 room-atmos.js 画:露天是整片天,屋里只在窗外。 */
   scene.background = new THREE.Color();
-  let timeMode = opts.time === 'day' || opts.time === 'night' ? opts.time : autoTime();
-  let night = timeMode === 'night' ? 1 : 0;
+  let night = env.night;
+  const atmos = createAtmosphere({ open: L.open, windows, roofs: L.open ? rooms.filter((r) => !r.isHall) : [], budget: B, uPx: U.uPx, reduceMotion });
+  scene.add(atmos.group);
+  atmos.setEnv(env, U.uSunDir.value);
   function applyTime() {
     U.uNight.value = night;
-    const Sk = D.sky, mixc = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
-    /* 和 Terse 壁纸一样的底:近黑,只带这个风格一点点色调。点与点之间露出来的是黑,远处融进黑里
-       —— 粒子是在黑里发光的。(壁纸那边踩过的坑:底色一旦是"暗的主题色",sRGB 下会变成一整片
-       灰紫,把氛围全毁了;必须压到近黑。) */
+    const mixc = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
     const sc = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
-    const away = mixc(sc(Sk.zenith, 0.07), sc(Sk.fogNight, 0.3), night), sun = mixc(sc(Sk.fogSun, 0.09), sc(Sk.fogNight, 0.3), night);
+    let away, sun;
+    if (L.open) {
+      // 露天:远处融进外面那片天的地平线色,朝太阳那边是光晕的暖 —— 白天就是蓝天白云底下的院子
+      away = mixc(mixc(env.hor, Sk.fogAway, 0.3), sc(Sk.fogNight, 0.3), night);
+      sun = mixc(mixc(env.glow, Sk.fogSun, 0.4), sc(Sk.fogNight, 0.3), night);
+    } else {
+      /* 屋里仍是 Terse 壁纸的底:近黑,只带这个风格一点点色调。点与点之间露出来的是黑 ——
+         粒子是在黑里发光的(底色一旦是"暗的主题色",sRGB 下会变成一整片灰紫)。天在窗里。 */
+      away = mixc(sc(Sk.zenith, 0.07), sc(Sk.fogNight, 0.3), night); sun = mixc(sc(Sk.fogSun, 0.09), sc(Sk.fogNight, 0.3), night);
+    }
     scene.background.setRGB(...away);
     U.uFogAway.value.set(...away); U.uFogSun.value.set(...sun);
-    U.uFogA.value = Sk.fogA * (L.open ? 0.4 : 0.5) * (1 + 0.2 * night); U.uFogB.value = Sk.fogB;
+    U.uFogA.value = Sk.fogA * (L.open ? 0.4 : 0.5) * (1 + 0.2 * night) * (1 + (L.open ? 2.5 : 0.8) * env.fx.fog); U.uFogB.value = Sk.fogB;
     // 露天的院子白天整片是天光,曝光低一点,不然白砂和白墙一起烧成白的
     const ex = D.light.exposure;
     // 大殿白天压暗两成:光柱、极光、光斑、灯才跳得出来(暗里发光才震撼)
     U.uExposure.value = (L.open ? 0.9 : ex[0] * 0.8) * (1 - night) + (L.open ? 1.2 : ex[1]) * night;
     U.uSat.value = 1.35 - 0.05 * night; U.uLift.value = 0.0;
     // 辉光:壁纸是同一份粒子再画一层大而软的加性孪生;这里用泛光做同一件事 —— 亮的粒子都晕开一点
-    bloom.strength = 0.85 + 0.3 * night; bloom.threshold = 0.55 - 0.12 * night; bloom.radius = 0.6;
+    // 露天的白天整片是亮的天:阈值抬高,只有太阳和真正的光晕开;屋里照旧
+    if (L.open) { bloom.strength = 0.55 + 0.6 * night; bloom.threshold = 0.82 - 0.39 * night; }
+    else { bloom.strength = 0.85 + 0.3 * night; bloom.threshold = 0.55 - 0.12 * night; }
+    bloom.radius = 0.6;
     const gu = grade.mat.uniforms, gd = D.light.grade;
     gu.uHalo.value.set(...away); gu.uHaloK.value = 0.0; gu.uVig.value = 0.7 + 0.3 * night;
     gu.uVigCol.value.set(...mixc([0.55, 0.56, 0.62], [0.45, 0.46, 0.55], night));
@@ -801,6 +924,11 @@ export function createRoom(renderer, dir, opts = {}) {
 
   /* ── 走 ── */
   let yaw = L.start.yaw, pitch = -0.04, px = L.start.x, pz = L.start.z, t = 0;
+  // 从隔壁那座楼走过来:站在通回去的那座门框前,背对着它
+  {
+    const f = opts.arrive && frames.find((x) => x.link.name === opts.arrive);
+    if (f) { px = f.x + f.nx * 1.5; pz = f.z + f.nz * 1.5; yaw = Math.atan2(-f.nx, -f.nz); f.s0 = 1.5; }
+  }
   let lastStepX = px, lastStepZ = pz;   // 脚步涟漪:上一步落在哪
   let dragging = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
   const keys = new Set();
@@ -865,22 +993,34 @@ export function createRoom(renderer, dir, opts = {}) {
   const map = el('canvas', 'room-map', side);
   const btns = el('div', 'room-btns', side);
   const timeBtn = el('button', 'room-btn', btns);
+  const wxBtn = el('button', 'room-btn', btns);
+  const seasonBtn = el('button', 'room-btn', btns);
   const legendBtn = el('button', 'room-btn', btns);
-  timeBtn.type = legendBtn.type = 'button';
+  timeBtn.type = wxBtn.type = seasonBtn.type = legendBtn.type = 'button';
   legendBtn.textContent = '❔ ' + w.ui_legend;
   const legend = el('div', 'room-legend', side);
   legend.hidden = true;
   const usedRoles = [...new Set(props.map((p) => p.role))];
   const usedKinds = [...new Set(props.flatMap((p) => (p.sym || []).map((s) => (ITEM_ICON[s[1]] ? s[1] : 'fn'))))];
   legend.innerHTML = `<b>${w.lg_title}</b><p>🚪 ${w.lg_room}</p><p>🪑 ${w.lg_furn}</p><p>📕 ${w.lg_item}</p><p>📏 ${w.lg_size}</p>`
+    + (frames.length || portal ? `<p>🌀 ${w.lg_links}</p>` : '')
     + (L.edges.length ? `<p>✨ ${w.lg_threads}</p>` : '')
     + `<h4>${w.lg_roles}</h4>` + usedRoles.map((r) => `<div class="row"><span class="dot" style="background:${ROLE_COLOR[r]}"></span>${ROLE_ICON[r] || ''} <span><b style="display:inline;font-size:12px">${w['role_' + r] || r}</b> — ${w['furn_' + r] || ''}</span></div>`).join('')
     + (usedKinds.length ? `<h4>${w.lg_items}</h4>` + usedKinds.map((k) => `<div class="row">${ITEM_ICON[k]} <span>${w['shape_' + k]} = ${w['item_' + k]}</span></div>`).join('') : '')
     + (L.hasSymbols ? '' : `<p style="opacity:.7;margin-top:8px">${w.ui_no_symbols}</p>`)
     + (L.truncated ? `<p style="opacity:.7">${w.ui_truncated}</p>` : '');
   on(legendBtn, 'click', () => { legend.hidden = !legend.hidden; });
-  const paintTimeBtn = () => { timeBtn.textContent = night > 0.5 ? '🌙 ' + w.ui_night : '☀️ ' + w.ui_day; };
-  on(timeBtn, 'click', () => { setTime(night > 0.5 ? 'day' : 'night'); });
+  const paintTimeBtn = () => {
+    const h = Math.floor(env.hour), m = Math.floor((env.hour - h) * 60);
+    const icon = night > 0.5 ? '🌙 ' : env.phase === 'day' ? '☀️ ' : '🌅 ';
+    timeBtn.textContent = timeMode === 'auto' ? icon + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0')
+      : timeMode === 'night' ? '🌙 ' + w.ui_night : '☀️ ' + w.ui_day;
+    wxBtn.textContent = (WEATHER_ICON[env.weather] || '') + ' ' + (w['wx_' + env.weather] || env.weather);
+    seasonBtn.textContent = (SEASON_ICON[env.season] || '') + ' ' + (w['season_' + env.season] || env.season);
+  };
+  on(timeBtn, 'click', () => setTime(timeMode === 'auto' ? 'day' : timeMode === 'day' ? 'night' : 'auto'));
+  on(wxBtn, 'click', () => { wxPick = WEATHERS[(WEATHERS.indexOf(env.weather) + 1) % WEATHERS.length]; refreshEnv(true); });
+  on(seasonBtn, 'click', () => { seasonPick = SEASONS[(SEASONS.indexOf(env.season) + 1) % SEASONS.length]; refreshEnv(true); });
 
   const toast = el('div', 'room-toast');
   toast.style.opacity = '0';
@@ -973,6 +1113,12 @@ export function createRoom(renderer, dir, opts = {}) {
              lines: () => [{ t: d.room + '/', px: 44, w: 700, col: '#F6E3A6' }, { t: fill(w.ui_files, r ? r.files : 0), px: 28, w: 500, col: '#CDBB88' }],
              y: Math.min(3.0, (L.open ? 3.4 : hall.h) * 0.74) + 0.45 };
   });
+  // 隔壁那座楼的门框:门楣上写它叫什么;传送门:写它通向哪个项目(setPortal 之前是"随机传送门")
+  for (const f of frames) plaques.push({ d: { cx: f.x, cz: f.z }, key: 'link:' + f.link.name + '|' + f.x.toFixed(2) + '|' + f.z.toFixed(2),
+    lines: () => [{ t: '→ ' + f.link.name + '/', px: 44, w: 700, col: '#DDF6FF' }, { t: fill(w.ui_link, f.link.files || 0), px: 28, w: 500, col: '#A9C9D6' }], y: 3.4 });
+  if (portal) plaques.push({ d: { cx: portal.x, cz: portal.z }, get key() { return 'portal:' + (portal.target ? portal.target.title : ''); },
+    lines: () => [{ t: '✦ ' + (portal.target ? portal.target.title : w.ui_portal), px: 42, w: 700, col: '#E9DDFF' },
+                  { t: portal.target ? w.ui_portal : w.ui_portal_sub, px: 28, w: 500, col: '#B9A8E0' }], y: 2.65 });
 
   const rectOf = () => { try { return renderer.domElement.getBoundingClientRect(); } catch (e) { return { left: 0, top: 0 }; } };
   const tmp = new THREE.Vector3();
@@ -1092,15 +1238,25 @@ export function createRoom(renderer, dir, opts = {}) {
     c.fill();
   }
 
-  let nightTarget = night;
-  function setTime(mode) {
-    timeMode = mode === 'auto' ? autoTime() : (mode === 'night' ? 'night' : 'day');
-    nightTarget = timeMode === 'night' ? 1 : 0;
-    paintTimeBtn();
+  let nightTarget = night, lastEnvT = 0;
+  /** 重新看一眼外面:钟走了、换了天气或季节。颜色一两秒里过去,夜色 1.2 秒里过去。 */
+  function refreshEnv(say) {
+    env = envNow();
+    sunLight();
+    atmos.setEnv(env, U.uSunDir.value);
+    nightTarget = env.night;
+    applyTime(); paintTimeBtn();
+    if (say) {
+      toast.innerHTML = `${WEATHER_ICON[env.weather] || ''} ${w['wx_' + env.weather] || ''}<small>${SEASON_ICON[env.season] || ''} ${w['season_' + env.season] || ''}</small>`;
+      toast.style.opacity = '1'; toastUntil = t + 2.2;
+    }
   }
+  function setTime(mode) { timeMode = mode === 'day' || mode === 'night' ? mode : 'auto'; refreshEnv(false); }
 
   function update(dt) {
-    U.uForm.value = Math.min(1, U.uForm.value + Math.min(0.1, dt || 0) / 2.4);
+    // 进门聚拢;换楼的时候反过来,散开(room-travel.js 叫 dissolve)
+    if (dissolving) U.uForm.value = Math.max(0, U.uForm.value - Math.min(0.1, dt || 0) / dissolveT);
+    else U.uForm.value = Math.min(1, U.uForm.value + Math.min(0.1, dt || 0) / formIn);
     // 每走 0.75 米,脚下荡开一圈
     if (Math.hypot(px - lastStepX, pz - lastStepZ) > 0.75) { lastStepX = px; lastStepZ = pz; U.uStep.value.set(px, pz, U.uTime.value, 1); }
     dt = Math.min(0.05, Math.max(0, dt || 0));
@@ -1118,14 +1274,34 @@ export function createRoom(renderer, dir, opts = {}) {
       applyTime();
       if (Math.abs(night - 0.5) < 0.05) paintTimeBtn();
     }
+    // 跟着钟的时候,一分钟看一眼外面(黄昏是慢慢来的)
+    if (timeMode === 'auto' && opts.hour == null && t - lastEnvT > 60) { lastEnvT = t; refreshEnv(false); }
 
     const kf = (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0);
     const kr = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
     const fwd = kf - move.z, strafe = kr + move.x;
-    if (fwd || strafe) step(dt, fwd, strafe);
+    if ((fwd || strafe) && !locked) step(dt, fwd, strafe);
     camera.position.set(px, 1.62, pz);
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
     camera.updateMatrixWorld();
+    atmos.update(dt, t, camera);
+    grade.mat.uniforms.uFlash.value = atmos.flash;
+
+    /* 穿过门框(从大厅这边走到门框背后)= 去隔壁那座楼;走进旋涡中心 = 传送。各报一次,
+       人退回来再走一遍才会再报。 */
+    if (!locked) {
+      for (const f of frames) {
+        const s = (px - f.x) * f.nx + (pz - f.z) * f.nz, l = (px - f.x) * f.tx + (pz - f.z) * f.tz;
+        if (!f.fired && Math.abs(l) < f.OW && f.s0 > 0.05 && s <= 0.05) { f.fired = true; if (opts.onLink) { try { opts.onLink(f.link); } catch (e) {} } }
+        if (s > 0.6) f.fired = false;
+        f.s0 = s;
+      }
+      if (portal) {
+        const dd = Math.hypot(px - portal.x, pz - portal.z);
+        if (!portal.fired && dd < 0.6) { portal.fired = true; if (opts.onPortal) { try { opts.onPortal(portal.target); } catch (e) {} } }
+        if (dd > 1.5) portal.fired = false;
+      }
+    }
 
     const here = roomAt(px, pz);
     if (here !== hereNow) {
@@ -1204,7 +1380,7 @@ export function createRoom(renderer, dir, opts = {}) {
     try { for (const g of textGeos.values()) g.dispose(); textMats.forEach((m) => m.dispose()); } catch (e) {}
     try { group.userData.dispose(); lGeo.dispose(); lMat.dispose(); selMat.dispose(); if (selGlow) selGlow.geometry.dispose(); } catch (e) {}
     try { if (freeShadow) freeShadow(); grade.dispose(); crt.dispose(); } catch (e) {}
-    try { bloom.dispose(); } catch (e) {}
+    try { bloom.dispose(); atmos.dispose(); } catch (e) {}
     try { composer.dispose(); } catch (e) {}
     // 画布还给外面那片场,状态原样交回去 —— 像素比也还回去。
     try {
@@ -1220,6 +1396,21 @@ export function createRoom(renderer, dir, opts = {}) {
   return {
     update, render, resize, dispose, step, setTime, describe, select,
     time: () => timeMode, layout: L.layout,
+    /** 此刻外面的天(room-sky.js 的 envAt)。 */
+    env: () => env,
+    setWeather(k) { wxPick = WEATHERS.includes(k) ? k : null; refreshEnv(false); },
+    setSeason(s) { seasonPick = SEASONS.includes(s) ? s : null; refreshEnv(false); },
+    /** 传送门通向哪:{title, rgb?}。标签换成那个项目的名字,旋涡换成它的颜色。 */
+    setPortal(tg) {
+      if (!portal) return;
+      portal.target = tg || null;
+      const c = tg && tg.rgb ? tg.rgb : [0.78, 0.62, 1];
+      U.uPortalC.value.set(c[0] * 0.8 + 0.25, c[1] * 0.8 + 0.2, c[2] * 0.8 + 0.3);
+    },
+    /** 换楼时:粒子散开(on)/ 不许走(lock)。 */
+    dissolve(on, secs) { dissolving = !!on; if (secs) dissolveT = secs; },
+    lock(on) { locked = !!on; if (on) { move.x = move.z = 0; keys.clear(); } },
+    frames, portal: () => portal,
     renderNow() { U.uForm.value = 1; update(0); render(); },
     /** 真机自检:哪些着色器没编译过(three 只记在 console,不抛)、这一帧画了多少、GPU 的 uniform 上限。 */
     diag() {

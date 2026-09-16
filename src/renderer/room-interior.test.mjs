@@ -7,7 +7,7 @@
  * 每次是同一间屋子、风格够不到别人的件、第五个子目录的文件没有被丢掉、老胶囊
  * 说得出自己是老的。
  */
-import { interiorOf, interiorVariants, layoutOf, layoutFor, fileLight, signatureOf, PAD, INTERIOR } from './room-interior.js';
+import { interiorOf, interiorVariants, layoutOf, layoutFor, fileLight, signatureOf, linkSpots, PAD, INTERIOR } from './room-interior.js';
 import { langOfFile } from './lang-colors.js';
 import { roleOfName, ROLE, ROLES } from './room-furniture.js';
 import { createRequire } from 'node:module';
@@ -148,6 +148,34 @@ const ok = (name, cond) => {
   ok(`the phone's fallback and the server's deep scan agree on every file (${cases.length} cases)`, off.length === 0);
   if (off.length) console.log('    disagree:', off.map(([n, s]) => `${s}/${n}: phone=${roleOfName(n, s)} server=${roleOf((s ? s + '/' : '') + n)}`).join('; '));
   ok('every role has furniture', ROLES.every((r) => !!ROLE[r].furn));
+}
+
+/* ══ 通往隔壁楼的门框、随机传送门 ══════════════════════════════════════════ */
+{
+  const dir = { name: 'src', kids: [['a', 5, 100], ['b', 5, 5000], ['c', 5, 300], ['d', 5, 2000]], leaves: [['x.ts', 1, 'b']] };
+  for (const lay of ['hall', 'siheyuan', 'garden']) {
+    const L = layoutOf(dir, { layout: lay });
+    const h = L.hall;
+    const { links, portal } = linkSpots(h, L.doors, [], L.start, 3, true);
+    ok(`${lay}: three doorways to the buildings next door`, links.length === 3);
+    ok(`${lay}: each stands inside the hall, facing into it`, links.every((l) => l.x > h.x0 && l.x < h.x1 && l.z > h.z0 && l.z < h.z1
+      && ((h.x0 + h.x1) / 2 - l.x) * l.nx + ((h.z0 + h.z1) / 2 - l.z) * l.nz > 0));
+    ok(`${lay}: none blocks a sub-directory door`, links.every((l) => L.doors.every((d) => Math.hypot(d.cx - l.x, d.cz - l.z) > 2.5)));
+    ok(`${lay}: none stands on another`, links.every((a, i) => links.every((b, j) => i === j || Math.hypot(a.x - b.x, a.z - b.z) >= 3.2)));
+    ok(`${lay}: the portal has somewhere to stand, away from the doorways and the way in`, !!portal
+      && links.every((l) => Math.hypot(l.x - portal.x, l.z - portal.z) >= 3) && Math.hypot(portal.x - L.start.x, portal.z - L.start.z) > 2.4);
+  }
+  const L = layoutOf(dir);
+  const pond = { x: L.hall.x0 + 1.1, z: L.hall.z0 + (L.hall.z1 - L.hall.z0) * 0.82, rx: 1.5, rz: 1.5 };
+  // 一座小厅:四面都是子目录的门,墙边一排排柱子(room-arch 的 hallColumns 就是这样登记的)
+  const small = layoutOf({ name: 'x', kids: [['a', 5, 100], ['b', 5, 200], ['c', 5, 300], ['d', 5, 400]], leaves: [] });
+  const sh = small.hall, cols = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (let b = 0; b < 3; b++) cols.push({ x: sx * ((sh.x1 - sh.x0) / 2 - 2 - b * 3.4), z: sz * ((sh.z1 - sh.z0) / 2 - 1.9), rx: 0.5, rz: 0.5 });
+  const crowd = linkSpots(sh, small.doors, cols, small.start, 3, true);
+  ok(`a small hall lined with columns still gets its three doorways (${crowd.links.map((l) => l.side).join(',')})`, crowd.links.length === 3
+    && crowd.links.every((l) => cols.every((c) => Math.hypot(c.x - l.x, c.z - l.z) >= 1.9)));
+  ok('a tree or a pond in the way moves the doorway somewhere else', linkSpots(L.hall, L.doors, [pond], L.start, 1, false).links[0].side !== 'W'
+    || linkSpots(L.hall, L.doors, [pond], L.start, 1, false).links[0].z < pond.z - 2);
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);

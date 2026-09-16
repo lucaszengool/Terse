@@ -116,6 +116,8 @@
       field_idle_1: 'Terse', field_idle_2: 'scan to connect',
       field_peek: 'Controls',
       pz_rooms: 'Rooms', pz_projects: 'Projects', pz_published: 'Published projects',
+      pz_planet: 'Planet', planet_hint: 'Drag to turn · pinch to zoom · double-tap to fly in · tap a light to walk in',
+      planet_count: '{n} projects on the planet', planet_none: 'No project has a place on the planet yet',
       pz_tap_hint: 'Tap one and it plays in the field.', pz_none: 'Nothing published yet.',
       pz_playing: 'Playing {name} in the field',
       pz_liked: 'Liked', pz_saved: 'Saved',
@@ -352,6 +354,8 @@
       field_idle_1: 'Terse', field_idle_2: '扫码连接',
       field_peek: '设置',
       pz_rooms: '房间', pz_projects: '项目', pz_published: '已发布的项目',
+      pz_planet: '星球', planet_hint: '拖动旋转 · 双指缩放 · 双击放大 · 点一个光点走进它的别墅',
+      planet_count: '星球上有 {n} 个项目', planet_none: '还没有项目标上位置',
       pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
       pz_playing: '正在场里播放 {name}',
       pz_liked: '已赞', pz_saved: '已收藏',
@@ -1348,7 +1352,7 @@
        leaving the plaza has to hand it back — otherwise a capsule keeps
        replaying over your own agents, which is the bug that took a whole round
        to find the first time. */
-    if (current === 'plaza' && tab !== 'plaza') endProject();
+    if (current === 'plaza' && tab !== 'plaza') { leavePlanet(true); endProject(); }
     /* 房间的城借的是同一块地方,所以也要对称地还回去 —— 走出这一屏就停。壁纸
        那一屏是这个人自己的 agent 在说话,把室友的城盖上去,和让陌生人的项目盖住
        他自己的实时数字是同一种错。 */
@@ -1414,6 +1418,7 @@
     if ($('sndBtn')) $('sndBtn').classList.toggle('on', sndOn);
     armAudio();
     if (plazaHalf === 'rooms') loadPlaza();
+    else if (plazaHalf === 'planet') enterPlanet();
     else if (!projPool.length) loadProjects();
   }
 
@@ -3811,6 +3816,7 @@
       $('walkNote').classList.add('hide');
       wp.enterRoom(dir, {
         style: hit.style, host: box, input: box, budget: 0.55, words: lang === 'zh' ? ROOM_WORDS_ZH : null,
+        travel: walkTravel(),
         onHere: function (h) {
           $('walkPath').textContent = h.path;
           $('walkStat').textContent = t('walk_files').replace('{n}', h.files || 0);
@@ -3865,6 +3871,63 @@
         if (res && res.body) roomCache.put(key, res);
         go(res && res.body ? Object.assign({}, hit.dir, { detail: res.body }) : hit.dir);
       });
+  }
+
+  /* ── 从一座楼走到另一座 ─────────────────────────────────────────────────
+     大厅里立着通往隔壁几座楼(同一个项目别的顶层目录,最大的三座)的门框,和一座通往
+     广场上随便哪个项目的传送门(room-travel.js)。这里告诉它:隔壁有哪几座、怎么拿到
+     它们的深扫(同一份缓存)、下一个随机项目是谁。走进传送门以后"在看的项目"就换成了
+     那一个 —— 走出来看到的是它的城。 */
+  var walkCap = null, walkProject = null;
+  function dirsOf(cap) {
+    return (cap && Array.isArray(cap.dirs)) ? cap.dirs.filter(function (d) { return d && d.name; }) : [];
+  }
+  function linksOf(cap, name) {
+    return dirsOf(cap).filter(function (d) { return d.name !== name; })
+      .sort(function (a, b) { return (+b.bytes || 0) - (+a.bytes || 0); }).slice(0, 3)
+      .map(function (d) { return { name: d.name, files: +d.files || 0, lang: d.lang || '' }; });
+  }
+  /** 一座楼,带上深扫(本机缓存有就先用它)。取不到就是只有家具的那份 —— 门永远推得开。 */
+  function dirWithDetail(cap, d) {
+    var repo = ghRepoOf(cap);
+    if (!repo || !window.fetch || ghDead[repo]) return Promise.resolve(d);
+    var key = repo + '|' + d.name, have = roomCache.get(key);
+    if (have) { revalidate(key, repo, d.name, have); return Promise.resolve(Object.assign({}, d, { detail: have.body })); }
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 10000);
+    return roomFetch(repo, d.name, null, ctl).then(function (res) {
+      clearTimeout(timer);
+      if (res && res.body) { roomCache.put(key, res); return Object.assign({}, d, { detail: res.body }); }
+      return d;
+    });
+  }
+  function walkTravel() {
+    walkCap = window.TersePlazaField.toCapsule(viewing);
+    walkProject = null;
+    return {
+      links: function (name) { return linksOf(walkCap, name); },
+      load: function (name) {
+        var d = dirsOf(walkCap).filter(function (x) { return x.name === name; })[0];
+        return d ? dirWithDetail(walkCap, d) : Promise.resolve(null);
+      },
+      random: function () {
+        var here = walkProject || viewing;
+        var pool = ((poolAll && poolAll.length ? poolAll : projPool) || []).filter(function (p) {
+          return p && p !== here && dirsOf(window.TersePlazaField.toCapsule(p)).length;
+        });
+        if (!pool.length) return Promise.resolve(null);
+        var p = pool[Math.floor(Math.random() * pool.length)], cap = window.TersePlazaField.toCapsule(p);
+        var main = dirsOf(cap).slice().sort(function (a, b) { return (+b.bytes || 0) - (+a.bytes || 0); })[0];
+        warmRepo(cap);
+        return dirWithDetail(cap, main).then(function (d) {
+          return { title: cap.title || '—', style: cap.style || '', lang: main.lang || '', dir: d, project: p, cap: cap };
+        });
+      },
+      arrived: function (info) {
+        if (info.kind === 'portal' && info.target) { walkProject = info.target.project; walkCap = info.target.cap; }
+        if (window.TerseFeel) window.TerseFeel.tap(info.kind === 'portal' ? 'heavy' : 'select');
+      },
+    };
   }
 
   /* ── 深扫数据的缓存 ─────────────────────────────────────────────────────
@@ -3968,6 +4031,10 @@
     why_ui: '亮得像展厅 —— 这里多是界面', why_config: '素净、石板色 —— 这里多是配置',
     why_classes: '藻井顶 —— 这里类和类型多', why_functions: '敞开的梁架 —— 这里多是散函数',
     why_many: '一盏大吊灯 —— 这里文件多', why_few: '烛光 —— 这里只有几个文件',
+    ui_link: '{n} 个文件 · 隔壁的楼', ui_portal: '随机传送门', ui_portal_sub: '通往广场上的另一个项目',
+    lg_links: '发光的门框 = 这个项目的另一座楼 · 旋涡 = 随机去广场上的一个项目',
+    wx_clear: '晴', wx_cloudy: '多云', wx_overcast: '阴', wx_rain: '雨', wx_storm: '雷雨', wx_snow: '雪', wx_fog: '雾',
+    season_spring: '春', season_summer: '夏', season_autumn: '秋', season_winter: '冬',
   };
 
   /** @param {boolean} [leaving] the whole project window is going too — don't
@@ -3975,8 +4042,12 @@
   function exitWalk(leaving) {
     if (!walking) return;
     walking = false;
+    var np = walkProject;
+    walkProject = null;
     try { if (wp && wp.exitRoom) wp.exitRoom(); } catch (e) {}
     $('walk').classList.add('hide');
+    // 从传送门去了别的项目:走出来就是那个项目的城
+    if (!leaving && np && np !== viewing) { openProject(np); return; }
     if (!leaving && viewing) {
       replayProject();
       clearInterval(pjTimer);
@@ -4099,16 +4170,88 @@
       Array.prototype.forEach.call(document.querySelectorAll('#plazaSeg button'), function (o) {
         o.classList.toggle('on', o === b);
       });
-      var projects = b.dataset.plaza === 'projects';
-      plazaHalf = projects ? 'projects' : 'rooms';
-      $('pzRooms').classList.toggle('hide', projects);
-      $('pzProjects').classList.toggle('hide', !projects);
-      if (projects) { if (!projPool.length) loadProjects(); }
+      var half = b.dataset.plaza || 'projects', was = plazaHalf;
+      plazaHalf = half;
+      $('pzRooms').classList.toggle('hide', half !== 'rooms');
+      $('pzProjects').classList.toggle('hide', half !== 'projects');
+      if ($('pzPlanet')) $('pzPlanet').classList.toggle('hide', half !== 'planet');
+      if (half !== 'planet') leavePlanet(false);
+      if (half === 'projects') {
+        if (!projPool.length) loadProjects();
+        // 从星球回来:信息流借走的那块画布刚还回来,把停着的那一条重新放起来
+        else if (was === 'planet' && projPool[feedAt]) playInFeed(projPool[feedAt]);
+      }
       // Rooms are volatile in a way projects are not — somebody opened one
       // while you were reading — so switching to them always re-asks.
-      else loadPlaza();
+      else if (half === 'rooms') loadPlaza();
+      else enterPlanet();
     };
   });
+  /* ── 星球 ─────────────────────────────────────────────────────────────────
+     一颗粒子地球,每个发布的项目在它的位置上泛起荧光(globe-scene.js)。它借的是场的
+     画布,和走进一座楼一样(iPhone 只给一个全屏 WebGL),所以进来先把信息流停下,
+     走开时把画布还回去。点一个光点:打开那个项目,直接走进它最高的那栋楼 —— 它的别墅。 */
+  var planetOn = false;
+
+  function enterPlanet() {
+    if (!wp || !wp.enterGlobe) return;
+    var box = $('pzPlanet');
+    if (!box) return;
+    var hush = function () {
+      clearInterval(pjTimer); pjTimer = null;
+      try { window.TersePlazaField.stop(wp); } catch (e) {}
+      try { wp.clearHeadline && wp.clearHeadline(); } catch (e) {}
+      try { if (window.TerseTunes) window.TerseTunes.stop(); } catch (e) {}
+    };
+    hush();
+    try {
+      var main = document.querySelector('main'), seg = $('plazaSeg');
+      main.style.overflow = 'hidden';
+      box.style.height = Math.max(320, main.clientHeight - (seg ? seg.getBoundingClientRect().height + 10 : 0)) + 'px';
+    } catch (e) {}
+    planetOn = true;
+    var go = function () {
+      if (!planetOn) return;
+      hush();                                  // loadProjects 刚又把第一条放起来了
+      var list = (poolAll && poolAll.length ? poolAll : projPool) || [];
+      wp.enterGlobe(list, {
+        host: box, input: box, budget: 0.55,
+        onStats: function (n) { $('planetCount').textContent = n ? t('planet_count').replace('{n}', n) : t('planet_none'); },
+        onPick: function (p) { if (window.TerseFeel) window.TerseFeel.tap('heavy'); enterVilla(p); },
+      }).then(function (g) {
+        // 加载的时候人已经走开了:画布马上还回去
+        if (g && !planetOn) { try { wp.exitRoom(); } catch (e) {} }
+      });
+    };
+    if (!projPool.length) loadProjects().then(go); else go();
+  }
+
+  /** 从星球走开:画布还给场。reset = 连分段也拨回"项目"(离开广场时)。 */
+  function leavePlanet(reset) {
+    if (planetOn) { planetOn = false; try { if (wp && wp.exitRoom) wp.exitRoom(); } catch (e) {} }
+    if (reset && plazaHalf === 'planet') {
+      plazaHalf = 'projects';
+      Array.prototype.forEach.call(document.querySelectorAll('#plazaSeg button'), function (o) {
+        o.classList.toggle('on', o.dataset.plaza === 'projects');
+      });
+      $('pzProjects').classList.remove('hide');
+      if ($('pzPlanet')) $('pzPlanet').classList.add('hide');
+    }
+  }
+
+  /** 星球上点中的项目:打开它,等城市摆好,走进最高的那栋楼。 */
+  function enterVilla(p) {
+    leavePlanet(false);
+    openProject(p);
+    var tries = 0;
+    var tick = function () {
+      var h = wp && wp.mainTower ? wp.mainTower() : null;
+      if (h && h.dir) { enterWalk(h); return; }
+      if (++tries < 20) setTimeout(tick, 150);
+    };
+    setTimeout(tick, 250);
+  }
+
   /* No Refresh button any more — the feed is the whole screen and a chrome
      button on top of it would be the only thing in the way. Landing on the
      plaza fetches; pulling past the end is the gesture people already use. */

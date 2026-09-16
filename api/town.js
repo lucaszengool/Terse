@@ -15,6 +15,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const bus = require('./cowork-bus');
+const db = require('./db');
 
 const router = express.Router();
 
@@ -25,6 +26,16 @@ const MAX_PEERS = 60;                // 一座镇同时最多这么多人(再多
 const MAX_R = 1200;                  // 镇子半径之外不存在
 const MAX_SPEED = 12;                // 米/秒:跑起来 6.5,留一倍余量给卡顿后的补偿
 const NAME_MAX = 20;
+const SAY_MAX = 120;                 // 一句话,不是一封信
+const LANTERNS_PER_DAY = 20, NOTES_PER_DAY = 5;
+
+/* 字条只能从这里挑一句。Dark Souls 的老办法:词是给定的,于是不需要审核,
+   也不可能有人在镇中心写脏话 —— 而"有人来过、还留了话"这件事照样成立。 */
+const NOTES = [
+  'somebody was here', 'try this one', 'good code lives here', 'look up',
+  'this way to the square', 'the door is round the back', 'worth reading',
+  'start here if you are new', 'beautiful at night', 'still maintained',
+];
 
 /** 看不见的字符、方向控制符:改名字的老把戏(和 rooms.js 的那道一样)。 */
 const INVISIBLE = /[​-‏‪-‮⁠-⁤﻿]/g;
@@ -56,7 +67,7 @@ function roster() {
   const now = Date.now(), out = [];
   for (const [id, p] of people) {
     if (now - p.at > STALE_MS) { people.delete(id); dirty = true; continue; }
-    out.push({ id, name: p.name, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(2), v: +p.v.toFixed(1) });
+    out.push({ id, name: p.name, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(2), v: +p.v.toFixed(1), e: p.e || 0 });
   }
   return out;
 }
@@ -115,7 +126,56 @@ router.post('/move', express.json({ limit: '1kb' }), (req, res) => {
   const r = Math.hypot(p.x, p.z);
   if (r > MAX_R) { p.x = (p.x / r) * MAX_R; p.z = (p.z / r) * MAX_R; }
   p.yaw = yaw; p.v = Math.max(0, Math.min(MAX_SPEED, v || 0)); p.at = now;
+  p.e = Math.max(0, Math.min(7, parseInt(b.e, 10) || 0));   // 表情:0 没有,1–7 各是一个动作
   dirty = true;
+  res.json({ ok: true });
+});
+
+/** 说一句话。飘在头顶几秒,不存下来 —— 镇上是路过的闲聊,不是聊天记录。 */
+router.post('/say', express.json({ limit: '2kb' }), (req, res) => {
+  const id = idOf(req);
+  if (!id) return res.status(401).json({ error: 'Sign in to talk' });
+  if (!allow(id, 4)) return res.status(429).json({ error: 'Slow down' });
+  const p = people.get(id);
+  if (!p) return res.status(409).json({ error: 'Join first' });
+  const text = String((req.body || {}).text || '').replace(INVISIBLE, '').trim().slice(0, SAY_MAX);
+  if (!text) return res.status(400).json({ error: 'Nothing to say' });
+  bus.emit(CH, { type: 'say', id, name: p.name, text, at: Date.now() });
+  res.json({ ok: true });
+});
+
+/** 镇上留下的东西:灯和字条(谁都看得见,一直在)。 */
+router.get('/marks', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=10');
+  res.json({ ok: true, marks: db.townMarks.all({ limit: 400 }), notes: NOTES });
+});
+
+router.post('/mark', express.json({ limit: '2kb' }), (req, res) => {
+  const id = idOf(req);
+  if (!id) return res.status(401).json({ error: 'Sign in first' });
+  if (!allow(id, 4)) return res.status(429).json({ error: 'Slow down' });
+  const b = req.body || {};
+  const kind = b.kind === 'note' ? 'note' : 'lantern';
+  const x = +b.x, z = +b.z;
+  if (!Number.isFinite(x) || !Number.isFinite(z) || Math.hypot(x, z) > MAX_R) return res.status(400).json({ error: 'Bad spot' });
+  const cap = kind === 'note' ? NOTES_PER_DAY : LANTERNS_PER_DAY;
+  if (db.townMarksToday.get({ owner: id, kind }).n >= cap) return res.status(429).json({ error: 'That is enough for today' });
+  // 字条只能是模板里的一句 —— 客户端给的是下标,不是文字
+  const text = kind === 'note' ? NOTES[Math.max(0, Math.min(NOTES.length - 1, parseInt(b.note, 10) || 0))] : null;
+  const p = people.get(id);
+  const mark = { id: crypto.randomBytes(8).toString('hex'), kind, owner: id, name: (p && p.name) || 'someone',
+    x: +x.toFixed(1), z: +z.toFixed(1), text };
+  db.addTownMark.run(mark);
+  bus.emit(CH, { type: 'mark', mark });
+  res.json({ ok: true, mark });
+});
+
+/** 自己放的东西,自己可以收走。 */
+router.post('/mark/:id/remove', (req, res) => {
+  const id = idOf(req);
+  if (!id) return res.status(401).json({ error: 'Sign in first' });
+  db.removeTownMark.run({ id: String(req.params.id || ''), owner: id });
+  bus.emit(CH, { type: 'unmark', id: String(req.params.id || '') });
   res.json({ ok: true });
 });
 
@@ -145,5 +205,6 @@ router.get('/stream', (req, res) => {
 /** 测试用:把镇子清空。 */
 router.reset = () => { people.clear(); buckets.clear(); dirty = false; };
 router.people = people;
+router.NOTES = NOTES;
 
 module.exports = router;

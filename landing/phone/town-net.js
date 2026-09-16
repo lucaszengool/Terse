@@ -7,7 +7,7 @@
  *   HTTP/1.1 连接只有六条,房间那条已经占了一条(src/renderer/rooms.js 的注释)。
  */
 (function () {
-  var ES = null, town = null, me = null, lastSent = 0, lastPos = null, joined = false;
+  var NOTES = [], ES = null, town = null, me = null, lastSent = 0, lastPos = null, joined = false, emote = 0, lastE = 0, marks = [];
 
   function identity() {
     try { return (window.Social && window.Social.identity && window.Social.identity()) || ''; } catch (e) { return ''; }
@@ -51,18 +51,38 @@
           try { d = JSON.parse(e.data); } catch (err) { return; }
           if (!town) return;
           if (d.type === 'hello') me = d.you || null;
+          if (d.type === 'say') { try { town.says(d.id, d.text); } catch (err) {} return; }
+          if (d.type === 'mark' && d.mark) {
+            marks = [d.mark].concat(marks.filter(function (m) { return m.id !== d.mark.id; })).slice(0, 400);
+            try { town.setMarks(marks); } catch (err) {}
+            return;
+          }
+          if (d.type === 'unmark') {
+            marks = marks.filter(function (m) { return m.id !== d.id; });
+            try { town.setMarks(marks); } catch (err) {}
+            return;
+          }
           if (!d.peers) return;
           var list = [];
           for (var i = 0; i < d.peers.length; i++) {
             var p = d.peers[i];
             if (me && p.id === me) continue;              // 自己不画给自己看
-            list.push({ id: p.id, name: p.name, x: p.x, z: p.z, yaw: p.yaw, v: p.v, rgb: tint(p.id) });
+            list.push({ id: p.id, name: p.name, x: p.x, z: p.z, yaw: p.yaw, v: p.v, e: p.e || 0, rgb: tint(p.id) });
           }
           try { town.setPeers(list); } catch (err) {}
           var el = document.getElementById('townCount');
           if (el && window.T) el.textContent = '';
         };
       } catch (e) { ES = null; }
+      // 镇上留下的灯和字条:进来先取一份,之后跟着 SSE 增减
+      try {
+        fetch('/api/cloud/town/marks').then(function (r) { return r.json(); }).then(function (r) {
+          if (!town || !r || !r.ok) return;
+          marks = r.marks || [];
+          if (Array.isArray(r.notes)) NOTES = r.notes;
+          try { town.setMarks(marks); } catch (err) {}
+        }).catch(function () {});
+      } catch (e) {}
       if (!id) return;                                     // 没登录:只看,不走
       post('join', { name: myName() }).then(function (r) { joined = !!(r && r.ok); });
     },
@@ -72,10 +92,31 @@
       if (!joined) return;
       var now = Date.now();
       if (now - lastSent < 125) return;
-      if (lastPos && Math.abs(x - lastPos[0]) < 0.05 && Math.abs(z - lastPos[1]) < 0.05 && Math.abs(yaw - lastPos[2]) < 0.05) return;
-      lastSent = now; lastPos = [x, z, yaw];
-      post('move', { x: x, z: z, yaw: yaw, v: v || 0 });
+      if (emote === lastE && lastPos && Math.abs(x - lastPos[0]) < 0.05 && Math.abs(z - lastPos[1]) < 0.05 && Math.abs(yaw - lastPos[2]) < 0.05) return;
+      lastSent = now; lastPos = [x, z, yaw]; lastE = emote;
+      post('move', { x: x, z: z, yaw: yaw, v: v || 0, e: emote });
     },
+
+    /** 表情变了:下一次 move 带上(站着不动也发一次)。 */
+    emote: function (n) {
+      emote = n | 0;
+      if (lastPos) { lastSent = 0; this.move(lastPos[0], lastPos[1], lastPos[2], 0); }
+    },
+
+    /** 说一句话:自己头顶马上出来,不等服务器转回来。 */
+    say: function (text) {
+      if (!joined) return Promise.resolve({ error: 'signin' });
+      return post('say', { text: text });
+    },
+
+    /** 点一盏灯 / 留一张字条(字条给的是模板的下标)。 */
+    mark: function (kind, x, z, note) {
+      if (!joined) return Promise.resolve({ error: 'signin' });
+      return post('mark', { kind: kind, x: x, z: z, note: note });
+    },
+
+    signedIn: function () { return joined; },
+    notes: function () { return NOTES; },
 
     /** 走出小镇:断开,并且告诉别人我走了(不然要等 45 秒才消失)。 */
     leave: function () {

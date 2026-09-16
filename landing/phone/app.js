@@ -117,6 +117,7 @@
       field_peek: 'Controls',
       pz_rooms: 'Rooms', pz_projects: 'Projects', pz_published: 'Published projects',
       pz_town: 'Town', town_hint: 'drag to look · stick to walk · tap a door to go in',
+      town_signin: 'Sign in to talk and leave things in town', town_slow: 'That is enough for today',
       town_count: '{n} houses · {p} people here', town_enter: 'Enter',
       pz_tap_hint: 'Tap one and it plays in the field.', pz_none: 'Nothing published yet.',
       pz_playing: 'Playing {name} in the field',
@@ -363,6 +364,9 @@
       field_peek: '设置',
       pz_rooms: '房间', pz_projects: '项目', pz_published: '已发布的项目',
       pz_town: '小镇', town_hint: '拖动看 · 摇杆走 · 走到门口按一下进去',
+      town_signin: '登录后才能说话、在镇上留东西', town_slow: '今天留得够多了',
+      town_wave: '招手', town_cheer: '欢呼', town_sit: '坐下', town_say: '说一句',
+      town_lantern: '点一盏灯', town_note: '留一张字条',
       town_count: '{n} 栋房子 · 镇上 {p} 人', town_enter: '进去',
       pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
       pz_playing: '正在场里播放 {name}',
@@ -776,8 +780,19 @@
      breaks. Both halves matter: preventDefault on `lost` is what allows a
      restore to happen at all, and the rebuild on `restored` is what actually
      puts pixels back. */
-  canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); }, false);
-  canvas.addEventListener('webglcontextrestored', function () { mountEngine(); }, false);
+  var townLost = false;
+  canvas.addEventListener('webglcontextlost', function (e) {
+    e.preventDefault();
+    /* 小镇借的是这同一块画布。上下文没了,它手上那几百万颗点全是死的 —— 先把它放掉,
+       等画布回来再重新走进去,否则人停在"小镇"这一格,看到的却是外面那片场。 */
+    if (townOn) { townLost = true; leaveTown(false); }
+  }, false);
+  canvas.addEventListener('webglcontextrestored', function () {
+    mountEngine();
+    if (!townLost) return;
+    townLost = false;
+    if (plazaHalf === 'town') setTimeout(function () { enterTown(); }, 400);
+  }, false);
 
   /* Why the field is not drawing, if it is not drawing.
      Set by loadEngine; rendered by showFieldError. Kept as a string rather than
@@ -4327,6 +4342,23 @@
      它借的是场的那块画布,和走进一座楼一样(iPhone 只给一个全屏 WebGL),所以进来先把
      信息流停下,走开时把画布还回去。走到谁的门口按一下,就进他的别墅。 */
   var townOn = false;
+  /* 字条的模板在服务器上是英文(存的也是英文),显示时按语言换 */
+  var TOWN_NOTES_ZH = {
+    'somebody was here': '有人来过', 'try this one': '试试这个', 'good code lives here': '这里住着好代码',
+    'look up': '抬头看', 'this way to the square': '往这边是广场', 'the door is round the back': '门在后面',
+    'worth reading': '值得一读', 'start here if you are new': '新来的从这里开始', 'beautiful at night': '夜里很好看',
+    'still maintained': '还有人在维护',
+  };
+  /** 说话 / 留东西的结果:没登录、留太多了,告诉人一声。 */
+  function townAct(pr) {
+    if (!pr || !pr.then) return;
+    pr.then(function (r) {
+      if (!r || r.ok) return;
+      var msg = r.error === 'signin' || /sign in/i.test(r.error || '') ? t('town_signin')
+        : /enough/i.test(r.error || '') ? t('town_slow') : '';
+      if (msg && typeof toast === 'function') toast(msg);
+    });
+  }
 
   function enterTown() {
     if (!wp || !wp.enterTown) return;
@@ -4362,9 +4394,20 @@
       });
       wp.enterTown(list, {
         host: box, input: box, budget: 0.55, joystick: true,
-        words: lang === 'zh' ? { town_enter: t('town_enter'), town_hint: t('town_hint') } : null,
+        words: lang === 'zh' ? {
+          town_enter: t('town_enter'), town_hint: t('town_hint'), town_wave: t('town_wave'), town_cheer: t('town_cheer'),
+          town_sit: t('town_sit'), town_say: t('town_say'), town_lantern: t('town_lantern'), town_note: t('town_note'),
+        } : null,
+        noteWords: lang === 'zh' ? TOWN_NOTES_ZH : null,
+        notes: function () { return Town.notes(); },
         onEnter: function (house) { if (window.TerseFeel) window.TerseFeel.tap('heavy'); enterVilla(house.project || house); },
         onMove: function (x, z, yaw, v) { Town.move(x, z, yaw, v); },
+        onEmote: function (n) { Town.emote(n); if (n && window.TerseFeel) window.TerseFeel.tap('light'); },
+        onSay: function (text) { townAct(Town.say(text)); },
+        onMark: function (kind, x, z, note) {
+          if (window.TerseFeel) window.TerseFeel.tap('medium');
+          townAct(Town.mark(kind, x, z, note));
+        },
       }).then(function (tn) {
         // 加载的时候人已经走开了:画布马上还回去
         if (tn && !townOn) { try { wp.exitRoom(); } catch (e) {} return; }

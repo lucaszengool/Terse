@@ -6,6 +6,10 @@
  * 钉住的是:没登录不能走、位置会被夹住、走了就从名单上消失、听的人收得到。
  */
 const http = require('http');
+const os = require('os');
+const fspath = require('path');
+// 灯和字条写进 sqlite:用一个临时库,不然跑第二遍就撞上"今天留够了"
+process.env.TERSE_DATA_DIR = require('fs').mkdtempSync(fspath.join(os.tmpdir(), 'terse-town-test-'));
 const express = require('express');
 const assert = require('assert');
 
@@ -19,6 +23,8 @@ const fails = [];
 const ok = (name, cond) => { if (cond) { pass++; console.log('  ✓ ' + name); } else { fails.push(name); console.log('  ✗ ' + name); } };
 
 const ME = 'test-identity-0123456789abcdef', YOU = 'other-identity-0123456789abcdef';
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function call(path, { method = 'GET', body, id } = {}) {
   const { port } = server.address();
@@ -103,6 +109,43 @@ function listen(ms, id) {
   await call('/leave', { method: 'POST', id: YOU });
   ok('leaving takes you off the roster', (await call('/count')).body.people === 1);
   ok('and the count is cheap to ask for', (await call('/count')).status === 200);
+
+  /* ── 说话 ── */
+  town.reset();
+  await call('/join', { method: 'POST', body: { name: 'ada' }, id: ME });
+  ok('you must sign in to talk', (await call('/say', { method: 'POST', body: { text: 'hi' } })).status === 401);
+  ok('and nothing is not a sentence', (await call('/say', { method: 'POST', body: { text: '   ' }, id: ME })).status === 400);
+  const heard = listen(600, 'listener-identity-0123456789');
+  await new Promise((r) => setTimeout(r, 60));
+  await call('/say', { method: 'POST', body: { text: 'hello town' }, id: ME });
+  const saidFrames = await heard;
+  const said = saidFrames.filter((f) => f.type === 'say').pop();
+  ok('a sentence reaches the people nearby', !!said && said.text === 'hello town' && said.name === 'ada');
+
+  /* ── 留下的东西:灯和字条 ── */
+  const lantern = await call('/mark', { method: 'POST', body: { kind: 'lantern', x: 12, z: -3 }, id: ME });
+  ok('you can light a lantern where you stand', lantern.status === 200 && lantern.body.mark.kind === 'lantern');
+  await pause(320);
+  const note = await call('/mark', { method: 'POST', body: { kind: 'note', x: 4, z: 4, note: 2 }, id: ME });
+  ok('and leave a note', note.status === 200 && note.body.mark.text === town.NOTES[2]);
+  await pause(320);
+  const freeText = await call('/mark', { method: 'POST', body: { kind: 'note', x: 5, z: 5, note: 1, text: 'anything I like' }, id: ME });
+  ok('but the words are ours, not theirs — free text is ignored',
+    freeText.status === 200 && town.NOTES.indexOf(freeText.body.mark.text) >= 0);
+  await pause(320);
+  ok('marks are out in the open for everyone', (await call('/marks')).body.marks.length >= 3);
+  await pause(320);
+  ok('a mark outside the town is refused',
+    (await call('/mark', { method: 'POST', body: { kind: 'lantern', x: 99999, z: 0 }, id: ME })).status === 400);
+  await pause(320);
+  const mine = (await call('/marks')).body.marks[0];
+  await call('/mark/' + mine.id + '/remove', { method: 'POST', id: ME });
+  ok('and you can take your own back',
+    (await call('/marks')).body.marks.every((m) => m.id !== mine.id));
+
+  /* ── 表情跟着位置一起走 ── */
+  await call('/move', { method: 'POST', body: { x: 1, z: 1, yaw: 0, v: 0, e: 3 }, id: ME });
+  ok('an emote rides along with the position', (await call('/count')).status === 200 && [...town.people.values()][0].e === 3);
 
   town.reset();
   server.close();

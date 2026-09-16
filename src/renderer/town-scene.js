@@ -29,6 +29,7 @@ import { envAt } from './room-sky.js';
 import { kelvin } from './room-styles.js';
 
 const D2R = Math.PI / 180;
+const TOWN_FORM = 60;   // uForm 到这里,1.8 公里以内的点都落定了
 const EYE = 1.65, R_BODY = 0.35;
 const WALK = 4.3, SPRINT = 6.5, GRAV = 28, JUMP_V = 8.4;
 const STEP = 1 / 120;
@@ -80,11 +81,12 @@ attribute vec3 aOff; attribute float aPart, aIdx;
 uniform float uTime, uPx;
 uniform vec4 uPeer[24];        // x, z, yaw, 走多快
 uniform vec3 uPeerC[24];
+uniform float uPeerE[24];      // 表情:0 没有 · 1 招手 · 2 欢呼 · 3 坐下
 varying vec3 vC; varying float vA;
 void main(){
   int i = int(aIdx);
-  vec4 P = uPeer[0]; vec3 C = uPeerC[0];
-  for (int k = 0; k < 24; k++) if (k == i) { P = uPeer[k]; C = uPeerC[k]; }
+  vec4 P = uPeer[0]; vec3 C = uPeerC[0]; float E = uPeerE[0];
+  for (int k = 0; k < 24; k++) if (k == i) { P = uPeer[k]; C = uPeerC[k]; E = uPeerE[k]; }
   if (P.w < -0.5) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }
   vec3 o = aOff;
   float ph = uTime * (1.6 + P.w * 0.7);
@@ -92,6 +94,12 @@ void main(){
   if (aPart > 2.5) o.z += sw * 0.34 * sign(o.x + 0.001);        // 腿
   else if (aPart > 1.5) o.z -= sw * 0.28 * sign(o.x + 0.001);   // 手臂
   o.y += sin(ph * 2.0) * 0.02 * min(1.0, P.w / 3.0);            // 上下颠
+  /* 表情:招手(右手举起来摇)、欢呼(两只手举起来)、坐下(整个人矮一截) */
+  if (E > 0.5 && aPart > 1.5 && aPart < 2.5) {
+    if (E < 1.5 && o.x > 0.0) { o.y += 0.42; o.x += 0.12 + sin(uTime * 7.0) * 0.12; }
+    else if (E < 2.5) { o.y += 0.46; o.x *= 1.35; }
+  }
+  if (E > 2.5) { o.y *= 0.62; o.z += 0.12; }
   float cs = cos(P.z), sn = sin(P.z);
   vec3 w = vec3(P.x + o.x * cs - o.z * sn, o.y, P.y + o.x * sn + o.z * cs);
   vec4 mv = modelViewMatrix * vec4(w, 1.0);
@@ -166,6 +174,24 @@ const CSS = `
 .town-joy i{position:absolute;left:36px;top:36px;width:40px;height:40px;border-radius:50%;background:rgba(201,240,61,.5)}
 .town-cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;
   background:rgba(255,255,255,.55);pointer-events:none;z-index:4}
+.town-acts{position:absolute;right:12px;bottom:calc(26px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;flex-direction:column;gap:8px}
+.town-acts button{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(8,12,18,.62);
+  color:#eaf4ff;font-size:19px;line-height:1;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.town-acts button:active{background:rgba(201,240,61,.28)}
+.town-bub{position:absolute;transform:translate(-50%,-100%);pointer-events:none;z-index:4;max-width:200px;white-space:normal;
+  font:600 12px/1.35 -apple-system,BlinkMacSystemFont,sans-serif;color:#0b0f14;background:#e8f6ff;border-radius:12px;padding:5px 10px;
+  box-shadow:0 4px 14px rgba(0,0,0,.45)}
+.town-mine{left:50%;top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:5}
+.town-note{position:absolute;transform:translate(-50%,-100%);pointer-events:none;z-index:3;white-space:nowrap;
+  font:600 11px/1.2 -apple-system,BlinkMacSystemFont,sans-serif;color:#bff4ff;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.town-sheet{position:absolute;right:66px;left:12px;bottom:calc(26px + env(safe-area-inset-bottom,0px));z-index:6;max-width:420px;margin-left:auto}
+.town-say{display:flex;gap:6px;background:rgba(8,12,18,.78);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.town-say input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#eaf4ff;font:500 15px/1.2 -apple-system,BlinkMacSystemFont,sans-serif;padding:6px 10px}
+.town-say button{width:34px;height:34px;border-radius:50%;border:0;background:#c9f03d;color:#0b0f14;font-weight:700;cursor:pointer}
+.town-notes{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.town-notes button{border:1px solid rgba(191,244,255,.3);background:rgba(8,12,18,.78);color:#bff4ff;border-radius:999px;padding:7px 12px;
+  font:600 12px/1.2 -apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .town-hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:4;pointer-events:none;
   font:500 11px/1.3 -apple-system,BlinkMacSystemFont,sans-serif;color:rgba(235,245,255,.72);text-shadow:0 1px 6px rgba(0,0,0,.7)}`;
 function injectCss() {
@@ -204,7 +230,9 @@ export function createTown(renderer, projects, opts = {}) {
   const B = Math.max(0.25, Math.min(1, +opts.budget || 1));
   const host = opts.host || document.body;
   const input = opts.input || renderer.domElement;
-  const w = Object.assign({ town_enter: 'Enter', town_hint: 'drag to look · WASD to walk · tap a door to go in' }, opts.words || {});
+  const w = Object.assign({ town_enter: 'Enter', town_hint: 'drag to look · WASD to walk · tap a door to go in',
+    town_wave: 'wave', town_cheer: 'cheer', town_sit: 'sit', town_say: 'say something',
+    town_lantern: 'light a lantern', town_note: 'leave a note' }, opts.words || {});
   const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const plan = planTown(projects || [], { seed: opts.seed || 'terse-town' });
@@ -215,8 +243,17 @@ export function createTown(renderer, projects, opts = {}) {
      并且去掉那圈"球面"的明暗 —— 一颗点是一小团化开的光,不是一颗珠子。
      ⚠ 盖住多少 = (点/点距)²,和远近无关:0.6 只盖住三成半,墙就是透的(房子成了一团雾);
      0.85 盖住七成,是"看得见颗粒的实面"。近处靠像素上限收住,于是近看是细沙,不是珠子。 */
-  U.uDotK.value = 0.85; U.uDotMax.value = 15; U.uSoft.value = 1;
+  /* 盖住多少 = (点/点距)²,和远近无关。远处那份点距粗,就让点铺满(0.8 的盖住率:
+     一栋房子是一团实的体块);近处那份点距细,点小一点,看得见颗粒。 */
+  U.uDotK.value = 1.6; U.uDotMax.value = 22; U.uSoft.value = 1; U.uFlat.value = 1;
   U.uBreath.value = 0.035;    // 整座镇子极慢地呼吸(几厘米)
+  U.uSparkle.value = 0.3;     // 闪得收敛些:几百万颗一起闪是雪花屏
+  U.uBackCull.value = 1;      // 人在房子外面:背面的点只会从缝里透出黑来
+  /* ⚠ 比这更细的纹样一律画平均色。屋里是 4.5 厘米(砖缝、席纹要看得见);镇上点距
+     是它的两三倍,材质自带的细麻点比点还密 —— 每颗点随机采到一个亮或暗,整面墙就是
+     一片椒盐。 */
+  U.uDetailFw.value = 0.6;
+  U.uGlitter.value = 0; U.uGlitterDen.value = 0;
   /* ⚠ 抽稀的三档距离本来是给屋子定的(7/14/28 米):在小镇上,过了第二栋房子就只剩
      六十四分之一的点 —— 整座镇子于是"看上去是空的"。镇子的尺度要按镇子来。 */
   U.uLod.value.set(45, 100, 200);
@@ -243,9 +280,9 @@ export function createTown(renderer, projects, opts = {}) {
   /* ⚠ 瓶颈是**每帧跑过的顶点数**,不是像素:把画布缩到一半,帧率纹丝不动(9 → 12),
      因为每一颗点都要走一遍顶点着色器,哪怕它随后就被抽稀、被 uCull 扔掉。
      所以远处那份要尽量少 —— 它反正也只是远景。 */
-  const R_FINE = 22;
-  const FINE_SP = opts.fineSpacing || (B >= 0.9 ? 0.15 : B >= 0.6 ? 0.18 : 0.22);
-  const FINE_N = B >= 0.9 ? 6 : 5;
+  const R_FINE = 15;
+  const FINE_SP = opts.fineSpacing || (B >= 0.9 ? 0.08 : B >= 0.6 ? 0.11 : 0.15);
+  const FINE_N = B >= 0.9 ? 4 : 3;
   const built = buildTown(plan, { budget: B, uniforms: U, G, seed: opts.seed || '', spacing: opts.spacing || (B >= 0.9 ? 0.3 : 0.4) });
   const { S, lights, blocks, doors, labels } = built;
   U.uCull.value.set(1, R_FINE);            // 粗的那份:只画 30 米以外
@@ -268,8 +305,11 @@ export function createTown(renderer, projects, opts = {}) {
     U.uSunCol.value.set(sk[0] * sI, sk[1] * sI, sk[2] * sI);
     const lin = (c) => c.map((v) => Math.pow(v, 2.2));
     const zen = lin(env.zen), hor = lin(env.hor);
-    const f = 2.6 * (1 + 0.3 * fx.cover);         // 天光:白天房子要和天有得比,不然只剩剪影
-    U.uSky.value.set(zen[0] * f, zen[1] * f, zen[2] * f);
+    /* ⚠ 天光要**去饱和**再用:天顶的蓝在线性空间里蓝通道能到红的五十倍,直接拿来当环境光,
+       整座镇子(连地带墙)都是蓝的 —— 白天看上去就是"一片蓝雾里几点白"。 */
+    const f = 1.7 * (1 + 0.3 * fx.cover);
+    const lum = zen[0] * 0.3 + zen[1] * 0.6 + zen[2] * 0.1;
+    U.uSky.value.set((zen[0] * 0.4 + lum * 0.6) * f, (zen[1] * 0.4 + lum * 0.6) * f, (zen[2] * 0.4 + lum * 0.6) * f);
     U.uGround.value.set(hor[0] * 0.55, hor[1] * 0.55, hor[2] * 0.55);
     U.uFogAway.value.set(env.hor[0] * 0.72, env.hor[1] * 0.72, env.hor[2] * 0.72);
     U.uFogSun.value.set(env.glow[0] * 0.95, env.glow[1] * 0.95, env.glow[2] * 0.95);
@@ -277,18 +317,22 @@ export function createTown(renderer, projects, opts = {}) {
     U.uFogA.value = 0.0013 * (1 + 5.5 * fx.fog) * (1 + 0.7 * fx.cover);
     U.uFogB.value = 0.045;
     U.uNight.value = env.night;
-    U.uExposure.value = 1.75 - 0.55 * env.night;   // 白天要压得住天:房子暗、天亮,看过去就只剩一片麻点
+    /* 白天压住高光。夜里不再往上提:墙是实心的片以后,提起来整座镇子是一片发亮的淡紫,
+       窗反倒成了黑洞 —— 夜里该亮的只有窗、灯、门。 */
+    U.uExposure.value = 0.9 - 0.12 * env.night;
     U.uSat.value = 1.25;
-    U.uRim.value.set(env.glow[0] * 0.95, env.glow[1] * 0.95, env.glow[2] * 0.95);
-    U.uRimNight.value.set(0.16, 0.18, 0.28);
-    U.uMoon.value.set(0.1, 0.115, 0.2);   // 夜里房子还看得出轮廓,不是全黑
+    /* 轮廓光只在太阳低的时候强:正午打满,整栋房子的边都是粉白的一圈,颜色全被吃掉 */
+    const rk = 0.95 * (0.22 + 0.78 * Math.max(0, Math.min(1, (22 - env.sunEl) / 22)));
+    U.uRim.value.set(env.glow[0] * rk, env.glow[1] * rk, env.glow[2] * rk);
+    U.uRimNight.value.set(0.06, 0.07, 0.12);
+    U.uMoon.value.set(0.05, 0.058, 0.105);   // 夜里房子还看得出轮廓,不是全黑(再亮就过了辉光的门槛,整面墙发光)
     U.uShadowTint.value.set(0.78, 0.82, 1);
     U.uKeyK.value = 0.26;
     U.uDayGlow.value = 0.35;
     // 白天 0.35/1.0、黄昏 0.65/0.75、夜里 0.9/0.55 —— 亮的那一小撮才该晕开
     // 黄昏最容易糊:阈值抬高、强度收住,只有真正最亮的那一小撮晕开
     bloom.strength = 0.3 + 0.12 * env.golden + 0.5 * env.night;
-    bloom.threshold = 1.0 - 0.1 * env.golden - 0.42 * env.night;
+    bloom.threshold = 1.0 - 0.1 * env.golden - 0.3 * env.night;
     scene.background.setRGB(env.hor[0] * 0.55, env.hor[1] * 0.55, env.hor[2] * 0.55);
   }
 
@@ -311,7 +355,11 @@ export function createTown(renderer, projects, opts = {}) {
       .sort((a, b) => a.d - b.d).slice(0, FINE_N).filter((q) => q.d < R_FINE + 40).map((q) => q.id);
     const key = ids.join(',');
     if (fine && fine.key === key) return;
-    const Uf = Object.assign({}, U, { uCull: { value: new THREE.Vector2(-1, R_FINE) } });
+    // 近处那份:点距只有八厘米,点比点距小 —— 贴着墙走是细沙,不是一颗颗珠子
+    const Uf = Object.assign({}, U, {
+      uCull: { value: new THREE.Vector2(-1, R_FINE) },
+      uDotK: { value: 1.45 }, uDotMax: { value: 26 },
+    });
     const b = buildTown(plan, { budget: B, uniforms: Uf, G: () => {}, seed: opts.seed || '', spacing: FINE_SP, only: ids, props: false });
     const g = b.S.build(Uf);
     g.renderOrder = 1;
@@ -360,6 +408,7 @@ export function createTown(renderer, projects, opts = {}) {
     uTime: U.uTime, uPx: U.uPx,
     uPeer: { value: Array.from({ length: MAXP }, () => new THREE.Vector4(0, 0, 0, -1)) },
     uPeerC: { value: Array.from({ length: MAXP }, () => new THREE.Vector3(0.7, 0.9, 1)) },
+    uPeerE: { value: new Array(MAXP).fill(0) },
   };
   const body = peerPoints();
   {
@@ -382,6 +431,51 @@ export function createTown(renderer, projects, opts = {}) {
     scene.add(pts);
     var peerMat = m, peerGeo = g;
   }
+  /* 镇上留下的东西:一盏灯、一张字条(api/town.js 存着,谁都看得见)。
+     没人在线的时候,镇子靠这些不空 —— 走过一条街,看得出有人来过。 */
+  let marks = [], markPts = null;
+  function setMarks(list) {
+    marks = (list || []).slice(0, 400);
+    if (markPts) { scene.remove(markPts); markPts.geometry.dispose(); markPts.material.dispose(); markPts = null; }
+    if (!marks.length) return;
+    const pos = [], col = [], siz = [], pha = [], twk = [], knd = [];
+    const push = (x, y, z, c, sz, tw, k) => {
+      pos.push(x, y, z); col.push(c[0], c[1], c[2]); siz.push(sz);
+      pha.push((Math.imul(pos.length, 2654435761) >>> 0) / 4294967296); twk.push(tw); knd.push(k);
+    };
+    for (const m of marks) {
+      const x = +m.x, z = +m.z;
+      if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+      if (m.kind === 'note') {
+        // 字条:地上一小片淡青的光,走近了才看得清写的是什么(DOM 标签)
+        for (let i = 0; i < 26; i++) {
+          const a = i / 26 * Math.PI * 2;
+          push(x + Math.cos(a) * 0.32, 0.06 + (i % 3) * 0.02, z + Math.sin(a) * 0.32, [0.55, 0.9, 0.95], 0.07, 0.6, 2);
+        }
+      } else {
+        // 灯:一根细杆 + 顶上一团暖光
+        for (let i = 0; i < 10; i++) push(x, 0.1 + i * 0.09, z, [0.5, 0.42, 0.3], 0.05, 0.2, 2);
+        for (let i = 0; i < 26; i++) {
+          push(x + (Math.random() - 0.5) * 0.22, 1.05 + (Math.random() - 0.5) * 0.2, z + (Math.random() - 0.5) * 0.22,
+            [1, 0.82, 0.5], 0.1, 0.5, 2);
+        }
+      }
+    }
+    if (!pos.length) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('aColor', new THREE.Float32BufferAttribute(col, 3));
+    g.setAttribute('aSize', new THREE.Float32BufferAttribute(siz, 1));
+    g.setAttribute('aPhase', new THREE.Float32BufferAttribute(pha, 1));
+    g.setAttribute('aTwk', new THREE.Float32BufferAttribute(twk, 1));
+    g.setAttribute('aKind', new THREE.Float32BufferAttribute(knd, 1));
+    const m2 = new THREE.ShaderMaterial({ uniforms: U, vertexShader: GLOW_VS, fragmentShader: GLOW_FS,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    markPts = new THREE.Points(g, m2);
+    markPts.frustumCulled = false; markPts.renderOrder = 2;
+    scene.add(markPts);
+  }
+
   let peers = [];
   /** 镇上其他人:[{id, name, x, z, yaw, v}]。位置由外面喂进来(见 town 的多人那一半)。 */
   function setPeers(list) {
@@ -392,6 +486,7 @@ export function createTown(renderer, projects, opts = {}) {
       PU.uPeer.value[i].set(p.x, p.z, p.yaw || 0, Math.max(0, p.v || 0));
       const c = p.rgb || [0.62, 0.92, 1];
       PU.uPeerC.value[i].set(c[0], c[1], c[2]);
+      PU.uPeerE.value[i] = +p.e || 0;
     }
   }
 
@@ -475,6 +570,7 @@ export function createTown(renderer, projects, opts = {}) {
   let moveX = 0, moveZ = 0, sprint = false, grounded = true, coyote = 0, jumpBuf = 0;
   let t = 0, acc = 0, lastMoveSent = 0, speed = 0;
   const keys = new Set();
+  const noteText = (n) => (opts.noteWords && opts.noteWords[n]) || n;
   const offs = [];
   const on = (el, ty, fn, o) => { el.addEventListener(ty, fn, o); offs.push(() => el.removeEventListener(ty, fn, o)); };
   const els = [];
@@ -484,7 +580,7 @@ export function createTown(renderer, projects, opts = {}) {
   let look = null;
   const LOOK_PX = 0.0022, TOUCH_YAW = 0.20 * D2R, TOUCH_PITCH = 0.14 * D2R;
   on(input, 'pointerdown', (e) => {
-    if (e.target && e.target.closest && e.target.closest('button, .town-joy')) return;
+    if (e.target && e.target.closest && e.target.closest('button, .town-joy, .town-sheet')) return;
     const r = input.getBoundingClientRect();
     if (e.pointerType === 'touch' && e.clientX - r.left < r.width * 0.45 && e.clientY - r.top > r.height * 0.45) return; // 左下是摇杆
     look = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 };
@@ -503,7 +599,7 @@ export function createTown(renderer, projects, opts = {}) {
   on(window, 'pointerup', endLook);
   on(window, 'pointercancel', endLook);
   // 桌面:指针锁定(不锁也能玩,按住拖就是)
-  on(input, 'click', () => { if (!('ontouchstart' in window) && input.requestPointerLock && document.pointerLockElement !== input) { try { input.requestPointerLock(); } catch (e) {} } });
+  on(input, 'click', (e) => { if (e.target && e.target.closest && e.target.closest('button, .town-sheet')) return; if (!('ontouchstart' in window) && input.requestPointerLock && document.pointerLockElement !== input) { try { input.requestPointerLock(); } catch (e) {} } });
   on(document, 'mousemove', (e) => {
     if (document.pointerLockElement !== input) return;
     yaw -= (e.movementX || 0) * LOOK_PX;
@@ -561,6 +657,76 @@ export function createTown(renderer, projects, opts = {}) {
   const lblEls = labels.map(() => { const d = document.createElement('div'); d.className = 'town-lbl'; d.style.display = 'none'; layer.appendChild(d); return d; });
   const nameEls = Array.from({ length: MAXP }, () => { const d = document.createElement('div'); d.className = 'town-name'; d.style.display = 'none'; layer.appendChild(d); return d; });
 
+  /* 头顶的气泡:说的话飘六秒,不存下来 —— 镇上是路过的闲聊。 */
+  const bubbles = new Map();
+  const bubEls = Array.from({ length: MAXP }, () => { const d = document.createElement('div'); d.className = 'town-bub'; d.style.display = 'none'; layer.appendChild(d); return d; });
+  const noteEls = Array.from({ length: 12 }, () => { const d = document.createElement('div'); d.className = 'town-note'; d.style.display = 'none'; layer.appendChild(d); return d; });
+
+  /* 右边一列:招手、欢呼、坐下、说一句、点一盏灯、留一张字条。 */
+  let emote = 0, emoteUntil = 0;
+  {
+    const acts = el('div', 'town-acts');
+    const mk = (label, title, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label; b.title = title;
+      acts.appendChild(b);
+      on(b, 'click', (e) => { e.stopPropagation(); fn(); });
+      return b;
+    };
+    const doEmote = (n) => { emote = n; emoteUntil = n === 3 ? Infinity : t + 3.5; if (opts.onEmote) { try { opts.onEmote(n); } catch (err) {} } };
+    mk('👋', w.town_wave, () => doEmote(1));
+    mk('🎉', w.town_cheer, () => doEmote(2));
+    mk('🪑', w.town_sit, () => doEmote(emote === 3 ? 0 : 3));
+    /* 说一句 / 留字条:页内的一小块面板,不用 prompt() —— 手机的 webview 里它要么不弹,要么弹得很丑。 */
+    const sheet = el('div', 'town-sheet');
+    sheet.style.display = 'none';
+    const closeSheet = () => { sheet.style.display = 'none'; sheet.textContent = ''; };
+    const openSay = () => {
+      sheet.textContent = '';
+      const f = el('form', 'town-say', sheet);
+      const inp = el('input', '', f);
+      inp.maxLength = 120; inp.placeholder = w.town_say; inp.enterKeyHint = 'send'; inp.autocomplete = 'off';
+      const go = el('button', '', f); go.type = 'submit'; go.textContent = '↑';
+      on(f, 'submit', (e) => {
+        e.preventDefault();
+        const text = inp.value.trim().slice(0, 120);
+        if (text && opts.onSay) { try { opts.onSay(text); } catch (err) {} showMine(text); }
+        closeSheet();
+      });
+      on(inp, 'keydown', (e) => { if (e.key === 'Escape') closeSheet(); e.stopPropagation(); });
+      sheet.style.display = 'block';
+      try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+      setTimeout(() => { try { inp.focus(); } catch (e) {} }, 30);
+    };
+    // 自己说的话:第一人称看不见自己的头顶,就在屏幕下方飘一会儿
+    const mine = el('div', 'town-bub town-mine');
+    mine.style.display = 'none';
+    let mineTimer = 0;
+    const showMine = (text) => {
+      mine.textContent = text; mine.style.display = 'block';
+      clearTimeout(mineTimer); mineTimer = setTimeout(() => { mine.style.display = 'none'; }, 5000);
+      offs.push(() => clearTimeout(mineTimer));
+    };
+    const openNotes = () => {
+      const list = (typeof opts.notes === 'function' ? opts.notes() : opts.notes) || [];
+      if (!list.length) return;
+      sheet.textContent = '';
+      const box = el('div', 'town-notes', sheet);
+      list.forEach((n, i) => {
+        const b = el('button', '', box); b.type = 'button'; b.textContent = noteText(n);
+        on(b, 'click', (e) => { e.stopPropagation(); if (opts.onMark) { try { opts.onMark('note', px, pz, i); } catch (err) {} } closeSheet(); });
+      });
+      sheet.style.display = 'block';
+      try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+    };
+    const toggle = (fn) => () => { if (sheet.style.display !== 'none') closeSheet(); else fn(); };
+    if (opts.onSay) mk('💬', w.town_say, toggle(openSay));
+    if (opts.onMark) {
+      mk('🏮', w.town_lantern, () => { try { opts.onMark('lantern', px, pz, 0); } catch (err) {} });
+      mk('📝', w.town_note, toggle(openNotes));
+    }
+  }
+
   const tmp = new THREE.Vector3();
   const rectOf = () => { try { return renderer.domElement.getBoundingClientRect(); } catch (e) { return { left: 0, top: 0, width: W, height: H }; } };
   const hostRect = () => { try { return host.getBoundingClientRect(); } catch (e) { return { left: 0, top: 0 }; } };
@@ -602,7 +768,10 @@ export function createTown(renderer, projects, opts = {}) {
     dt = Math.min(0.1, Math.max(0, dt || 0));
     t += dt;
     U.uTime.value = t;
-    U.uForm.value = Math.min(1, U.uForm.value + dt / 2.6);
+    /* ⚠ 聚拢的进度是按距离算的(fm = uForm·1.6 − 距离/30,屋子的尺度):停在 1 的话,
+       18 米以外的点永远是飞着的、四分之三被扔掉 —— 远处的房子是一片筛子,天上飘着点。
+       聚拢完了就一直往上加,直到整座镇子都落定。 */
+    U.uForm.value = Math.min(TOWN_FORM, U.uForm.value + (dt / 2.6) * (U.uForm.value < 1 ? 1 : 25));
     U.uPx.value = (H * renderer.getPixelRatio() / 2) / Math.tan(camera.fov * Math.PI / 360);
     // 固定步长:跳多高、走多快不许跟着帧率变
     acc = Math.min(0.25, acc + dt);
@@ -660,6 +829,23 @@ export function createTown(renderer, projects, opts = {}) {
       e.style.left = s.x + 'px'; e.style.top = s.y + 'px';
       e.style.opacity = String(Math.max(0.25, 1 - d / 95));
     });
+    if (emote && t > emoteUntil) { emote = 0; if (opts.onEmote) { try { opts.onEmote(0); } catch (e) {} } }
+    /* 字条:走近了才看得清写的是什么 */
+    {
+      let n = 0;
+      const near2 = marks.filter((m) => m.kind === 'note' && Math.hypot(px - m.x, pz - m.z) < 16)
+        .sort((a, b) => Math.hypot(px - a.x, pz - a.z) - Math.hypot(px - b.x, pz - b.z));
+      for (const m of near2) {
+        if (n >= noteEls.length) break;
+        const sc = project(+m.x, 1.1, +m.z);
+        const e = noteEls[n];
+        if (sc.behind) { e.style.display = 'none'; continue; }
+        e.textContent = '“' + noteText(m.text || '') + '” — ' + (m.name || 'someone');
+        e.style.display = 'block'; e.style.left = sc.x + 'px'; e.style.top = sc.y + 'px';
+        n++;
+      }
+      for (let i = n; i < noteEls.length; i++) noteEls[i].style.display = 'none';
+    }
     /* 别人头顶的昵称 */
     for (let i = 0; i < MAXP; i++) {
       const p = peers[i], e = nameEls[i];
@@ -671,6 +857,13 @@ export function createTown(renderer, projects, opts = {}) {
       e.style.display = 'block';
       e.style.left = s.x + 'px'; e.style.top = s.y + 'px';
       e.style.opacity = String(Math.max(0.3, 1 - d / 70));
+      // 说的话:昵称上面那一格
+      const b = bubbles.get(p.id), be = bubEls[i];
+      if (b && t < b.until && d < 45) {
+        const sb = project(p.x, 2.35, p.z);
+        be.textContent = b.text;
+        be.style.display = 'block'; be.style.left = sb.x + 'px'; be.style.top = sb.y + 'px';
+      } else { be.style.display = 'none'; if (b && t >= b.until) bubbles.delete(p.id); }
     }
   }
   function render() { composer.render(); }
@@ -693,7 +886,7 @@ export function createTown(renderer, projects, opts = {}) {
     for (const x of els) { try { x.remove(); } catch (e) {} }
     try { layer.remove(); } catch (e) {}
     try { if (document.pointerLockElement === input) document.exitPointerLock(); } catch (e) {}
-    try { group.userData.dispose(); if (fine) fine.group.userData.dispose(); gGeo.dispose(); gMat.dispose(); peerGeo.dispose(); peerMat.dispose(); ground.dispose(); } catch (e) {}
+    try { if (markPts) { markPts.geometry.dispose(); markPts.material.dispose(); } group.userData.dispose(); if (fine) fine.group.userData.dispose(); gGeo.dispose(); gMat.dispose(); peerGeo.dispose(); peerMat.dispose(); ground.dispose(); } catch (e) {}
     try { atmos.dispose(); bloom.dispose(); grade.dispose(); composer.dispose(); if (haze) { haze.geometry.dispose(); haze.material.dispose(); } } catch (e) {}
     try {
       renderer.setRenderTarget(null); renderer.autoClear = prevAuto;
@@ -705,7 +898,11 @@ export function createTown(renderer, projects, opts = {}) {
   resize(W, H);
 
   return {
-    update, render, resize, dispose, setPeers,
+    update, render, resize, dispose, setPeers, setMarks,
+    /** 谁说了一句话:头顶飘六秒。 */
+    says(id, text) { bubbles.set(id, { text: String(text || '').slice(0, 120), until: t + 6 }); },
+    /** 自己此刻的表情(发给别人的那个数)。 */
+    emote: () => emote,
     plan, doors, labels, uniforms: U, atmos, bloom, composer,
     env: () => env,
     setTime(mode) { timeMode = mode === 'day' || mode === 'night' ? mode : 'auto'; env = envNow(); applyEnv(); atmos.setEnv(env, sunDir); },
@@ -713,7 +910,7 @@ export function createTown(renderer, projects, opts = {}) {
     where() { return { x: +px.toFixed(2), z: +pz.toFixed(2), yaw: +yaw.toFixed(2), speed: +speed.toFixed(2) }; },
     near: () => (nearDoor ? nearDoor.project : null),
     particles: () => group.userData.points + NG,
-    renderNow() { U.uForm.value = 1; update(0); render(); },
+    renderNow() { U.uForm.value = TOWN_FORM; update(0); render(); },
     diag() {
       const gl = renderer.getContext(), bad = [];
       for (const p of renderer.info.programs || []) { const d = p.diagnostics; if (d && !d.runnable) bad.push((p.name || '?') + ': ' + ((d.programLog) || '')); }

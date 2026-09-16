@@ -2014,6 +2014,31 @@ db.exec(`
     PRIMARY KEY (kind, target_id, reporter)
   );
 `);
+/* 镇上留下的东西:一盏灯、一张字条。没人在线的时候,镇子靠这些才不空 ——
+   研究里那条"异步在场"(脚印、幽灵、纸条)里最便宜也最有效的两样。
+   字条只能从模板里挑一句:审核成本几乎为零,也就不可能有人在镇中心写脏话。 */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS town_marks (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    name TEXT,
+    x REAL NOT NULL,
+    z REAL NOT NULL,
+    text TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS town_marks_at ON town_marks (created_at DESC);
+`);
+const addTownMark = db.prepare(`
+  INSERT OR REPLACE INTO town_marks (id, kind, owner, name, x, z, text)
+  VALUES (@id, @kind, @owner, @name, @x, @z, @text)`);
+const townMarks = db.prepare(
+  'SELECT id, kind, owner, name, x, z, text, created_at FROM town_marks ORDER BY created_at DESC LIMIT @limit');
+const townMarksToday = db.prepare(
+  "SELECT COUNT(*) AS n FROM town_marks WHERE owner = @owner AND kind = @kind AND created_at > datetime('now', '-1 day')");
+const removeTownMark = db.prepare('DELETE FROM town_marks WHERE id = @id AND owner = @owner');
+
 const addBlock = db.prepare(`
   INSERT OR IGNORE INTO user_blocks (id, blocker, blocked, name, kind)
   VALUES (@id, @blocker, @blocked, @name, @kind)`);
@@ -2035,6 +2060,7 @@ const dmRecentFrom = db.prepare(
 const getDm = db.prepare('SELECT * FROM dm_messages WHERE id = ?');
 
 module.exports = {
+  addTownMark, townMarks, townMarksToday, removeTownMark,
   addBlock, getBlock, removeBlock, blocksBy, blockedIdsBy, isBlockedBy,
   addSafetyReport, countSafetyReports, reportedTargets, dmRecentFrom, getDm,
   upsertWallProject, listWallProjects, countWallProjects, bumpWallProjectViews, deleteWallProject,

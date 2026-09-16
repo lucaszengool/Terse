@@ -39,7 +39,7 @@ void main(){
   // 大小正比于半径(近处的点就该小):不设下限 —— 下限就是脚边那一圈珠子
   gl_PointSize = clamp(r * 0.023 * uPx / max(0.3, d), 1.0, 9.0);
   // 地是朝上的面:天光 + 太阳,不用法线
-  vec3 lit = uSky * 0.55 + uSunCol * max(uSunDir.y, 0.0) * 0.5;
+  vec3 lit = uSky * 0.75 + uSunCol * max(uSunDir.y, 0.0) * 0.7;
   vec3 col = m.rgb * mix(lit, vec3(0.05, 0.052, 0.062), uNight);   // 夜里的地是暗的,不是一片蓝
   // 每颗点自己深浅一点(但只是一点):按米取整会结成一坨坨的"土丘",地面看着像丘陵
   col *= 0.93 + 0.14 * h21(floor(w * 7.0));
@@ -59,6 +59,35 @@ void main(){
   float a = exp(-r2 * 9.0) * (1.0 - smoothstep(0.16, 0.25, r2));
   if (a * vA < 0.02) discard;
   gl_FragColor = vec4(vC, a * vA);
+}`;
+
+/* 点下面垫一张实的地:同一张俯视图、同一片光和雾,只是暗一些。没有它,点和点之间
+   露出的是黑 —— 白天的地就成了"黑底上撒一把盐"。点负责颗粒,底负责"这是地"。 */
+const BASE_VS = `
+uniform vec3 uCam;
+varying vec3 vW;
+void main(){
+  vec3 p = position + vec3(uCam.x, 0.0, uCam.z);
+  vW = p;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+}`;
+const BASE_FS = `
+precision highp float;
+uniform float uNight, uFogA, uFogB, uFar;
+uniform vec3 uCam, uSunCol, uSky, uFogAway, uFogSun, uSunDir;
+uniform sampler2D uMap; uniform float uMapR;
+varying vec3 vW;
+void main(){
+  vec2 uv = vW.xz / (uMapR * 2.0) + 0.5;
+  vec3 m = texture2D(uMap, uv).rgb;
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) m = vec3(0.055, 0.06, 0.05);
+  vec3 lit = uSky * 0.75 + uSunCol * max(uSunDir.y, 0.0) * 0.7;
+  vec3 col = m * mix(lit, vec3(0.05, 0.052, 0.062), uNight) * mix(0.62, 1.3, uNight);
+  float d = length(vW - uCam);
+  float fd = 1.0 - exp(-uFogA * exp(-uFogB * max(uCam.y, 0.0)) * d);
+  float s = pow(max(dot(normalize(vW - uCam), uSunDir), 0.0), 8.0);
+  col = mix(col, mix(uFogAway, uFogSun, s * (1.0 - uNight)), max(fd, smoothstep(uFar * 0.7, uFar, d)));
+  gl_FragColor = vec4(col, 1.0);
 }`;
 
 /**
@@ -142,10 +171,18 @@ export function createGround(U, map, opts = {}) {
   const pts = new THREE.Points(g, m);
   pts.frustumCulled = false;
   pts.renderOrder = -1;
+  const bg = new THREE.CircleGeometry(far, 64);
+  bg.rotateX(-Math.PI / 2);
+  bg.translate(0, -0.03, 0);
+  const bm = new THREE.ShaderMaterial({ uniforms, vertexShader: BASE_VS, fragmentShader: BASE_FS });
+  const base = new THREE.Mesh(bg, bm);
+  base.frustumCulled = false;
+  base.renderOrder = -2;
+  pts.add(base);
   return {
     points: pts,
     update(cam) { uniforms.uCam.value.copy(cam.position); },
-    dispose() { g.dispose(); m.dispose(); map.tex.dispose(); },
+    dispose() { g.dispose(); m.dispose(); bg.dispose(); bm.dispose(); map.tex.dispose(); },
     count: N,
   };
 }

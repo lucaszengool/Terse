@@ -627,7 +627,7 @@ attribute vec3 iO; attribute vec3 iA; attribute vec3 iB; attribute vec4 iS; attr
 attribute vec3 iC1; attribute vec3 iC2;
 uniform mat4 modelViewMatrix, projectionMatrix;
 uniform float uN, uPx, uFogK, uDayGlow, uSootY, uDetailFw, uWashH, uGlitter, uGlitterDen;
-uniform float uDotK, uDotMax, uBreath; uniform vec2 uCull;
+uniform float uDotK, uDotMax, uBreath, uSparkle, uBackCull; uniform vec2 uCull;
 uniform vec3 uLod, uRim, uRimNight;
 varying vec3 vCol, vFogCol; varying float vFog;
 ${NOISE_GLSL}
@@ -662,6 +662,11 @@ ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的�
   float d = -mv.z;
   /* 看不见的点先扔掉,再算材质和光 —— 任何时候都有一半的点在身后。 */
   if (d < 0.05 || abs(clip.x) > clip.w * 1.2 || abs(clip.y) > clip.w * 1.2) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec3(0.0); vFog = 0.0; return;
+  }
+  /* 背面的点扔掉(小镇用):点盖不满一面墙,缝里透出来的是房子另一面的背面 —— 没光、全黑,
+     和正面的亮点混在一起,一面墙就是一片黑白芝麻。屋里是 0:人在里面,四面都要。 */
+  if (uBackCull > 0.0 && dot(N, cameraPosition - P) < 0.0) {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec3(0.0); vFog = 0.0; return;
   }
   /* 远处的小片抽稀:整片取同一档(按片中心算距离),片与片之间不会出洞;
@@ -715,7 +720,8 @@ ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的�
   vec3 yiq = mat3(0.299, 0.596, 0.211, 0.587, -0.274, -0.523, 0.114, -0.322, 0.312) * tc;
   yiq.yz = mat2(hcs, hsn, -hsn, hcs) * yiq.yz;
   tc = max(mat3(1.0, 1.0, 1.0, 0.956, -0.272, -1.106, 0.621, -0.647, 1.703) * yiq, 0.0);
-  vCol = tc * 1.25 * (0.72 + 0.55 * pr * pr + 0.45 * spark * step(0.7, fract(pr * 13.7)));
+  // 每颗点自己的明暗:屋里要这个颗粒感,镇上收到三成 —— 不然一面墙就是一片椒盐
+  vCol = tc * 1.25 * mix(1.0, 0.72 + 0.55 * pr * pr + 0.45 * spark * step(0.7, fract(pr * 13.7)), uSparkle);
   // 光的涟漪:每隔十来秒一圈亮光从主案出发,扫过整座粒子建筑,扫到的粒子亮一下(壁纸的涟漪)
   float rw = length(P.xz - uFocal.xz) + P.y * 0.3, ph = mod(uTime * 2.6, 34.0) - 4.0;
   vCol *= 1.0 + 0.55 * exp(-(rw - ph) * (rw - ph) * 0.6);
@@ -767,7 +773,7 @@ void main(){ vec2 d = gl_PointCoord - vec2(0.5); if (dot(d, d) > 0.25) discard; 
 const DOT_FS = `
 precision highp float;
 uniform vec3 uFog;
-uniform float uSoft;
+uniform float uSoft, uFlat;
 varying vec3 vCol, vFogCol; varying float vFog;
 void main(){
   vec2 d = gl_PointCoord - vec2(0.5);
@@ -785,7 +791,9 @@ void main(){
   c = mix(c, vec3(1.0), rim * (1.0 - smoothstep(0.2, 0.5, lum)) * 0.2);
   // 细腻模式:一颗点就是一小团柔和的光晕,中间实、边上化开,没有"球"的明暗
   a = mix(a, exp(-r * r * 2.6) * 0.96, uSoft);
-  c *= a / 0.96;
+  /* 实心的片(小镇):屋里的点往边上暗进黑里,背景就是黑,看着是发光的粒子;到了室外,
+     背后是天,每颗点就成了一颗黑边的珠子,一面墙像一面筛子。这里边上只暗一点点。 */
+  c *= mix(a / 0.96, 0.8 + 0.2 * a / 0.96, uFlat);
   gl_FragColor = vec4(mix(vFogCol, c, vFog), 1.0);
 }`;
 
@@ -861,6 +869,11 @@ export function makeUniforms() {
     /* 每颗点极慢地飘几厘米(一个平滑的流场)。屋里是 0;小镇 3–4 厘米 —— 静止的点云
        看着像标本,轻轻一动就"活"了,而且几乎不要钱。 */
     uBreath: { value: 0 },
+    /* 每颗点自己闪一下的幅度。屋里 1(一片墙是许多颗活的粒子);小镇 0.3 —— 几百万颗
+       同时闪就不是"活",是电视雪花。 */
+    uSparkle: { value: 1 },
+    uBackCull: { value: 0 },
+    uFlat: { value: 0 },
     uPick: { value: new THREE.Vector4(0, 0, -99, 0) },
     uForm: { value: 1 }, uStep: { value: new THREE.Vector4(0, 0, -99, 0) },
   };

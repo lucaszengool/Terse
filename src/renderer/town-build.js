@@ -106,9 +106,11 @@ export function buildTown(plan, o = {}) {
     const pal = designOf(sid).pal;
     const lang = asLight(langRgb(String(p.lang || '').toLowerCase()));
     const tint = districtTint.get(plot.district) || [1, 1, 1];
-    const wall = mix3(mix3(pal.field, lang, 0.3), tint, 0.1);
-    const trim = pal.struct || [0.22, 0.22, 0.24];
-    const stone = pal.stone || [0.5, 0.5, 0.52];
+    /* 外墙压暗:粒子世界里"亮底 + 亮点"会一起烧成白 —— 底要暗,亮的只留窗、灯、门。
+       (研究里的 70/25/5:七成画面在暗部,只有半成是亮的。) */
+    const wall = mix3(mix3(pal.field, lang, 0.3), tint, 0.1).map((v) => v * 0.62);
+    const trim = (pal.struct || [0.22, 0.22, 0.24]).map((v) => v * 0.6);
+    const stone = (pal.stone || [0.5, 0.5, 0.52]).map((v) => v * 0.6);
     const poly = plot.poly, h = plot.h;
     const floors = Math.max(1, Math.round((h - 1.2) / 3));
     /* 墙上的纹样交给材质:一道腰线如果拿几何去做,是一条 10 米长、12 厘米高的盒子 ——

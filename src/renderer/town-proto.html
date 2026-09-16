@@ -37,14 +37,21 @@ box.prepend(renderer.domElement);
 
 const num = (k) => (q.get(k) != null ? +q.get(k) : undefined);
 const t0 = performance.now();
+const MARKS = [];
 const town = createTown(renderer, projects, {
   host: box, input: box, budget: +(q.get('budget') || 1), spacing: num('spacing'), joystick: q.get('joy') === '1',
   hour: num('hour'), weather: q.get('weather') || undefined, season: q.get('season') || undefined,
   onEnter: (p) => { hud.textContent = 'ENTER ' + p.title; },
   onNear: (p) => { hud.dataset.near = p ? p.title : ''; },
+  notes: ['somebody was here', 'try this one', 'look up', 'beautiful at night'],
+  onSay: (text) => { hud.dataset.said = text; },
+  onMark: (kind, x, z, note) => { MARKS.unshift({ id: 'm' + MARKS.length, kind, x, z, name: 'me', text: kind === 'note' ? ['somebody was here', 'try this one', 'look up', 'beautiful at night'][note] : null }); town.setMarks(MARKS); },
 });
 const built = Math.round(performance.now() - t0);
 window.__town = town;
+// 面板不显示时截不了图:把画布发给 .claude/serve-town-shots.js 存成文件
+window.shot = async (name) => { town.update(1 / 60); town.renderNow(); const d = renderer.domElement.toDataURL('image/jpeg', 0.85);
+  await fetch('/shot?name=' + name, { method: 'POST', body: d }); return name; };
 
 // 摆位置:?at=x,z,yaw,pitch;?look=名字 站到那栋房子门口
 if (q.get('at')) { const [x, z, y, p] = q.get('at').split(',').map(Number); town.at(x, z, y, p); }
@@ -61,6 +68,15 @@ if (q.get('peers')) {
     x: w.x + Math.cos(i / n * 6.283) * (4 + i % 5), z: w.z + Math.sin(i / n * 6.283) * (4 + i % 5),
     yaw: i, v: (i % 3) * 1.6, rgb: [0.5 + (i % 3) * 0.2, 0.9, 1],
   })));
+}
+if (q.get('marks')) {
+  const w = town.where();
+  for (let i = 0; i < +q.get('marks'); i++) {
+    const a = i * 2.4, r = 3 + i * 0.9;
+    MARKS.push({ id: 'k' + i, kind: i % 3 ? 'lantern' : 'note', x: w.x + Math.cos(a) * r, z: w.z + Math.sin(a) * r, name: 'ada', text: 'look up' });
+  }
+  town.setMarks(MARKS);
+  if (q.get('say')) town.says('u0', q.get('say'));
 }
 if (q.get('still')) town.renderNow();
 

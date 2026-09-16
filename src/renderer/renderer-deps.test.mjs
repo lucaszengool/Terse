@@ -247,5 +247,48 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   if (mac && win) ok(`HAND_WINDOWS matches macOS (macOS: ${mac} | Windows: ${win})`, mac === win);
 }
 
+// Two functions with the same name in one Rust file.
+//
+// messages.rs already had a status(); a port added a second one with a
+// different return type and the crate stopped compiling. Nothing here caught
+// it, because that module cannot be type-checked on macOS — its bundled SQLite
+// will not cross-compile — so feeds.rs was checked against a STUB of it, and
+// the stub had only the new function. A textual check is the one thing that
+// could have seen it early, and it costs nothing.
+//
+// cfg-guarded definitions are skipped: a pair like
+// #[cfg(windows)] fn x() / #[cfg(not(windows))] fn x() is the normal way to
+// write a platform split, not a mistake.
+{
+  // Top-level only (no leading whitespace). Methods live inside impl blocks and
+  // are indented, and Rust is happy for two impls to define the same method
+  // name — counting those flagged `fn default` in every file with more than one
+  // impl Default. The bug this is for was two TOP-LEVEL functions.
+  const RS_FN = /^(?:pub(?:\([a-z:]+\))? )?(?:async )?(?:unsafe )?(?:extern "[A-Za-z-]+" )?fn ([a-z0-9_]+)\s*[(<]/;
+  for (const [name, dir] of [['macOS', '../../src-tauri/src'], ['Windows', '../../windows-app/src-tauri/src']]) {
+    const d = resolve(DIR, dir);
+    if (!existsSync(d)) continue;
+    for (const file of readdirSync(d).filter((n) => n.endsWith('.rs'))) {
+      const lines = readFileSync(join(d, file), 'utf8').split('\n');
+      const counts = new Map();
+      for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(RS_FN);
+        if (!m) continue;
+        // Walk back over attributes; a cfg on this definition means it is one
+        // arm of a platform split.
+        let cfgd = false;
+        for (let k = i - 1; k >= 0 && (lines[k].trim().startsWith('#[') || lines[k].trim().startsWith('///') || lines[k].trim() === ''); k--) {
+          if (lines[k].includes('#[cfg(')) { cfgd = true; break; }
+        }
+        if (cfgd) continue;
+        counts.set(m[1], (counts.get(m[1]) || 0) + 1);
+      }
+      for (const [fn, n] of counts) {
+        if (n > 1) ok(`${name}/${file}: fn ${fn} is defined once, not ${n} times`, false);
+      }
+    }
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

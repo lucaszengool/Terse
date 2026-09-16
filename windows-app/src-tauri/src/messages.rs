@@ -226,6 +226,11 @@ fn snapshot_conn(path: &std::path::Path) -> Result<rusqlite::Connection, String>
 
 /// Whether the notification store can be read at all, and if not, why.
 ///
+/// Named feed_status, not status, because this module already had a status()
+/// with a different shape for the messages page. macOS has only the one; here
+/// the two contracts coexist and status() below is derived from this, so a
+/// single probe answers both and they cannot drift apart.
+///
 /// Same shape as the macOS version because the frontend renders it, but NOT the
 /// same vocabulary in one place: macOS returns "no_permission" here, since
 /// opening the store read-only IS its Full Disk Access probe. Windows has no
@@ -242,7 +247,7 @@ pub struct FeedStatus {
     pub detail: Option<String>,
 }
 
-pub fn status() -> FeedStatus {
+pub fn feed_status() -> FeedStatus {
     let Some(path) = db_path() else {
         return FeedStatus {
             available: false,
@@ -483,17 +488,16 @@ pub async fn send_to_open_chat(app_id: &str, text: &str) -> ReplyResult {
 
 /// Can the feed be read at all? Drives the UI's "why is this empty" line.
 pub fn status() -> serde_json::Value {
-    match db_path() {
-        None => serde_json::json!({
-            "ok": false,
-            "reason": "no-db",
-            "detail": "找不到 Windows 通知数据库(wpndatabase.db)",
-        }),
-        Some(p) => match recent(1, false) {
-            Ok(_) => serde_json::json!({ "ok": true, "path": p.to_string_lossy() }),
-            Err(e) => serde_json::json!({ "ok": false, "reason": "unreadable", "detail": e }),
-        },
+    // Same probe as feed_status, in the shape the messages page already reads.
+    let s = feed_status();
+    if s.available {
+        return serde_json::json!({ "ok": true, "path": s.db_path });
     }
+    serde_json::json!({
+        "ok": false,
+        "reason": if s.reason == "no_database" { "no-db" } else { "unreadable" },
+        "detail": s.detail.unwrap_or_else(|| "找不到 Windows 通知数据库(wpndatabase.db)".into()),
+    })
 }
 
 #[cfg(test)]

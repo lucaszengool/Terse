@@ -520,7 +520,7 @@ const PERM_NAG_SECS: i64 = 30 * 60;
 
 fn check_permissions(app: &AppHandle, last_nag: &mut HashMap<&'static str, i64>) {
     let t = now();
-    let st = crate::messages::status();
+    let st = crate::messages::feed_status();
     // "no_database" is an OS layout we cannot read at all — a permission card
     // would send the user to grant something that would not help.
     let fda_missing = !st.available && st.reason == "no_permission";

@@ -78,6 +78,14 @@ export function polyInset(poly, d) {
   }
   return out.length >= 3 ? out : null;
 }
+/** 点在凸多边形里(逆时针)。 */
+export function insideConvex(q, poly) {
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    if ((q[0] - a[0]) * (b[1] - a[1]) - (q[1] - a[1]) * (b[0] - a[0]) > 1e-9) return false;
+  }
+  return true;
+}
 function ngon(cx, cz, r, n) {
   const p = [];
   for (let i = 0; i < n; i++) { const a = i / n * TAU; p.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); }
@@ -251,30 +259,64 @@ export function planTown(projects, opts = {}) {
     const to = best ? sites[best.j] : { x: 0, z: 0 };
     const dx = to.x - s.x, dz = to.z - s.z, L = Math.hypot(dx, dz) || 1;
     /* 房子只占地块的一小块,剩下的是院子 —— 别墅不是把整块地砌满。
-       (第一版正是砌满的:一栋 1084 平米、25 米高的方块,一栋房就是五十万颗点。) */
-    const cellA = polyArea(inner);
-    const want = Math.max(70, Math.min(260, 70 + mass(s.p) * 38));
-    const k = Math.min(1, Math.sqrt(want / Math.max(1, cellA)));
+       (第一版正是砌满的:一栋 1084 平米、25 米高的方块,一栋房就是五十万颗点。)
+       中世纪的房子是**长方形**的:窄面朝街(一户人家的门脸 5–8 米),往里深 —— 这就是
+       burgage 地块的样子。长方形才盖得出两坡顶、山墙、一层层探出来的楼(jetty)。 */
     const [ix, iz] = polyCentroid(inner);
-    const foot = k < 0.999 ? inner.map((q) => [ix + (q[0] - ix) * k, iz + (q[1] - iz) * k]) : inner;
+    const fx = dx / L, fz = dz / L, rx = fz, rz = -fx;      // f 朝街,r 沿街(和 x/z 同一手性)
+    const want = Math.max(55, Math.min(200, 55 + mass(s.p) * 30));
+    let wd = 0, dp = 0;                                      // 门脸窄、进深长(挤不下就方一点)
+    let foot = null;
+    /* 别墅外面多大由它里面的平面图定(town-build 的 villaMassing 算好了 fw × fd);
+       没给就按量估一个。放不下先缩,再试方一点的比例。 */
+    const hasFoot = +s.p.fw > 0 && +s.p.fd > 0;
+    const base0 = hasFoot ? Math.sqrt(s.p.fw * s.p.fd) : Math.sqrt(want);
+    const ratios = hasFoot ? [s.p.fd / s.p.fw, 1, s.p.fw / s.p.fd] : [1.35, 1, 0.75];
+    for (let k = 1; k > 0.12 && !foot; k *= 0.9) for (const ratio of ratios) for (const back of [0.25, 0]) {
+      if (foot) break;
+      wd = base0 / Math.sqrt(ratio); dp = base0 * Math.sqrt(ratio);
+      const w2 = wd * k / 2, d2 = dp * k / 2;
+      // 往后让一点:门前留出台阶和院子口(挤的地块就不让)
+      const ox = ix - fx * d2 * back, oz = iz - fz * d2 * back;
+      const rect = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([u, v]) => [ox + rx * u * w2 + fx * v * d2, oz + rz * u * w2 + fz * v * d2]);
+      if (rect.every((q) => insideConvex(q, inner)) && polyArea(rect) > 20) { foot = rect; wd *= k; dp *= k; }
+    }
+    let rect = !!foot;
+    if (!foot) {
+      // 挤得放不下长方形的地块:照老办法,地块缩一圈就是房子(屋顶盖成四坡)
+      const cellA = polyArea(inner);
+      const k = Math.min(1, Math.sqrt(want / Math.max(1, cellA)));
+      foot = k < 0.999 ? inner.map((q) => [ix + (q[0] - ix) * k, iz + (q[1] - iz) * k]) : inner;
+      wd = dp = Math.sqrt(polyArea(foot));
+    }
     const area = polyArea(foot);
-    // 层高 3 米,两到五层;镇中心那几个最大的项目高一点,当地标
-    const tall = rankOf.get(s.p.id) < 3 ? 1.45 : 1;
-    const h = Math.max(5.5, Math.min(16, 5.5 + mass(s.p) * 2.2)) * tall;
-    const reach = Math.sqrt(area) * 0.5 + 1.4;
+    const [hx, hz] = polyCentroid(foot);
+    // 两到四层;镇中心那几个最大的项目高一点,当地标
+    const tall = rankOf.get(s.p.id) < 3 ? 1.3 : 1;
+    const h = Math.max(5.5, Math.min(12, 5.5 + mass(s.p) * 1.7)) * tall;
+    const reach = dp / 2 + 0.35;
+    // 这户人家做什么:门口的招牌、院子里的东西、夜里的光都跟着它
+    const th = hash01(seed + ':trade:' + s.p.id);
+    const trade = th < 0.07 ? 'tavern' : th < 0.12 ? 'smithy' : th < 0.17 ? 'bakery' : th < 0.22 ? 'weaver' : th < 0.26 ? 'cooper' : 'home';
     plots.push({
-      id: s.p.id, project: s.p, district: s.district, poly: foot, cell: inner, cx: ix, cz: iz, area, h,
-      door: { x: ix + dx / L * reach, z: iz + dz / L * reach, yaw: Math.atan2(-dx / L, -dz / L) },
+      id: s.p.id, project: s.p, district: s.district, poly: foot, cell: inner, cx: hx, cz: hz, area, h,
+      w: wd, d: dp, fx, fz, rect, trade, site: i,
+      door: { x: hx + fx * reach, z: hz + fz * reach, yaw: Math.atan2(-fx, -fz) },
     });
   });
 
+  // 最大的广场排第一:它是集市,人从这里出生
+  plazas.sort((p, q) => q.r - p.r);
   /* 出生点:最热闹的那个广场中间(没有广场就镇中心),脸朝镇子里 */
   const sp = plazas[0] || { cx: 0, cz: 0 };
   const spawn = { x: sp.cx, z: sp.cz + 3, yaw: Math.atan2(sp.cx - sp.cx, -(sp.cz - (sp.cz + 3))) };
 
+  const nodes = sites.map((s, i) => ({ x: s.x, z: s.z, use: nodeUse[i], plot: !!s.p }));
+  const world = planWorld({ plots, streets, plazas, parks, radius, nodes }, seed + ':' + n);
+
   return {
-    plots, streets, plazas, parks, radius,
-    nodes: sites.map((s, i) => ({ x: s.x, z: s.z, use: nodeUse[i], plot: !!s.p })),
+    plots, streets, plazas, parks, radius, world,
+    nodes,
     districts: districts.map((d) => {
       const own = plots.filter((p) => p.district === d.key);
       const cx = own.reduce((a, p) => a + p.cx, 0) / (own.length || 1);
@@ -309,4 +351,213 @@ function voronoi(sites, bound) {
     out.push({ poly, nb });
   }
   return out;
+}
+
+/* ── 镇子以外、镇子中间的那些"不是谁家的"东西 ─────────────────────────────
+   研究笔记(真实的中世纪小镇):城墙 5–6 米高、2 米厚,四五十米一座塔;城门洞 3–4 米宽;
+   墙外一圈护城河;市场广场中间一口井、一座市场十字;教堂的塔是全镇的地标,从哪条街都
+   看得见;墙外是一圈条田、牧场、果园,一座风车,一条小河带着水磨;再往外是林子。 */
+
+/** 线段 ab 上离 q 最近的距离。 */
+function segDist(q, a, b) {
+  const ex = b[0] - a[0], ez = b[1] - a[1], L2 = ex * ex + ez * ez || 1;
+  let t = ((q[0] - a[0]) * ex + (q[1] - a[1]) * ez) / L2;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return Math.hypot(q[0] - a[0] - ex * t, q[1] - a[1] - ez * t);
+}
+/** 折线上离 q 最近的距离。 */
+export function polylineDist(q, pts) {
+  let d = 1e9;
+  for (let i = 0; i + 1 < pts.length; i++) d = Math.min(d, segDist(q, pts[i], pts[i + 1]));
+  return d;
+}
+const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return Math.abs(d); };
+
+/** 在凸多边形里找一块朝 (fx,fz) 的 w×d 长方形,放得下就返回四个角。 */
+export function fitRect(poly, cx, cz, fx, fz, w, d, minK = 0.45) {
+  const rx = fz, rz = -fx;
+  for (let k = 1; k >= minK; k *= 0.92) {
+    const w2 = w * k / 2, d2 = d * k / 2;
+    const rect = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([u, v]) => [cx + rx * u * w2 + fx * v * d2, cz + rz * u * w2 + fz * v * d2]);
+    if (rect.every((q) => insideConvex(q, poly))) return { rect, k, w: w * k, d: d * k };
+  }
+  return null;
+}
+
+export function planWorld(T, seed) {
+  const rand = rng(seed + ':world');
+  const R = T.radius;
+  const wallR = R + 8;
+  /* 城墙:一圈,半径轻轻起伏(手砌的墙不是圆规画的) */
+  const NW = Math.max(28, Math.round(TAU * wallR / 11));
+  const ph1 = rand() * TAU, ph2 = rand() * TAU;
+  const wallAt = (a) => wallR * (1 + 0.025 * Math.sin(a * 3 + ph1) + 0.015 * Math.sin(a * 5 + ph2));
+  const wallPts = [];
+  for (let i = 0; i < NW; i++) { const a = i / NW * TAU; const r = wallAt(a); wallPts.push([Math.cos(a) * r, Math.sin(a) * r]); }
+
+  /* 城门:四个方向上各挑一个最靠外的路口,从它往外开一道门(门至少隔开 60°) */
+  const gates = [];
+  const off = rand() * TAU;
+  const outer = T.nodes.map((nd, i) => ({ i, a: Math.atan2(nd.z, nd.x), r: Math.hypot(nd.x, nd.z) }))
+    .filter((q) => T.streets.some((st) => st.a === q.i || st.b === q.i));
+  const nGates = R > 110 ? 4 : 3;
+  for (let g = 0; g < nGates; g++) {
+    // 门按方向均分;里侧接最近的那个外圈路口(按"往这个方向走得多远"挑)
+    const a = off + g / nGates * TAU;
+    const c = outer.slice().sort((p, q) => q.r * Math.cos(angDiff(q.a, a)) - p.r * Math.cos(angDiff(p.a, a)))[0];
+    const r = wallAt(a);
+    gates.push({ a, x: Math.cos(a) * r, z: Math.sin(a) * r, w: 4, node: c && angDiff(c.a, a) < 1.2 ? c.i : -1 });
+  }
+  /* 城门里侧接上街:一条从最近路口到门洞的街(街道图因此走得出城) */
+  for (const G of gates) {
+    const ni = T.nodes.length;
+    T.nodes.push({ x: Math.cos(G.a) * (wallAt(G.a) - 3), z: Math.sin(G.a) * (wallAt(G.a) - 3), use: 0, plot: false, gate: true });
+    if (G.node >= 0) T.streets.push({ a: G.node, b: ni, w: 6, rank: 'street', use: 0, gate: true });
+    G.inner = ni;
+  }
+
+  const moat = { r0: wallR + 3, r1: wallR + 10 };
+  const forest = { r0: wallR + 150, r1: wallR + 250 };
+  /* 出城的土路:门外一直走到林子里,路微微弯 */
+  const roads = gates.map((G) => {
+    const pts = [];
+    const bend = (rand() - 0.5) * 0.5;
+    for (let k = 0; k <= 12; k++) {
+      const r = wallAt(G.a) + k / 12 * (forest.r1 - wallR + 10);
+      const a = G.a + Math.sin(k / 12 * Math.PI) * bend * (r - wallR) / r;
+      pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    return { pts, w: 4.5, gate: G };
+  });
+
+  /* 小河:从护城河流出去,在两道门之间最宽的那道空当里,弯弯曲曲 */
+  const ga = gates.map((G) => ((G.a % TAU) + TAU) % TAU).sort((p, q) => p - q);
+  let gap = { a: off, w: 0 };
+  for (let i = 0; i < ga.length; i++) {
+    const a0 = ga[i], a1 = i + 1 < ga.length ? ga[i + 1] : ga[0] + TAU;
+    if (a1 - a0 > gap.w) gap = { a: a0, w: a1 - a0 };
+  }
+  const streamA = gap.a + gap.w * (0.3 + rand() * 0.15);
+  const stream = { pts: [], w: 5 };
+  for (let k = 0; k <= 30; k++) {
+    const r = moat.r1 - 1 + k / 30 * (forest.r1 + 30 - moat.r1);
+    const a = streamA + Math.sin(k * 0.55 + rand() * 0.2) * 14 / r + Math.sin(k * 0.21) * 22 / r;
+    stream.pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+  }
+  const wm = stream.pts[6], wm2 = stream.pts[7];
+  const sdx = wm2[0] - wm[0], sdz = wm2[1] - wm[1], sL = Math.hypot(sdx, sdz) || 1;
+  const watermill = { x: wm[0] - sdz / sL * 9, z: wm[1] + sdx / sL * 9, wheel: { x: wm[0] - sdz / sL * 3.2, z: wm[1] + sdx / sL * 3.2 }, fx: sdz / sL, fz: -sdx / sL };
+
+  /* 墙外那一圈地:门和门之间切成一块块扇形,种地、放牧、果园 */
+  const sectors = [];
+  const gateAs = ga.length ? ga : [off];
+  for (let i = 0; i < gateAs.length; i++) {
+    const a0 = gateAs[i], a1 = i + 1 < gateAs.length ? gateAs[i + 1] : gateAs[0] + TAU;
+    const span = a1 - a0;
+    const k = Math.max(1, Math.round(span / 0.42));
+    for (let j = 0; j < k; j++) {
+      const s0 = a0 + span * j / k + 0.05, s1 = a0 + span * (j + 1) / k - 0.05;
+      // 两圈:近的一圈是地和果园,远的一圈是牧场(牛羊离林子近,离镇子远)
+      for (const [r0, r1] of [[moat.r1 + 10, moat.r1 + 72], [moat.r1 + 80, forest.r0 - 6]]) {
+        const u = rand();
+        const kind = r0 < moat.r1 + 20 ? (u < 0.7 ? 'field' : 'orchard') : (u < 0.62 ? 'pasture' : u < 0.85 ? 'field' : 'orchard');
+        sectors.push({ a0: s0, a1: s1, r0, r1, kind });
+      }
+    }
+  }
+  const nearStream = (x, z, m) => polylineDist([x, z], stream.pts) < m;
+  const CROPS = ['wheat', 'rye', 'barley', 'flax', 'cabbage', 'fallow'];
+  const fields = [], pastures = [], orchards = [];
+  const HERDS = ['sheep', 'cow', 'sheep', 'horse', 'goat', 'cow'];
+  for (const sc of sectors) {
+    const am = (sc.a0 + sc.a1) / 2, rm = (sc.r0 + sc.r1) / 2;
+    const cx = Math.cos(am) * rm, cz = Math.sin(am) * rm;
+    if (sc.kind === 'field') {
+      // 条田:沿半径方向的一条条,宽 7–9 米
+      const strips = Math.max(2, Math.round((sc.a1 - sc.a0) * rm / 8));
+      const crops = [];
+      for (let k = 0; k < strips; k++) crops.push(CROPS[Math.floor(rand() * CROPS.length)]);
+      fields.push(Object.assign({}, sc, { crops, cx, cz }));
+    } else if (sc.kind === 'pasture') {
+      const r = Math.min((sc.r1 - sc.r0) / 2, (sc.a1 - sc.a0) * rm / 2) - 3;
+      const bx = Math.cos(am) * (sc.r0 + 7), bz = Math.sin(am) * (sc.r0 + 7);
+      pastures.push(Object.assign({}, sc, { x: cx, z: cz, r, kind: HERDS[pastures.length % HERDS.length],
+        barn: { x: bx, z: bz, yaw: Math.atan2(-Math.cos(am), -Math.sin(am)) } }));
+    } else {
+      orchards.push(Object.assign({}, sc, { x: cx, z: cz, r: Math.min((sc.r1 - sc.r0) / 2, (sc.a1 - sc.a0) * rm / 2) - 2 }));
+    }
+  }
+  /* 风车:离镇子不远的一块地中间(磨坊都在墙外的高处) */
+  const wf = fields.filter((f) => f.r0 < moat.r1 + 20 && !nearStream(f.cx, f.cz, 25))[0] || fields[0];
+  const windmill = wf ? { x: Math.cos((wf.a0 + wf.a1) / 2) * (wf.r1 + 4), z: Math.sin((wf.a0 + wf.a1) / 2) * (wf.r1 + 4) } : null;
+
+  /* 市场:最热闹的那个广场。井在中间,摊子围一圈,朝里 */
+  // 最大的那个广场当集市(出生点那个广场未必最大)
+  const P0 = T.plazas.slice().sort((p, q) => q.r - p.r)[0];
+  let market = null;
+  if (P0) {
+    const stalls = [];
+    const ns = Math.max(3, Math.min(10, Math.floor(TAU * P0.r * 0.72 / 4.6)));
+    for (let i = 0; i < ns; i++) {
+      const a = i / ns * TAU + 0.3;
+      // 摊子离井 4 米以上;广场小的时候往里收,收不下就不摆
+      for (const k of [0.74, 0.6, 0.5]) {
+        const rr = Math.max(4.2, P0.r * k);
+        const x = P0.cx + Math.cos(a) * rr, z = P0.cz + Math.sin(a) * rr;
+        if (!insideConvex([x + Math.cos(a) * 1.4, z + Math.sin(a) * 1.4], P0.poly)) continue;
+        stalls.push({ x, z, yaw: Math.atan2(Math.cos(a), Math.sin(a)), goods: Math.floor(rand() * 6) });
+        break;
+      }
+    }
+    market = { x: P0.cx, z: P0.cz, r: P0.r, well: { x: P0.cx, z: P0.cz }, cross: { x: P0.cx + P0.r * 0.4, z: P0.cz - P0.r * 0.25 }, stalls };
+  }
+
+  /* 教堂:离镇中心最近、够大的一块空地(那块地就成了墓园) */
+  let church = null;
+  const parks = T.parks.slice().sort((p, q) => Math.hypot(p.cx, p.cz) - Math.hypot(q.cx, q.cz));
+  for (const pk of parks) {
+    if (pk.area < 220) continue;
+    // 教堂东西向(中世纪的规矩:祭坛朝东)
+    const fit = fitRect(pk.poly, pk.cx, pk.cz, 1, 0, 8, 22, 0.55);
+    if (!fit) continue;
+    const tw = Math.min(5.5, fit.w * 0.75);
+    church = { x: pk.cx, z: pk.cz, fx: 1, fz: 0, w: fit.w, d: fit.d, rect: fit.rect, yard: pk.poly,
+      tower: { x: pk.cx - (fit.d / 2 - tw / 2), z: pk.cz, s: tw, h: 17 + fit.k * 4, spire: 13 + fit.k * 5 } };
+    pk.church = true;
+    break;
+  }
+  if (church) T.parks.splice(T.parks.findIndex((p) => p.church), 1);
+
+  /* 后院(burgage):房子背后,那一侧没有街过来的,种菜、劈柴、养鸡 */
+  const yards = [];
+  for (const pl of T.plots) {
+    const bx = -pl.fx, bz = -pl.fz;
+    const st = T.streets.filter((q) => q.a === pl.site || q.b === pl.site).map((q) => {
+      const o = T.nodes[q.a === pl.site ? q.b : q.a];
+      const dx = o.x - pl.cx, dz = o.z - pl.cz, L = Math.hypot(dx, dz) || 1;
+      return dx / L * bx + dz / L * bz;
+    });
+    if (st.some((c) => c > 0.55)) continue;
+    const depth = pl.d || 8;
+    const gx = pl.cx + bx * (depth / 2 + 3.2), gz = pl.cz + bz * (depth / 2 + 3.2);
+    if (!insideConvex([gx, gz], pl.cell)) continue;
+    // 这块地能往后铺多深
+    let deep = 2.4;
+    while (deep < 9 && insideConvex([pl.cx + bx * (depth / 2 + 1 + deep), pl.cz + bz * (depth / 2 + 1 + deep)], pl.cell)) deep += 0.6;
+    if (deep < 3) continue;
+    const h = hash01(seed + ':yard:' + pl.id);
+    yards.push({ plot: pl.id, x: pl.cx + bx * (depth / 2 + 1 + deep / 2), z: pl.cz + bz * (depth / 2 + 1 + deep / 2),
+      fx: bx, fz: bz, w: Math.min(pl.w || 6, 7), d: deep, coop: h < 0.35, tree: h > 0.5, wood: true });
+  }
+
+  return { wall: { r: wallR, pts: wallPts, at: null, gates, h: 5.6 }, moat, forest, roads, stream, watermill, windmill,
+    fields, pastures, orchards, market, church, yards };
+}
+
+/** 墙在这个方向有多远(给碰撞和地图用;和 planWorld 里那条是同一个形状,按折线插值)。 */
+export function wallRadiusAt(world, a) {
+  const pts = world.wall.pts, n = pts.length;
+  const t = ((a % TAU) + TAU) % TAU / TAU * n;
+  const i = Math.floor(t) % n, j = (i + 1) % n, f = t - Math.floor(t);
+  return Math.hypot(pts[i][0], pts[i][1]) * (1 - f) + Math.hypot(pts[j][0], pts[j][1]) * f;
 }

@@ -367,6 +367,8 @@
       town_signin: '登录后才能说话、在镇上留东西', town_slow: '今天留得够多了',
       town_wave: '招手', town_cheer: '欢呼', town_sit: '坐下', town_say: '说一句',
       town_lantern: '点一盏灯', town_note: '留一张字条',
+      town_talk: '和他聊聊:', town_ask_house: '介绍一下你的房子', town_ask_day: '你今天在忙什么?', town_ask_who: '镇上我该去见谁?',
+      town_placeholder: '说点什么…', town_offline: '(他在想事情,等一下再问)', town_follow: '跟我来!', town_gift: '你收到了',
       town_count: '{n} 栋房子 · 镇上 {p} 人', town_enter: '进去',
       pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
       pz_playing: '正在场里播放 {name}',
@@ -4397,8 +4399,19 @@
         words: lang === 'zh' ? {
           town_enter: t('town_enter'), town_hint: t('town_hint'), town_wave: t('town_wave'), town_cheer: t('town_cheer'),
           town_sit: t('town_sit'), town_say: t('town_say'), town_lantern: t('town_lantern'), town_note: t('town_note'),
+          town_talk: t('town_talk'), town_ask_house: t('town_ask_house'), town_ask_day: t('town_ask_day'), town_ask_who: t('town_ask_who'),
+          town_placeholder: t('town_placeholder'), town_offline: t('town_offline'), town_follow: t('town_follow'), town_gift: t('town_gift'),
         } : null,
         noteWords: lang === 'zh' ? TOWN_NOTES_ZH : null,
+        lang: lang === 'zh' ? 'zh' : 'en',
+        onNpcHello: function (id, ctx) { return Town.npcHello(id, ctx, lang); },
+        onNpcSay: function (id, text, ctx) {
+          return Town.npcSay(id, text, ctx, lang).then(function (r) {
+            if (r && r.error) return { error: r.error === 'signin' || /sign in/i.test(r.error) ? t('town_signin') : r.error };
+            return r;
+          });
+        },
+        onNpcBye: function (id) { Town.npcBye(id, lang); },
         notes: function () { return Town.notes(); },
         onEnter: function (house) { if (window.TerseFeel) window.TerseFeel.tap('heavy'); enterVilla(house.project || house); },
         onMove: function (x, z, yaw, v) { Town.move(x, z, yaw, v); },

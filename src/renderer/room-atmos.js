@@ -29,7 +29,7 @@ void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position
 const SKY_FS = `
 precision highp float;
 uniform vec3 uZen, uHor, uGlow, uSunDir, uSunC;
-uniform float uNight, uCover, uTime, uRain, uSnow, uFog, uBow, uFlash, uMoon, uWind, uStorm, uGolden, uGain, uWin;
+uniform float uNight, uCover, uTime, uRain, uSnow, uFog, uBow, uFlash, uMoon, uWind, uStorm, uGolden, uGain, uWin, uCloudDot;
 varying vec3 vW;
 ${NOISE}
 vec3 hue(float h){ return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
@@ -90,8 +90,9 @@ void main(){
     top = mix(top, uGlow * 1.05 + vec3(0.08, 0.02, 0.1), uGolden * 0.75);   // 黄昏:云被染成粉金
     top *= mix(1.0, 0.42, uStorm);
     top = mix(top, vec3(0.08, 0.1, 0.16) + uHor * 0.25, uNight * 0.92);
-    float a = clamp(soft * 0.5 + dotm * 0.55, 0.0, 1.0) * fade * (0.55 + 0.45 * uCover);
-    c = mix(c, top * (0.92 + 0.12 * dotm), a);
+    /* uCloudDot:云里看得出一颗颗点的程度。窗里、院子里是 1;小镇的天大、亮,一整片点就成了一张网,收到三成,多给连续的那层 */
+    float a = clamp(soft * mix(0.8, 0.5, uCloudDot) + dotm * 0.55 * uCloudDot, 0.0, 1.0) * fade * (0.55 + 0.45 * uCover);
+    c = mix(c, top * (0.92 + 0.12 * dotm * uCloudDot), a);
   }
 
   // 彩虹:背着太阳 40–42.5°,红在外圈
@@ -208,7 +209,7 @@ export function createAtmosphere(o) {
     uNight: { value: 0 }, uCover: { value: 0 }, uTime: { value: 0 }, uRain: { value: 0 }, uSnow: { value: 0 }, uFog: { value: 0 },
     uBow: { value: 0 }, uFlash: { value: 0 }, uMoon: { value: 0.5 }, uWind: { value: 0.2 }, uStorm: { value: 0 }, uGolden: { value: 0 },
     // 亮度:都压在泛光阈值下面(露天 0.82、屋里 0.55),只有太阳会晕开 —— 不然窗是一块白、地平线是一道白光
-    uGain: { value: o.open ? 0.42 : 0.62 }, uWin: { value: o.open ? 0 : 1 },
+    uGain: { value: o.open ? 0.42 : 0.62 }, uWin: { value: o.open ? 0 : 1 }, uCloudDot: { value: o.cloudDot != null ? o.cloudDot : 1 },
   };
   const skyMat = new THREE.ShaderMaterial({ uniforms: SU, vertexShader: SKY_VS, fragmentShader: SKY_FS, side: THREE.DoubleSide, depthWrite: false });
   disposables.push(skyMat);

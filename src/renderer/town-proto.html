@@ -50,6 +50,25 @@ const town = createTown(renderer, projects, {
 const built = Math.round(performance.now() - t0);
 window.__town = town;
 // 面板不显示时截不了图:把画布发给 .claude/serve-town-shots.js 存成文件
+// 巡游:几个固定的机位各拍一张(?tour=前缀 时自动跑)
+window.tour = async (pre) => {
+  const W = town.plan.world, M = W.market, C = W.church;
+  const look = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z));
+  const go = async (x, z, yaw, pitch, name) => { town.at(x, z, yaw, pitch); for (let i = 0; i < 40; i++) town.update(1 / 30); await window.shot(pre + '_' + name); };
+  await go(M.x + 9, M.z + 9, look(M.x + 9, M.z + 9, M.x, M.z), 0.03, 'market');
+  if (C) { const ex = C.x + C.fz * 30, ez = C.z - C.fx * 30; await go(ex, ez, look(ex, ez, C.x, C.z), 0.2, 'church'); }
+  const G0 = W.wall.gates[1] || W.wall.gates[0];
+  const ox = Math.cos(G0.a) * (W.moat.r1 + 30), oz = Math.sin(G0.a) * (W.moat.r1 + 30);
+  await go(ox, oz, look(ox, oz, 0, 0), 0.06, 'outside');
+  await go(ox, oz, look(ox, oz, 0, 0) + 2.2, 0.02, 'fields');
+  // 人:离集市最近、看得见的那个主人,站到他面前 2.2 米
+  const f = town.people.folk.filter((q) => q.pose !== 0).sort((a, b) => Math.hypot(a.x - M.x, a.z - M.z) - Math.hypot(b.x - M.x, b.z - M.z))[0];
+  if (f) { const x = f.x + Math.sin(f.yaw) * 2.4, z = f.z + Math.cos(f.yaw) * 2.4; await go(x, z, look(x, z, f.x, f.z), -0.12, 'person'); }
+  // 牧场
+  const P = W.pastures[0];
+  if (P) { const x = P.x + (P.r + 6) * Math.cos(Math.atan2(P.z, P.x)) * -0.2, z = P.z; const px = P.x - Math.cos(Math.atan2(P.z, P.x)) * (P.r + 4), pz = P.z - Math.sin(Math.atan2(P.z, P.x)) * (P.r + 4); await go(px, pz, look(px, pz, P.x, P.z), 0.0, 'pasture'); }
+  return 'ok';
+};
 window.shot = async (name) => { town.update(1 / 60); town.renderNow(); const d = renderer.domElement.toDataURL('image/jpeg', 0.85);
   await fetch('/shot?name=' + name, { method: 'POST', body: d }); return name; };
 
@@ -79,6 +98,7 @@ if (q.get('marks')) {
   if (q.get('say')) town.says('u0', q.get('say'));
 }
 if (q.get('still')) town.renderNow();
+if (q.get('tour')) setTimeout(() => window.tour(q.get('tour')).then(() => { document.title = 'toured'; }), 1500);
 
 let last = performance.now(), frames = 0, fps = 0, acc = 0;
 function loop(now) {

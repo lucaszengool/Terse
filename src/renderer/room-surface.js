@@ -28,6 +28,8 @@ export const MAT = {
   herringbone: 33, cofferstar: 34, gridcoffer: 35, carpet: 36, tile40: 37, slab12: 38, triglyph: 39, earth: 40,
   baoxiang: 41, lianzhu: 42, fusuma: 43, pond: 44, kheker: 45, pebble: 46, masonry: 47, fresco: 48, mirror: 49,
   tapestry: 50, colorfield: 51,
+  // 小镇的外墙和屋顶
+  halftimber: 52, thatch: 53, turf: 54, wattle: 55, shingle: 56,
 };
 /** 标志位:1 室内(没有直射日光)、2 夜里自己发光(纸、灯罩)、4 法线反过来(从里面看的穹顶)。 */
 export const F = { indoor: 1, glow: 2, flip: 4 };
@@ -579,6 +581,49 @@ vec3 albedo(float m, vec2 pc, vec3 P, vec3 N, vec3 c1, vec3 c2, float seed, floa
     col = mix(col, vec3(0.75, 0.7, 0.6), clamp(rider, 0.0, 1.0) * (1.0 - edge));
     return mix(col, mix(c1, vec3(0.2, 0.15, 0.1), 0.3), fadeF(fw, 0.1));
   }
+  if (m > 51.5 && m < 52.5) {          // 木骨泥墙(Fachwerk):白灰墙上一根根深色木 —— 立柱 1.2 米一根,每层上下两道横梁,有的开间斜撑
+    float bay = floor(pc.x / 1.2), sto = floor(pc.y / 2.8);
+    vec2 f = vec2(fract(pc.x / 1.2), fract(pc.y / 2.8));
+    float post = lineF(f.x, 0.13, fw, 1.2);
+    float rail = max(lineF(f.y, 0.07, fw, 2.8), lineF(fract(pc.y / 2.8 + 0.55), 0.05, fw, 2.8));
+    float hb = h21(vec2(bay, sto) + seed);
+    // 斜撑:这个开间从左下到右上(或反过来),两种都有才像手搭的
+    float dg = hb < 0.3 ? abs(f.x - f.y) : (hb < 0.5 ? abs(1.0 - f.x - f.y) : (hb < 0.62 ? min(abs(f.x - f.y), abs(1.0 - f.x - f.y)) : 1.0));
+    float brace = 1.0 - smoothstep(0.05, 0.05 + max(fw / 1.2, 0.02), dg);
+    float wood = max(max(post, rail), brace * (1.0 - fadeF(fw, 0.3)));
+    vec3 lime = c1 * (0.9 + 0.1 * fbm(pc * 2.2 + seed)) * (0.94 + 0.06 * hb);
+    vec3 oak = c2 * (0.8 + 0.3 * fbm(vec2(pc.x * 9.0, pc.y * 0.8) + seed));
+    return mix(lime, oak, mix(wood, 0.24, fadeF(fw, 0.35)));
+  }
+  if (m > 52.5 && m < 53.5) {          // 茅草:顺着坡的一缕缕草,一层层压着;背阴的地方长青苔
+    float course = lineF(fract(pc.y / 0.34), 0.1, fw, 0.34);
+    float streak = mix(0.5 + 0.5 * sin(pc.x * 190.0 + fbm(pc * vec2(4.0, 0.6)) * 9.0), 0.5, fadeF(fw, 0.03));
+    float moss = smoothstep(0.55, 0.8, fbm(pc * 0.35 + seed));
+    vec3 straw = c1 * (0.78 + 0.3 * streak) * (0.9 + 0.12 * fbm(pc * 1.3 + seed));
+    return mix(mix(straw, straw * 0.62, course), c2, moss * 0.7);
+  }
+  if (m > 53.5 && m < 54.5) {          // 草皮屋顶(北欧):一块块草皮,草色里夹着土色和小花
+    float v = fbm(pc * 0.8 + seed);
+    vec3 g = mix(c1, c2, smoothstep(0.35, 0.75, v));
+    float tuft = mix(h21(floor(pc * 18.0) + seed), 0.5, fadeF(fw, 0.06));
+    float flower = step(0.985, h21(floor(pc * 7.0) + seed * 3.0)) * (1.0 - fadeF(fw, 0.14));
+    return mix(g * (0.8 + 0.4 * tuft), vec3(0.85, 0.8, 0.45), flower);
+  }
+  if (m > 54.5 && m < 55.5) {          // 编篱(wattle):竖桩 0.45 米一根,枝条上下穿过去
+    float stake = lineF(fract(pc.x / 0.45), 0.12, fw, 0.45);
+    float row = floor(pc.y / 0.07);
+    float over = 0.5 + 0.5 * sin((pc.x / 0.45 + mod(row, 2.0)) * 3.14159);
+    float gap = lineF(fract(pc.y / 0.07), 0.2, fw, 0.07);
+    vec3 twig = c1 * mix(0.6 + 0.5 * over, 0.85, fadeF(fw, 0.2)) * (0.9 + 0.2 * h21(vec2(row, seed)));
+    return mix(mix(twig, twig * 0.4, gap), c2, stake);
+  }
+  if (m > 55.5 && m < 56.5) {          // 木瓦:一排排错缝的小木片,每片色调不同,风吹日晒成银灰
+    float row = floor(pc.y / 0.2);
+    vec2 q = vec2((pc.x + mod(row, 2.0) * 0.08) / 0.16, pc.y / 0.2), id = floor(q), f = fract(q);
+    float edge = max(lineF(f.x, 0.08, fw, 0.16), lineF(f.y, 0.1, fw, 0.2));
+    vec3 t = mix(c1, c2, h21(id + seed)) * mix(0.8 + 0.3 * h21(id * 1.7 + seed), 0.95, fadeF(fw, 0.2));
+    return mix(t, t * 0.45, edge * (1.0 - fadeF(fw, 0.16)));
+  }
   // 色域画(现代):上下两块柔边的大色块(罗斯科那样);每幅的配色由它自己的 c1 定
   float hc = fract(dot(c1, vec3(3.1, 5.7, 7.3)) + seed * 0.13);
   vec3 a1 = 0.5 + 0.45 * cos(6.2831 * (hc + vec3(0.0, 0.33, 0.67)));
@@ -627,7 +672,7 @@ attribute vec3 iO; attribute vec3 iA; attribute vec3 iB; attribute vec4 iS; attr
 attribute vec3 iC1; attribute vec3 iC2;
 uniform mat4 modelViewMatrix, projectionMatrix;
 uniform float uN, uPx, uFogK, uDayGlow, uSootY, uDetailFw, uWashH, uGlitter, uGlitterDen;
-uniform float uDotK, uDotMax, uBreath, uSparkle, uBackCull; uniform vec2 uCull;
+uniform float uDotK, uDotMax, uBreath, uSparkle, uBackCull, uSnowCov; uniform vec2 uCull;
 uniform vec3 uLod, uRim, uRimNight;
 varying vec3 vCol, vFogCol; varying float vFog;
 ${NOISE_GLSL}
@@ -707,6 +752,8 @@ ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的�
     vec3 jn = normalize(N + (vec3(h21(position.xy * 13.1 + seed), h21(position.yx * 7.7 + seed), h21(position.xy * 3.3 - seed)) - 0.5) * 0.9);
     col += uSunCol * pow(max(dot(reflect(-uSunDir, jn), V), 0.0), 60.0) * gl * (0.3 + 0.7 * gSunVis) * (1.0 - uNight);
   }
+  // 雪:露天朝上的面积一层白(小镇冬天的屋顶、台阶、墙头)
+  if (uSnowCov > 0.0 && indoor < 0.5) col = mix(col, vec3(0.86, 0.9, 0.98) * mix(lit, vec3(1.0), 0.25), uSnowCov * smoothstep(0.35, 0.75, N.y) * (0.75 + 0.25 * h21(position.xy * 17.0 + seed)));
   vec3 fc; vFog = 1.0 - fogOf(P, fc); vFogCol = fc;
   // 每颗点自己一点明暗(点彩):一片面是许多颗粒子,不是一张塑料皮
   // 每颗自己一点明暗,再自己慢慢闪(壁纸字形粒子的 twinkle,幅度收小):一片面是许多颗活的粒子
@@ -874,6 +921,7 @@ export function makeUniforms() {
     uSparkle: { value: 1 },
     uBackCull: { value: 0 },
     uFlat: { value: 0 },
+    uSnowCov: { value: 0 },
     uPick: { value: new THREE.Vector4(0, 0, -99, 0) },
     uForm: { value: 1 }, uStep: { value: new THREE.Vector4(0, 0, -99, 0) },
   };

@@ -44,6 +44,36 @@ const mk = (n, f = () => ({})) => Array.from({ length: n }, (_, i) => Object.ass
   ok('and there are loops, so you never have to walk back the way you came', T.streets.length > T.nodes.length - 1);
 }
 
+/* ── 镇子以外、镇子中间:城墙、城门、集市、教堂、墙外的地 ── */
+{
+  const T = planTown(mk(60));
+  const W = T.world;
+  ok('there is a town wall outside every house', W && T.plots.every((p) => Math.hypot(p.cx, p.cz) < W.wall.r - 2));
+  ok(`with three or four gates (${W.wall.gates.length})`, W.wall.gates.length >= 3);
+  ok('and every gate is reachable by street', W.wall.gates.every((G) => T.streets.some((s) => s.b === G.inner || s.a === G.inner)));
+  ok('the moat is outside the wall', W.moat.r0 > W.wall.r);
+  ok(`a market with stalls (${W.market && W.market.stalls.length})`, W.market && W.market.stalls.length >= 3);
+  ok('you start on the market square', Math.hypot(T.spawn.x - W.market.x, T.spawn.z - W.market.z) < 6);
+  ok('a parish church with a tower', W.church && W.church.tower.h > 15 && W.church.tower.spire > 10);
+  ok(`fields, pastures and orchards outside (${W.fields.length}/${W.pastures.length}/${W.orchards.length})`, W.fields.length > 2 && W.pastures.length > 1 && W.orchards.length > 0);
+  ok('every pasture has a barn', W.pastures.every((p) => Number.isFinite(p.barn.x)));
+  ok('a windmill, a watermill on the stream', !!W.windmill && !!W.watermill && W.stream.pts.length > 10);
+  ok('the forest is the outer ring', W.forest.r0 > W.moat.r1 + 100);
+  ok(`back gardens behind some houses (${W.yards.length})`, W.yards.length > 3);
+  ok('some houses are shops and taverns', T.plots.some((p) => p.trade === 'tavern') && T.plots.some((p) => p.trade === 'home'));
+  const again = planTown(mk(60));
+  ok('the same projects always build the same world', JSON.stringify(again.world.wall.gates) === JSON.stringify(W.wall.gates));
+}
+
+/* ── 别墅外面多大,照它里面的平面图 ── */
+{
+  const T = planTown(mk(40, (i) => ({ fw: 12 + (i % 5), fd: 9 + (i % 4) })));
+  const rect = T.plots.filter((p) => p.rect);
+  ok(`houses are rectangles facing their street (${rect.length}/${T.plots.length})`, rect.length >= T.plots.length * 0.8);
+  const fits = rect.filter((p) => Math.abs(p.w / p.d - p.project.fw / p.project.fd) < 0.05 || p.w < p.project.fw);
+  ok('and keep the shape of the plan inside', fits.length >= rect.length * 0.8);
+}
+
 /* ── 房子不打架 ── */
 {
   const T = planTown(mk(70));

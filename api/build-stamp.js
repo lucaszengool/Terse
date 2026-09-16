@@ -43,6 +43,10 @@ const ENGINE_ASSETS = [
   'room-styles.js',
   // 广场的小镇:图纸、盖房子、地面、场景本身
   'town-plan.js', 'town-build.js', 'town-ground.js', 'town-scene.js',
+  // 镇上的人(房主):浏览器和 api/npc.js 共用的那份纯函数
+  'town-folk.mjs',
+  // 小镇的外观、地标、树和烟、动物、人
+  'town-villa.js', 'town-landmarks.js', 'town-nature.js', 'town-life.js', 'town-life-sim.js', 'town-people.js',
   // 屋子外面的天(钟、季节、天气)、天穹和天气粒子、在楼之间换场
   'room-sky.js', 'room-atmos.js', 'room-travel.js',
 ];
@@ -105,7 +109,7 @@ function engineAssets() {
 
 /** 只改**相对**且以 .js 结尾的 specifier:裸的 'three' 必须继续走 importmap,
  *  已经带查询串的原样不动。 */
-const IMPORT_SPECIFIER = /(\bfrom\s*['"]|\bimport\s*\(\s*['"])(\.\/[A-Za-z0-9._-]+\.js)(['"])/g;
+const IMPORT_SPECIFIER = /(\bfrom\s*['"]|\bimport\s*\(\s*['"])(\.\/[A-Za-z0-9._-]+\.m?js)(['"])/g;
 
 function stampImports(text, build) {
   if (typeof text !== 'string' || !build) return text;

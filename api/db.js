@@ -2158,3 +2158,101 @@ module.exports = {
   setDocAgentsPausedPresence, removeDocPresence,
   addDocComment, getDocComments, resolveDocComment,
 };
+
+/* ── 镇上的房主(NPC)记得你 ──────────────────────────────────────────────
+   见 api/npc.js。npc_id 就是 wall_projects.id —— 一座房子一个房主。
+   user_id 是 town.js 那套短哈希,不是身份本身。 */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS npc_rel (
+    user_id TEXT NOT NULL,
+    npc_id TEXT NOT NULL,
+    visits INTEGER DEFAULT 0,
+    last_seen INTEGER DEFAULT 0,
+    affinity INTEGER DEFAULT 0,
+    player_name TEXT,
+    summary TEXT,
+    reflected_ts INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, npc_id)
+  );
+  CREATE TABLE IF NOT EXISTS npc_fact (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    npc_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    importance INTEGER DEFAULT 5,
+    created INTEGER NOT NULL,
+    last_used INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS npc_fact_pair ON npc_fact (user_id, npc_id);
+  CREATE TABLE IF NOT EXISTS npc_turn (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    npc_id TEXT NOT NULL,
+    ts INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    text TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS npc_turn_pair ON npc_turn (user_id, npc_id, id);
+  CREATE INDEX IF NOT EXISTS npc_turn_user_ts ON npc_turn (user_id, ts);
+  CREATE TABLE IF NOT EXISTS town_event (
+    id INTEGER PRIMARY KEY,
+    ts INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    npc_id TEXT,
+    user_id TEXT,
+    payload TEXT
+  );
+  CREATE INDEX IF NOT EXISTS town_event_ts ON town_event (ts DESC);
+  -- 每天的对话配额(user_id = '*' 是全镇的总闸)。重启进程不清零。
+  CREATE TABLE IF NOT EXISTS npc_usage (
+    day TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    n INTEGER DEFAULT 0,
+    PRIMARY KEY (day, user_id)
+  );
+`);
+const getWallProject = db.prepare(
+  'SELECT id, identity, title, capsule, views, published_at FROM wall_projects WHERE id = ?');
+const npcRelGet = db.prepare('SELECT * FROM npc_rel WHERE user_id = @user_id AND npc_id = @npc_id');
+const npcRelVisit = db.prepare(`
+  INSERT INTO npc_rel (user_id, npc_id, visits, last_seen) VALUES (@user_id, @npc_id, @inc, @now)
+  ON CONFLICT(user_id, npc_id) DO UPDATE SET visits = visits + @inc, last_seen = @now`);
+const npcRelReflect = db.prepare(`
+  INSERT INTO npc_rel (user_id, npc_id, visits, last_seen, affinity, player_name, summary, reflected_ts)
+  VALUES (@user_id, @npc_id, 1, @now, @affinity, @player_name, @summary, @now)
+  ON CONFLICT(user_id, npc_id) DO UPDATE SET affinity = @affinity, player_name = @player_name,
+    summary = @summary, reflected_ts = @now`);
+const npcFactAdd = db.prepare(`
+  INSERT INTO npc_fact (user_id, npc_id, text, importance, created, last_used)
+  VALUES (@user_id, @npc_id, @text, @importance, @now, @now)`);
+const npcFactsFor = db.prepare(
+  'SELECT id, text, importance, created, last_used FROM npc_fact WHERE user_id = @user_id AND npc_id = @npc_id ORDER BY id DESC LIMIT 200');
+const npcFactTouch = db.prepare('UPDATE npc_fact SET last_used = @now WHERE id = @id');
+const npcFactPrune = db.prepare(`
+  DELETE FROM npc_fact WHERE user_id = @user_id AND npc_id = @npc_id AND id NOT IN (
+    SELECT id FROM npc_fact WHERE user_id = @user_id AND npc_id = @npc_id ORDER BY importance DESC, id DESC LIMIT 60)`);
+const npcTurnAdd = db.prepare(
+  'INSERT INTO npc_turn (user_id, npc_id, ts, role, text) VALUES (@user_id, @npc_id, @ts, @role, @text)');
+const npcTurnsRecent = db.prepare(
+  'SELECT id, ts, role, text FROM npc_turn WHERE user_id = @user_id AND npc_id = @npc_id ORDER BY id DESC LIMIT @limit');
+const npcTurnsSince = db.prepare(
+  'SELECT id, ts, role, text FROM npc_turn WHERE user_id = @user_id AND npc_id = @npc_id AND ts > @since ORDER BY id ASC LIMIT 40');
+const npcTurnPrune = db.prepare(`
+  DELETE FROM npc_turn WHERE user_id = @user_id AND npc_id = @npc_id AND id NOT IN (
+    SELECT id FROM npc_turn WHERE user_id = @user_id AND npc_id = @npc_id ORDER BY id DESC LIMIT 40)`);
+const townEventAdd = db.prepare(
+  'INSERT INTO town_event (ts, kind, npc_id, user_id, payload) VALUES (@ts, @kind, @npc_id, @user_id, @payload)');
+const townEventsRecent = db.prepare(
+  'SELECT id, ts, kind, npc_id, payload FROM town_event WHERE ts > @since ORDER BY ts DESC, id DESC LIMIT @limit');
+const npcUsageGet = db.prepare('SELECT n FROM npc_usage WHERE day = @day AND user_id = @user_id');
+const npcUsageBump = db.prepare(`
+  INSERT INTO npc_usage (day, user_id, n) VALUES (@day, @user_id, 1)
+  ON CONFLICT(day, user_id) DO UPDATE SET n = n + 1`);
+
+Object.assign(module.exports, {
+  getWallProject,
+  npcRelGet, npcRelVisit, npcRelReflect,
+  npcFactAdd, npcFactsFor, npcFactTouch, npcFactPrune,
+  npcTurnAdd, npcTurnsRecent, npcTurnsSince, npcTurnPrune,
+  townEventAdd, townEventsRecent, npcUsageGet, npcUsageBump,
+});

@@ -1560,6 +1560,8 @@ app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
 // its own unit, so it does NOT go through team auth.
 const roomsRouter = require('./rooms');
 app.use('/api/cloud/rooms', cloudIngestLimiter, roomsRouter);
+// 房主(NPC):挂在 /town 前面,免得被它吞掉(见 api/npc.js)
+app.use('/api/cloud/town/npc', cloudIngestLimiter, require('./npc'));
 // 小镇上的人:谁在镇上、各自站在哪(SSE + POST,见 api/town.js)
 app.use('/api/cloud/town', cloudIngestLimiter, require('./town'));
 

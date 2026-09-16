@@ -116,6 +116,24 @@
     },
 
     signedIn: function () { return joined; },
+
+    /* ── 镇上的人(每栋别墅的主人):打招呼、说话、道别。见 api/npc.js ── */
+    npcHello: function (id, ctx, lang) {
+      var q = '?lang=' + encodeURIComponent(lang || 'en') + '&hour=' + encodeURIComponent(ctx && ctx.hour != null ? ctx.hour : '') +
+        '&weather=' + encodeURIComponent((ctx && ctx.weather) || '') + '&season=' + encodeURIComponent((ctx && ctx.season) || '');
+      try {
+        return fetch('/api/cloud/town/npc/' + encodeURIComponent(id) + '/hello' + q, { headers: { 'x-terse-identity': identity() } })
+          .then(function (r) { return r.json().catch(function () { return {}; }); }).catch(function () { return {}; });
+      } catch (e) { return Promise.resolve({}); }
+    },
+    npcSay: function (id, text, ctx, lang) {
+      if (!identity()) return Promise.resolve({ error: 'signin' });
+      return post('npc/' + encodeURIComponent(id) + '/say', { text: text, lang: lang || 'en', ctx: ctx || {} });
+    },
+    npcBye: function (id, lang) {
+      if (!identity()) return Promise.resolve({});
+      return post('npc/' + encodeURIComponent(id) + '/bye', { lang: lang || 'en' });
+    },
     notes: function () { return NOTES; },
 
     /** 走出小镇:断开,并且告诉别人我走了(不然要等 45 秒才消失)。 */

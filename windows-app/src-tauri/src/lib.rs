@@ -4,9 +4,12 @@
 
 mod capture;
 mod agent_monitor;
+mod dock_hook;
 mod hands;
 mod messages;
 mod permission;
+mod room_link;
+mod session_dock;
 mod phone;
 mod projects;
 mod agent_usage_scan;
@@ -4405,6 +4408,12 @@ pub fn run() {
             // the main thread and setup IS the main thread.
             { let h = app.handle().clone(); std::thread::spawn(move || hands::autostart(h)); }
 
+            // 房间 agent 通道: the hook endpoint agents post to, and the room
+            // channel itself (local MCP on 127.0.0.1:47824). Both listen on
+            // loopback only and are gated per session — see room_link.rs.
+            dock_hook::start(app.handle().clone());
+            room_link::start(app.handle().clone());
+
             // The localhost route Claude Code's hook posts to. One thread per
             // request because each can block for up to WAIT — two agents can
             // prompt at the same moment.
@@ -4573,6 +4582,26 @@ pub fn run() {
             hands::hands_get_enabled,
             hands::hands_set_enabled,
             hands::hands_line,
+            dock_hook::sd_queue,
+            dock_hook::sd_unqueue,
+            dock_hook::sd_answer,
+            dock_hook::sd_direct_status,
+            dock_hook::sd_direct_set,
+            room_link::rl_status,
+            room_link::rl_link,
+            room_link::rl_unlink,
+            room_link::rl_inbound,
+            room_link::rl_whisper,
+            room_link::rl_halt,
+            room_link::rl_wake,
+            room_link::rl_file_decide,
+            room_link::rl_fetch_file,
+            room_link::rl_reveal,
+            room_link::rl_mcp_install,
+            // Defined on macOS but never registered there, while the shared
+            // room.html calls it — that is a runtime "command not found" on
+            // macOS today. Registered here rather than copying the omission.
+            room_link::rl_openclaw_sessions,
             project_list,
             project_candidates,
             project_add,

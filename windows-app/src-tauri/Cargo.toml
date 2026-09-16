@@ -40,6 +40,16 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 # so the ICoreWebView2 types Tauri hands back unify with ours.
 webview2-com = "0.38"
 
+# The room agent channel: end-to-end encryption for private rooms (aes-gcm +
+# base64 for the "e1:" envelope the room window's WebCrypto also speaks) and
+# secret-scanning before anything leaves this machine (regex). Same versions as
+# the macOS build — the two sides encrypt and decrypt each other's messages.
+aes-gcm = "0.10"
+base64 = "0.22"
+regex = "1"
+# room_link fills its AES nonces straight from the OS CSPRNG.
+getrandom = "0.2"
+
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_UI_Accessibility",

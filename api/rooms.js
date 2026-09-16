@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const bus = require('./cowork-bus');
+const safety = require('./safety');
 
 const router = express.Router();
 
@@ -121,6 +122,22 @@ const idHash = (req) => {
   const secret = req.headers['x-terse-identity'] || req.query.identity;
   return secret ? hash(secret.toString()) : null;
 };
+
+/* Blocking is the viewer's own business. What the client gets is which MEMBER
+   ids in this room belong to people it blocked — never their identities — so
+   the history is filtered here and live lines on the bus (which go to everyone
+   alike) are dropped by the client from the same list. */
+function blockedMembers(req) {
+  const mine = new Set();
+  for (const h of [req.member && req.member.identity_hash, idHash(req)]) {
+    if (h) for (const b of safety.blockedBy(h)) mine.add(b);
+  }
+  if (!mine.size) return new Set();
+  return new Set(db.getRoomMembers.all(req.room.id)
+    .filter((m) => m.identity_hash && mine.has(safety.short(m.identity_hash)))
+    .map((m) => m.member_id));
+}
+const visible = (rows, blocked) => (blocked.size ? rows.filter((r) => !blocked.has(r.member_id)) : rows);
 
 /* What a client would actually SEE of the roster. Presence heartbeats are the
    most frequent call in the product and almost never change this, so it is the
@@ -423,13 +440,15 @@ router.post('/:id/knocks/:kid', requireMember, (req, res) => {
 
 // GET /api/cloud/rooms/:id   — roster + recent chat, for a cold client
 router.get('/:id', requireMember, (req, res) => {
+  const blocked = blockedMembers(req);
   res.json({
     ok: true,
     room: publicRoom(req.room),
     you: req.member.member_id,
     owner: isOwner(req),
     members: roster(req.room.id),
-    messages: db.getRoomMessages.all(req.room.id, 50).reverse().map(shape),
+    messages: visible(db.getRoomMessages.all(req.room.id, 50), blocked).reverse().map(shape),
+    blocked: [...blocked],
     keyshares: db.keysharesFor.all(req.room.id, req.member.member_id),
   });
 });
@@ -443,7 +462,8 @@ router.get('/:id/messages', requireMember, (req, res) => {
   const rows = Number.isFinite(before)
     ? db.getRoomMessagesBefore.all(req.room.id, before, limit)
     : db.getRoomMessages.all(req.room.id, limit);
-  res.json({ ok: true, messages: rows.reverse().map(shape), more: rows.length === limit });
+  res.json({ ok: true, messages: visible(rows, blockedMembers(req)).reverse().map(shape),
+             more: rows.length === limit });
 });
 
 // GET /api/cloud/rooms/:id/projects
@@ -497,12 +517,14 @@ router.get('/:id/stream', requireMember, (req, res) => {
     'X-Accel-Buffering': 'no',
   });
   res.flushHeaders?.();
+  const blocked = blockedMembers(req);
   res.write(`data: ${JSON.stringify({
     type: 'snapshot',
     room: publicRoom(req.room),
     you: req.member.member_id,
     members: roster(req.room.id),
-    messages: db.getRoomMessages.all(req.room.id, 50).reverse().map(shape),
+    messages: visible(db.getRoomMessages.all(req.room.id, 50), blocked).reverse().map(shape),
+    blocked: [...blocked],
     keyshares: db.keysharesFor.all(req.room.id, req.member.member_id),
   })}\n\n`);
 
@@ -611,6 +633,40 @@ router.post('/:id/messages', requireMember, (req, res) => {
   const stored = shape(db.getRoomMessage.get(msg.id));
   bus.emit(chan(req.room.id), { type: 'message', message: stored });
   res.json({ ok: true, message: stored });
+});
+
+// POST /api/cloud/rooms/:id/messages/:mid/report   Body: { reason?, excerpt? }
+// In an encrypted room the relay holds only ciphertext, so the evidence is the
+// plaintext the reporter saw — labelled as such, because nobody can verify it.
+router.post('/:id/messages/:mid/report', requireMember, (req, res) => {
+  const msg = db.getRoomMessage.get(req.params.mid);
+  if (!msg || msg.room_id !== req.room.id || msg.role === 'system') {
+    return res.status(404).json({ error: 'No such message' });
+  }
+  if (msg.member_id === req.member.member_id) return res.status(400).json({ error: 'That is your own message' });
+  const author = db.getRoomMembers.all(req.room.id).find((m) => m.member_id === msg.member_id);
+  const sealed = !msg.body || String(msg.body).startsWith('e1:');
+  const seen = clip((req.body?.excerpt || '').toString(), 1000);
+  const excerpt = sealed ? (seen ? '[e2e, as seen by reporter] ' + seen : '[e2e]') : msg.body;
+  const r = safety.report({
+    kind: 'room', targetId: msg.id, targetIdentity: author && author.identity_hash,
+    reporter: req.member.identity_hash || idHash(req) || hash(req.rawKey),
+    reason: req.body?.reason, excerpt,
+  });
+  res.json({ ok: true, reports: r.reports });
+});
+
+// POST /api/cloud/rooms/:id/members/:mid/block
+// Answers with this room's updated blocked list, so the client can drop the
+// person's lines already on screen and every one that arrives after.
+router.post('/:id/members/:mid/block', requireMember, (req, res) => {
+  const me = req.member.identity_hash || idHash(req);
+  if (!me) return res.status(403).json({ error: 'This copy of Terse is too old to block — update it' });
+  const m = db.getRoomMembers.all(req.room.id).find((x) => x.member_id === req.params.mid);
+  if (!m || !m.identity_hash) return res.status(404).json({ error: 'No such member' });
+  if (safety.short(m.identity_hash) === safety.short(me)) return res.status(400).json({ error: 'That is you' });
+  const row = safety.block(me, m.identity_hash, m.name, 'room');
+  res.json({ ok: true, id: row && row.id, blocked: [...blockedMembers(req)] });
 });
 
 // ════════════════════════════════════════

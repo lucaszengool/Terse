@@ -95,7 +95,8 @@
   <h1 data-t="h1">Terse on your phone.</h1>
   <p class="lede" data-t="lede">The same live wallpaper your Mac runs, driven by your agents — plus rooms, the plaza and friends. It installs from this page. There is no App Store download and no waiting for review.</p>
   <div class="cta">
-    <a class="btn" href="/m" data-t="open">Open Terse</a>
+    <a class="btn" id="apkTop" href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse-android.apk" style="display:none" data-t="apk">Download the Android app</a>
+    <a class="btn" id="openTop" href="/m" data-t="open">Open Terse</a>
     <a class="btn ghost" href="#install" data-t="how">How to install it</a>
   </div>
 </header>
@@ -183,8 +184,10 @@
     </ol>
   </div>
   <div class="card">
-    <h3 data-t="and_h">Android · Chrome</h3>
-    <p data-t="and_p">Chrome offers “Install app” in its menu, or prompts you on its own. Everything below works the same way afterwards.</p>
+    <h3 data-t="and_h">Android</h3>
+    <p data-t="and_p">Download the Android app and open the file to install it. The app adds what a web page can't: a real live wallpaper and the Terse keyboard.</p>
+    <p style="margin:14px 0 10px"><a class="btn" href="https://github.com/lucaszengool/Terse/releases/latest/download/Terse-android.apk" data-t="apk">Download the Android app</a></p>
+    <p style="font-size:13px;opacity:.7" data-t="and_note">The first time, Android asks you to allow installs from your browser — tap Settings, allow it, then go back. Rather not install anything? Chrome's menu also offers “Install app” for the web version.</p>
   </div>
 </section>
 
@@ -231,7 +234,8 @@
     i2c2:'然后在弹上来的面板里点这一行。',
     i3c:'它就和你别的 App 放在一起，点开是全屏的。',
     i3b:'从主屏幕打开 Terse', i3s:'打开后没有浏览器边框，登录状态一直在，还能收通知——这三件事在 Safari 标签页里都做不到。',
-    and_h:'Android · Chrome', and_p:'Chrome 菜单里有「安装应用」，有时也会自己弹出来。装好之后下面的都一样。',
+    and_h:'安卓', and_p:'下载安卓安装包，打开文件即可安装。App 能做到网页做不到的两件事：真正的动态壁纸，和 Terse 输入法。',
+    apk:'下载安卓版', and_note:'第一次安装时，安卓会让你允许浏览器安装应用——点「设置」、打开允许，再返回即可。不想装 App？Chrome 菜单里的「安装应用」可以装网页版。',
     link_h:'连接你的电脑',
     l1b:'在 Mac 或 Windows 上打开 Terse', l1s:'设置 → 连接手机。会显示一个二维码和六位码。',
     l2b:'用相机 App 扫一下', l2s:'用 iPhone 自带的相机对着扫，点弹出的链接。也可以在 Terse 的「我」里直接输入六位码。',
@@ -243,6 +247,11 @@
     f3h:'好友', f3p:'把在房间里遇到的人留下来。不要手机号，不读通讯录，对方也不需要注册账号。',
     f4h:'一个账号', f4p:'和桌面版同一个登录。Pro 就是 Pro，在你所有屏幕上都一样。',
   };
+  // On an Android phone the app is the better install, so it leads.
+  if (/Android/i.test(navigator.userAgent)) {
+    document.getElementById('apkTop').style.display = '';
+    document.getElementById('openTop').className = 'btn ghost';
+  }
   var zh = /^zh/i.test(navigator.language || '');
   // The English copy is the markup itself, so switching TO English is a reload
   // rather than a second dictionary that could drift out of sync with the HTML.

@@ -24,6 +24,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('./db');
+const safety = require('./safety');
 
 const router = express.Router();
 
@@ -65,7 +66,14 @@ const shape = (m, me) => ({
 // GET /api/cloud/dm — 收件箱:一条线一行(最后一句 + 未读数)。
 router.get('/', (req, res) => {
   const me = requireMe(req, res); if (!me) return;
-  const rows = db.dmInbox.all({ me });
+  // 拉黑了的人,他那条线在我这里就不存在了 —— 连同它的未读数。
+  const blocked = safety.blockedBy(me);
+  let hiddenUnread = 0;
+  const rows = db.dmInbox.all({ me }).filter((r) => {
+    if (!blocked.has(peerOf(r.thread, me))) return true;
+    hiddenUnread += r.unread || 0;
+    return false;
+  });
   const threads = rows.map((r) => {
     const last = db.dmLast.get({ thread: r.thread });
     return {
@@ -79,7 +87,21 @@ router.get('/', (req, res) => {
       at: r.last_at,
     };
   });
-  res.json({ ok: true, threads, unread: (db.dmUnreadTotal.get({ me }) || {}).n || 0 });
+  const unread = Math.max(0, ((db.dmUnreadTotal.get({ me }) || {}).n || 0) - hiddenUnread);
+  res.json({ ok: true, threads, unread });
+});
+
+/* ── 拉黑名单 ──────────────────────────────────────────────────────────────
+   挂在这里是因为私信是拉黑最先要管的地方;从评论、房间里拉黑的人也在这张表里。
+   ⚠ 必须写在 /:peer 前面,否则 "blocks" 会被当成一个人。 */
+router.get('/blocks', (req, res) => {
+  const me = requireMe(req, res); if (!me) return;
+  res.json({ ok: true, blocks: safety.listBlocks(me) });
+});
+router.delete('/blocks/:id', (req, res) => {
+  const me = requireMe(req, res); if (!me) return;
+  safety.unblock(me, req.params.id);
+  res.json({ ok: true });
 });
 
 // GET /api/cloud/dm/:peer — 一条线的全部,顺手标已读。
@@ -88,7 +110,10 @@ router.get('/:peer', (req, res) => {
   const peer = clip(req.params.peer, 64);
   if (!peer || peer === me) return res.status(400).json({ error: 'Bad peer' });
   const thread = threadOf(me, peer);
-  const msgs = db.dmThread.all({ thread }).map((m) => shape(m, me));
+  const blocked = safety.hasBlocked(me, peer);
+  const msgs = db.dmThread.all({ thread })
+    .filter((m) => !blocked || m.from_id === me)
+    .map((m) => shape(m, me));
   // 打开就算读过 —— 这是"看过了"最诚实的定义,不需要前端再报一次。
   db.dmMarkRead.run({ thread, me });
   res.json({
@@ -97,7 +122,8 @@ router.get('/:peer', (req, res) => {
     messages: msgs,
     // 这条线现在要不要由头。前端据此决定是直接给输入框,还是先要一个项目 ——
     // 让人打完一段话再告诉他"发不出去",是最糟的一种拒绝。
-    open: isOpen(thread, me, peer),
+    open: !blocked && isOpen(thread, me, peer),
+    blocked,
   });
 });
 
@@ -117,6 +143,10 @@ router.post('/:peer', (req, res) => {
   const body = clip(String(b.body || '').trim(), MAX_BODY);
   if (!body) return res.status(400).json({ error: 'Empty message' });
   const author = clip(String(b.author || '').trim(), 40) || null;
+
+  // 被拉黑的一方发不过去;拉黑的一方也别再往那边发 —— 先取消拉黑。
+  if (safety.hasBlocked(peer, me)) return res.status(403).json({ error: 'This person is not accepting your messages' });
+  if (safety.hasBlocked(me, peer)) return res.status(403).json({ error: 'You blocked this person' });
 
   const hour = (db.dmSentSince.get({ me, window: '-1 hours' }) || {}).n || 0;
   if (hour >= PER_HOUR) return res.status(429).json({ error: 'Too many messages', retryAfter: 3600 });
@@ -138,6 +168,38 @@ router.post('/:peer', (req, res) => {
   const id = uuid();
   db.sendDm.run({ id, thread, from_id: me, to_id: peer, from_name: author, project_id: projectId, body });
   res.json({ ok: true, id });
+});
+
+// POST /api/cloud/dm/:peer/report  { reason?, messageId? }
+// 证据由服务端自己取:对方在这条线上最近的几句。举报的人不必抄,也没法编。
+router.post('/:peer/report', (req, res) => {
+  const me = requireMe(req, res); if (!me) return;
+  const peer = clip(req.params.peer, 64);
+  if (!peer || peer === me) return res.status(400).json({ error: 'Bad peer' });
+  const thread = threadOf(me, peer);
+  const recent = db.dmRecentFrom.all({ thread, peer });
+  const mid = clip(String((req.body || {}).messageId || ''), 64);
+  const one = mid ? db.getDm.get(mid) : null;
+  const target = one && one.thread === thread && one.from_id === peer ? one : null;
+  if (!target && !recent.length) return res.status(404).json({ error: 'Nothing from this person to report' });
+  const excerpt = target ? target.body : recent.map((m) => m.body).reverse().join('\n');
+  const r = safety.report({
+    kind: 'dm', targetId: target ? target.id : thread, targetIdentity: peer,
+    reporter: me, reason: (req.body || {}).reason, excerpt,
+  });
+  res.json({ ok: true, reports: r.reports });
+});
+
+// POST /api/cloud/dm/:peer/block  { name? }
+router.post('/:peer/block', (req, res) => {
+  const me = requireMe(req, res); if (!me) return;
+  const peer = clip(req.params.peer, 64);
+  if (!peer || peer === me) return res.status(400).json({ error: 'Bad peer' });
+  // 名字取他自己最近报的那个,给"已拉黑"列表看;客户端给的只是退路。
+  const last = db.dmRecentFrom.all({ thread: threadOf(me, peer), peer })[0];
+  const named = last ? (db.getDm.get(last.id) || {}).from_name : null;
+  const row = safety.block(me, peer, named || clip(String((req.body || {}).name || ''), 40), 'dm');
+  res.json({ ok: true, id: row && row.id });
 });
 
 module.exports = router;

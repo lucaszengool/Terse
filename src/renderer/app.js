@@ -149,6 +149,7 @@ function openPaywall(reason) {
   gate.dataset.userOpened = '1';
   gate.classList.remove('hidden'); gate.style.display = 'flex';
   if (reason) { const sub = $('#paywallSubtitle'); if (sub) sub.textContent = reason; }
+  prewarmChinaPay(); // 付费墙一开就备好微信二维码，点下去才是秒开
 }
 function closePaywall() {
   const gate = $('#paywallGate'); if (!gate) return;
@@ -330,6 +331,103 @@ async function startTrialCheckout(tier, noTrial = false, paymentMethod = null) {
   } catch (e) { toast('Network error: ' + e, true); }
 }
 
+// ── 微信付款码：码直接画在 Terse 窗口里 ──────────────────────────────────────
+// 后端 /api/checkout/qr 把待付发票的 PaymentIntent 用微信确认一下，回来的就是
+// weixin:// 开头的码内容，交给 qr.js 画成 SVG。省掉「从国内加载 Stripe 托管页 →
+// 再点一次微信支付」这两步 —— 二维码迟迟不出来，大头就在这两步上。
+const PAY_API_BASE = 'https://www.terseai.org';
+let wechatQrPoll = null;
+
+function openPayUrl(url) {
+  try {
+    if (!window.__TAURI__?.shell) throw new Error('no shell');
+    return window.__TAURI__.shell.open(url);
+  } catch { window.open(url, '_blank'); }
+}
+
+function closeWechatQr() {
+  if (wechatQrPoll) { clearInterval(wechatQrPoll); wechatQrPoll = null; }
+  const sheet = $('#wechatQrSheet');
+  if (sheet) { sheet.classList.add('hidden'); sheet.style.display = 'none'; }
+}
+
+// 扫完码是 Stripe 那边异步确认的，所以这里轮询 PaymentIntent。真正开权限的仍是
+// invoice.paid webhook，这里只负责把二维码收起来、把界面刷新成已开通。
+function startWechatPoll(paymentIntentId) {
+  if (wechatQrPoll) clearInterval(wechatQrPoll);
+  const started = Date.now();
+  wechatQrPoll = setInterval(async () => {
+    if (Date.now() - started > 10 * 60 * 1000) { closeWechatQr(); return; } // 码本身也就这个寿命
+    try {
+      const r = await fetch(`${PAY_API_BASE}/api/checkout/qr/status?paymentIntentId=${encodeURIComponent(paymentIntentId)}`);
+      const s = await r.json();
+      if (s.paid) {
+        closeWechatQr();
+        closePaywall();
+        toast('支付成功，Pro 已开通');
+        try { updateLicenseBanner(); refreshUpgradeCta(); } catch {}
+      }
+    } catch {}
+  }, 2500);
+}
+
+async function wechatQrCheckout(tier) {
+  let auth;
+  try { auth = await T.getAuth(); } catch (e) { toast('Auth error: ' + e, true); return; }
+  if (!auth.signedIn || !auth.clerkUserId) { toast('Not signed in (signedIn=' + auth.signedIn + ')', true); return; }
+
+  const sheet = $('#wechatQrSheet'), box = $('#wechatQrBox'), fallback = $('#wechatQrFallback');
+  if (sheet) { sheet.classList.remove('hidden'); sheet.style.display = 'flex'; }
+  if (box) box.innerHTML = '<span style="color:#888;font-size:11px">正在生成二维码…</span>';
+
+  let data;
+  try {
+    const res = await fetch(`${PAY_API_BASE}/api/checkout/qr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier, clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email, paymentMethod: 'wechat_pay' }),
+    });
+    data = await res.json();
+  } catch (e) {
+    closeWechatQr();
+    toast('Network error: ' + e, true);
+    return;
+  }
+
+  // 码没拿到就退回托管页：慢一点，但钱照样付得了，别把人堵死在这儿。
+  if (!data?.qr || !window.TerseQR) {
+    closeWechatQr();
+    if (data?.url) { openPayUrl(data.url); toast('已在浏览器打开付款页'); }
+    else toast('Error: ' + (data?.error || '二维码生成失败'), true);
+    return;
+  }
+
+  if (box) box.innerHTML = window.TerseQR.svg(data.qr, { size: 200, quiet: 2 });
+  if (fallback) fallback.onclick = () => { if (data.url) openPayUrl(data.url); };
+  if (data.paymentIntentId) startWechatPoll(data.paymentIntentId);
+}
+
+if ($('#wechatQrClose')) $('#wechatQrClose').addEventListener('click', closeWechatQr);
+
+// 打开付费墙时就让后端把发票和二维码备好（后台跑，不等结果）。真点下去时命中缓存，
+// 实测 5.7s → 0.05s。用户没点微信也只是多一张待付发票，三天后自己过期。
+let chinaPayPrewarmed = false;
+function prewarmChinaPay() {
+  if (chinaPayPrewarmed) return;
+  chinaPayPrewarmed = true;
+  (async () => {
+    try {
+      const auth = await T.getAuth();
+      if (!auth?.signedIn || !auth.clerkUserId) { chinaPayPrewarmed = false; return; }
+      await fetch(`${PAY_API_BASE}/api/checkout/prewarm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: selectedTier(), clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email, paymentMethod: 'wechat_pay' }),
+      });
+    } catch { chinaPayPrewarmed = false; } // 预热失败无所谓，点击那条路自己会生成
+  })();
+}
+
 // Currently selected plan tier (set by the plan cards via window.__terseSelectPlan).
 // Payment-method buttons below act on whichever plan is selected.
 const selectedTier = () => window.__terseTier || 'pro';
@@ -345,7 +443,8 @@ if ($('#paywallCardBtn')) {
   });
 }
 if ($('#paywallWechatBtn')) {
-  $('#paywallWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'wechat_pay'); });
+  // 微信走窗口内二维码；支付宝在 Stripe 那边是跳转不是码，仍旧开浏览器。
+  $('#paywallWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); wechatQrCheckout(selectedTier()); });
 }
 if ($('#paywallAlipayBtn')) {
   $('#paywallAlipayBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'alipay'); });
@@ -362,7 +461,7 @@ if ($('#paywallSubscribePremiumBtn')) {
   $('#paywallSubscribePremiumBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout('premium', true); });
 }
 if ($('#paywallSubscribeWechatBtn')) {
-  $('#paywallSubscribeWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'wechat_pay'); });
+  $('#paywallSubscribeWechatBtn').addEventListener('click', (e) => { e.stopPropagation(); wechatQrCheckout(selectedTier()); });
 }
 if ($('#paywallSubscribeAlipayBtn')) {
   $('#paywallSubscribeAlipayBtn').addEventListener('click', (e) => { e.stopPropagation(); startTrialCheckout(selectedTier(), true, 'alipay'); });

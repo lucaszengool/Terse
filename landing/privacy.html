@@ -12,20 +12,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy — Terse</title>
-  <meta name="description" content="How Terse handles your data: optimization runs entirely on-device, prompts and source never leave your machine, and what the app does and does not store.">
+  <meta name="description" content="What data Terse collects, why, who processes it, how long we keep it, and how to delete your account. The Terse keyboards compress text on your device and never send what you type.">
   <link rel="canonical" href="https://www.terseai.org/privacy">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Privacy Policy — Terse">
-  <meta property="og:description" content="How Terse handles your data: optimization runs entirely on-device, prompts and source never leave your machine, and what the app does and does not store.">
+  <meta property="og:description" content="What data Terse collects, why, who processes it, how long we keep it, and how to delete your account.">
   <meta property="og:url" content="https://www.terseai.org/privacy">
   <meta property="og:site_name" content="Terse">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Privacy Policy — Terse">
-  <meta name="twitter:description" content="How Terse handles your data: optimization runs entirely on-device, prompts and source never leave your machine, and what the app does and does not store.">
+  <meta name="twitter:description" content="What data Terse collects, why, who processes it, how long we keep it, and how to delete your account.">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"WebPage","name":"Privacy Policy — Terse","url":"https://www.terseai.org/privacy","description":"Terse privacy policy. Your data stays on your device.","isPartOf":{"@type":"WebSite","name":"Terse","url":"https://www.terseai.org/"}}
+  {"@context":"https://schema.org","@type":"WebPage","name":"Privacy Policy — Terse","url":"https://www.terseai.org/privacy","description":"Terse privacy policy: what we collect, why, who processes it, retention, and account deletion.","isPartOf":{"@type":"WebSite","name":"Terse","url":"https://www.terseai.org/"}}
   </script>
   <link rel="icon" href="/favicon.ico" sizes="16x16 32x32">
   <link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32">
@@ -37,6 +37,7 @@
     h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
     .date { color: #888; font-size: 0.9rem; margin-bottom: 40px; }
     h2 { font-size: 1.25rem; font-weight: 600; color: #d1e847; margin-top: 36px; margin-bottom: 12px; }
+    h3 { font-size: 1.05rem; font-weight: 600; color: #fff; margin-top: 24px; margin-bottom: 8px; }
     p, li { font-size: 1rem; color: #ccc; margin-bottom: 12px; }
     ul { padding-left: 20px; }
     li { margin-bottom: 8px; }
@@ -45,6 +46,16 @@
     .back { display: inline-block; margin-bottom: 32px; color: #888; font-size: 0.9rem; }
     .back:hover { color: #d1e847; }
     strong { color: #fff; }
+    .table-wrap { overflow-x: auto; margin: 16px 0 12px; border: 1px solid #23263a; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 560px; }
+    th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid #23263a; color: #ccc; line-height: 1.5; }
+    th { color: #fff; font-weight: 600; background: #12152a; }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { color: #fff; font-weight: 500; }
+    .note { font-size: 0.9rem; color: #999; }
+    nav.toc ul { columns: 2; column-gap: 24px; }
+    nav.toc li { font-size: 0.95rem; margin-bottom: 4px; break-inside: avoid; }
+    @media (max-width: 520px) { nav.toc ul { columns: 1; } }
   </style>
   <script type="application/ld+json">
 {
@@ -71,45 +82,246 @@
   <div class="container">
     <a href="/" class="back">&larr; Back to Terse</a>
     <h1>Privacy Policy</h1>
-    <p class="date">Effective: March 26, 2026</p>
+    <p class="date">Effective: September 15, 2026</p>
 
     <h2>Overview</h2>
-    <p>Terse is designed with privacy as a core principle. <strong>All text optimization runs 100% on your device.</strong> We do not collect, transmit, or store your text, prompts, or any content you type.</p>
-
-    <h2>Data We Do Not Collect</h2>
+    <p>This policy covers the Terse website (terseai.org), the Terse web app (terseai.org/m), the Terse desktop apps for macOS and Windows, the Terse apps and keyboards for Android and iOS, and the Terse API. Together we call these "Terse". "We" and "us" means the Terse team.</p>
+    <p>Some parts of Terse run only on your device. Others need our servers. In brief:</p>
     <ul>
-      <li>Text you type or optimize</li>
-      <li>Prompts, messages, or conversations</li>
-      <li>Keystroke data or typing patterns</li>
-      <li>Contacts, photos, or personal files</li>
-      <li>Location data</li>
+      <li><strong>The Terse keyboards (Android and iOS) compress your text on your device.</strong> What you type in the keyboard is never sent to us or anyone else.</li>
+      <li><strong>If you create an account,</strong> we store your email address, your name if you give one, and an account ID.</li>
+      <li><strong>If you use the social features</strong> (rooms, the plaza, direct messages, friends, shared documents), we store what you post or send so that other people can see it. Posts and comments on the public plaza can be seen by anyone.</li>
+      <li><strong>If you link the desktop app to your phone or join a team,</strong> the desktop app uploads usage statistics about your AI coding agents, and in some cases short excerpts of their activity (details below).</li>
+      <li>We use Google Analytics on our marketing website. We do not show ads, we do not use advertising IDs, and we do not sell your data.</li>
     </ul>
 
-    <h2>Data Stored On Your Device</h2>
-    <p>The following data is stored locally on your device only and is never transmitted to any server:</p>
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#summary">Summary of data we collect</a></li>
+        <li><a href="#on-device">What stays on your device</a></li>
+        <li><a href="#account">Account and sign-in</a></li>
+        <li><a href="#purchases">Purchases</a></li>
+        <li><a href="#content">Content you create or send</a></li>
+        <li><a href="#desktop">Desktop app, phone link and teams</a></li>
+        <li><a href="#identifiers">Device and app identifiers</a></li>
+        <li><a href="#diagnostics">Diagnostics</a></li>
+        <li><a href="#website">Website, analytics, newsletter and support</a></li>
+        <li><a href="#developers">Developer API and marketplace</a></li>
+        <li><a href="#providers">Service providers</a></li>
+        <li><a href="#sharing">How data is shared</a></li>
+        <li><a href="#retention">Retention and account deletion</a></li>
+        <li><a href="#security">Security</a></li>
+        <li><a href="#rights">Your rights</a></li>
+        <li><a href="#children">Children</a></li>
+        <li><a href="#transfers">International transfers</a></li>
+        <li><a href="#changes">Changes to this policy</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+
+    <h2 id="summary">Summary of Data We Collect</h2>
+    <p>This table lists every type of data that leaves your device and reaches us or a company that processes it for us. Everything is sent over an encrypted (HTTPS) connection. Some features need an account; the others are optional and only run when you use them.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Data type</th><th>What exactly</th><th>Why we use it</th><th>Who receives it</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Personal info: email, name, user IDs</td>
+            <td>Email address; first and last name if you provide them or they come from Google, Apple or WeChat sign-in (for WeChat, your nickname); account ID; your display name in rooms and on the plaza</td>
+            <td>Creating and signing in to your account, restoring purchases, showing your name to people you interact with, replying to you</td>
+            <td>Clerk (sign-in); Stripe (email, if you buy on the web or desktop); people you interact with see your display name</td>
+          </tr>
+          <tr>
+            <td>Financial info: purchase history</td>
+            <td>Plan, subscription or one-time purchase status, expiry date; Stripe customer and subscription IDs; Google Play purchase tokens; Apple transaction IDs. We never see or store card numbers.</td>
+            <td>Checking payments and unlocking paid features</td>
+            <td>Stripe, Google Play or Apple, depending on where you pay</td>
+          </tr>
+          <tr>
+            <td>Messages</td>
+            <td>Room chat messages, direct messages, team chat messages. In private rooms with end-to-end encryption on, we store only encrypted text we cannot read.</td>
+            <td>Delivering messages and keeping chat history</td>
+            <td>The people you message, and members of the room or team</td>
+          </tr>
+          <tr>
+            <td>Photos and videos</td>
+            <td>Cover images, animations and video frames on plaza posts; wallpaper images and videos you upload (PNG, JPEG, MP4); images you share in rooms</td>
+            <td>Showing your posts; delivering your wallpaper to your phone</td>
+            <td>Plaza posts are public. Wallpapers are available only through your account and your private wallpaper link. Room images go to room members.</td>
+          </tr>
+          <tr>
+            <td>Files and documents</td>
+            <td>Files you attach in private rooms (deleted after 7 days); documents, sheets and slides you create in Terse Docs</td>
+            <td>Letting you share and edit them with others</td>
+            <td>Room members; people you share a document with</td>
+          </tr>
+          <tr>
+            <td>Other user content</td>
+            <td>Plaza post titles, text and links (including GitHub repository links); comments; likes and favorites; reports; friend requests and friend links</td>
+            <td>Running the plaza and friend features, and moderating content</td>
+            <td>Public plaza content is visible to everyone. When you link a GitHub repository, we fetch its public information from GitHub.</td>
+          </tr>
+          <tr>
+            <td>App activity: AI agent usage</td>
+            <td>Only if you link a phone or join a team: token counts, estimated costs, agent names, project (folder) names, model names and, for linked phones and teams, short excerpts of recent agent activity</td>
+            <td>Showing your agents' activity on your phone, and on your team's dashboard if you join a team</td>
+            <td>Your own linked phone; members of a team you join</td>
+          </tr>
+          <tr>
+            <td>Device or other IDs</td>
+            <td>A hash of the random identity key the app creates on each install; records linking your phone and computer; web push subscriptions if you turn on notifications</td>
+            <td>Knowing who you are in rooms, on the plaza and in messages without requiring an account; sending notifications you asked for</td>
+            <td>Web push services (Apple, Google, Mozilla), for notifications only</td>
+          </tr>
+          <tr>
+            <td>Diagnostics</td>
+            <td>Anonymous error reports from the web app: browser type, screen size, graphics (GPU) info, error text. They contain no account or identity.</td>
+            <td>Fixing bugs</td>
+            <td>No one else. We keep only the last 50 reports, in memory.</td>
+          </tr>
+          <tr>
+            <td>Website analytics</td>
+            <td>Pages viewed, referrer, device and browser type, approximate location worked out from your IP address, and Google Analytics cookies. Only on our marketing website.</td>
+            <td>Seeing which pages are useful</td>
+            <td>Google (Google Analytics)</td>
+          </tr>
+          <tr>
+            <td>Support and newsletter</td>
+            <td>Your question, and your email address if you leave one; your email address if you subscribe to the newsletter</td>
+            <td>Answering you; sending the newsletter</td>
+            <td>Slack (where our team reads support messages); Buttondown (newsletter)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Not collected:</strong> text typed in the Terse keyboards, keystrokes or typing patterns, contacts, precise location, advertising IDs, health or fitness data, call logs, SMS, or your photo library (only images you choose to upload are sent). We do not sell personal data. We do not use it for advertising and we do not share it with data brokers.</p>
+
+    <h2 id="on-device">What Stays on Your Device</h2>
+    <h3>Terse keyboards (Android and iOS)</h3>
+    <p>Prompt compression runs entirely on your device. <strong>Text you type in the keyboard is never sent to us or anyone else.</strong> Keyboard settings (theme, language, optimization mode) and your weekly optimization count are stored on your device.</p>
+    <p><strong>iOS "Full Access".</strong> The iOS keyboard asks for Full Access. It needs it so it can read and write storage it shares with the main Terse app: your theme, keyboard language, optimization settings and weekly optimization count. The keyboard does not contain any code that connects to the internet. With or without Full Access, your keystrokes stay on your device.</p>
+    <h3>Share and action extensions, and the Optimize screen</h3>
+    <p>When you send text to Terse from another app, or paste it into the app's Optimize screen, it is compressed on your device. The text itself is never uploaded. The apps may contact our server to check your sign-in and subscription status.</p>
+    <h3>Desktop app</h3>
+    <p>To show your AI coding agents' token usage and costs, the desktop app reads the local files of tools such as Claude Code, Cursor and Codex. These stay on your computer unless you turn on one of the features described in <a href="#desktop">Desktop app, phone link and teams</a>. To show your plan limits, the app may contact an AI provider's own usage service (for example Anthropic or Cursor) with the login already stored on your computer. That exchange is only between your computer and the provider; it does not go through our servers.</p>
+
+    <h2 id="account">Account and Sign-In</h2>
+    <p>You need an account for purchases, the phone web app, linking devices, posting to the plaza, wallpapers, direct messages, teams and Terse Docs. Sign-in is handled by <a href="https://clerk.com/legal/privacy">Clerk</a>. You can sign in with email and password, a passkey, Google, Apple or WeChat. We do not see or store your password.</p>
+    <p>We store your Clerk account ID, your email address, your name if you give one, and your plan status. With Apple sign-in you may choose Apple's private relay email. WeChat sign-in gives us your WeChat ID and nickname, but no email address.</p>
+
+    <h2 id="purchases">Purchases</h2>
     <ul>
-      <li><strong>Token savings statistics</strong> — total tokens saved, session counts, and estimated cost savings</li>
-      <li><strong>Theme preferences</strong> — your selected keyboard theme and unlocked themes</li>
-      <li><strong>Settings</strong> — optimization mode (Soft/Balanced/Aggressive) and language preferences</li>
+      <li><strong>Web and desktop:</strong> payments are processed by <a href="https://stripe.com/privacy">Stripe</a>. Stripe receives your email address and payment details. We store your Stripe customer ID, subscription ID and purchase status.</li>
+      <li><strong>Android:</strong> in-app purchases go through Google Play Billing. Our server receives the purchase token so it can confirm and unlock your subscription.</li>
+      <li><strong>iOS:</strong> in-app purchases go through Apple. Our server receives the transaction ID and expiry date.</li>
+    </ul>
+    <p>We never receive or store full card numbers or bank details.</p>
+
+    <h2 id="content">Content You Create or Send</h2>
+    <p>Content you create in Terse's social and collaboration features is stored on our servers so it can be delivered and shown:</p>
+    <ul>
+      <li><strong>Rooms:</strong> your display name, chat messages, images and file attachments (files are deleted after 7 days), plus messages posted by AI agents you connect to a room. When end-to-end encryption is on in a private room, messages, agent messages and file names are encrypted on members' devices, and our server stores only encrypted text it cannot read. Encryption is not available in public rooms.</li>
+      <li><strong>Plaza:</strong> posts (title, cover image, animation or video frames, text and links), comments, likes, favorites and reports. <strong>Posts and comments on the plaza are public.</strong> When you post a GitHub repository link, we fetch the repository's public information (such as its description and file structure) from the GitHub API to build the post.</li>
+      <li><strong>Direct messages and friends:</strong> messages between you and other users, friend requests, friend links and display names.</li>
+      <li><strong>Wallpapers:</strong> if you are signed in and use the phone wallpaper feature, the images (PNG or JPEG) and videos (MP4) your device captures are uploaded so your phone can fetch them. You can also connect optional third-party services yourself (Pushcut, ActivitySmith) to refresh your wallpaper or Live Activity. We store the link or key you give us and only use it to send those updates.</li>
+      <li><strong>Terse Docs and teams:</strong> the documents, comments and edit history you create, the email addresses of people you invite, team names, members and team chat.</li>
     </ul>
 
-    <h2>Account &amp; Authentication</h2>
-    <p>If you create a Terse account (optional), we use Clerk for authentication. Clerk processes your email address for login purposes only. We do not access or store your password. See <a href="https://clerk.com/privacy">Clerk's Privacy Policy</a> for details.</p>
+    <h2 id="desktop">Desktop App, Phone Link and Teams</h2>
+    <p>By default, the desktop app does not upload your agent data. It uploads only when you turn on one of these features:</p>
+    <ul>
+      <li><strong>Linking a phone.</strong> When you pair the desktop app with the Terse phone app and sharing is on, the desktop app sends a live snapshot every few seconds. The snapshot includes today's usage statistics and, for up to 8 active agents: agent name, project (folder) name, model, token counts, estimated cost, and the last few lines of each agent's recent activity, each cut to 140 characters. We keep only the latest snapshot and overwrite it each time. Your phone is the only one that can see it. You can turn sharing off or unlink at any time. The desktop app can also ask the server to send notifications to your phone (for example, when an agent is waiting for your approval).</li>
+      <li><strong>Joining a team.</strong> If you connect the desktop app to a team, it sends usage events (your email, tool, project name, model, tokens) to the team dashboard. If "share logs" is on, it also sends your agents' working logs (messages, tool calls and a one-line summary of the current task). Team members can see this data. You can turn either setting off, or leave the team.</li>
+      <li><strong>Rooms.</strong> If you connect an AI agent to a room, the messages it posts there are stored like any other room message.</li>
+    </ul>
 
-    <h2>Third-Party Services</h2>
-    <p>Terse does not integrate any analytics, advertising, or tracking SDKs. We do not share data with third parties.</p>
+    <h2 id="identifiers">Device and App Identifiers</h2>
+    <ul>
+      <li><strong>Install identity:</strong> each installation of the app creates its own random secret key. That key lets you use rooms, friends and the plaza without an account. Our server stores only a one-way hash of it, never the key itself. When you sign in, this identity is tied to your account.</li>
+      <li><strong>Device links:</strong> when you pair a computer with your phone, we store the pairing: your account ID, a hash of the computer's secret, the device type and the computer's name.</li>
+      <li><strong>Push notifications:</strong> if you enable notifications in the web app, we store the subscription your browser gives us (a push endpoint and its encryption keys) and your browser type. The notifications are delivered by your browser's push service (Apple, Google or Mozilla).</li>
+    </ul>
+    <p>We do not collect advertising IDs, IMEI, serial numbers or MAC addresses.</p>
 
-    <h2>Keyboard Extension (Full Access)</h2>
-    <p>Terse's keyboard extension may request "Full Access" to enable features like syncing theme preferences. Even with Full Access enabled, <strong>no keystrokes or text content are transmitted off your device</strong>. The optimization engine runs entirely on-device.</p>
+    <h2 id="diagnostics">Diagnostics</h2>
+    <p>If something breaks in the Terse web app, it can send an anonymous error report: browser type, screen size, graphics (GPU) info, whether things loaded, and the error text. Reports contain no account, identity or content. We keep only the most recent 50, in memory only, and they are cleared whenever the server restarts.</p>
+    <p>Like most online services, our servers process your IP address to deliver responses and limit abuse. Our hosting logs may include IP addresses, request paths and account IDs. These logs expire within 30 days.</p>
 
-    <h2>Children's Privacy</h2>
-    <p>Terse does not knowingly collect any personal information from children under 13. The app does not collect personal information from any user.</p>
+    <h2 id="website">Website, Analytics, Newsletter and Support</h2>
+    <ul>
+      <li><strong>Google Analytics:</strong> our marketing pages (including this one) use Google Analytics (ID G-LNCSLGTN76). It sets cookies and records pages visited, referrer, device and browser type, and approximate location from your IP address. Google Analytics is not used in the Terse web app (terseai.org/m), the desktop apps, the Android app or the iOS app. You can block it with a browser extension or <a href="https://tools.google.com/dlpage/gaoptout">Google's opt-out add-on</a>. See <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</li>
+      <li><strong>Newsletter:</strong> if you subscribe, we send your email address to <a href="https://buttondown.com/legal/privacy">Buttondown</a>, which delivers the newsletter. Every issue has an unsubscribe link.</li>
+      <li><strong>Support form:</strong> the question you send, the page you sent it from, and your email address if you give one go to our team's Slack workspace so we can answer.</li>
+    </ul>
 
-    <h2>Changes to This Policy</h2>
-    <p>We may update this policy from time to time. Changes will be posted on this page with an updated effective date.</p>
+    <h2 id="developers">Developer API and Marketplace</h2>
+    <ul>
+      <li><strong>Terse API:</strong> text you send to the Terse API is compressed on our server and returned in the response. We do not store the text, only request counts and token totals for your API key.</li>
+      <li><strong>API key marketplace:</strong> if you sell access to an AI provider API key, we store that key encrypted and use it only to relay buyers' requests. Payouts go through Stripe Connect. If you buy access, your requests are relayed to the relevant AI provider (Anthropic, OpenAI or Google) under that provider's terms. We record token counts and costs for billing, not the content of requests.</li>
+    </ul>
 
-    <h2>Contact</h2>
-    <p>Questions about this privacy policy? Contact us at <a href="mailto:privacy@terseai.org">privacy@terseai.org</a>.</p>
+    <h2 id="providers">Service Providers</h2>
+    <p>We use these companies to run Terse. They process data only to provide their service to us:</p>
+    <ul>
+      <li><strong>Clerk</strong>: sign-in and account management</li>
+      <li><strong>Stripe</strong>: web and desktop payments and marketplace payouts</li>
+      <li><strong>Google Play</strong> and <strong>Apple</strong>: in-app purchases</li>
+      <li><strong>Railway</strong>: server hosting and database</li>
+      <li><strong>Cloudflare</strong>: content delivery and security</li>
+      <li><strong>jsDelivr</strong>: delivers Clerk's sign-in script to web pages</li>
+      <li><strong>GitHub</strong>: public repository information, when you link a repository</li>
+      <li><strong>Apple, Google and Mozilla push services</strong>: web push notifications, if you enable them</li>
+      <li><strong>Google Analytics</strong>: marketing website analytics</li>
+      <li><strong>Buttondown</strong>: newsletter, if you subscribe</li>
+      <li><strong>Slack</strong>: receiving support messages</li>
+      <li><strong>WeChat (Tencent)</strong>: sign-in, only if you choose WeChat login</li>
+      <li><strong>Anthropic, OpenAI and Google</strong>: only for requests relayed through the API key marketplace</li>
+      <li><strong>Pushcut and ActivitySmith</strong>: only if you connect them yourself for wallpaper or Live Activity updates</li>
+    </ul>
+
+    <h2 id="sharing">How Data Is Shared</h2>
+    <p>We share personal data only in these cases:</p>
+    <ul>
+      <li>With the service providers listed above, so they can provide their service to us.</li>
+      <li>With other users, when you choose to: public plaza posts and comments, messages to the people you message, room content with room members, documents with the people you share them with, and agent data with your team if you join one.</li>
+      <li>When required by law, or to protect the rights, safety and security of our users and of Terse.</li>
+      <li>In a merger, acquisition or sale of assets. This policy would continue to apply to your data.</li>
+    </ul>
+
+    <h2 id="retention">Retention and Account Deletion</h2>
+    <p>We keep your data while your account is active, or for as long as you keep the content. Some data expires sooner: room file attachments after 7 days, phone-link snapshots are replaced every few seconds, diagnostic reports are held in memory only, and server logs and backups expire within 30 days.</p>
+    <p><strong>Deleting your account.</strong> You can delete your account in the app (<strong>Me &rarr; Account &rarr; Delete account</strong>) or at <a href="https://www.terseai.org/delete-account">terseai.org/delete-account</a>. Deleting your account removes your account and profile, posts, comments, messages, room memberships, friend links, wallpapers, device links and push subscriptions. Remaining copies in server logs and backups are removed within 30 days. Payment records held by Stripe, Google or Apple are kept by those companies as the law requires. Deleting the app from a device removes the data stored on that device.</p>
+    <p>You can also delete individual plaza posts and comments, leave rooms and teams, unlink devices, remove wallpapers and turn off notifications at any time.</p>
+
+    <h2 id="security">Security</h2>
+    <p>All connections between Terse and our servers use HTTPS. Install identity keys, device secrets, room keys and API keys are stored only as one-way hashes. Marketplace provider keys are stored encrypted. Private rooms can use end-to-end encryption. No system is perfectly secure. If you think you have found a security problem, please email us.</p>
+
+    <h2 id="rights">Your Rights</h2>
+    <p>Depending on where you live (including under the GDPR in the EU and UK, and the CCPA/CPRA in California), you may have the right to:</p>
+    <ul>
+      <li>access the personal data we hold about you and receive a copy in a portable format;</li>
+      <li>correct inaccurate data;</li>
+      <li>delete your data;</li>
+      <li>object to or restrict certain processing, and withdraw consent where we rely on it;</li>
+      <li>complain to your local data protection authority.</li>
+    </ul>
+    <p>To use any of these rights, email <a href="mailto:privacy@terseai.org">privacy@terseai.org</a>. We will respond within 30 days and may need to verify your identity first. We will not treat you differently for using your rights. We do not sell or "share" personal information for cross-context behavioral advertising, as those terms are defined in the CCPA.</p>
+    <p>We process your data to provide the service you asked for (contract), to keep Terse secure and improve it (legitimate interests), where you have given consent (for example notifications and analytics cookies), and to meet legal obligations.</p>
+
+    <h2 id="children">Children</h2>
+    <p>Terse is not directed to children under 13, and we do not knowingly collect personal data from children under 13. If we learn that we have, we will delete it. If you believe a child has given us personal data, please contact <a href="mailto:privacy@terseai.org">privacy@terseai.org</a>.</p>
+
+    <h2 id="transfers">International Transfers</h2>
+    <p>Our servers are in the United States. If you use Terse from another country, your data will be transferred to and processed in the United States, and possibly in other countries where our service providers operate. Where required, we rely on appropriate safeguards such as Standard Contractual Clauses.</p>
+
+    <h2 id="changes">Changes to This Policy</h2>
+    <p>We may update this policy as Terse changes. We will post the new version on this page and change the effective date at the top. If a change is significant, we will also tell you in the app or by email.</p>
+
+    <h2 id="contact">Contact</h2>
+    <p>Questions or requests about this privacy policy? Email <a href="mailto:privacy@terseai.org">privacy@terseai.org</a>.</p>
   </div>
 </body>
 </html>

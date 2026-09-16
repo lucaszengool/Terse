@@ -1944,7 +1944,7 @@ const countWallComments = db.prepare(
   'SELECT project_id, COUNT(*) AS n FROM wall_comments GROUP BY project_id');
 // 预览时要"最高赞的三条" —— 直接在列表接口里带出来,省掉一次往返。
 const topWallComments = db.prepare(`
-  SELECT project_id, body, likes FROM wall_comments
+  SELECT id, project_id, identity, body, likes FROM wall_comments
   WHERE parent_id IS NULL AND likes > 0
   ORDER BY project_id, likes DESC, created_at ASC`);
 
@@ -1990,7 +1990,53 @@ const syncWallCommentLikes = db.prepare(
 const myWallCommentLikes = db.prepare(
   'SELECT comment_id FROM wall_comment_likes WHERE identity = @identity');
 
+/* ── 举报与拉黑(safety.js)────────────────────────────────────────────────
+   身份一律是 32 位短哈希 —— 房间和好友那边的 64 位截前 32 位就是同一个人。
+   举报一人一票:主键里带着举报人,按十次还是一票。 */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_blocks (
+    id TEXT PRIMARY KEY,
+    blocker TEXT NOT NULL,
+    blocked TEXT NOT NULL,
+    name TEXT,
+    kind TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(blocker, blocked)
+  );
+  CREATE TABLE IF NOT EXISTS safety_reports (
+    kind TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    target_identity TEXT,
+    reporter TEXT NOT NULL,
+    reason TEXT,
+    excerpt TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (kind, target_id, reporter)
+  );
+`);
+const addBlock = db.prepare(`
+  INSERT OR IGNORE INTO user_blocks (id, blocker, blocked, name, kind)
+  VALUES (@id, @blocker, @blocked, @name, @kind)`);
+const getBlock = db.prepare('SELECT * FROM user_blocks WHERE blocker = @a AND blocked = @b');
+const removeBlock = db.prepare('DELETE FROM user_blocks WHERE id = @id AND blocker = @me');
+const blocksBy = db.prepare('SELECT * FROM user_blocks WHERE blocker = @me ORDER BY created_at DESC LIMIT 500');
+const blockedIdsBy = db.prepare('SELECT blocked FROM user_blocks WHERE blocker = @me');
+const isBlockedBy = db.prepare('SELECT 1 AS yes FROM user_blocks WHERE blocker = @a AND blocked = @b');
+const addSafetyReport = db.prepare(`
+  INSERT OR IGNORE INTO safety_reports (kind, target_id, target_identity, reporter, reason, excerpt)
+  VALUES (@kind, @target_id, @target_identity, @reporter, @reason, @excerpt)`);
+const countSafetyReports = db.prepare(
+  'SELECT COUNT(*) AS n FROM safety_reports WHERE kind = @kind AND target_id = @target_id');
+const reportedTargets = db.prepare(
+  'SELECT target_id, COUNT(*) AS n FROM safety_reports WHERE kind = @kind GROUP BY target_id HAVING n >= @threshold');
+// 私信举报的证据:对方在这条线上最近说的几句。私信服务端读得到,不必让举报的人抄一遍。
+const dmRecentFrom = db.prepare(
+  'SELECT id, body FROM dm_messages WHERE thread = @thread AND from_id = @peer ORDER BY created_at DESC, id DESC LIMIT 5');
+const getDm = db.prepare('SELECT * FROM dm_messages WHERE id = ?');
+
 module.exports = {
+  addBlock, getBlock, removeBlock, blocksBy, blockedIdsBy, isBlockedBy,
+  addSafetyReport, countSafetyReports, reportedTargets, dmRecentFrom, getDm,
   upsertWallProject, listWallProjects, countWallProjects, bumpWallProjectViews, deleteWallProject,
   wallProjectsByIdentity,
   addWallReaction, removeWallReaction, hasWallReaction, countWallReactions, myWallReactions,

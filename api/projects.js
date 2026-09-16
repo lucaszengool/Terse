@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { spamReason, illegalReason, fingerprint } = require('./spam');
 const { geoFromRequest, cleanGeo } = require('./geo');
+const safety = require('./safety');
 
 const router = express.Router();
 
@@ -427,8 +428,12 @@ router.get('/public', (req, res) => {
   }
   // 预览要"最高赞的三条评论"。在这里一并带出去,预览时就**不用再请求一次** ——
   // 和整颗胶囊跟着列表走是同一个理由:一次预览应该是零次额外往返。
+  // 拉黑是看的人自己的事:他拉黑的人,帖子和评论在他这里都不出现。
+  const blocked = safety.blockedBy(me);
+  const hiddenCmts = safety.hiddenIds('comment');
   const top = {};
   for (const c of db.topWallComments.all()) {
+    if (blocked.has(c.identity) || hiddenCmts.has(c.id)) continue;
     const arr = top[c.project_id] || (top[c.project_id] = []);
     if (arr.length < 3) arr.push({ body: c.body, likes: c.likes });
   }
@@ -448,7 +453,7 @@ router.get('/public', (req, res) => {
         liked: mine.like.has(r.id), faved: mine.fav.has(r.id),
         topComments: top[r.id] || [],
       };
-    }).filter((p) => p.capsule && !hidden.has(p.id)),
+    }).filter((p) => p.capsule && !hidden.has(p.id) && !blocked.has(p.author)),
   });
 });
 
@@ -489,7 +494,11 @@ function topLevelOf(parentId) {
 // GET /:id/comments —— 整棵树一条 SQL 查回来,在内存里拼。
 router.get('/:id/comments', (req, res) => {
   const me = idHash(req);
-  const rows = db.listWallComments.all({ project_id: req.params.id });
+  // 被举报够多次的先藏起来(和帖子一样,是过滤不是删除);我拉黑的人说的也不给我看。
+  const blocked = safety.blockedBy(me);
+  const hidden = safety.hiddenIds('comment');
+  const rows = db.listWallComments.all({ project_id: req.params.id })
+    .filter((r) => !hidden.has(r.id) && !blocked.has(r.identity));
   const liked = new Set();
   if (me) for (const r of db.myWallCommentLikes.all({ identity: me })) liked.add(r.comment_id);
   const shape = (r) => ({
@@ -550,6 +559,31 @@ router.delete('/comments/:cid', (req, res) => {
   // 顶层评论被删,它下面的回复不该变成孤儿挂在那儿
   db.deleteWallCommentReplies.run(req.params.cid);
   res.json({ ok: true });
+});
+
+/* 评论的举报和拉黑。⚠ 评论对外不带作者身份,所以都按评论 id 来,身份在这里查 ——
+   拉黑一个人不需要先让你看见他的哈希。 */
+// POST /api/cloud/projects/comments/:cid/report  Body: { reason? }
+router.post('/comments/:cid/report', (req, res) => {
+  const me = idHash(req);
+  if (!me) return res.status(401).json({ error: 'Missing identity' });
+  const c = db.getWallComment.get(req.params.cid);
+  if (!c) return res.status(404).json({ error: 'No such comment' });
+  if (c.identity === me) return res.status(400).json({ error: 'That is your own comment' });
+  const r = safety.report({ kind: 'comment', targetId: c.id, targetIdentity: c.identity,
+                            reporter: me, reason: (req.body || {}).reason, excerpt: c.body });
+  res.json({ ok: true, reports: r.reports, hidden: r.hidden });
+});
+
+// POST /api/cloud/projects/comments/:cid/block
+router.post('/comments/:cid/block', (req, res) => {
+  const me = idHash(req);
+  if (!me) return res.status(401).json({ error: 'Missing identity' });
+  const c = db.getWallComment.get(req.params.cid);
+  if (!c) return res.status(404).json({ error: 'No such comment' });
+  if (c.identity === me) return res.status(400).json({ error: 'That is your own comment' });
+  const row = safety.block(me, c.identity, c.author, 'comment');
+  res.json({ ok: true, id: row && row.id });
 });
 
 /* ── 举报 ──────────────────────────────────────────────────────────────────

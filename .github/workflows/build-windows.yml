@@ -151,9 +151,21 @@ jobs:
       # smoke steps below, which install the app and launch it. Stopping here
       # would hide that answer behind a test harness.
       - name: Run the crate's unit tests
-        continue-on-error: true
         run: |
           cd windows-app\src-tauri
+          # Delay-load comctl32 for the TEST binary only.
+          #
+          # The lib test stopped starting with STATUS_ENTRYPOINT_NOT_FOUND. The
+          # import check below named it: comctl32!TaskDialogIndirect, which only
+          # ComCtl32 *version 6* exports. A process gets v6 only if its manifest
+          # asks for it — Tauri embeds that manifest in the APP, which is why the
+          # app runs fine, but `cargo test --lib` produces a plain binary with no
+          # manifest, so it loads ComCtl32 5.82 and the loader refuses before main.
+          #
+          # Delay-loading defers that import to first use, and no test opens a
+          # task dialog, so it is never resolved. The app is untouched: this flag
+          # applies to this command only.
+          $env:RUSTFLAGS = "-Clink-arg=/DELAYLOAD:comctl32.dll -Clink-arg=delayimp.lib"
           cargo test --target x86_64-pc-windows-msvc --lib
           if ($LASTEXITCODE -ne 0) {
             Write-Warning "unit tests failed (exit $LASTEXITCODE) — dumping why"

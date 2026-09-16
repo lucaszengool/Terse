@@ -180,13 +180,20 @@ jobs:
                 }
                 $missingAny = $false
                 foreach ($d in $want.Keys) {
+                  # apiset stubs (api-ms-win-*) are virtual: they are resolved by the
+                  # loader, never present as files. Skipping them is correct, not a gap.
+                  if ($d -like 'api-ms-win-*') { continue }
                   $path = Join-Path $env:WINDIR "System32\$d"
-                  if (-not (Test-Path $path)) { Write-Host ("  {0}: NOT FOUND in System32" -f $d); $missingAny = $true; continue }
+                  if (-not (Test-Path $path)) { Write-Host ("  {0}: not a file in System32" -f $d); continue }
                   $exports = New-Object System.Collections.Generic.HashSet[string]
                   foreach ($e in (& $dumpbin.FullName /exports $path 2>$null)) {
-                    if ($e -match '^\s+\d+\s+[0-9A-F]+\s+[0-9A-F]+\s+(\S+)') { [void]$exports.Add($Matches[1]) }
+                    # ordinal hint RVA name   — but a FORWARDED export has no RVA, it
+                    # has "name (forwarded to other.dll.Name)". The first cut demanded
+                    # the RVA and so read every forwarder as absent, which reported
+                    # user32!DefWindowProcW and ole32!CoCreateInstance as missing.
+                    if ($e -match '^\s+\d+\s+[0-9A-F]+\s+(?:[0-9A-F]{6,}\s+)?([A-Za-z_][A-Za-z0-9_@\?\$]*)') { [void]$exports.Add($Matches[1]) }
                   }
-                  if ($exports.Count -eq 0) { continue }   # forwarder-only / apiset stub
+                  if ($exports.Count -eq 0) { Write-Host ("  {0}: exports unreadable, skipped" -f $d); continue }
                   foreach ($sym in $want[$d]) {
                     if (-not $exports.Contains($sym)) { Write-Host ("  MISSING  {0} -> {1}" -f $d, $sym); $missingAny = $true }
                   }

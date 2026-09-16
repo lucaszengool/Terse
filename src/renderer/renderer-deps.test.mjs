@@ -69,101 +69,148 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   }
 }
 
-// An event the Mac backend emits and the Windows one never does.
+// Command and event parity between the two backends, across EVERY module.
 //
-// This is the gap nothing else here could see. wallpaper-hover was emitted on
-// macOS and nowhere on Windows, and it is the event that opens the message card
-// — the full text and the reply box. Both halves of that feature compiled, were
-// registered, and passed their tests; the card simply never opened, which from
-// the outside is indistinguishable from a feature that was never built. A
-// command that is missing shows up as a rejected invoke. A missing EVENT shows
-// up as nothing at all.
+// The first version of this read only lib.rs, and only commands the shared
+// bridge invokes. macOS then grew eight modules — session dock, room link,
+// particle mode, desk control, feeds — and 63 commands and 12 events went
+// missing on Windows without one assertion firing. The gap was found by hand,
+// which is exactly what a guard is supposed to make unnecessary.
+//
+// DEFERRED is the ledger of what is knowingly not ported, each with the reason.
+// Every entry is also held to "still actually missing", so porting one FAILS
+// here until its line is deleted: the list can only shrink by someone doing the
+// work. It can never grow quietly, because a NEW gap is not in the list and
+// fails immediately.
 {
-  const read = (p) => { const f = resolve(DIR, p); return existsSync(f) ? readFileSync(f, 'utf8') : ''; };
-  const events = (src) => new Set(
-    [...src.matchAll(/\.emit(?:_to)?\(\s*(?:"[a-z0-9_-]+",\s*)?"([a-z0-9:_-]+)"/g)].map(m => m[1]));
-  const mac = events(read('../../src-tauri/src/lib.rs'));
-  const win = events(read('../../windows-app/src-tauri/src/lib.rs'));
-  // Genuinely platform-bound, with the reason, so the list cannot quietly grow.
-  const MAC_ONLY = new Map([
+  const RS = (dir) => {
+    const d = resolve(DIR, dir);
+    if (!existsSync(d)) return [];
+    return readdirSync(d).filter((n) => n.endsWith('.rs')).map((n) => readFileSync(join(d, n), 'utf8'));
+  };
+  const names = (srcs, re) => {
+    const s = new Set();
+    for (const src of srcs) for (const m of src.matchAll(re)) s.add(m[1]);
+    return s;
+  };
+  const CMD = /#\[tauri::command[^\]]*\]\s*(?:pub )?(?:async )?fn ([a-z0-9_]+)/g;
+  const EVT = /\.emit(?:_to|_filter)?\(\s*(?:"[a-z0-9_-]+",\s*)?"([a-z0-9:_-]+)"/g;
+  const macSrc = RS('../../src-tauri/src'), winSrc = RS('../../windows-app/src-tauri/src');
+  const macCmd = names(macSrc, CMD), winCmd = names(winSrc, CMD);
+  const macEvt = names(macSrc, EVT), winEvt = names(winSrc, EVT);
+
+  // Genuinely platform-bound: no Windows equivalent exists to port.
+  const PLATFORM_ONLY = new Map([
     ['ax-status', 'macOS Accessibility authorisation; Windows has no equivalent state'],
   ]);
-  // Not platform-bound — just not ported yet, and part of a family the command
-  // guard below already defers (pm_*, still changing on macOS). Same reason,
-  // same rule: the moment Windows emits one, its entry FAILS and has to go.
-  const EVENT_GAPS = new Map([
-    ['pm-target', 'pm_* is new on macOS and still in flux'],
+  const DEFERRED_CMDS = new Map([
+    ["app_icon", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["desk_call", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
+    ["desk_get_enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
+    ["desk_open_ax_settings", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
+    ["desk_overlay_visible", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
+    ["desk_set_enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
+    ["desk_trust", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
+    ["feeds_fix_permission", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["feeds_for_wallpaper", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["feeds_resolve_pending", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["feeds_set_auto_add", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["feeds_set_source", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["feeds_sources", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["messages_detected_apps", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["messages_notification_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["messages_open_permission_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["messages_open_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["messages_permission_report", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["pl_send", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pl_target", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["pl_transcript", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["pm_has_permission", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm_overlay", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["pm_overlay_hide", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["pm_request_permission", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm_start", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm_status", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm_stop", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm_window_rect", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm_windows", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["rl_file_decide", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_halt", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_inbound", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_link", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_mcp_install", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_openclaw_sessions", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_reveal", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_status", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_unlink", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_wake", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["rl_whisper", "room agent channel (\u623f\u95f4 agent \u901a\u9053) \u2014 portable, next to port"],
+    ["sd_active", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_alert", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_answer", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["sd_codex_open", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_diff", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_direct_set", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["sd_direct_status", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["sd_dock", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_dock_hide", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_dock_open", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_focus_input", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_git", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_image", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_jump", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_open_claude", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_queue", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["sd_send", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_sessions", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_stop", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_transcript", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd_unqueue", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["sd_usage", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
   ]);
-  if (mac.size && win.size) {
-    for (const e of [...mac].sort()) {
-      if (MAC_ONLY.has(e) || EVENT_GAPS.has(e)) continue;
-      ok(`event "${e}" is emitted on Windows too, not just macOS`, win.has(e));
+  const DEFERRED_EVENTS = new Map([
+    ["desk-enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
+    ["dock-ask", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["dock-ask-done", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["dock-delivered", "session dock (\u4f1a\u8bdd\u680f) \u2014 frontend untracked"],
+    ["feeds-new", "feeds \u2192 wallpaper (\u4fe1\u606f\u6d41) \u2014 needs a Windows notification source"],
+    ["pm-frame", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm-lost", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
+    ["pm-target", "assorted: app_icon (NSWorkspace), messages settings page"],
+    ["sd-mouse", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["sd-state", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS-only AX/window APIs, frontend untracked"],
+    ["terse-approval", "approvals \u2014 macOS Accessibility"],
+    ["terse-approval-cleared", "approvals \u2014 macOS Accessibility"],
+  ]);
+
+  if (macCmd.size && winCmd.size) {
+    for (const c of [...macCmd].sort()) {
+      if (DEFERRED_CMDS.has(c)) continue;
+      ok(`command "${c}" exists on Windows too, not just macOS`, winCmd.has(c));
     }
-    for (const [e, why] of EVENT_GAPS) {
-      ok(`EVENT_GAPS entry "${e}" (${why}) is still actually missing on Windows`, !win.has(e));
+    for (const [c, why] of DEFERRED_CMDS) {
+      ok(`DEFERRED command "${c}" (${why}) is still actually missing`, !winCmd.has(c));
     }
+  }
+  if (macEvt.size && winEvt.size) {
+    for (const e of [...macEvt].sort()) {
+      if (PLATFORM_ONLY.has(e) || DEFERRED_EVENTS.has(e)) continue;
+      ok(`event "${e}" is emitted on Windows too, not just macOS`, winEvt.has(e));
+    }
+    for (const [e, why] of DEFERRED_EVENTS) {
+      ok(`DEFERRED event "${e}" (${why}) is still actually missing`, !winEvt.has(e));
+    }
+  }
+
+  // And a bridge entry that names a command NEITHER backend registers is a
+  // typo or a leftover — it would fail at runtime as "command not found".
+  const bridge = readFileSync(resolve(DIR, 'tauri-bridge.js'), 'utf8');
+  for (const m of [...bridge.matchAll(/invoke\(\s*'([a-z0-9_]+)'/g)].map((x) => x[1]).sort()) {
+    if (!macCmd.size) break;
+    ok(`bridge calls "${m}", which macOS registers`, macCmd.has(m));
   }
 }
 
-// A command the shared bridge invokes that only one backend registers.
-//
-// The companion to the event check above, and needed because the two fail in
-// different ways. A missing command surfaces as a rejected invoke — the feature
-// is simply dead on that platform. A missing event surfaces as nothing at all.
-// Neither check sees the other's gap: `cowork-peer` was already emitted on
-// Windows from another path while the command the UI actually calls was absent,
-// so the event check was green over a dead feature.
-//
-// This is the check that would have found all twenty-two at once, instead of a
-// hand audit finding them one platform release later.
-{
-  const read = (p) => { const f = resolve(DIR, p); return existsSync(f) ? readFileSync(f, 'utf8') : ''; };
-  const registered = (dir) => {
-    const out = new Set();
-    for (const f of ['lib.rs','notifications.rs','messages.rs','projects.rs','permission.rs','phone.rs','doctor.rs','cowork.rs']) {
-      const src = read(`${dir}/${f}`);
-      for (const m of src.matchAll(/#\[tauri::command\][^\n]*\n\s*(?:pub )?(?:async )?fn ([a-z0-9_]+)/g)) out.add(m[1]);
-    }
-    return out;
-  };
-  const bridge = read('tauri-bridge.js');
-  const invoked = new Set([...bridge.matchAll(/invoke\(\s*'([a-z0-9_]+)'/g)].map(m => m[1]));
-  const mac = registered('../../src-tauri/src');
-  const win = registered('../../windows-app/src-tauri/src');
-
-  // Still to port, each with why. The list may only ever shrink — a new name
-  // here needs a reason, which is the point.
-  const KNOWN_GAPS = new Map([
-    ['app_icon', 'needs a Windows rewrite: NSWorkspace icon extraction → SHGetFileInfo'],
-    ['messages_detected_apps', 'messages settings page, not yet ported'],
-    ['messages_notification_settings', 'messages settings page, not yet ported'],
-    ['messages_open_settings', 'messages settings page, not yet ported'],
-    ['messages_permission_report', 'messages settings page, not yet ported'],
-    // The pm_* family appeared on macOS while this branch was being written and
-    // is still uncommitted there. Porting code that is still moving means
-    // porting it twice; it goes in once it settles.
-    ['pm_start', 'pm_* is new on macOS and still in flux'],
-    ['pm_stop', 'pm_* is new on macOS and still in flux'],
-    ['pm_status', 'pm_* is new on macOS and still in flux'],
-    ['pm_windows', 'pm_* is new on macOS and still in flux'],
-    ['pm_window_rect', 'pm_* is new on macOS and still in flux'],
-    ['pm_overlay', 'pm_* is new on macOS and still in flux'],
-    ['pm_overlay_hide', 'pm_* is new on macOS and still in flux'],
-    ['pm_has_permission', 'pm_* is new on macOS and still in flux'],
-    ['pm_request_permission', 'pm_* is new on macOS and still in flux'],
-  ]);
-  if (mac.size && win.size) {
-    for (const c of [...invoked].sort()) {
-      if (!mac.has(c)) continue;              // not a parity question
-      if (KNOWN_GAPS.has(c)) continue;
-      ok(`command "${c}" is registered on Windows too, not just macOS`, win.has(c));
-    }
-    // A gap that has been closed must leave the list, or it rots into a lie.
-    for (const [c, why] of KNOWN_GAPS) {
-      ok(`KNOWN_GAPS entry "${c}" (${why}) is still actually missing`, !win.has(c));
-    }
-  }
-}
 
 // A window that is BUILT but not listed in its backend's capability file.
 //

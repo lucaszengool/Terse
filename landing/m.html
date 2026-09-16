@@ -409,12 +409,12 @@
   .sheet .grab{width:34px;height:4px;border-radius:2px;background:var(--line2);align-self:center;flex:0 0 auto}
   .sheet .scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px}
 
-  /* 星球:透明的手势层压在场的画布上;标签由 globe-scene.js 放 */
-  #pzPlanet{position:relative;touch-action:none;-webkit-user-select:none;user-select:none;overflow:hidden}
-  #pzPlanet .planet-hud{position:absolute;left:16px;right:16px;bottom:12px;display:flex;flex-direction:column;gap:3px;
+  /* 小镇:透明的手势层压在场的画布上;摇杆、门口按钮、门牌由 town-scene.js 放 */
+  #pzTown{position:relative;touch-action:none;-webkit-user-select:none;user-select:none;overflow:hidden}
+  #pzTown .town-hud{position:absolute;left:16px;right:16px;bottom:12px;display:flex;flex-direction:column;gap:3px;
     pointer-events:none;text-shadow:0 0 12px rgba(0,0,0,.85)}
-  #pzPlanet .planet-hud b{font-size:15px;color:#e8fbff;font-weight:650}
-  #pzPlanet .planet-hud span{font-size:12px;opacity:.72}
+  #pzTown .town-hud b{font-size:15px;color:#e8fbff;font-weight:650}
+  #pzTown .town-hud span{font-size:12px;opacity:.72}
   .gl-label{position:absolute;left:0;top:0;padding:3px 8px;border-radius:10px;background:rgba(6,10,20,.55);
     border:1px solid rgba(160,220,255,.3);color:#f2fbff;font:600 11px/1.25 -apple-system,BlinkMacSystemFont,sans-serif;
     white-space:nowrap;pointer-events:none;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
@@ -1009,9 +1009,9 @@
              a project is there to be looked at the moment you arrive. Opening
              on the half that is usually empty made the plaza look empty. -->
         <div class="seg" id="plazaSeg">
-          <button class="on" data-plaza="projects" type="button" data-t="pz_projects">Projects</button>
+          <button class="on" data-plaza="town" type="button" data-t="pz_town">Town</button>
+          <button data-plaza="projects" type="button" data-t="pz_projects">Projects</button>
           <button data-plaza="rooms" type="button" data-t="pz_rooms">Rooms</button>
-          <button data-plaza="planet" type="button" data-t="pz_planet">Planet</button>
         </div>
 
         <div id="pzRooms" class="hide">
@@ -1029,11 +1029,11 @@
           <div class="empty hide" id="plazaEmpty" data-t="plaza_empty">No open rooms right now.</div>
         </div>
 
-        <!-- ── 星球 ──────────────────────────────────────────────────────
-             一颗粒子地球(globe-scene.js),画在场自己的画布上;这一格只是
-             透明的手势层、标签和底下一行说明。 -->
-        <div id="pzPlanet" class="hide">
-          <div class="planet-hud"><b id="planetCount"></b><span data-t="planet_hint">Drag to turn · pinch to zoom · double-tap to fly in · tap a light to walk in</span></div>
+        <!-- ── 小镇 ──────────────────────────────────────────────────────
+             一座粒子小镇(town-scene.js),画在场自己的画布上:每个项目是一栋
+             房子,第一人称走。这一格只是透明的手势层,摇杆和门口的按钮由场景自己放。 -->
+        <div id="pzTown">
+          <div class="town-hud"><b id="townCount"></b><span data-t="town_hint">drag to look · stick to walk · tap a door to go in</span></div>
         </div>
 
         <!-- ── The feed ─────────────────────────────────────────────────
@@ -1043,7 +1043,7 @@
              A hundred slides is a hundred small boxes of text, not a hundred
              particle systems — which is the only reason this is affordable on a
              phone at all. -->
-        <div id="pzProjects">
+        <div id="pzProjects" class="hide">
           <!-- Over the feed, not above it. The feed is the whole screen — a bar
                that pushed it down would cost a slide's worth of height on every
                phone, and the search in every feed like this floats. -->
@@ -1410,6 +1410,7 @@
 <script src="/phone/mp4.js"></script>
 <script src="/phone/capture.js"></script>
 <script src="/phone/social.js"></script>
+<script src="/phone/town-net.js"></script>
 <script src="/phone/frames.js"></script>
 <script src="/phone/tunes.js"></script>
 <script src="/phone/app.js"></script>

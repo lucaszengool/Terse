@@ -940,23 +940,23 @@ export default class MineradioWallpaper {
   isInRoom() { return !!this._room; }
 
   /**
-   * 广场的星球:一颗粒子地球,每个项目在它的位置上泛起荧光。和走进楼一样借这块画布
+   * 广场的小镇:一座粒子小镇,每个项目是一栋房子,第一人称走。和走进楼一样借这块画布
    * (iPhone 只给一个全屏 WebGL 上下文),占的也是同一个位置 —— exitRoom() 就还回来。
-   * @param {Array} projects 广场列表里的项目(带 capsule.geo 的才上星球)
-   * @param {object} [opts] host / input / budget / onPick(project) / onStats(n)
+   * @param {Array} houses 镇上的房子 [{id, title, lang, bytes, files, city, style, project}]
+   * @param {object} [opts] host / input / budget / joystick / words / onEnter(house) / onMove(x,z,yaw,v)
    */
-  async enterGlobe(projects, opts = {}) {
+  async enterTown(houses, opts = {}) {
     if (!this.renderer) return null;
     this.exitRoom();
     const tok = this._roomTok;
-    const { createGlobe } = await import('./globe-scene.js');
+    const { createTown } = await import('./town-scene.js');
     if (tok !== this._roomTok) return null;
     this.hideProject();
-    const globe = createGlobe(this.renderer, projects || [], opts);
-    globe.resize(this.W, this.H);
-    this._room = globe;
+    const town = createTown(this.renderer, houses || [], opts);
+    town.resize(this.W, this.H);
+    this._room = town;
     this._last = performance.now();
-    return globe;
+    return town;
   }
 
   /** 正在演的这座城里最高的那栋楼(星球上点一个项目,就直接走进它)。没有城就是 null。 */

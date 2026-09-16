@@ -1280,6 +1280,8 @@ app.use('/api/cloud', cloudIngestLimiter, coworkRouter);
 // its own unit, so it does NOT go through team auth.
 const roomsRouter = require('./rooms');
 app.use('/api/cloud/rooms', cloudIngestLimiter, roomsRouter);
+// 小镇上的人:谁在镇上、各自站在哪(SSE + POST,见 api/town.js)
+app.use('/api/cloud/town', cloudIngestLimiter, require('./town'));
 
 // 项目粒子的广场。只存 JSON、只发 JSON —— 画面是在每个人自己的机器上生成的。
 const projectsRouter = require('./projects');

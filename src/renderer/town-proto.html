@@ -1,0 +1,79 @@
+<!-- dev-only: 小镇(town-scene.js)的原型页,不提交 -->
+<title>town</title>
+<script type="importmap">
+{ "imports": { "three": "/app-assets/vendor/three.module.min.js", "three/addons/": "/app-assets/vendor/jsm/" } }
+</script>
+<style>
+  html, body { margin: 0; background: #05070c; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; }
+  #box { position: relative; width: 100vw; height: 100vh; touch-action: none; }
+  canvas { position: absolute; inset: 0; display: block; }
+  #hud { position: absolute; left: 12px; top: 12px; color: #cfe6ff; font: 12px/1.5 -apple-system, sans-serif; z-index: 6;
+    background: rgba(5,8,14,.5); padding: 8px 11px; border-radius: 10px; pointer-events: none; }
+</style>
+<div id="box"><div id="hud"></div></div>
+<script type="module">
+import * as THREE from 'three';
+import { createTown } from '/app-assets/town-scene.js';
+
+const q = new URLSearchParams(location.search);
+const N = +(q.get('n') || 90);
+const CITIES = ['Shanghai', 'Berlin', 'San Francisco', 'Tokyo', 'London'];
+const LANGS = ['ts', 'rust', 'python', 'go', 'js', 'java', 'swift', 'c++'];
+const projects = Array.from({ length: N }, (_, i) => ({
+  id: 'p' + i,
+  title: ['terse', 'mercury', 'atlas', 'loom', 'kite', 'ember', 'quartz', 'harbor'][i % 8] + '-' + i,
+  lang: LANGS[i % LANGS.length],
+  bytes: 4000 + ((i * 7919) % 900000),
+  files: 4 + ((i * 131) % 220),
+  city: q.get('cities') === '0' ? '' : CITIES[i % CITIES.length],
+  style: ['modern', 'tang', 'persia', 'norse', 'hellas'][i % 5],
+}));
+
+const box = document.getElementById('box'), hud = document.getElementById('hud');
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+box.prepend(renderer.domElement);
+
+const num = (k) => (q.get(k) != null ? +q.get(k) : undefined);
+const t0 = performance.now();
+const town = createTown(renderer, projects, {
+  host: box, input: box, budget: +(q.get('budget') || 1), spacing: num('spacing'), joystick: q.get('joy') === '1',
+  hour: num('hour'), weather: q.get('weather') || undefined, season: q.get('season') || undefined,
+  onEnter: (p) => { hud.textContent = 'ENTER ' + p.title; },
+  onNear: (p) => { hud.dataset.near = p ? p.title : ''; },
+});
+const built = Math.round(performance.now() - t0);
+window.__town = town;
+
+// 摆位置:?at=x,z,yaw,pitch;?look=名字 站到那栋房子门口
+if (q.get('at')) { const [x, z, y, p] = q.get('at').split(',').map(Number); town.at(x, z, y, p); }
+if (q.get('door') != null) {
+  const d = town.doors[+q.get('door') || 0];
+  // 门朝着街:站到门外 4 米,回头看着门(前方 = (-sin yaw, -cos yaw))
+  if (d) town.at(d.x - Math.sin(d.yaw) * 4, d.z - Math.cos(d.yaw) * 4, d.yaw + Math.PI, -0.05);
+}
+if (q.get('peers')) {
+  const n = +q.get('peers');
+  const w = town.where();
+  town.setPeers(Array.from({ length: n }, (_, i) => ({
+    id: 'u' + i, name: ['ada', 'linus', 'grace', 'ken', 'hopper', 'yukihiro'][i % 6] + i,
+    x: w.x + Math.cos(i / n * 6.283) * (4 + i % 5), z: w.z + Math.sin(i / n * 6.283) * (4 + i % 5),
+    yaw: i, v: (i % 3) * 1.6, rgb: [0.5 + (i % 3) * 0.2, 0.9, 1],
+  })));
+}
+if (q.get('still')) town.renderNow();
+
+let last = performance.now(), frames = 0, fps = 0, acc = 0;
+function loop(now) {
+  const dt = (now - last) / 1000; last = now;
+  town.update(dt); town.render();
+  acc += dt; frames++;
+  if (acc > 0.5) { fps = Math.round(frames / acc); frames = 0; acc = 0; const d = town.diag();
+    hud.textContent = `${d.plots} houses · ${(d.points / 1e6).toFixed(1)}M pts + ${(d.glow / 1000) | 0}k glow · build ${built}ms · ${fps} fps` + (d.bad ? ' · SHADER: ' + d.bad : ''); }
+  requestAnimationFrame(loop);
+}
+if (q.get('manual')) setInterval(() => { town.update(1 / 60); town.render(); }, 16);
+else requestAnimationFrame(loop);
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); town.resize(innerWidth, innerHeight); });
+</script>

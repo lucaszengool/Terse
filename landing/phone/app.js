@@ -116,8 +116,8 @@
       field_idle_1: 'Terse', field_idle_2: 'scan to connect',
       field_peek: 'Controls',
       pz_rooms: 'Rooms', pz_projects: 'Projects', pz_published: 'Published projects',
-      pz_planet: 'Planet', planet_hint: 'Drag to turn · pinch to zoom · double-tap to fly in · tap a light to walk in',
-      planet_count: '{n} projects on the planet', planet_none: 'No project has a place on the planet yet',
+      pz_town: 'Town', town_hint: 'drag to look · stick to walk · tap a door to go in',
+      town_count: '{n} houses · {p} people here', town_enter: 'Enter',
       pz_tap_hint: 'Tap one and it plays in the field.', pz_none: 'Nothing published yet.',
       pz_playing: 'Playing {name} in the field',
       pz_liked: 'Liked', pz_saved: 'Saved',
@@ -354,8 +354,8 @@
       field_idle_1: 'Terse', field_idle_2: '扫码连接',
       field_peek: '设置',
       pz_rooms: '房间', pz_projects: '项目', pz_published: '已发布的项目',
-      pz_planet: '星球', planet_hint: '拖动旋转 · 双指缩放 · 双击放大 · 点一个光点走进它的别墅',
-      planet_count: '星球上有 {n} 个项目', planet_none: '还没有项目标上位置',
+      pz_town: '小镇', town_hint: '拖动看 · 摇杆走 · 走到门口按一下进去',
+      town_count: '{n} 栋房子 · 镇上 {p} 人', town_enter: '进去',
       pz_tap_hint: '点一个，它会在场里演一遍。', pz_none: '还没有人发布项目。',
       pz_playing: '正在场里播放 {name}',
       pz_liked: '已赞', pz_saved: '已收藏',
@@ -1352,7 +1352,7 @@
        leaving the plaza has to hand it back — otherwise a capsule keeps
        replaying over your own agents, which is the bug that took a whole round
        to find the first time. */
-    if (current === 'plaza' && tab !== 'plaza') { leavePlanet(true); endProject(); }
+    if (current === 'plaza' && tab !== 'plaza') { leaveTown(true); endProject(); }
     /* 房间的城借的是同一块地方,所以也要对称地还回去 —— 走出这一屏就停。壁纸
        那一屏是这个人自己的 agent 在说话,把室友的城盖上去,和让陌生人的项目盖住
        他自己的实时数字是同一种错。 */
@@ -1411,14 +1411,14 @@
      plaza look empty. Rooms is one tap away and remembers nothing: this is a
      default, not a preference, and a plaza that opens differently depending on
      what you did last week is a plaza you cannot describe to anyone. */
-  var plazaHalf = 'projects';
+  var plazaHalf = 'town';      // 进广场就是站在小镇上(第一人称)
 
   function loadPlazaTab() {
     // 进到广场就把声音挂上待命 —— 真正出声要等第一次触摸(见 armAudio)。
     if ($('sndBtn')) $('sndBtn').classList.toggle('on', sndOn);
     armAudio();
     if (plazaHalf === 'rooms') loadPlaza();
-    else if (plazaHalf === 'planet') enterPlanet();
+    else if (plazaHalf === 'town') enterTown();
     else if (!projPool.length) loadProjects();
   }
 
@@ -4170,32 +4170,32 @@
       Array.prototype.forEach.call(document.querySelectorAll('#plazaSeg button'), function (o) {
         o.classList.toggle('on', o === b);
       });
-      var half = b.dataset.plaza || 'projects', was = plazaHalf;
+      var half = b.dataset.plaza || 'town', was = plazaHalf;
       plazaHalf = half;
       $('pzRooms').classList.toggle('hide', half !== 'rooms');
       $('pzProjects').classList.toggle('hide', half !== 'projects');
-      if ($('pzPlanet')) $('pzPlanet').classList.toggle('hide', half !== 'planet');
-      if (half !== 'planet') leavePlanet(false);
+      if ($('pzTown')) $('pzTown').classList.toggle('hide', half !== 'town');
+      if (half !== 'town') leaveTown(false);
       if (half === 'projects') {
         if (!projPool.length) loadProjects();
-        // 从星球回来:信息流借走的那块画布刚还回来,把停着的那一条重新放起来
-        else if (was === 'planet' && projPool[feedAt]) playInFeed(projPool[feedAt]);
+        // 从小镇回来:信息流借走的那块画布刚还回来,把停着的那一条重新放起来
+        else if (was === 'town' && projPool[feedAt]) playInFeed(projPool[feedAt]);
       }
       // Rooms are volatile in a way projects are not — somebody opened one
       // while you were reading — so switching to them always re-asks.
       else if (half === 'rooms') loadPlaza();
-      else enterPlanet();
+      else enterTown();
     };
   });
-  /* ── 星球 ─────────────────────────────────────────────────────────────────
-     一颗粒子地球,每个发布的项目在它的位置上泛起荧光(globe-scene.js)。它借的是场的
-     画布,和走进一座楼一样(iPhone 只给一个全屏 WebGL),所以进来先把信息流停下,
-     走开时把画布还回去。点一个光点:打开那个项目,直接走进它最高的那栋楼 —— 它的别墅。 */
-  var planetOn = false;
+  /* ── 小镇 ─────────────────────────────────────────────────────────────────
+     广场就是一座小镇:每个项目是镇上的一栋房子,第一人称走进去(town-scene.js)。
+     它借的是场的那块画布,和走进一座楼一样(iPhone 只给一个全屏 WebGL),所以进来先把
+     信息流停下,走开时把画布还回去。走到谁的门口按一下,就进他的别墅。 */
+  var townOn = false;
 
-  function enterPlanet() {
-    if (!wp || !wp.enterGlobe) return;
-    var box = $('pzPlanet');
+  function enterTown() {
+    if (!wp || !wp.enterTown) return;
+    var box = $('pzTown');
     if (!box) return;
     var hush = function () {
       clearInterval(pjTimer); pjTimer = null;
@@ -4207,41 +4207,47 @@
     try {
       var main = document.querySelector('main'), seg = $('plazaSeg');
       main.style.overflow = 'hidden';
-      box.style.height = Math.max(320, main.clientHeight - (seg ? seg.getBoundingClientRect().height + 10 : 0)) + 'px';
+      box.style.height = Math.max(360, main.clientHeight - (seg ? seg.getBoundingClientRect().height + 10 : 0)) + 'px';
     } catch (e) {}
-    planetOn = true;
+    townOn = true;
     var go = function () {
-      if (!planetOn) return;
+      if (!townOn) return;
       hush();                                  // loadProjects 刚又把第一条放起来了
-      var list = (poolAll && poolAll.length ? poolAll : projPool) || [];
-      wp.enterGlobe(list, {
-        host: box, input: box, budget: 0.55,
-        onStats: function (n) { $('planetCount').textContent = n ? t('planet_count').replace('{n}', n) : t('planet_none'); },
-        onPick: function (p) { if (window.TerseFeel) window.TerseFeel.tap('heavy'); enterVilla(p); },
-      }).then(function (g) {
+      var list = ((poolAll && poolAll.length ? poolAll : projPool) || []).map(function (p) {
+        var cap = window.TersePlazaField.toCapsule(p) || {};
+        var dirs = Array.isArray(cap.dirs) ? cap.dirs : [];
+        var bytes = 0, files = 0;
+        for (var i = 0; i < dirs.length; i++) { bytes += +dirs[i].bytes || 0; files += +dirs[i].files || 0; }
+        return {
+          id: p.id, title: cap.title || p.title || '—', lang: (cap.langs && cap.langs[0] && cap.langs[0][0]) || '',
+          bytes: bytes, files: files, style: cap.style || '',
+          city: (cap.geo && cap.geo.city) || '', country: (cap.geo && cap.geo.country) || '',
+          project: p,
+        };
+      });
+      wp.enterTown(list, {
+        host: box, input: box, budget: 0.55, joystick: true,
+        words: lang === 'zh' ? { town_enter: t('town_enter'), town_hint: t('town_hint') } : null,
+        onEnter: function (house) { if (window.TerseFeel) window.TerseFeel.tap('heavy'); enterVilla(house.project || house); },
+        onMove: function (x, z, yaw, v) { Town.move(x, z, yaw, v); },
+      }).then(function (tn) {
         // 加载的时候人已经走开了:画布马上还回去
-        if (g && !planetOn) { try { wp.exitRoom(); } catch (e) {} }
+        if (tn && !townOn) { try { wp.exitRoom(); } catch (e) {} return; }
+        if (tn) Town.join(tn);
       });
     };
     if (!projPool.length) loadProjects().then(go); else go();
   }
 
-  /** 从星球走开:画布还给场。reset = 连分段也拨回"项目"(离开广场时)。 */
-  function leavePlanet(reset) {
-    if (planetOn) { planetOn = false; try { if (wp && wp.exitRoom) wp.exitRoom(); } catch (e) {} }
-    if (reset && plazaHalf === 'planet') {
-      plazaHalf = 'projects';
-      Array.prototype.forEach.call(document.querySelectorAll('#plazaSeg button'), function (o) {
-        o.classList.toggle('on', o.dataset.plaza === 'projects');
-      });
-      $('pzProjects').classList.remove('hide');
-      if ($('pzPlanet')) $('pzPlanet').classList.add('hide');
-    }
+  /** 从小镇走开:画布还给场。reset = 连分段也拨回"小镇"(离开广场时)。 */
+  function leaveTown(reset) {
+    if (townOn) { townOn = false; Town.leave(); try { if (wp && wp.exitRoom) wp.exitRoom(); } catch (e) {} }
+    if (reset && plazaHalf === 'town' && $('pzTown')) $('pzTown').classList.add('hide');
   }
 
-  /** 星球上点中的项目:打开它,等城市摆好,走进最高的那栋楼。 */
+  /** 镇上点中的那栋房子:打开这个项目,等城市摆好,走进最高的那栋楼(它的别墅)。 */
   function enterVilla(p) {
-    leavePlanet(false);
+    leaveTown(false);
     openProject(p);
     var tries = 0;
     var tick = function () {

@@ -41,8 +41,8 @@ const ENGINE_ASSETS = [
   // 八种风格的设计单(色板、灯光、天与雾):room-scene 和 room-arch 都 import 它 —— 只改它时
   // 版本号也得变,否则手机一直拿着旧的那份
   'room-styles.js',
-  // 广场的星球:粒子地球 + 它的陆地点阵
-  'globe-scene.js', 'earth-land.js',
+  // 广场的小镇:图纸、盖房子、地面、场景本身
+  'town-plan.js', 'town-build.js', 'town-ground.js', 'town-scene.js',
   // 屋子外面的天(钟、季节、天气)、天穹和天气粒子、在楼之间换场
   'room-sky.js', 'room-atmos.js', 'room-travel.js',
 ];

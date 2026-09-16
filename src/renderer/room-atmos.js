@@ -73,8 +73,12 @@ void main(){
   // 云:一格一颗柔光点,越浓点越大;底下垫一层很淡的连续云,厚云不会只剩一片点
   if (up > 0.0) {
     vec2 uv = d.xz / (up + 0.12) * 2.0 + vec2(uTime * 0.01 * (0.3 + uWind), uTime * 0.0035);
-    float gs = 22.0;
-    vec2 g = uv * gs, cc = floor(g) + 0.5, f = g - cc, cu = cc / gs;
+    /* ⚠ 格子的中心要各自错开一点:整齐的网格在白天的天上是看得出来的一张方格纸
+       (第一版就是),错开之后才是一团团的云。 */
+    float gs = 26.0;
+    vec2 g = uv * gs, ci = floor(g);
+    vec2 jit = vec2(h21(ci), h21(ci + 7.7)) - 0.5;
+    vec2 cc = ci + 0.5 + jit * 0.7, f = g - cc, cu = cc / gs;
     float dens = fbm(cu * 0.8) * 0.65 + fbm(cu * 2.2 + 5.0) * 0.35;
     float thr = 1.0 - uCover;
     float cl = smoothstep(thr - 0.14, thr + 0.2, dens);
@@ -204,7 +208,7 @@ export function createAtmosphere(o) {
     uNight: { value: 0 }, uCover: { value: 0 }, uTime: { value: 0 }, uRain: { value: 0 }, uSnow: { value: 0 }, uFog: { value: 0 },
     uBow: { value: 0 }, uFlash: { value: 0 }, uMoon: { value: 0.5 }, uWind: { value: 0.2 }, uStorm: { value: 0 }, uGolden: { value: 0 },
     // 亮度:都压在泛光阈值下面(露天 0.82、屋里 0.55),只有太阳会晕开 —— 不然窗是一块白、地平线是一道白光
-    uGain: { value: o.open ? 0.86 : 0.62 }, uWin: { value: o.open ? 0 : 1 },
+    uGain: { value: o.open ? 0.42 : 0.62 }, uWin: { value: o.open ? 0 : 1 },
   };
   const skyMat = new THREE.ShaderMaterial({ uniforms: SU, vertexShader: SKY_VS, fragmentShader: SKY_FS, side: THREE.DoubleSide, depthWrite: false });
   disposables.push(skyMat);

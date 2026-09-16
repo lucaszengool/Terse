@@ -627,6 +627,7 @@ attribute vec3 iO; attribute vec3 iA; attribute vec3 iB; attribute vec4 iS; attr
 attribute vec3 iC1; attribute vec3 iC2;
 uniform mat4 modelViewMatrix, projectionMatrix;
 uniform float uN, uPx, uFogK, uDayGlow, uSootY, uDetailFw, uWashH, uGlitter, uGlitterDen;
+uniform float uDotK, uDotMax, uBreath; uniform vec2 uCull;
 uniform vec3 uLod, uRim, uRimNight;
 varying vec3 vCol, vFogCol; varying float vFog;
 ${NOISE_GLSL}
@@ -635,6 +636,19 @@ ${MATERIAL_GLSL}
 void main(){
 ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的字一样聚出来),离人近的先到。
      光照和材质仍按落定的位置 P 算,只有画在哪儿(Pd)在飞。 */
+  // 近处那份细的 / 远处那份粗的:各画各的一半(见 uCull)
+  if (uCull.x != 0.0) {
+    float dc = length(P.xz - cameraPosition.xz);
+    if ((uCull.x > 0.0 && dc < uCull.y) || (uCull.x < 0.0 && dc > uCull.y)) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec3(0.0); vFog = 0.0; return;
+    }
+  }
+  if (uBreath > 0.0) {
+    float bt = uTime * 0.22;
+    P += vec3(sin(P.z * 0.31 + bt) + sin(P.y * 0.63 - bt * 1.3) * 0.6,
+              sin(P.x * 0.37 + bt * 1.1) * 0.8,
+              cos(P.x * 0.29 - bt) + cos(P.y * 0.55 + bt * 0.9) * 0.6) * uBreath;
+  }
   float fm = clamp(uForm * 1.6 - length(P - cameraPosition) / 30.0, 0.0, 1.0);
   vec3 rv = vec3(h21(position.xy * 17.3 + seed) - 0.5, h21(position.yx * 29.1 + seed), h21(position.xy * 7.7 - seed) - 0.5);
   vec3 Pd = P + (rv * vec3(16.0, 10.0, 16.0) + vec3(0.0, 2.0, 0.0)) * pow(1.0 - fm, 3.0);
@@ -721,7 +735,7 @@ ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的�
   // 点比点距略大一点点:柔光点的芯挨着芯,边上露出黑 —— 看得出一颗颗粒子
   float diam = min(sL * 0.75, max(mn * 0.5, sL * 0.6));
   diam *= 0.9 + 0.2 * h21(position.xy * 37.1 + seed * 3.3);   // 点略有大小:没有网格感,边也不毛
-  gl_PointSize = clamp(diam * stride * uPx / max(d, 0.05), 1.0, 64.0) * clamp((d - 0.25) / 0.6, 0.0, 1.0) * mix(0.35, 1.0, fm);
+  gl_PointSize = clamp(diam * stride * uDotK * uPx / max(d, 0.05), 1.0, uDotMax) * clamp((d - 0.25) / 0.6, 0.0, 1.0) * mix(0.35, 1.0, fm);
   gl_Position = clip;
 }`;
 
@@ -753,6 +767,7 @@ void main(){ vec2 d = gl_PointCoord - vec2(0.5); if (dot(d, d) > 0.25) discard; 
 const DOT_FS = `
 precision highp float;
 uniform vec3 uFog;
+uniform float uSoft;
 varying vec3 vCol, vFogCol; varying float vFog;
 void main(){
   vec2 d = gl_PointCoord - vec2(0.5);
@@ -765,9 +780,11 @@ void main(){
   float a = r < 0.42 ? mix(0.96, 0.78, r / 0.42) : (r < 0.72 ? mix(0.78, 0.22, (r - 0.42) / 0.3) : mix(0.22, 0.0, (r - 0.72) / 0.28));
   if (a < 0.2) discard;
   float lum = dot(vCol, vec3(0.299, 0.587, 0.114));
-  float rim = smoothstep(0.44, 0.94, r) * (1.0 - smoothstep(0.94, 1.08, r));
+  float rim = smoothstep(0.44, 0.94, r) * (1.0 - smoothstep(0.94, 1.08, r)) * (1.0 - uSoft);
   vec3 c = mix(vCol, vec3(0.0), rim * smoothstep(0.5, 0.82, lum) * 0.38);
   c = mix(c, vec3(1.0), rim * (1.0 - smoothstep(0.2, 0.5, lum)) * 0.2);
+  // 细腻模式:一颗点就是一小团柔和的光晕,中间实、边上化开,没有"球"的明暗
+  a = mix(a, exp(-r * r * 2.6) * 0.96, uSoft);
   c *= a / 0.96;
   gl_FragColor = vec4(mix(vFogCol, c, vFog), 1.0);
 }`;
@@ -778,12 +795,18 @@ precision highp float;
 #define TAU_ 6.28318530718
 attribute vec3 position; attribute vec3 aN; attribute vec3 aC; attribute float aS;
 uniform mat4 modelViewMatrix, projectionMatrix;
-uniform float uPx, uFogK;
+uniform float uPx, uFogK, uDotK, uDotMax, uBreath; uniform vec2 uCull;
 varying vec3 vCol, vFogCol; varying float vFog;
 ${NOISE_GLSL}
 ${LIGHT_GLSL}
 void main(){
   vec3 N = normalize(aN);
+  if (uCull.x != 0.0) {
+    float dc = length(position.xz - cameraPosition.xz);
+    if ((uCull.x > 0.0 && dc < uCull.y) || (uCull.x < 0.0 && dc > uCull.y)) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec3(0.0); vFog = 0.0; return;
+    }
+  }
   float ao = aoOf(position, N);
   vCol = tone(aC * lightAt(position, N, 0.0, ao));
   // 入场聚拢(和小片那边同一条曲线)
@@ -796,7 +819,7 @@ void main(){
   vec4 mv = modelViewMatrix * vec4(position + (rv * vec3(16.0, 10.0, 16.0) + vec3(0.0, 2.0, 0.0)) * pow(1.0 - fm, 3.0), 1.0);
   float d = -mv.z;
   vec3 fc; vFog = 1.0 - fogOf(position, fc); vFogCol = fc;
-  gl_PointSize = clamp(aS * uPx / max(d, 0.05), 1.0, 64.0) * clamp((d - 0.25) / 0.6, 0.0, 1.0) * mix(0.35, 1.0, fm);
+  gl_PointSize = clamp(aS * uDotK * uPx / max(d, 0.05), 1.0, uDotMax) * clamp((d - 0.25) / 0.6, 0.0, 1.0) * mix(0.35, 1.0, fm);
   gl_Position = projectionMatrix * mv;
 }`;
 
@@ -828,6 +851,16 @@ export function makeUniforms() {
     uFocal: { value: new THREE.Vector4(0, 1.6, 0, 0) }, uFocalC: { value: new THREE.Vector3() },
     uRimNight: { value: new THREE.Vector3() }, uDetailFw: { value: 0.045 }, uWashH: { value: 6 },
     uGlitter: { value: 0 }, uGlitterDen: { value: 0 },
+    /* 一颗点画多大、最大几个像素、边缘怎么收。屋里 (1, 64, 0):点挨着点,盖成实的面。
+       小镇 (0.6, 13, 1):点很小很细,而且不带那圈"球面"的明暗 —— 大点 + 边缘反差 =
+       一颗颗塑料珠子,近看就露馅。 */
+    uDotK: { value: 1 }, uDotMax: { value: 64 }, uSoft: { value: 0 },
+    /* 小镇用:同一座镇建两份 —— 远处一份很粗的(所有房子),近处一份很细的(最近那十几栋)。
+       uCull.x > 0 只画离人 uCull.y 以外的,< 0 只画以内的;= 0 全画(屋里就是 0)。 */
+    uCull: { value: new THREE.Vector2(0, 0) },
+    /* 每颗点极慢地飘几厘米(一个平滑的流场)。屋里是 0;小镇 3–4 厘米 —— 静止的点云
+       看着像标本,轻轻一动就"活"了,而且几乎不要钱。 */
+    uBreath: { value: 0 },
     uPick: { value: new THREE.Vector4(0, 0, -99, 0) },
     uForm: { value: 1 }, uStep: { value: new THREE.Vector4(0, 0, -99, 0) },
   };

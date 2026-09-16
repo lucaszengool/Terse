@@ -167,9 +167,31 @@ jobs:
                 Write-Host "--- DLLs this binary imports ---"
                 & $dumpbin.FullName /imports $exe.FullName 2>$null |
                   Select-String -Pattern '^\s{4}\S+\.dll$' | ForEach-Object { Write-Host ("  " + $_.Line.Trim()) }
-                Write-Host "--- bcryptprimitives / bcrypt imports (getrandom's ProcessPrng lives here) ---"
-                & $dumpbin.FullName /imports $exe.FullName 2>$null |
-                  Select-String -Pattern 'bcrypt|ProcessPrng|SystemFunction036' | ForEach-Object { Write-Host ("  " + $_.Line.Trim()) }
+                # Name the missing import instead of narrowing it by hand. Every
+                # imported symbol is checked against the exports of the system DLL
+                # it comes from; whatever is absent is the entrypoint the loader
+                # could not find.
+                Write-Host "--- imported symbols that their DLL does not export ---"
+                $lines = & $dumpbin.FullName /imports $exe.FullName 2>$null
+                $dll = $null; $want = @{}
+                foreach ($l in $lines) {
+                  if ($l -match '^\s{4}(\S+\.dll)\s*$') { $dll = $Matches[1].ToLower(); if (-not $want.ContainsKey($dll)) { $want[$dll] = New-Object System.Collections.Generic.HashSet[string] } }
+                  elseif ($dll -and $l -match '^\s+[0-9A-F]+\s+([A-Za-z_][A-Za-z0-9_@\?\$]*)\s*$') { [void]$want[$dll].Add($Matches[1]) }
+                }
+                $missingAny = $false
+                foreach ($d in $want.Keys) {
+                  $path = Join-Path $env:WINDIR "System32\$d"
+                  if (-not (Test-Path $path)) { Write-Host ("  {0}: NOT FOUND in System32" -f $d); $missingAny = $true; continue }
+                  $exports = New-Object System.Collections.Generic.HashSet[string]
+                  foreach ($e in (& $dumpbin.FullName /exports $path 2>$null)) {
+                    if ($e -match '^\s+\d+\s+[0-9A-F]+\s+[0-9A-F]+\s+(\S+)') { [void]$exports.Add($Matches[1]) }
+                  }
+                  if ($exports.Count -eq 0) { continue }   # forwarder-only / apiset stub
+                  foreach ($sym in $want[$d]) {
+                    if (-not $exports.Contains($sym)) { Write-Host ("  MISSING  {0} -> {1}" -f $d, $sym); $missingAny = $true }
+                  }
+                }
+                if (-not $missingAny) { Write-Host "  (every named import resolves; the failure is an ordinal or a delay-load)" }
               } else { Write-Warning "dumpbin not found" }
             } else { Write-Warning "no test binary found to inspect" }
             Write-Host "--- resolved versions of the crates added for the room channel ---"

@@ -1047,6 +1047,19 @@
       </div>
     </div>
 
+    <!-- 微信付款码 —— 码直接画在这儿。以前要从国内加载 Stripe 托管页、再点一次
+         「微信支付」才看得到码，等到二维码过期的人不在少数。 -->
+    <div id="wechatQrSheet" class="hidden" style="position:fixed;inset:0;z-index:9999;background:color-mix(in srgb,var(--bg) 97%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px">
+      <button id="wechatQrClose" title="关闭" style="position:absolute;top:14px;right:16px;width:30px;height:30px;border-radius:9px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      <h2 style="color:var(--t1);font-size:16px;font-weight:700;margin:0">微信扫码支付</h2>
+      <div id="wechatQrAmount" style="color:var(--t3);font-size:11px;margin:0"></div>
+      <div id="wechatQrBox" style="width:220px;height:220px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;border:1px solid var(--bd)">
+        <span id="wechatQrSpin" style="color:#888;font-size:11px">正在生成二维码…</span>
+      </div>
+      <div id="wechatQrHint" style="color:var(--t3);font-size:10.5px;text-align:center;max-width:240px;line-height:1.6">打开微信 → 扫一扫。付款完成后这个窗口会自动关闭。</div>
+      <button id="wechatQrFallback" style="background:none;border:none;color:var(--t3);font-size:10px;text-decoration:underline;cursor:pointer">扫不了？在浏览器里打开付款页</button>
+    </div>
+
     <!-- Paywall Gate — blocks app when no active subscription/trial -->
     <div id="paywallGate" class="hidden" style="position:fixed;inset:0;z-index:9998;background:color-mix(in srgb,var(--bg) 96%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;overflow:auto">
       <button id="paywallClose" title="Keep using Terse free" style="position:absolute;top:14px;right:16px;width:30px;height:30px;border-radius:9px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>

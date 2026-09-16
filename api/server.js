@@ -375,6 +375,206 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// ── 微信 / 支付宝：付款链接与二维码 ──────────────────────────────────────────
+// 这条路原本串行打 6 次 Stripe（每次约 0.5s），用户就盯着转圈等二维码。三处提速：
+//   1. 取 customer 时把订阅一起 expand 回来，省掉一次 subscriptions.list；
+//   2. 建订阅时 expand 首期发票，省掉一次 invoices.list；
+//   3. 生成好的结果进内存缓存 —— 重复点击、以及打开付费墙时的预热，都直接命中。
+// 缓存掉了最多是多打几次 Stripe，不会算错账，所以进程内存足够。
+const CHINA_PAY_TTL_MS = 10 * 60 * 1000;
+const chinaPayCache = new Map(); // key -> { url, qr, paymentIntentId, expiresAt }
+const chinaPayKeyOf = (clerkUserId, tier, paymentMethod) => `${clerkUserId}:${tier}:${paymentMethod}`;
+const chinaPayCacheGet = (key) => {
+  const hit = chinaPayCache.get(key);
+  return hit && hit.expiresAt > Date.now() ? hit : null;
+};
+const chinaPayCacheSet = (key, value) =>
+  chinaPayCache.set(key, { ...value, expiresAt: Date.now() + CHINA_PAY_TTL_MS });
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of chinaPayCache) if (v.expiresAt <= now) chinaPayCache.delete(k);
+}, 5 * 60 * 1000).unref?.();
+
+// 建（或复用）一张待付发票，并把 PaymentIntent 一起 expand 回来 —— 微信二维码就是
+// 从这个 PaymentIntent 确认出来的，多带这一个字段能省掉后面单独再查一次。
+// customerSubs 是调用方已经 expand 到手的订阅列表；给了就不再查一次 Stripe。
+async function ensureChinaPayInvoice({ customerId, customerSubs, clerkUserId, tier, priceId, paymentMethod }) {
+  // 已有在途订阅就复用它的发票，别再开一张（连点会开出一堆待付发票）。
+  const pendingSub = (customerSubs || []).find((s) =>
+    ['active', 'past_due', 'trialing', 'unpaid'].includes(s.status)
+  );
+  if (pendingSub) {
+    const existing = await stripe.invoices.list({
+      subscription: pendingSub.id,
+      limit: 1,
+      expand: ['data.payment_intent'],
+    });
+    if (existing.data[0]?.hosted_invoice_url) {
+      console.log(`[checkout] reusing invoice for ${clerkUserId} sub=${pendingSub.id}`);
+      return { invoice: existing.data[0], subId: pendingSub.id, reused: true };
+    }
+  }
+
+  // Create send_invoice subscription with NO trial — first invoice due immediately
+  const sub = await stripe.subscriptions.create({
+    customer: customerId,
+    items: [{ price: priceId }],
+    collection_method: 'send_invoice',
+    days_until_due: 3,
+    metadata: { clerk_user_id: clerkUserId, tier: normalizeTier(tier) },
+    payment_settings: { payment_method_types: [paymentMethod] },
+    expand: ['latest_invoice'],
+  });
+
+  // Don't activate yet — wait for invoice.paid webhook to confirm payment
+  licenseCache.set(clerkUserId, {
+    tier: normalizeTier(tier),
+    stripeCustomerId: customerId,
+    subscriptionId: sub.id,
+    status: 'past_due',
+    expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+  });
+  console.log(`[license] china-pay subscription (${paymentMethod}) ${tier} for ${clerkUserId}`);
+
+  let invoice = sub.latest_invoice;
+  if (invoice && invoice.status === 'draft') {
+    await stripe.invoices.update(invoice.id, {
+      description: paymentMethod === 'wechat_pay'
+        ? 'Terse Pro 订阅。免费试用仅支持银行卡支付，微信支付需直接付款。\nTerse Pro subscription. Free trial is only available with bank card payment.'
+        : 'Terse Pro 订阅。免费试用仅支持银行卡支付，支付宝需直接付款。\nTerse Pro subscription. Free trial is only available with bank card payment.',
+    });
+    invoice = await stripe.invoices.finalizeInvoice(invoice.id, { expand: ['payment_intent'] });
+  }
+  if (invoice) console.log(`[license] invoice ${invoice.id} status=${invoice.status}`);
+  return { invoice, subId: sub.id, reused: false };
+}
+
+// 把发票的 PaymentIntent 用微信确认一下，Stripe 会在 next_action 里回一串二维码内容。
+// 我们自己把它画在 Terse 窗口里，用户就不用再从国内加载 Stripe 托管页、再点一次
+// 「微信支付」才看到码。支付宝在 Stripe 这边是跳转不是二维码，所以仍旧走托管页。
+async function wechatQrFor(invoice, baseUrl) {
+  let pi = invoice?.payment_intent;
+  if (typeof pi === 'string') pi = await stripe.paymentIntents.retrieve(pi);
+  if (!pi) return null;
+  if (pi.status === 'requires_action' || pi.status === 'requires_confirmation') {
+    const data = pi.next_action?.wechat_pay_display_qr_code?.data;
+    if (data) return { qr: data, paymentIntentId: pi.id };
+  }
+  if (pi.status !== 'requires_payment_method' && pi.status !== 'requires_confirmation') return null;
+  const confirmed = await stripe.paymentIntents.confirm(pi.id, {
+    payment_method_data: { type: 'wechat_pay' },
+    payment_method_options: { wechat_pay: { client: 'web' } },
+    return_url: `${baseUrl}/?checkout=success`,
+  });
+  const data = confirmed.next_action?.wechat_pay_display_qr_code?.data;
+  return data ? { qr: data, paymentIntentId: confirmed.id } : null;
+}
+
+// 解析出 customer + 已 expand 的订阅，供下面几个中国支付端点共用。
+async function chinaPayCustomer(clerkUserEmail, clerkUserId) {
+  const existing = await stripe.customers.list({
+    email: clerkUserEmail,
+    limit: 1,
+    expand: ['data.subscriptions'],
+  });
+  if (existing.data[0]) {
+    return { customerId: existing.data[0].id, customerSubs: existing.data[0].subscriptions?.data || [] };
+  }
+  const customer = await stripe.customers.create({
+    email: clerkUserEmail,
+    metadata: { clerk_user_id: clerkUserId },
+  });
+  return { customerId: customer.id, customerSubs: [] };
+}
+
+// 校验入参，顺便把价格 id 取出来。三个端点共用，省得各写一遍。
+function chinaPayArgs(req) {
+  const { tier, clerkUserId, clerkUserEmail, paymentMethod } = req.body;
+  if (!tier || !clerkUserId) return { error: 'Missing tier or clerkUserId' };
+  if (paymentMethod !== 'wechat_pay' && paymentMethod !== 'alipay') return { error: 'Not a China payment method' };
+  if (!(tier in PRICES)) return { error: `Invalid tier: ${tier}` };
+  if (!PRICES[tier]) return { error: `STRIPE_PRICE_${tier.toUpperCase()} is not configured`, code: 'price_not_configured' };
+  if (isLifetime(tier)) return { error: 'Lifetime goes through /api/checkout' };
+  return { tier, clerkUserId, clerkUserEmail, paymentMethod, priceId: PRICES[tier] };
+}
+
+// ── 微信二维码：直接把码的内容给前端，自己画 ──
+app.post('/api/checkout/qr', async (req, res) => {
+  const args = chinaPayArgs(req);
+  if (args.error) return res.status(400).json(args);
+  const { tier, clerkUserId, clerkUserEmail, paymentMethod, priceId } = args;
+  const key = chinaPayKeyOf(clerkUserId, tier, paymentMethod);
+  try {
+    const hit = chinaPayCacheGet(key);
+    if (hit?.qr || (hit?.url && paymentMethod === 'alipay')) {
+      console.log(`[checkout] qr cache hit for ${clerkUserId} (${paymentMethod})`);
+      return res.json({ qr: hit.qr || null, url: hit.url || null, paymentIntentId: hit.paymentIntentId || null, cached: true });
+    }
+
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const { customerId, customerSubs } = await chinaPayCustomer(clerkUserEmail, clerkUserId);
+    const { invoice } = await ensureChinaPayInvoice({ customerId, customerSubs, clerkUserId, tier, priceId, paymentMethod });
+    const url = invoice?.hosted_invoice_url || `${baseUrl}/?checkout=success&tier=${tier}`;
+
+    // 支付宝没有可画的二维码（Stripe 那边是跳转），回托管页链接即可。
+    let qr = null, paymentIntentId = null;
+    if (paymentMethod === 'wechat_pay' && invoice) {
+      try {
+        const got = await wechatQrFor(invoice, baseUrl);
+        if (got) { qr = got.qr; paymentIntentId = got.paymentIntentId; }
+      } catch (e) {
+        // 拿不到码不算致命 —— 前端会退回托管页，用户照样付得了钱。
+        console.error('[checkout] wechat qr failed:', e.message);
+      }
+    }
+    chinaPayCacheSet(key, { url, qr, paymentIntentId });
+    res.json({ qr, url, paymentIntentId, cached: false });
+  } catch (err) {
+    console.error('[checkout] qr error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 轮询付款状态：二维码扫完了没有 ──
+app.get('/api/checkout/qr/status', async (req, res) => {
+  const { paymentIntentId } = req.query;
+  if (!paymentIntentId) return res.status(400).json({ error: 'Missing paymentIntentId' });
+  try {
+    const pi = await stripe.paymentIntents.retrieve(String(paymentIntentId));
+    // 真正开权限的是 invoice.paid webhook，这里只告诉前端该不该收起二维码。
+    res.json({ status: pi.status, paid: pi.status === 'succeeded' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 预热：打开付费墙时就先把发票和二维码备好，点下去才是秒开 ──
+app.post('/api/checkout/prewarm', async (req, res) => {
+  const args = chinaPayArgs(req);
+  if (args.error) return res.status(400).json(args); // 预热失败无所谓，前端不看
+  const { tier, clerkUserId, clerkUserEmail, paymentMethod, priceId } = args;
+  const key = chinaPayKeyOf(clerkUserId, tier, paymentMethod);
+  if (chinaPayCacheGet(key)) return res.json({ prewarmed: true, cached: true });
+
+  // 立刻回，生成在后台跑 —— 付费墙不该为这个等。
+  res.json({ prewarmed: true, cached: false });
+  const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+  try {
+    const { customerId, customerSubs } = await chinaPayCustomer(clerkUserEmail, clerkUserId);
+    const { invoice } = await ensureChinaPayInvoice({ customerId, customerSubs, clerkUserId, tier, priceId, paymentMethod });
+    const url = invoice?.hosted_invoice_url || `${baseUrl}/?checkout=success&tier=${tier}`;
+    let qr = null, paymentIntentId = null;
+    if (paymentMethod === 'wechat_pay' && invoice) {
+      const got = await wechatQrFor(invoice, baseUrl).catch(() => null);
+      if (got) { qr = got.qr; paymentIntentId = got.paymentIntentId; }
+    }
+    chinaPayCacheSet(key, { url, qr, paymentIntentId });
+    console.log(`[checkout] prewarmed ${paymentMethod} for ${clerkUserId}`);
+  } catch (e) {
+    console.error('[checkout] prewarm failed:', e.message);
+  }
+});
+
 // ── Create Checkout Session ──
 app.post('/api/checkout', async (req, res) => {
   try {
@@ -399,24 +599,41 @@ app.post('/api/checkout', async (req, res) => {
       });
     }
 
-    // Find or create Stripe customer
-    let customerId;
-    const existing = await stripe.customers.list({ email: clerkUserEmail, limit: 1 });
-    if (existing.data.length > 0) {
-      customerId = existing.data[0].id;
-    } else {
-      const customer = await stripe.customers.create({
-        email: clerkUserEmail,
-        metadata: { clerk_user_id: clerkUserId },
-      });
-      customerId = customer.id;
-    }
-
-    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-
     // WeChat Pay / Alipay: one-time payment (no free trial, ever).
     const paymentMethod = req.body.paymentMethod; // 'wechat_pay', 'alipay', or undefined
     const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
+
+    // 这条路生成过的付款链接先查缓存（预热也写这里）：命中就一次 Stripe 都不用打。
+    const chinaKey = chinaPayKeyOf(clerkUserId, tier, paymentMethod);
+    if (isChinaPay && !isLifetime(tier)) {
+      const hit = chinaPayCacheGet(chinaKey);
+      if (hit?.url) {
+        console.log(`[checkout] china-pay cache hit for ${clerkUserId} (${paymentMethod})`);
+        return res.json({ url: hit.url, sessionId: null });
+      }
+    }
+
+    // Find or create Stripe customer（中国支付那条顺带把订阅一起 expand 回来）
+    let customerId;
+    let chinaCustomerSubs = [];
+    if (isChinaPay) {
+      const got = await chinaPayCustomer(clerkUserEmail, clerkUserId);
+      customerId = got.customerId;
+      chinaCustomerSubs = got.customerSubs;
+    } else {
+      const existing = await stripe.customers.list({ email: clerkUserEmail, limit: 1 });
+      if (existing.data.length > 0) {
+        customerId = existing.data[0].id;
+      } else {
+        const customer = await stripe.customers.create({
+          email: clerkUserEmail,
+          metadata: { clerk_user_id: clerkUserId },
+        });
+        customerId = customer.id;
+      }
+    }
+
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 
     // Lifetime over WeChat/Alipay goes through a STANDALONE invoice (below), never
     // the subscription branch — a subscription against the one-time price would
@@ -478,62 +695,13 @@ app.post('/api/checkout', async (req, res) => {
     }
 
     if (isChinaPay) {
-      // Guard: if customer already has an active/pending subscription, return its invoice URL
-      // instead of creating a duplicate (prevents rapid double-click from creating multiple subs)
-      const existingSubs = await stripe.subscriptions.list({ customer: customerId, limit: 5, status: 'all' });
-      const pendingSub = existingSubs.data.find(s =>
-        ['active', 'past_due', 'trialing', 'unpaid'].includes(s.status)
-      );
-      if (pendingSub) {
-        const existingInvoices = await stripe.invoices.list({ subscription: pendingSub.id, limit: 1 });
-        const existingInvoice = existingInvoices.data[0];
-        if (existingInvoice?.hosted_invoice_url) {
-          console.log(`[checkout] returning existing invoice for ${clerkUserId} sub=${pendingSub.id}`);
-          return res.json({ url: existingInvoice.hosted_invoice_url, sessionId: null });
-        }
-      }
-
-      // Create send_invoice subscription with NO trial — first invoice due immediately
-      const sub = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{ price: priceId }],
-        collection_method: 'send_invoice',
-        days_until_due: 3,
-        metadata: { clerk_user_id: clerkUserId, tier: normalizeTier(tier) },
-        payment_settings: {
-          payment_method_types: [paymentMethod],
-        },
+      // 建发票（或复用在途那张）的活儿在 ensureChinaPayInvoice 里，/api/checkout/qr
+      // 和预热端点共用同一套，省得三处各写一遍、各漂一次。
+      const { invoice } = await ensureChinaPayInvoice({
+        customerId, customerSubs: chinaCustomerSubs, clerkUserId, tier, priceId, paymentMethod,
       });
-
-      // Don't activate yet — wait for invoice.paid webhook to confirm payment
-      // Set as 'past_due' so app knows payment is pending
-      licenseCache.set(clerkUserId, {
-        tier: normalizeTier(tier),
-        stripeCustomerId: customerId,
-        subscriptionId: sub.id,
-        status: 'past_due',
-        expiresAt: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-      });
-      console.log(`[license] china-pay subscription (${paymentMethod}) ${tier} for ${clerkUserId}`);
-
-      // Get the first invoice, add free-trial note, finalize, and return payment URL
-      const invoices = await stripe.invoices.list({ subscription: sub.id, limit: 1 });
-      let invoiceUrl = `${baseUrl}/?checkout=success&tier=${tier}`;
-      if (invoices.data[0]) {
-        let invoice = invoices.data[0];
-        // Add note about free trial being card-only
-        if (invoice.status === 'draft') {
-          await stripe.invoices.update(invoice.id, {
-            description: paymentMethod === 'wechat_pay'
-              ? 'Terse Pro 订阅。免费试用仅支持银行卡支付，微信支付需直接付款。\nTerse Pro subscription. Free trial is only available with bank card payment.'
-              : 'Terse Pro 订阅。免费试用仅支持银行卡支付，支付宝需直接付款。\nTerse Pro subscription. Free trial is only available with bank card payment.',
-          });
-          invoice = await stripe.invoices.finalizeInvoice(invoice.id);
-        }
-        invoiceUrl = invoice.hosted_invoice_url || invoiceUrl;
-        console.log(`[license] invoice ${invoice.id} status=${invoice.status} url=${invoiceUrl}`);
-      }
-
+      const invoiceUrl = invoice?.hosted_invoice_url || `${baseUrl}/?checkout=success&tier=${tier}`;
+      chinaPayCacheSet(chinaKey, { url: invoiceUrl });
       res.json({ url: invoiceUrl, sessionId: null });
     } else {
       // Default: card/Link via Stripe Checkout (WeChat/Alipay use send_invoice path above)

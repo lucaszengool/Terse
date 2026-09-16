@@ -390,6 +390,10 @@ const chinaPayCacheGet = (key) => {
 };
 const chinaPayCacheSet = (key, value) =>
   chinaPayCache.set(key, { ...value, expiresAt: Date.now() + CHINA_PAY_TTL_MS });
+// 用户换了套餐或支付方式时，他名下所有缓存的付款链接都可能指向刚作废的发票。
+const chinaPayCacheClearUser = (clerkUserId) => {
+  for (const k of chinaPayCache.keys()) if (k.startsWith(`${clerkUserId}:`)) chinaPayCache.delete(k);
+};
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of chinaPayCache) if (v.expiresAt <= now) chinaPayCache.delete(k);
@@ -400,6 +404,8 @@ setInterval(() => {
 // customerSubs 是调用方已经 expand 到手的订阅列表；给了就不再查一次 Stripe。
 async function ensureChinaPayInvoice({ customerId, customerSubs, clerkUserId, tier, priceId, paymentMethod }) {
   // 已有在途订阅就复用它的发票，别再开一张（连点会开出一堆待付发票）。
+  // 但只有「同一个套餐 + 同一种支付方式」才算同一张 —— 否则用户切到支付宝会拿回
+  // 微信那张发票（托管页上就是个微信码），点按周会拿回按月那张（还是 $4.99）。
   const pendingSub = (customerSubs || []).find((s) =>
     ['active', 'past_due', 'trialing', 'unpaid'].includes(s.status)
   );
@@ -409,10 +415,27 @@ async function ensureChinaPayInvoice({ customerId, customerSubs, clerkUserId, ti
       limit: 1,
       expand: ['data.payment_intent'],
     });
-    if (existing.data[0]?.hosted_invoice_url) {
+    const invoice = existing.data[0];
+    const samePrice = pendingSub.items?.data?.[0]?.price?.id === priceId;
+    const sameMethod = (pendingSub.payment_settings?.payment_method_types || []).includes(paymentMethod);
+    const unpaid = invoice && ['open', 'draft'].includes(invoice.status);
+
+    if (invoice?.hosted_invoice_url && samePrice && sameMethod) {
       console.log(`[checkout] reusing invoice for ${clerkUserId} sub=${pendingSub.id}`);
-      return { invoice: existing.data[0], subId: pendingSub.id, reused: true };
+      return { invoice, subId: pendingSub.id, reused: true };
     }
+    // 钱已经付过了就别动它 —— 这人已经是订阅用户，不该再开一张发票。
+    if (invoice?.hosted_invoice_url && !unpaid) {
+      console.log(`[checkout] paid sub exists for ${clerkUserId} sub=${pendingSub.id}`);
+      return { invoice, subId: pendingSub.id, reused: true };
+    }
+    // 选择变了而且还没付钱：把旧的作废，按新选择重开一张。
+    console.log(`[checkout] switching ${clerkUserId}: price ${samePrice ? 'same' : 'changed'}, method ${sameMethod ? 'same' : 'changed'}`);
+    if (invoice?.status === 'open') await stripe.invoices.voidInvoice(invoice.id).catch(() => {});
+    else if (invoice?.status === 'draft') await stripe.invoices.del(invoice.id).catch(() => {});
+    await stripe.subscriptions.cancel(pendingSub.id).catch(() => {});
+    // 刚作废的那张可能还躺在别的 tier/method 缓存里，一并清掉，否则切回去会拿到死链接。
+    chinaPayCacheClearUser(clerkUserId);
   }
 
   // Create send_invoice subscription with NO trial — first invoice due immediately

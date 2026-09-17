@@ -14,6 +14,7 @@
                  {target:'terse-town', cmd:'walk', on}
                  {target:'terse-town', cmd:'goto', id}     (重盖小镇,站到这栋别墅门口)
                  {target:'terse-town', cmd:'key', type, key, code, shift}  (焦点在宿主时转过来的键)
+                 {target:'terse-town', cmd:'mouse', t:'down'|'drag'|'up', dx, dy}  (宿主转来的拖动)
     页面 → 宿主  {source:'terse-town', event:'ready' | 'esc' | 'villa' | 'town' | 'goto' | 'error', ...}
   直接在浏览器里打开也能玩(?lang=zh / ?budget=0.8),只是没登录、只看不走进名单。
 -->
@@ -149,6 +150,12 @@ addEventListener('message', (e) => {
     S.focused = !!d.on;
     if (!S.focused) { S.turnKeys.clear(); try { window.dispatchEvent(new Event('blur')); } catch (e) {} }
     setTip();
+  } else if (d.cmd === 'mouse') {
+    /* 宿主转来的拖动(Mac:在空白桌面上按住拖;壁纸窗口本身收不到点击,文件图标还在它上面)。
+       dx/dy 是屏幕点数,和小镇自己拖动转头同一个灵敏度。 */
+    if (!S.walking || S.inVilla || !S.town || !S.town.turn || d.t !== 'drag') return;
+    const k = 0.0022;
+    S.town.turn(-(+d.dx || 0) * k, -(+d.dy || 0) * k);
   } else if (d.cmd === 'key') {
     /* 宿主转过来的键(焦点停在宿主那一页时)。在这一页里原样再派发一次:town-scene
        听的是 window 上的 keydown/keyup,Esc 也走同一条路。合成的键不会往输入框里打字 ——

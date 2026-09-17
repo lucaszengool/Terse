@@ -79,6 +79,7 @@ const S = {
   wp: null, town: null, projects: [], pos: null, inVilla: false, busy: false,
   // 桌面壁纸是全屏的:按 1 倍像素画(Retina 下像素少四倍,辉光那几道后处理省得最多)
   pr: Math.max(0.5, Math.min(2, +(q.get('pr') || (embedded ? 1 : Math.min(2, devicePixelRatio || 1))))),
+  needAx: false,          // 宿主说:键盘接管缺辅助功能授权
   focused: true,          // 键盘在不在我们这儿(宿主告诉;别的窗口拿走了就暂停转向)
   cursor: null,           // 宿主转来的光标位置 {nx, ny},-1..1,屏幕中心是 0
   turnKeys: new Set(),    // 按住的转向键:Q / ← 向左,R / → 向右(E 留给进门;箭头只在桌面壁纸上转向)
@@ -87,11 +88,13 @@ const S = {
 const TXT = {
   zh: { tipTown: 'WASD 走 · Q/R 或把光标移到屏幕边上转向 · 门口按 E 进别墅 · Esc 停下',
         tipPaused: '键盘在别的窗口上 —— 按 ⌘⇧W 回来接着逛',
+        tipNeedAx: '键盘还没交给小镇:在 系统设置 → 隐私与安全性 → 辅助功能 里允许 Terse(列表里已有旧的 Terse 就先删掉再加),授权后自动生效',
         tipVilla: '拖动看四周 · WASD 走 · 点家具看文件 · Esc 回到小镇',
         villa: '{t} 的别墅 · Esc 回到小镇', loading: '小镇正在盖…', empty: '广场上还没有项目',
         noEngine: '这台电脑的显卡跑不起小镇', files: '{n} 个文件' },
   en: { tipTown: 'WASD to walk · Q/R or push the cursor to a screen edge to turn · E at a door to go in · Esc to stop',
         tipPaused: 'The keyboard is on another window — press ⌘⇧W to keep walking',
+        tipNeedAx: 'The keyboard is not with the town yet: allow Terse in System Settings → Privacy & Security → Accessibility (remove an old Terse entry first if there is one). It starts working as soon as you do.',
         tipVilla: 'drag to look · WASD to walk · click furniture to read a file · Esc back to town',
         villa: "{t}'s villa · Esc back to town", loading: 'Building the town…', empty: 'Nothing published yet',
         noEngine: 'This graphics card cannot run the town', files: '{n} files' },
@@ -123,7 +126,7 @@ function boot(text) {
   b.classList.remove('gone'); b.textContent = text;
 }
 function setTip() {
-  $('tip').textContent = embedded && !S.focused ? tx('tipPaused') : S.inVilla ? tx('tipVilla') : tx('tipTown');
+  $('tip').textContent = embedded && S.needAx ? tx('tipNeedAx') : embedded && !S.focused ? tx('tipPaused') : S.inVilla ? tx('tipVilla') : tx('tipTown');
 }
 
 /* ── 宿主说话 ─────────────────────────────────────────────────────────── */
@@ -149,6 +152,9 @@ addEventListener('message', (e) => {
   } else if (d.cmd === 'focus') {
     S.focused = !!d.on;
     if (!S.focused) { S.turnKeys.clear(); try { window.dispatchEvent(new Event('blur')); } catch (e) {} }
+    setTip();
+  } else if (d.cmd === 'status') {
+    S.needAx = !d.keys && d.trusted === false;
     setTip();
   } else if (d.cmd === 'mouse') {
     /* 宿主转来的拖动(Mac:在空白桌面上按住拖;壁纸窗口本身收不到点击,文件图标还在它上面)。

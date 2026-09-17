@@ -93,7 +93,14 @@ fn held_set(vk: u32, on: bool) -> bool {
     prev & b != 0
 }
 
+/// One diag line per capture session, so CI (and a user's log) can tell
+/// "keys never arrived" from "keys arrived but the town ignored them".
+static LOGGED_KEY: AtomicBool = AtomicBool::new(false);
+
 fn send(kind: &str, key: &str) {
+    if kind == "keydown" && !LOGGED_KEY.swap(true, Ordering::SeqCst) {
+        crate::diag_log("town", &format!("first key captured: {key:?}"));
+    }
     if let Some(app) = APP.get() {
         let _ = app.emit_to("wallpaper", "town-key", serde_json::json!({ "t": kind, "key": key }));
     }
@@ -250,6 +257,7 @@ unsafe extern "system" fn on_mouse(code: i32, wp: WPARAM, lp: LPARAM) -> LRESULT
                 LAST_X.store(m.pt.x, Ordering::SeqCst);
                 LAST_Y.store(m.pt.y, Ordering::SeqCst);
                 send_mouse("down", 0.0, 0.0);
+                crate::diag_log("town", &format!("drag started on bare desktop at {},{}", m.pt.x, m.pt.y));
                 return LRESULT(1); // the town's; Explorer draws no selection box
             }
         }
@@ -336,6 +344,7 @@ pub fn set_capture(app: &AppHandle, on: bool) -> bool {
     let _ = APP.set(app.clone());
     ON.store(on, Ordering::SeqCst);
     if !on {
+        LOGGED_KEY.store(false, Ordering::SeqCst);
         stop_hooks();
         // Tell the town everything it thinks is held has been let go, or it
         // keeps walking / running after the pill is off.

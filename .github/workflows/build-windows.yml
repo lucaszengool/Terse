@@ -1720,6 +1720,125 @@ jobs:
           Relaunch "false" 5
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
 
+      # 代码小镇 on Windows, end to end. The town is the wallpaper; the pill left
+      # of the island decides whether WASD and bare-desktop drags go to it. Three
+      # things can only be seen on a real desktop:
+      #   1. the pill appears when the town is on (frontend -> townpad_show),
+      #   2. clicking it installs the hooks, and the town's keys then do NOT
+      #      reach the app in front — while other keys still do,
+      #   3. a press on bare desktop is taken as a drag.
+      # And switching it off must give every key back.
+      - name: Prove Code Town takes the keyboard and gives it back
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $log = Join-Path $dir "town.log"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          '{"enabled":true,"engine":"cinematic","theme":"neon","quality":56,"angle":55,"intensity":1.0,"town":{"on":true,"budget":0.5}}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 45
+          $cs = @(
+            'using System; using System.Runtime.InteropServices; using System.Text;',
+            'public class TownT {',
+            '  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }',
+            '  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }',
+            '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindowW(string c, string t);',
+            '  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);',
+            '  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);',
+            '  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);',
+            '  [DllImport("user32.dll")] public static extern void mouse_event(uint f, int x, int y, uint d, UIntPtr e);',
+            '  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte sc, uint f, UIntPtr e);',
+            '  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();',
+            '  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);',
+            '  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint f);',
+            '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, StringBuilder s, int n);',
+            '  public static void Click(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(60); mouse_event(4,0,0,0,UIntPtr.Zero); }',
+            '  public static void Drag(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); for (int i = 1; i <= 10; i++) { System.Threading.Thread.Sleep(20); SetCursorPos(x + i * 12, y); } mouse_event(4,0,0,0,UIntPtr.Zero); }',
+            '  public static void Key(byte vk) { keybd_event(vk,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(40); keybd_event(vk,0,2,UIntPtr.Zero); System.Threading.Thread.Sleep(40); }',
+            '  public static string ClassAt(int x, int y) { POINT p; p.X = x; p.Y = y; IntPtr h = GetAncestor(WindowFromPoint(p), 2); StringBuilder s = new StringBuilder(64); GetClassNameW(h, s, 64); return s.ToString(); }',
+            '}'
+          ) -join "`n"
+          Add-Type -TypeDefinition $cs
+          $null = [TownT]::SetProcessDPIAware()
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+            $bmp.Save("artifacts/$name.png")
+            $g.Dispose(); $bmp.Dispose()
+          }
+          function Pump($ms) { $end = (Get-Date).AddMilliseconds($ms); while ((Get-Date) -lt $end) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 20 } }
+
+          # 1. the pill
+          $pad = [TownT]::FindWindowW($null, "Terse Code Town")
+          if ($pad -eq [IntPtr]::Zero -or -not [TownT]::IsWindowVisible($pad)) {
+            Shot "town-no-pill"
+            throw "TOWN FAIL: the Control-town pill never appeared (town on in wallpaper.json)"
+          }
+          $r = New-Object TownT+RECT
+          $null = [TownT]::GetWindowRect($pad, [ref]$r)
+          Write-Host "pill at $($r.L),$($r.T) - $($r.R),$($r.B)"
+          Shot "town-pill"
+
+          # A text box of our own in front, so we can read what reached the app.
+          $f = New-Object System.Windows.Forms.Form
+          $f.Text = "town-target"; $f.StartPosition = "Manual"; $f.Location = New-Object System.Drawing.Point 60, 500; $f.Size = New-Object System.Drawing.Size 420, 160
+          $tb = New-Object System.Windows.Forms.TextBox
+          $tb.Dock = "Fill"; $tb.Multiline = $true
+          $f.Controls.Add($tb); $f.Show(); Pump 800
+          $tp = $tb.PointToScreen((New-Object System.Drawing.Point 20, 20))
+          [TownT]::Click($tp.X, $tp.Y); Pump 400
+          foreach ($k in 0x57, 0x58) { [TownT]::Key($k) }; Pump 500
+          $before = $tb.Text
+          Write-Host "pill OFF, typed w x -> text box got '$before'"
+
+          # 2. switch on, type again
+          [TownT]::Click([int](($r.L + $r.R) / 2), [int](($r.T + $r.B) / 2)); Pump 2500
+          [TownT]::Click($tp.X, $tp.Y); Pump 400
+          $tb.Text = ""
+          foreach ($k in 0x57, 0x41, 0x53, 0x44, 0x58) { [TownT]::Key($k) }; Pump 600
+          $during = $tb.Text
+          Write-Host "pill ON, typed w a s d x -> text box got '$during'"
+
+          # 3. a drag on bare desktop (form moved out of the way first)
+          $f.Hide(); Pump 400
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $cx = [int]($b.Width / 2); $cy = [int]($b.Height / 2)
+          Write-Host "under the drag point ($cx,$cy): $([TownT]::ClassAt($cx, $cy))"
+          [TownT]::Drag($cx, $cy); Pump 800
+          Shot "town-on"
+          $f.Show(); Pump 400
+
+          # 4. switch off, keys must come back
+          [TownT]::Click([int](($r.L + $r.R) / 2), [int](($r.T + $r.B) / 2)); Pump 2500
+          [TownT]::Click($tp.X, $tp.Y); Pump 400
+          $tb.Text = ""
+          foreach ($k in 0x57, 0x58) { [TownT]::Key($k) }; Pump 500
+          $after = $tb.Text
+          Write-Host "pill OFF again, typed w x -> text box got '$after'"
+          $f.Close()
+
+          $txt = if (Test-Path $log) { Get-Content $log -Raw } else { "" }
+          Write-Host "--- town.log ---"; Write-Host $txt
+          if (Test-Path $log) { Copy-Item $log artifacts/town.log }
+          $ok = $true
+          if ($txt -notmatch 'control on=true keys=true') { Write-Warning "TOWN FAIL: the pill did not install the hooks"; $ok = $false }
+          if ($txt -notmatch 'first key captured') { Write-Warning "TOWN FAIL: no key was captured"; $ok = $false }
+          if ($during.ToLower() -ne 'x') { Write-Warning "TOWN FAIL: with the pill on the app got '$during' (want only 'x')"; $ok = $false }
+          if ($before.ToLower() -ne 'wx' -or $after.ToLower() -ne 'wx') { Write-Warning "TOWN FAIL: with the pill off keys did not reach the app ('$before' / '$after')"; $ok = $false }
+          if ($txt -notmatch 'control on=false') { Write-Warning "TOWN FAIL: the second click did not switch it off"; $ok = $false }
+          if ($txt -match 'drag started on bare desktop') { Write-Host "TOWN OK: a bare-desktop press was taken as a drag" }
+          else { Write-Warning "TOWN INCONCLUSIVE: no bare-desktop drag (see the class under the point above)" }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($ok) { Write-Host "TOWN OK: the pill takes WASD from the app in front and gives it back" } else { throw "Code Town check failed" }
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

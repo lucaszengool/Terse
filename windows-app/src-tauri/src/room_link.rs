@@ -188,7 +188,7 @@ fn save_link(l: &Option<Link>) {
 /// dock_hook 问:这段会话能不能用房间工具?None = 能;Some(原因) = 拦下
 pub fn gate(sid: &str) -> Option<String> {
     match &lock().link {
-        None => Some("这台 Mac 现在没有把任何会话接进 Terse 房间,房间工具不可用。".into()),
+        None => Some("这台电脑 现在没有把任何会话接进 Terse 房间,房间工具不可用。".into()),
         Some(l) if l.session_id != sid => Some(format!(
             "房间工具只给接进房间的那一段会话用(现在接的是「{}」)。不要再调用它们。",
             l.session_title
@@ -413,7 +413,7 @@ fn frame(m: &Value, link: &Link) -> String {
 }
 
 fn need_link() -> Result<Link, String> {
-    lock().link.clone().ok_or_else(|| "这台 Mac 没有把会话接进任何 Terse 房间。(No session on this Mac is connected to a Terse room.)".to_string())
+    lock().link.clone().ok_or_else(|| "这台电脑 没有把会话接进任何 Terse 房间。(No session on this computer is connected to a Terse room.)".to_string())
 }
 
 /* ── 花费上限 ──
@@ -594,7 +594,7 @@ fn curl(room_id: &str, key: &str, method: &str, path: &str, headers: &[String], 
     for h in headers {
         cfg += &format!("header = \"{}\"\n", cq(h));
     }
-    let mut child = Command::new("curl")
+    let mut child = crate::hidden_command("curl")
         .args(["-s", "--connect-timeout", "8", "--max-time", "120", "-K", "-", "-w", "\n%{http_code}"])
         .args(args)
         .stdin(Stdio::piped())
@@ -639,10 +639,25 @@ fn server_err(v: &Value, code: u16) -> String {
 fn openclaw_bin() -> Option<String> {
     static B: OnceLock<Option<String>> = OnceLock::new();
     B.get_or_init(|| {
-        // 从 Finder 起的 app 拿不到 shell 的 PATH;问一次登录 shell
-        let out = Command::new("/bin/zsh").args(["-lc", "command -v openclaw"]).output().ok()?;
-        let p = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        (!p.is_empty() && Path::new(&p).exists()).then_some(p)
+        // macOS asks a login shell, because an app started from Finder does not
+        // get the shell's PATH. There is no /bin/zsh on Windows — the copied line
+        // meant OpenClaw could never be found. `where` searches PATH with PATHEXT,
+        // so it finds the openclaw.cmd shim npm installs. It also lists the
+        // extensionless sh script and the .ps1, neither of which CreateProcess can
+        // start, so only .exe/.cmd/.bat are accepted, .exe first.
+        let out = crate::hidden_command("where").arg("openclaw").output().ok()?;
+        let text = String::from_utf8_lossy(&out.stdout).to_string();
+        let rank = |p: &str| {
+            let l = p.to_ascii_lowercase();
+            if l.ends_with(".exe") { Some(0) } else if l.ends_with(".cmd") || l.ends_with(".bat") { Some(1) } else { None }
+        };
+        let mut found: Vec<(u8, String)> = text.lines()
+            .map(|l| l.trim().to_string())
+            .filter_map(|l| rank(&l).map(|r| (r, l)))
+            .filter(|(_, l)| Path::new(l).exists())
+            .collect();
+        found.sort();
+        found.into_iter().next().map(|(_, p)| p)
     })
     .clone()
 }
@@ -657,7 +672,7 @@ fn openclaw_send(session: &str, text: &str) -> Value {
     let sel = if session.contains(':') { "--session-key" } else { "--session-id" };
     let (sid, id2) = (session.to_string(), id.clone());
     std::thread::spawn(move || {
-        let out = Command::new(&bin)
+        let out = crate::hidden_command(&bin)
             .args(["agent", sel, &sid, "--message-file", &tmp.to_string_lossy()])
             .stdin(Stdio::null())
             .output();
@@ -687,7 +702,7 @@ Files you share are shown to your user for approval before anything is uploaded.
 fn tools() -> Value {
     json!([
         { "name": "room_send",
-          "description": "Post a message to the Terse room your user connected you to. Other people and their agents will read it. Scanned for secrets on this Mac first; anything that looks like a key is refused.",
+          "description": "Post a message to the Terse room your user connected you to. Other people and their agents will read it. Scanned for secrets on this computer first; anything that looks like a key is refused.",
           "inputSchema": { "type": "object", "properties": {
               "text": { "type": "string", "description": "What to say (max 8000 chars)." },
               "in_reply_to": { "type": "string", "description": "Optional msg_id you are answering." } },
@@ -697,7 +712,7 @@ fn tools() -> Value {
           "inputSchema": { "type": "object", "properties": {
               "limit": { "type": "integer", "description": "How many recent messages (1-50, default 20)." } } } },
         { "name": "room_share_file",
-          "description": "Offer a file from this Mac to the room. Your user must approve it in the Terse room window before it is uploaded. Secret files (.env, keys, ~/.ssh ...) are refused. Private rooms only.",
+          "description": "Offer a file from this computer to the room. Your user must approve it in the Terse room window before it is uploaded. Secret files (.env, keys, ~/.ssh ...) are refused. Private rooms only.",
           "inputSchema": { "type": "object", "properties": {
               "path": { "type": "string", "description": "Absolute path of the file." },
               "note": { "type": "string", "description": "One line saying what it is." } },
@@ -781,7 +796,7 @@ fn tool_read(args: &Value) -> Result<String, String> {
             ("agent", false) => format!("{name} 的 agent"),
             _ => format!("{name}(另一个人)"),
         };
-        let body = open_text(secret, &link.room_id, m["body"].as_str().unwrap_or("")).unwrap_or_else(|| "🔒(打不开:这台 Mac 还没有这个房间的 key)".into());
+        let body = open_text(secret, &link.room_id, m["body"].as_str().unwrap_or("")).unwrap_or_else(|| "🔒(打不开:这台电脑 还没有这个房间的 key)".into());
         let mut line = format!("- [{}] {who}: {}", m["id"].as_str().unwrap_or(""), esc(&clip(&scrub(&body), 1500)));
         if let Some(f) = m["meta"]["file"].as_object() {
             let fname = open_text(secret, &link.room_id, f.get("name").and_then(|x| x.as_str()).unwrap_or("file")).unwrap_or_else(|| "file".into());
@@ -1067,7 +1082,7 @@ fn codex_installed() -> bool {
 fn install_codex(on: bool) -> Result<(), String> {
     let p = codex_config();
     if !p.parent().map(|d| d.exists()).unwrap_or(false) {
-        return Err("Codex is not installed on this Mac (~/.codex is missing)".into());
+        return Err("Codex is not installed on this computer (~/.codex is missing)".into());
     }
     let cur = std::fs::read_to_string(&p).unwrap_or_default();
     let mut next = strip_block(&cur);
@@ -1101,7 +1116,7 @@ fn openclaw_installed() -> bool {
 fn install_openclaw(on: bool) -> Result<(), String> {
     let p = openclaw_config();
     if !p.parent().map(|d| d.exists()).unwrap_or(false) {
-        return Err("OpenClaw is not installed on this Mac (~/.openclaw is missing)".into());
+        return Err("OpenClaw is not installed on this computer (~/.openclaw is missing)".into());
     }
     let txt = std::fs::read_to_string(&p).unwrap_or_default();
     let mut root: Value = if txt.trim().is_empty() { json!({}) } else {
@@ -1281,7 +1296,7 @@ pub fn rl_wake() -> Value {
 #[tauri::command(async)]
 pub fn rl_openclaw_sessions() -> Vec<Value> {
     let Some(bin) = openclaw_bin() else { return vec![] };
-    let Ok(mut child) = Command::new(bin).args(["sessions", "--json", "--active", "240", "--limit", "20"])
+    let Ok(mut child) = crate::hidden_command(bin).args(["sessions", "--json", "--active", "240", "--limit", "20"])
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn() else { return vec![] };
     // 最多等 8 秒 —— 它走 Gateway,Gateway 没起的时候可能一直挂着
     let deadline = std::time::Instant::now() + Duration::from_secs(8);
@@ -1411,7 +1426,7 @@ pub fn rl_fetch_file(room_id: String, key: String, room_name: String, file: Valu
     }
     let bytes = match secret.as_deref() {
         Some(k) if raw_name.starts_with("e1:") => open_bytes(k, &room_id, &got).ok_or("Could not decrypt this file (wrong room key)")?,
-        None if raw_name.starts_with("e1:") => return Err("This file is from an encrypted room and this Mac does not have the room key yet".into()),
+        None if raw_name.starts_with("e1:") => return Err("This file is from an encrypted room and this computer does not have the room key yet".into()),
         _ => got,
     };
     std::fs::write(&dest, &bytes).map_err(|e| e.to_string())?;

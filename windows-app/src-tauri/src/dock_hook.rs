@@ -335,8 +335,25 @@ pub fn sd_direct_set(on: bool) -> Result<Value, String> {
 fn settings_path() -> PathBuf {
     home().join(".claude").join("settings.json")
 }
+/// The shell command an agent runs for each hook event.
+///
+/// This is BASH syntax — `2>/dev/null || true` — and on Windows that is right
+/// for Claude Code, which runs its hooks through Git Bash and will not start
+/// without it. The `|| true` matters: the hook stays installed after Terse
+/// quits, and without it every tool call would report a hook error while Terse
+/// is not running.
+///
+/// Two changes from macOS are still worth making, and both are harmless in
+/// bash: `curl.exe` names the real binary even if a hook ever runs under
+/// PowerShell, where bare `curl` is an alias for Invoke-WebRequest; and double
+/// quotes group in every shell, where single quotes do not in cmd.exe.
+///
+/// NOT verified: which shell Codex uses for hooks on Windows. If it is cmd.exe
+/// or Windows PowerShell 5.1, the bash tail will not parse there — cmd has no
+/// /dev/null and 5.1 has no `||`. Codex hooks are only installed when the user
+/// links a Codex session into a room, so that path alone is at risk.
 fn cmd(route: &str, max_s: u32) -> String {
-    format!("curl -s -m {max_s} -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:{DOCK_PORT}{MARK}{route} 2>/dev/null || true")
+    format!("curl.exe -s -m {max_s} -X POST -H \"Content-Type: application/json\" --data-binary @- http://127.0.0.1:{DOCK_PORT}{MARK}{route} 2>/dev/null || true")
 }
 fn is_mine(v: &Value) -> bool {
     v.get("hooks").and_then(|h| h.as_array())
@@ -416,7 +433,7 @@ pub fn codex_hooks_installed() -> bool {
 pub fn install_codex_hooks(on: bool) -> Result<bool, String> {
     let p = codex_hooks_path();
     if !p.parent().map(|d| d.exists()).unwrap_or(false) {
-        return Err("Codex is not installed on this Mac (~/.codex is missing)".into());
+        return Err("Codex is not installed on this computer (~/.codex is missing)".into());
     }
     let txt = std::fs::read_to_string(&p).unwrap_or_default();
     let mut root: Value = if txt.trim().is_empty() { json!({}) } else {

@@ -48,6 +48,18 @@ const KINDS = ['project', 'text', 'image'];
    所以这张表要跟 landing/audio/tracks.json 对上,那份清单是抓取脚本生成的。
    还是要挡一次:这个字段最后会变成一个文件名去拼路径。 */
 const TUNES = ["t01", "t02", "t03", "t04", "t05", "t06", "t07", "t08", "t09", "t10", "t11", "t12"];
+/* 小镇上的地块。发布时可以挑一块地,别墅就盖在那儿(src/renderer/town-plan.js 的
+   plotSlot)。一块地只给一个项目 —— 两栋别墅盖在同一个点上,谁的都看不清。
+   ⚠ 必须和 town-plan.js 的 PLOT_SLOTS 相同(projects.test.js 对账)。 */
+const PLOT_SLOTS = 120;
+const validPlot = (k) => Number.isInteger(k) && k >= 0 && k < PLOT_SLOTS;
+/* 地块存在胶囊里(capsule.plot),不另开一列:广场上的项目是几百个,不是几百万个,
+   json_extract 扫一遍比多一次迁移便宜,也不会和别处的 db.js 改动打架。 */
+const plotHolder = db.db.prepare(
+  "SELECT id FROM wall_projects WHERE json_extract(capsule, '$.plot') = ? AND id != ? LIMIT 1");
+const plotRows = db.db.prepare(
+  "SELECT id, identity, title, json_extract(capsule, '$.plot') AS plot, json_extract(capsule, '$.langs[0][0]') AS lang, json_extract(capsule, '$.style') AS style FROM wall_projects WHERE json_extract(capsule, '$.plot') IS NOT NULL");
+
 /** 一个人最多挂多少个项目在广场上。防的是刷屏,不是防坏人。 */
 const MAX_PER_IDENTITY = 24;
 
@@ -255,6 +267,8 @@ function sanitize(capsule) {
      看到的位置覆盖它;留在这里是为了运维回填(backfill)时不把已经有的位置冲掉。 */
   const geo = cleanGeo(capsule.geo);
   if (geo) out.geo = geo;
+  // 小镇上的地块:同样只为回填时不被冲掉;发布那条路会按请求重新定
+  if (validPlot(capsule.plot)) out.plot = capsule.plot;
   return out;
 }
 
@@ -268,6 +282,19 @@ router.post('/', (req, res) => {
      一律不算 —— 否则谁都能把自己的项目摆到任何地方。见 geo.js。 */
   const geo = geoFromRequest(req);
   if (geo) capsule.geo = geo; else delete capsule.geo;
+  // id 由**内容**决定:同一个项目重复发布是覆盖,不是又长出一个。
+  const id = serverId(me, capsule.srcId || capsule.title);
+
+  /* 小镇上挑的地。没给 = 让小镇自己排;给了就必须是一块存在的、没被别的项目占着的地。
+     重新发布自己的项目时,同一块地当然还是自己的(查的时候排除了自己的 id)。 */
+  const want = (req.body || {}).plot;
+  if (want === undefined || want === null || want === '') delete capsule.plot;
+  else {
+    const k = Number(want);
+    if (!validPlot(k)) return res.status(400).json({ error: 'No such plot', max: PLOT_SLOTS - 1 });
+    if (plotHolder.get(k, id)) return res.status(409).json({ error: 'That plot is taken', plot: k });
+    capsule.plot = k;
+  }
 
   const json = JSON.stringify(capsule);
   if (json.length > MAX_CAPSULE_BYTES) {
@@ -330,8 +357,6 @@ router.post('/', (req, res) => {
     console.warn('[plaza] surge brake:', surge, 'posts in 10 minutes');
     return res.status(503).json({ error: 'The plaza is busy right now — try again shortly', reason: 'surge' });
   }
-  // id 由**内容**决定:同一个项目重复发布是覆盖,不是又长出一个。
-  const id = serverId(me, capsule.srcId || capsule.title);
   db.upsertWallProject.run({ id, identity: me, title: capsule.title, capsule: json });
   res.json({ ok: true, id });
 });
@@ -379,6 +404,18 @@ router.post('/backfill', (req, res) => {
   }
   console.log('[plaza] backfill:', done.length, 'updated,', failed.length, 'failed');
   res.json({ ok: true, updated: done.length, failed });
+});
+
+// GET /api/cloud/projects/plots
+// 小镇上哪些地被挑走了 —— 发布时的地图用它画"空地"和"谁家"。不需要身份;
+// 带着身份时标出哪几块是自己的(换地方时自己的地不算被占)。
+router.get('/plots', (req, res) => {
+  const me = idHash(req);
+  const hidden = new Set(db.reportedProjects.all({ threshold: REPORT_HIDE_AT }).map((r) => r.project_id));
+  const taken = plotRows.all()
+    .filter((r) => validPlot(r.plot) && !hidden.has(r.id))
+    .map((r) => ({ plot: r.plot, id: r.id, title: r.title, lang: r.lang || '', style: r.style || '', mine: !!me && r.identity === me }));
+  res.json({ ok: true, slots: PLOT_SLOTS, taken });
 });
 
 // GET /api/cloud/projects/public?limit=
@@ -446,6 +483,7 @@ router.get('/public', (req, res) => {
       const c = counts[r.id] || {};
       return {
         id: r.id, title: r.title, published_at: r.published_at, views: r.views, capsule,
+        plot: capsule && validPlot(capsule.plot) ? capsule.plot : null,
         // 作者的短身份 —— 私信寄到这里。发布本身就是一次公开动作,而这串 32 位
         // 哈希除了"能给他发消息"什么也说明不了;那道闸仍然在 dm.js 上。
         author: r.identity,
@@ -623,3 +661,4 @@ router.delete('/:id', (req, res) => {
 });
 
 module.exports = router;
+module.exports.PLOT_SLOTS = PLOT_SLOTS;

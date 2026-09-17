@@ -4391,6 +4391,8 @@
           id: p.id, title: cap.title || p.title || '—', lang: (cap.langs && cap.langs[0] && cap.langs[0][0]) || '',
           bytes: bytes, files: files, style: cap.style || '',
           city: (cap.geo && cap.geo.city) || '', country: (cap.geo && cap.geo.country) || '',
+          // 作者在 Mac 上发布时挑的地(town-plan.js 的 plotSlot);没挑就是 null,小镇自己排
+          plot: p.plot != null ? p.plot : (p.capsule && p.capsule.plot != null ? p.capsule.plot : null),
           project: p,
         };
       });

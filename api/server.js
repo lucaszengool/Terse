@@ -1806,6 +1806,18 @@ app.get('/float', (req, res) => {
   });
 });
 
+/* 代码小镇的壁纸版:Terse Mac 把它嵌在桌面那层窗口里(src/renderer/wallpaper.html)。
+   和 /m 同一个盖戳办法 —— 它 import 的引擎和 /phone 脚本要跟着版本走。 */
+app.get('/town-wall', (req, res) => {
+  const file = path.join(__dirname, '..', 'landing', 'town-wall.html');
+  fs.readFile(file, 'utf8', (err, html) => {
+    if (err) return res.status(500).type('text/plain').send('Could not load the town');
+    res.type('html').send(html
+      .replace(/(src=")(\/phone\/[a-z0-9.-]+\.js)(")/gi, `$1$2?v=${PHONE_BUILD}$3`)
+      .replace('</head>', `<script>window.__TERSE_BUILD=${JSON.stringify(PHONE_BUILD)};</script>\n</head>`));
+  });
+});
+
 app.get(['/m', '/m/*'], (req, res) => {
   const file = path.join(__dirname, '..', 'landing', 'm.html');
   fs.readFile(file, 'utf8', (err, html) => {

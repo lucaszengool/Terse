@@ -33,6 +33,26 @@ function rng(seed) {
   return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
 }
 const TAU = Math.PI * 2;
+
+/* ── 自己挑的地 ─────────────────────────────────────────────────────────────
+   发布项目时可以挑一块地(0 .. PLOT_SLOTS-1),别墅就盖在那儿。
+   挑的地必须**不随镇上有几栋房子而变** —— 别人每发布一个项目,你的别墅就搬一次家,
+   那就不叫"挑"了。所以地块不按这座镇的半径算,直接按米:向日葵螺旋(Vogel),
+   第 k 块在 r = 40 + 18·√(k+½) 米、方位 k·137.5°。
+   相邻两块隔 ≈ 18·√π ≈ 32 米,和房子间距(20–36 米)同一个量级;地块由 Voronoi 切,
+   挨着也不会重叠,只是院子小一点。编号越小越靠镇中心。
+   ⚠ api/projects.js 的 PLOT_SLOTS 必须和这里相同(api/projects.test.js 对账)。 */
+export const PLOT_SLOTS = 120;
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+/** 第 k 块地的中心(米)。 */
+export function plotSlot(k) {
+  const r = 40 + 18 * Math.sqrt(k + 0.5), a = k * GOLDEN;
+  return { x: Math.cos(a) * r, z: Math.sin(a) * r, r };
+}
+/** 是不是一块存在的地。 */
+export function validPlot(k) {
+  return Number.isInteger(k) && k >= 0 && k < PLOT_SLOTS;
+}
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
 /* ── 多边形 ─────────────────────────────────────────────────────────────── */
@@ -150,6 +170,14 @@ export function planTown(projects, opts = {}) {
   const n = list.length;
   if (!n) return { plots: [], streets: [], nodes: [], plazas: [], parks: [], districts: [], spawn: { x: 0, z: 0, yaw: 0 }, radius: 40 };
 
+  /* 0 自己挑了地的:一块地只给列表里第一个挑它的(服务端本来就不让两个人挑同一块) */
+  const pinOf = new Map(), usedSlot = new Set();
+  for (const p of list) {
+    const k = p.plot == null || p.plot === '' ? NaN : +p.plot;
+    if (validPlot(k) && !usedSlot.has(k)) { usedSlot.add(k); pinOf.set(p.id, k); }
+  }
+  const nAuto = n - pinOf.size;
+
   /* 1 分区:同一个城市的住一块儿(没有城市就按主语言) */
   const keyOf = (p) => (p.city ? 'c:' + String(p.city).toLowerCase() : p.lang ? 'l:' + String(p.lang).toLowerCase() : 'other');
   const groups = new Map();
@@ -167,26 +195,53 @@ export function planTown(projects, opts = {}) {
   const rankOf = new Map(ranked.map((p, i) => [p.id, i]));
   const spacing = +opts.spacing || 20;
   // 半径:让所有房子都摊得开(面积 ≈ n × 间距²),再留出中心广场和外圈
-  const radius = Math.max(60, Math.sqrt(n * spacing * spacing / Math.PI) * 1.3 + 22);
+  let radius = Math.max(60, Math.sqrt(n * spacing * spacing / Math.PI) * 1.3 + 22);
+  // 挑的地在外圈时,镇子(和城墙)要把它圈进来
+  for (const k of pinOf.values()) radius = Math.max(radius, plotSlot(k).r + 30);
   let sites = [];
   let at = 0;
   for (const d of districts) {
-    const span = d.items.length / n * TAU;
+    d.items.sort((a, b) => mass(b) - mass(a));
+    // 挑了地的直接落在自己的地上;剩下的照老规矩分扇区(扇区只按没挑地的数)
+    const auto = d.items.filter((p) => !pinOf.has(p.id));
+    for (const p of d.items) {
+      if (!pinOf.has(p.id)) continue;
+      const q = plotSlot(pinOf.get(p.id));
+      sites.push({ p, x: q.x, z: q.z, district: d.key, pin: true });
+    }
+    if (!auto.length) continue;
+    const span = auto.length / nAuto * TAU;
     const a0 = at;
     at += span;
-    d.items.sort((a, b) => mass(b) - mass(a));
-    d.items.forEach((p, i) => {
+    auto.forEach((p, i) => {
       const r01 = (rankOf.get(p.id) + 0.5) / n;                    // 0 = 最大的项目
       const rr = 26 + Math.sqrt(r01) * (radius - 46);
-      const a = a0 + span * ((i + 0.5) / d.items.length) + (rand() - 0.5) * span * 0.5;
+      const a = a0 + span * ((i + 0.5) / auto.length) + (rand() - 0.5) * span * 0.5;
       sites.push({ p, x: Math.cos(a) * rr + (rand() - 0.5) * spacing * 0.5, z: Math.sin(a) * rr + (rand() - 0.5) * spacing * 0.5, district: d.key });
     });
+  }
+  /* 自动排的房子撞到了挑好的地上:往外让开,不然两块地都切得太小、盖不下房子 */
+  const pins = sites.filter((q) => q.pin);
+  if (pins.length) {
+    const clear = spacing * 0.9;
+    for (const q of sites) {
+      if (q.pin) continue;
+      for (const pp of pins) {
+        const dx = q.x - pp.x, dz = q.z - pp.z, d0 = Math.hypot(dx, dz);
+        if (d0 >= clear) continue;
+        const ux = d0 > 1e-6 ? dx / d0 : Math.cos(rankOf.get(q.p.id) || 0), uz = d0 > 1e-6 ? dz / d0 : Math.sin(rankOf.get(q.p.id) || 0);
+        q.x = pp.x + ux * clear; q.z = pp.z + uz * clear;
+      }
+    }
   }
   // 公园和广场的地:再撒一些没有项目的点,镇子才有空当
   const extra = Math.max(3, Math.round(n * 0.18));
   for (let i = 0; i < extra; i++) {
     const a = rand() * TAU, rr = 20 + Math.sqrt(rand()) * (radius - 34);
-    sites.push({ p: null, x: Math.cos(a) * rr, z: Math.sin(a) * rr, district: '' });
+    const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+    // 公园不压在挑好的地上
+    if (pins.some((pp) => Math.hypot(x - pp.x, z - pp.z) < spacing * 0.7)) continue;
+    sites.push({ p: null, x, z, district: '' });
   }
 
   /* Lloyd 松弛:点往自己地块的重心挪,间距就均匀了 */
@@ -198,7 +253,7 @@ export function planTown(projects, opts = {}) {
     if (pass === relax) break;
     sites = sites.map((s, i) => {
       const c = cells[i].poly;
-      if (!c || c.length < 3) return s;
+      if (s.pin || !c || c.length < 3) return s;          // 挑好的地不挪
       const [cx, cz] = polyCentroid(c);
       return Object.assign({}, s, { x: s.x + (cx - s.x) * 0.72, z: s.z + (cz - s.z) * 0.72 });
     });
@@ -262,7 +317,9 @@ export function planTown(projects, opts = {}) {
        (第一版正是砌满的:一栋 1084 平米、25 米高的方块,一栋房就是五十万颗点。)
        中世纪的房子是**长方形**的:窄面朝街(一户人家的门脸 5–8 米),往里深 —— 这就是
        burgage 地块的样子。长方形才盖得出两坡顶、山墙、一层层探出来的楼(jetty)。 */
-    const [ix, iz] = polyCentroid(inner);
+    let [ix, iz] = polyCentroid(inner);
+    // 挑了地的:房子就盖在挑的那个点上(地块稀的时候,重心可能离它二三十米)
+    if (s.pin && insideConvex([s.x, s.z], inner)) { ix = s.x; iz = s.z; }
     const fx = dx / L, fz = dz / L, rx = fz, rz = -fx;      // f 朝街,r 沿街(和 x/z 同一手性)
     const want = Math.max(55, Math.min(200, 55 + mass(s.p) * 30));
     let wd = 0, dp = 0;                                      // 门脸窄、进深长(挤不下就方一点)

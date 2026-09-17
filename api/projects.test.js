@@ -200,6 +200,57 @@ const capsule = (over = {}) => Object.assign({
   r = await req('GET', `/projects/${P}/comments`);
   ok('the author can', !r.body.comments.some((c) => c.body === 'looks great'));
 
+  // ── 小镇上挑地 ──
+  {
+    const plan = await import('../src/renderer/town-plan.js');
+    eq('the server and the town agree on how many plots there are', require('./projects').PLOT_SLOTS, plan.PLOT_SLOTS);
+    const pub = (who, id, title, plot) => req('POST', '/projects', { identity: who,
+      body: Object.assign({ capsule: capsule({ id, srcId: id, title, lines: [title + ' lives here'] }) }, plot === undefined ? {} : { plot }) });
+    r = await pub(ME, 'p_plot_a', 'Plot keeper', 7);
+    eq('publishing with a plot works', r.status, 200);
+    const plotA = r.body.id;
+    r = await req('GET', '/projects/plots', { identity: ME });
+    const t7 = r.body.taken.find((x) => x.plot === 7);
+    ok('the plot map shows plot 7 as taken, by that project', !!t7 && t7.id === plotA && t7.title === 'Plot keeper');
+    ok('…and marks it as mine for its owner', t7 && t7.mine === true);
+    eq('…with the language it will be built in', t7 && t7.lang, 'rust');
+    eq('the map says how many plots exist', r.body.slots, plan.PLOT_SLOTS);
+    r = await req('GET', '/projects/plots', { identity: OTHER });
+    ok('a stranger sees it taken but not theirs', r.body.taken.some((x) => x.plot === 7 && x.mine === false));
+    r = await pub(OTHER, 'p_plot_b', 'Plot squatter', 7);
+    eq('somebody else cannot take the same plot', r.status, 409);
+    eq('…and is told which one', r.body && r.body.plot, 7);
+    r = await pub(OTHER, 'p_plot_b', 'Plot squatter', 8);
+    eq('the plot next door is free', r.status, 200);
+    const plotB = r.body.id;
+    r = await pub(ME, 'p_plot_a', 'Plot keeper', 7);
+    eq('republishing my own project on my own plot is fine', r.status, 200);
+    for (const bad of [-1, 120, 3.5, 'x', 1e9]) {
+      r = await pub(ME, 'p_plot_c', 'Plot nowhere ' + String(bad), bad);
+      eq(`a plot that does not exist is refused (${bad})`, r.status, 400);
+    }
+    r = await req('GET', '/projects/public?limit=50');
+    const la = r.body.projects.find((x) => x.id === plotA);
+    eq('the listing says where the villa stands', la && la.plot, 7);
+    eq('…inside the capsule too', la && la.capsule.plot, 7);
+    // 换个地方:挑 9,原来的 7 就空出来了
+    r = await pub(ME, 'p_plot_a', 'Plot keeper', 9);
+    eq('moving to another plot works', r.status, 200);
+    r = await req('GET', '/projects/plots');
+    ok('…and frees the old one', !r.body.taken.some((x) => x.plot === 7) && r.body.taken.some((x) => x.plot === 9 && x.id === plotA));
+    r = await pub(OTHER, 'p_plot_b', 'Plot squatter', 7);
+    eq('so somebody else may now build on it', r.status, 200);
+    // 不给 plot = 交给小镇自己排,原来挑的地也放掉
+    r = await pub(ME, 'p_plot_a', 'Plot keeper', undefined);
+    r = await req('GET', '/projects/plots');
+    ok('publishing without a plot lets the town place it', !r.body.taken.some((x) => x.id === plotA));
+    // 一个客户端自己往胶囊里写 plot,不经过检查,是不算数的
+    await req('POST', '/projects', { identity: ME, body: { capsule: capsule({ id: 'p_plot_sneak', srcId: 'p_plot_sneak', title: 'Plot sneak', lines: ['sneaky'], plot: 7 }) } });
+    r = await req('GET', '/projects/plots');
+    ok('a plot smuggled inside the capsule is ignored', r.body.taken.filter((x) => x.plot === 7).length === 1 && r.body.taken.find((x) => x.plot === 7).id === plotB);
+    for (const [who, src] of [[ME, 'p_plot_a'], [OTHER, 'p_plot_b'], [ME, 'p_plot_sneak']]) await req('DELETE', '/projects/' + src, { identity: who });
+  }
+
   // 收尾:别把测试数据留在库里
   await req('DELETE', '/projects/p_remote', { identity: ME });
   await req('DELETE', '/projects/p_five', { identity: ME });

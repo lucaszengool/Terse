@@ -1,0 +1,336 @@
+<!doctype html>
+<!--
+  town-wall.html — 代码小镇的壁纸版。
+
+  Terse Mac 把这一页嵌在桌面那层窗口里(src/renderer/wallpaper.html 的 iframe),
+  于是广场那座第一人称的粒子小镇就是你的壁纸:平时它自己慢慢转着看,
+  你在 Terse 里点「进去逛」时它接管键盘鼠标,WASD 走、拖动看、到门口按 E 进别墅,
+  Esc 退回来。它和手机广场用的是**同一台引擎、同一份数据、同一套玩法**
+  (mineradio-wallpaper.js 的 enterTown / enterRoom、/phone/town-net.js),
+  所以手机那边小镇长出什么,桌面上也就有什么,不用重新打包 Mac 应用。
+
+  和宿主之间只说 postMessage:
+    宿主 → 页面  {target:'terse-town', cmd:'init', identity, name, lang}
+                 {target:'terse-town', cmd:'walk', on}
+    页面 → 宿主  {source:'terse-town', event:'ready' | 'esc' | 'villa' | 'town' | 'error', ...}
+  直接在浏览器里打开也能玩(?lang=zh / ?budget=0.8),只是没登录、只看不走进名单。
+-->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Terse · 代码小镇</title>
+<script type="importmap">
+{ "imports": { "three": "/app-assets/vendor/three.module.min.js", "three/addons/": "/app-assets/vendor/jsm/" } }
+</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05070c; color: #dfe9ff;
+    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif; }
+  #cv { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #host { position: fixed; inset: 0; outline: none; touch-action: none; transition: opacity .35s ease; }
+  /* 当壁纸的时候:画面照常,但按钮、摇杆、提示都收起来 —— 桌面上没人点得到它们 */
+  body.idle #host { opacity: 0; pointer-events: none; }
+  .bar { position: fixed; left: 50%; transform: translateX(-50%); z-index: 20; padding: 7px 14px; border-radius: 999px;
+    background: rgba(8, 12, 22, .62); border: 1px solid rgba(160, 200, 255, .18); backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); white-space: nowrap; pointer-events: none; transition: opacity .35s ease; }
+  #tip { top: 18px; }
+  #villa { bottom: 22px; }
+  body.idle .bar { opacity: 0; }
+  #card { position: fixed; right: 18px; top: 64px; z-index: 21; max-width: 340px; max-height: 60vh; overflow: auto;
+    padding: 12px 14px; border-radius: 12px; background: rgba(8, 12, 22, .78); border: 1px solid rgba(160, 200, 255, .18); }
+  #card .dim { opacity: .62; }
+  #card code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  #boot { position: fixed; inset: 0; display: grid; place-items: center; color: rgba(210, 225, 255, .7); z-index: 30;
+    pointer-events: none; transition: opacity .6s ease; }
+  #boot.gone { opacity: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body class="idle">
+<canvas id="cv"></canvas>
+<div id="host" tabindex="0"></div>
+<div id="tip" class="bar"></div>
+<div id="villa" class="bar" hidden></div>
+<div id="card" hidden></div>
+<div id="boot">…</div>
+
+<script src="/phone/plaza-field.js"></script>
+<script>
+  /* town-net.js 从 window.Social 取身份;宿主(Terse Mac)通过 postMessage 给 */
+  window.__townIdentity = '';
+  window.Social = window.Social || { identity: function () { return window.__townIdentity || ''; } };
+</script>
+<script src="/phone/town-net.js"></script>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const embedded = window.parent !== window;
+const $ = (id) => document.getElementById(id);
+const host = $('host'), cv = $('cv');
+
+const S = {
+  lang: (q.get('lang') || (navigator.language || '')).toLowerCase().startsWith('zh') ? 'zh' : 'en',
+  budget: Math.max(0.3, Math.min(1, +(q.get('budget') || 0.8))),
+  walking: !embedded,          // 直接打开这一页 = 就是来逛的
+  inited: !embedded,
+  wp: null, town: null, projects: [], pos: null, inVilla: false, busy: false,
+};
+
+const TXT = {
+  zh: { tipTown: 'WASD 走 · 拖动看四周 · 到门口按 E 进别墅 · Esc 回到桌面',
+        tipVilla: '拖动看四周 · WASD 走 · 点家具看文件 · Esc 回到小镇',
+        villa: '{t} 的别墅 · Esc 回到小镇', loading: '小镇正在盖…', empty: '广场上还没有项目',
+        noEngine: '这台电脑的显卡跑不起小镇', files: '{n} 个文件' },
+  en: { tipTown: 'WASD to walk · drag to look · E at a door to go in · Esc to go back to the desktop',
+        tipVilla: 'drag to look · WASD to walk · click furniture to read a file · Esc back to town',
+        villa: "{t}'s villa · Esc back to town", loading: 'Building the town…', empty: 'Nothing published yet',
+        noEngine: 'This graphics card cannot run the town', files: '{n} files' },
+};
+const tx = (k, vars) => String(TXT[S.lang][k] || TXT.en[k] || k).replace(/\{(\w+)\}/g, (_, v) => (vars && vars[v] != null ? vars[v] : ''));
+
+/* 和手机广场同一份中文(landing/phone/app.js 的 town_*) */
+const WORDS_ZH = {
+  town_enter: '进去', town_hint: '拖动看四周 · WASD 走路 · 到门口按 E 进去',
+  town_wave: '招手', town_cheer: '欢呼', town_sit: '坐下', town_say: '说一句',
+  town_lantern: '点一盏灯', town_note: '留一张字条',
+  town_talk: '和他聊聊:', town_ask_house: '介绍一下你的房子', town_ask_day: '你今天在忙什么?', town_ask_who: '镇上我该去见谁?',
+  town_placeholder: '说点什么…', town_offline: '(他在想事情,等一下再问)', town_follow: '跟我来!', town_gift: '你收到了',
+};
+const NOTES_ZH = {
+  'somebody was here': '有人来过', 'try this one': '试试这个', 'good code lives here': '这里住着好代码',
+  'look up': '抬头看', 'this way to the square': '往这边是广场', 'the door is round the back': '门在后面',
+  'worth reading': '值得一读', 'start here if you are new': '新来的从这里开始', 'beautiful at night': '夜里很好看',
+  'still maintained': '还有人在维护',
+};
+
+function tell(msg) {
+  if (!embedded) return;
+  try { window.parent.postMessage(Object.assign({ source: 'terse-town' }, msg), '*'); } catch (e) {}
+}
+function boot(text) {
+  const b = $('boot');
+  if (text == null) { b.classList.add('gone'); return; }
+  b.classList.remove('gone'); b.textContent = text;
+}
+function setTip() {
+  $('tip').textContent = S.inVilla ? tx('tipVilla') : tx('tipTown');
+}
+
+/* ── 宿主说话 ─────────────────────────────────────────────────────────── */
+addEventListener('message', (e) => {
+  if (!embedded || e.source !== window.parent) return;
+  const d = e.data || {};
+  if (d.target !== 'terse-town') return;
+  if (d.cmd === 'init') {
+    const had = window.__townIdentity;
+    window.__townIdentity = String(d.identity || '');
+    if (d.name) { try { localStorage.setItem('terse-name', String(d.name).slice(0, 40)); } catch (err) {} }
+    if (d.lang) S.lang = String(d.lang).toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    setTip();
+    // 登录状态变了:重新进一次镇上的名单(没登录只能看)
+    if (S.town && had !== window.__townIdentity) { try { window.Town.leave(); window.Town.join(S.town); } catch (err) {} }
+    S.inited = true;
+  } else if (d.cmd === 'walk') {
+    setWalking(!!d.on);
+  }
+});
+
+function setWalking(on) {
+  S.walking = on;
+  document.body.classList.toggle('idle', !on);
+  if (on) {
+    try { window.focus(); host.focus({ preventScroll: true }); } catch (e) {}
+  } else {
+    // 手放开:按住的键清掉(town-scene 在 blur 时清),鼠标锁还回去
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+    try { window.dispatchEvent(new Event('blur')); } catch (e) {}
+    $('card').hidden = true;
+  }
+}
+
+/* Esc:在别墅里 = 回小镇;在小镇里 = 把桌面还给你(宿主把窗口放回去)。
+   输入框里的 Esc 归输入框(关聊天、关面板),town-scene 自己处理。 */
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const a = document.activeElement;
+  if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+  if (!S.walking) return;
+  e.preventDefault();
+  if (S.inVilla) { exitVilla(); return; }
+  if (document.querySelector('.town-sheet:not([hidden]), .town-chat:not([hidden])')) return;
+  if (embedded) tell({ event: 'esc' }); else setWalking(true);
+}, true);
+
+/* ── 小镇 ─────────────────────────────────────────────────────────────── */
+function housesOf(list) {
+  return list.map((p) => {
+    const cap = window.TersePlazaField.toCapsule(p) || {};
+    const dirs = Array.isArray(cap.dirs) ? cap.dirs : [];
+    let bytes = 0, files = 0;
+    for (const d of dirs) { bytes += +d.bytes || 0; files += +d.files || 0; }
+    return {
+      id: p.id, title: cap.title || p.title || '—', lang: (cap.langs && cap.langs[0] && cap.langs[0][0]) || '',
+      bytes, files, style: cap.style || '',
+      city: (cap.geo && cap.geo.city) || '', country: (cap.geo && cap.geo.country) || '',
+      plot: p.plot != null ? p.plot : (p.capsule && p.capsule.plot != null ? p.capsule.plot : null),
+      project: p,
+    };
+  });
+}
+
+async function loadProjects() {
+  const r = await fetch('/api/cloud/projects/public?limit=100', {
+    headers: window.__townIdentity ? { 'x-terse-identity': window.__townIdentity } : {},
+  });
+  const j = await r.json().catch(() => ({}));
+  S.projects = Array.isArray(j.projects) ? j.projects : [];
+}
+
+async function enterTown(at) {
+  const wp = S.wp, Town = window.Town;
+  if (!wp) return;
+  const zh = S.lang === 'zh';
+  const act = (pr) => pr && pr.then && pr.then(() => {}, () => {});
+  const tn = await wp.enterTown(housesOf(S.projects), {
+    host, input: host, budget: S.budget, joystick: false,
+    words: zh ? WORDS_ZH : null, noteWords: zh ? NOTES_ZH : null, lang: zh ? 'zh' : 'en',
+    onNpcHello: (id, ctx) => Town.npcHello(id, ctx, S.lang),
+    onNpcSay: (id, text, ctx) => Town.npcSay(id, text, ctx, S.lang),
+    onNpcBye: (id) => Town.npcBye(id, S.lang),
+    play: Town.play,
+    notes: () => Town.notes(),
+    onEnter: (house) => { if (S.walking) enterVilla(house.project || house); },
+    onMove: (x, z, yaw, v) => { S.pos = [x, z, yaw]; Town.move(x, z, yaw, v); },
+    onEmote: (n) => Town.emote(n),
+    onSay: (text) => act(Town.say(text)),
+    onMark: (kind, x, z, note) => act(Town.mark(kind, x, z, note)),
+  });
+  if (!tn) return;
+  S.town = tn;
+  if (at) tn.at(at[0], at[1], at[2]);
+  Town.join(tn);
+  setTip();
+  tell({ event: 'town', houses: S.projects.length });
+}
+
+/* ── 别墅:和手机一样 —— 把这个项目的城市摆出来,走进它最高的那栋楼 ── */
+async function enterVilla(p) {
+  if (S.busy || S.inVilla || !S.wp) return;
+  S.busy = true;
+  const wp = S.wp;
+  // 出来时站回这扇门口:问小镇人在哪(瞬移过来的不会触发 onMove)
+  let back = S.pos ? S.pos.slice() : null;
+  try { if (S.town) { const w = S.town.where(); back = [w.x, w.z, w.yaw]; } } catch (e) {}
+  try {
+    window.Town.leave();
+    wp.exitRoom();
+    S.town = null;
+    const cap = window.TersePlazaField.toCapsule(p);
+    wp.showProject(cap, 10 * 60 * 1000);
+    let h = null;
+    for (let i = 0; i < 30 && !h; i++) {
+      await new Promise((r) => setTimeout(r, 150));
+      const t = wp.mainTower ? wp.mainTower() : null;
+      if (t && t.dir) h = t;
+    }
+    if (!h) throw new Error('no building');
+    const room = await wp.enterRoom(h.dir, {
+      style: h.style, host, input: host, budget: S.budget,
+      onHere: (x) => { $('villa').textContent = tx('villa', { t: cap.title || '—' }) + (x && x.path ? ' · ' + x.path : ''); },
+      onPick: (_, d) => showCard(d),
+    });
+    if (!room) throw new Error('no room');
+    S.inVilla = true;
+    S.back = back;
+    $('villa').textContent = tx('villa', { t: cap.title || '—' });
+    $('villa').hidden = false;
+    setTip();
+    tell({ event: 'villa', title: cap.title || '' });
+  } catch (e) {
+    try { wp.hideProject(); } catch (err) {}
+    await enterTown(back);
+  } finally {
+    S.busy = false;
+  }
+}
+
+async function exitVilla() {
+  if (!S.inVilla || S.busy) return;
+  S.busy = true;
+  try {
+    S.inVilla = false;
+    $('villa').hidden = true;
+    $('card').hidden = true;
+    try { S.wp.exitRoom(); } catch (e) {}
+    try { S.wp.hideProject(); } catch (e) {}
+    await enterTown(S.back);
+  } finally {
+    S.busy = false;
+  }
+}
+
+function showCard(d) {
+  if (!d) return;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let html = '<b>' + esc((d.icon || '') + ' ' + (d.title || '')) + '</b><div class="dim">' + esc(d.path) + '</div>'
+    + '<div>' + esc(d.role) + ' — ' + esc(d.furn) + '</div><div class="dim">' + esc(d.stats) + '</div>';
+  (d.items || []).slice(0, 24).forEach((i) => {
+    html += '<div>' + esc(i.icon) + ' <code>' + esc(i.name) + '</code> <span class="dim">' + esc(i.kind) + (i.line ? ' · L' + i.line : '') + '</span></div>';
+  });
+  $('card').innerHTML = html;
+  $('card').hidden = false;
+}
+
+/* ── 当壁纸时:镜头自己极慢地转,镇上的人和天照常过日子 ── */
+let lastT = performance.now();
+function drift(now) {
+  const dt = Math.min(0.1, (now - lastT) / 1000);
+  lastT = now;
+  if (!S.walking && S.town && !S.inVilla) {
+    try { const w = S.town.where(); S.town.at(w.x, w.z, w.yaw + dt * 0.035); } catch (e) {}
+  }
+  requestAnimationFrame(drift);
+}
+
+/* 暗底:引擎拿它给场里的粒子取色(小镇有自己的天,几乎用不到) */
+function bed() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 36;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 36);
+  gr.addColorStop(0, '#0b1224'); gr.addColorStop(1, '#05070c');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 36);
+  return c.toDataURL('image/png');
+}
+
+async function start() {
+  setTip();
+  document.body.classList.toggle('idle', !S.walking);
+  boot(tx('loading'));
+  // 嵌在 Terse 里:先等宿主报上身份(最多一秒半),免得进了镇又重进一次
+  for (let i = 0; i < 15 && !S.inited; i++) await new Promise((r) => setTimeout(r, 100));
+  let Engine = null;
+  try {
+    const m = await import('/app-assets/mineradio-wallpaper.js' + (window.__TERSE_BUILD ? '?v=' + encodeURIComponent(window.__TERSE_BUILD) : ''));
+    Engine = m.default;
+    S.wp = new Engine(cv, { theme: 'neon', quality: 56, angle: 42, intensity: 1, style: 'cinematic', pro: false, stagePace: 60000, photo: bed() });
+    S.wp.start();
+    try { S.wp.resize && S.wp.resize(); } catch (e) {}
+  } catch (e) {
+    boot(tx('noEngine'));
+    tell({ event: 'error', message: String((e && e.message) || e) });
+    return;
+  }
+  await loadProjects().catch(() => {});
+  if (!S.projects.length) boot(tx('empty'));
+  await enterTown(null);
+  if (S.projects.length) boot(null);
+  requestAnimationFrame(drift);
+  tell({ event: 'ready' });
+  if (S.walking) setWalking(true);
+}
+// 调试:控制台里看得到状态(不含身份以外的任何东西)
+window.__townWall = S;
+start();
+</script>
+</body>
+</html>

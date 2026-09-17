@@ -26,7 +26,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 
 /** 会被扫描的页面。app 本体和 float 那一页各自加载各自的一套脚本。 */
-const SHELLS = ['m.html', 'float.html'];
+const SHELLS = ['m.html', 'float.html', 'town-wall.html'];
 
 /* 引擎里**没有任何 HTML 提到**的那些:它们是被 mineradio-wallpaper.js 用 ES
    import 拉进去的(shaders / 项目层 / 城市配色 / 语言配色)。扫描看不见,只能手列。

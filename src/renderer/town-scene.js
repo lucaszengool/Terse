@@ -410,6 +410,10 @@ export function createTown(renderer, projects, opts = {}) {
        月光本身仍然低于辉光的门槛(0.7),亮起来的只有窗、灯、萤火。 */
     U.uRimNight.value.set(0.12, 0.14, 0.26);
     U.uMoon.value.set(0.085, 0.095, 0.17);
+    /* 夜里仍看得出建筑白天的颜色:一层偏暖的中性底光;再加每栋楼都有的"屋里透出来的光"
+       (贴着下面几层、往上淡,一块块明暗不同)。远处的房子也亮 —— 不靠最近那 24 盏灯。 */
+    U.uNightFill.value.set(0.12, 0.108, 0.095);
+    U.uSpill.value.set(0.44, 0.26, 0.11);
     U.uShadowTint.value.set(0.78, 0.82, 1);
     U.uKeyK.value = 0.26;
     U.uDayGlow.value = 0.35;

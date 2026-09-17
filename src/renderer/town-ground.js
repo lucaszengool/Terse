@@ -75,7 +75,7 @@ void main(){
   gl_PointSize = clamp(r * sz * uPx / max(0.3, d), 1.0, 9.0) * (y > 0.02 ? 0.75 : 1.0);
   vec3 lit = uSky * 0.75 + uSunCol * max(uSunDir.y, 0.0) * 0.7;
   // 夜里的地:月光下暗暗的蓝灰(看得清街和草地的分界),亮起来的只有灯下那一圈暖光
-  col *= mix(lit, vec3(0.085, 0.095, 0.14), uNight);
+  col *= mix(lit, vec3(0.13, 0.13, 0.17), uNight);
   // 灯下一圈暖光(夜里才看得出来):最近的 8 盏
   if (uNight > 0.05 && r < 60.0) {
     vec3 gl = vec3(0.0);
@@ -138,7 +138,7 @@ void main(){
   vec3 lit = uSky * 0.75 + uSunCol * max(uSunDir.y, 0.0) * 0.7;
   bool water = cls > 5.5 && cls < 6.5;
   if (water) m = mix(m, uZen * 0.5, 0.5) * (0.9 + 0.1 * sin(vW.x * 0.9 + uTime) * sin(vW.z * 0.7 - uTime * 0.8));
-  vec3 col = m * mix(lit, vec3(0.085, 0.095, 0.14), uNight) * mix(0.62, 1.3, uNight) * (water ? 1.25 : 1.0);
+  vec3 col = m * mix(lit, vec3(0.13, 0.13, 0.17), uNight) * mix(0.62, 1.3, uNight) * (water ? 1.25 : 1.0);
   if (!water) col = mix(col, vec3(0.8, 0.84, 0.92) * mix(lit, vec3(0.16, 0.18, 0.26), uNight) * 0.8, uSnowG * 0.9);
   if (cls > 0.5 && cls < 3.5) col *= 1.0 - 0.3 * uWet;
   if (uNight > 0.05) {

@@ -49,6 +49,8 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const LIGHT_GLSL = `
 uniform float uNight, uExposure, uTime;
 uniform vec3 uSunDir, uSunCol, uSky, uGround, uMoon;
+// 小镇的夜:底光(看得出建筑白天的颜色)+ 屋里透出来的暖光(每栋都有,不靠最近那 24 盏灯)。屋里都是 0
+uniform vec3 uNightFill, uSpill;
 uniform float uKeyK;
 uniform vec4 uL[24]; uniform vec3 uLC[24]; uniform int uNL;
 uniform vec4 uR[8]; uniform vec4 uRH[8]; uniform int uNR;
@@ -107,6 +109,7 @@ float sunShadow(vec3 P){
 /* 阳光能不能照到这一点:查从太阳那边看过来的深度图(建好时渲染一次,场景不会动)。
    五点取样,影子边是软的。沿法线挪一点再查,免得面自己把自己挡住。 */
 float gSunVis = 0.0;
+float gSpillK = 0.0;   // 这一颗是不是建筑的面(屋里透出来的暖光只照它)
 float shadowAt(vec3 P, vec3 N){
   vec4 l = uShadowVP * vec4(P + N * 0.05, 1.0);
   vec3 c = l.xyz / l.w * 0.5 + 0.5;
@@ -185,6 +188,16 @@ vec3 lightAt(vec3 P, vec3 N, float indoor, float ao){
   // 夜里暗处是蓝紫色的(和暖灯一冷一暖),不是一片黑、也不是全被灯染成金色
   vec3 night = uMoon * aoC * (0.55 + 0.45 * max(N.y, 0.0)) * mix(1.0, 0.75, indoor);
   night += uMoon * 5.0 * sun;                  // 月光从同一个方向进来:地上一块冷蓝的窗影
+  night += uNightFill * aoC;
+  /* 屋里透出来的光:贴着楼的下面几层是暖的,往上淡掉;一块块(约 3.5 米)明暗不同 ——
+     像有的窗亮着、有的暗着。只给建筑的面(gSpillK),树冠花草不跟着发橙。 */
+  if (gSpillK > 0.0 && indoor < 0.5) {
+    vec2 cq = floor(P.xz / 3.5) + floor(P.y / 3.0) * 7.0;
+    float cell = fract(sin(dot(cq, vec2(12.9898, 78.233))) * 43758.5453);
+    float low = 1.0 - smoothstep(1.2, 10.0, P.y);
+    float side = 1.0 - abs(N.y);
+    night += uSpill * gSpillK * low * (0.3 + 0.7 * side) * (0.35 + 0.65 * cell) * mix(0.6, 1.0, ao);
+  }
   for (int i = 0; i < 24; i++) {
     if (i >= uNL) break;
     vec3 Lv = uL[i].xyz - P;
@@ -734,6 +747,7 @@ ${POS_BLOCK}  /* 入场:粒子从四面八方聚拢成这间屋子(和壁纸的�
   // 北欧长屋:上三分之一被烟熏暗(暗成烟紫,不是焦黑)
   if (uSootY > 0.0 && indoor > 0.5) alb *= mix(1.0, 0.72, smoothstep(uSootY * 0.62, uSootY, P.y));
   float ao = aoOf(P, N);
+  gSpillK = 1.0;
   vec3 lit = lightAt(P, N, indoor, ao);
   vec3 col = alb * lit + glow * mix(uDayGlow, 1.0, uNight);
   vec3 V = normalize(cameraPosition - P);
@@ -894,6 +908,7 @@ export function makeUniforms() {
     uSunDir: { value: new THREE.Vector3(0.45, 0.7, 0.3).normalize() }, uSunCol: { value: new THREE.Vector3(2.2, 2.0, 1.7) },
     uSky: { value: new THREE.Vector3(0.5, 0.58, 0.72) }, uGround: { value: new THREE.Vector3(0.3, 0.26, 0.22) },
     uMoon: { value: new THREE.Vector3(0.055, 0.065, 0.13) },
+    uNightFill: { value: new THREE.Vector3(0, 0, 0) }, uSpill: { value: new THREE.Vector3(0, 0, 0) },
     uL: { value: v4(24) }, uLC: { value: v3(24) }, uNL: { value: 0 },
     uR: { value: v4(8) }, uRH: { value: v4(8) }, uNR: { value: 0 },
     uF: { value: v4(32) }, uNF: { value: 0 },

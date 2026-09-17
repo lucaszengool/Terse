@@ -1485,6 +1485,14 @@
         else townGoto = String(id);
       });
     }
+    // Windows: this window's awaited invokes never get an answer (requests arrive,
+    // replies do not), so the settings read below never resolves there. Ask for
+    // them by event too; Rust answers with the same wallpaper-config event a save
+    // sends, which both listeners above handle (applyConfig + setTown). Delayed so
+    // those listeners are registered first. Harmless on macOS (nobody listens).
+    setTimeout(function () {
+      try { window.__TAURI__.event.emit('wallpaper-want-config', {}); } catch (e) {}
+    }, 800);
     // 启动时按保存的配置来;引擎换过、刚挂上时也得停住(它自己会 start)
     (async function () {
       try {

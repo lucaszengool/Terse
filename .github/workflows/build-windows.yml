@@ -1780,6 +1780,10 @@ jobs:
           $pad = [TownT]::FindWindowW($null, "Terse Code Town")
           if ($pad -eq [IntPtr]::Zero -or -not [TownT]::IsWindowVisible($pad)) {
             Shot "town-no-pill"
+            foreach ($n in "wallpaper.log", "lazy-window.log", "town.log") {
+              $pl = Join-Path $dir $n
+              if (Test-Path $pl) { Write-Host "--- $n (tail) ---"; Get-Content $pl -Tail 25 | ForEach-Object { Write-Host "  $_" } }
+            }
             throw "TOWN FAIL: the Control-town pill never appeared (town on in wallpaper.json)"
           }
           $r = New-Object TownT+RECT

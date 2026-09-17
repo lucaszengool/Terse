@@ -3743,6 +3743,20 @@ pub fn run() {
         .manage(permission::PermissionHub::default())
         .manage(AppState::default())
         .setup(|app| {
+            // The wallpaper page's settings, by EVENT. Its awaited invokes never
+            // get a reply on Windows (requests arrive, responses do not — see
+            // wallpaper.log "DID NOT ANSWER"), so at boot it asked for its
+            // settings and never got them: no saved theme, and no Code Town,
+            // which starts only from `town.on` in those settings. Events do get
+            // through, so the page asks with one and gets the answer as the same
+            // wallpaper-config event a save sends.
+            {
+                use tauri::Listener;
+                let handle = app.handle().clone();
+                app.listen_any("wallpaper-want-config", move |_| {
+                    let _ = handle.emit_to("wallpaper", "wallpaper-config", get_wallpaper_config());
+                });
+            }
             // Register the terse:// connect handler + handle a cold-start launch URL.
             {
                 let handle = app.handle().clone();

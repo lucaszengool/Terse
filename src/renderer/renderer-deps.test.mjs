@@ -128,7 +128,6 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ["pm_stop", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
     ["pm_window_rect", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
     ["pm_windows", "particle mode (\u7c92\u5b50\u6a21\u5f0f) \u2014 macOS window capture"],
-    ["sd_active", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_alert", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_codex_open", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_diff", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
@@ -141,7 +140,6 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ["sd_jump", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_open_claude", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_send", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
-    ["sd_sessions", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_stop", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_transcript", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["sd_usage", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
@@ -155,6 +153,8 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ["sd-state", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["terse-approval", "approvals \u2014 macOS Accessibility"],
     ["terse-approval-cleared", "approvals \u2014 macOS Accessibility"],
+    ["town-key", "town_keys.rs"],
+    ["town-mouse", "town_keys.rs"],
   ]);
 
   if (macCmd.size && winCmd.size) {

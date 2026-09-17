@@ -4598,6 +4598,10 @@ pub fn run() {
             dock_hook::sd_answer,
             dock_hook::sd_direct_status,
             dock_hook::sd_direct_set,
+            // The room's "connect an agent" list. Without it the panel is empty
+            // and none of the rl_* commands below can ever be reached.
+            session_dock::sd_active,
+            session_dock::sd_sessions,
             room_link::rl_status,
             room_link::rl_link,
             room_link::rl_unlink,
@@ -4648,6 +4652,9 @@ pub fn run() {
             messages_status,
             messages_recent,
             wallpaper_set_adjust,
+            wallpaper_town_walk,
+            town_control_state,
+            townpad_show,
             desktop_icon_rects,
             wallpaper_set_interactive,
             notifications::toast_action,
@@ -7020,6 +7027,35 @@ fn wallpaper_set_adjust(app: AppHandle, on: bool) -> bool {
     // else (Esc, the watchdog, a lapsed licence) ends it.
     let _ = app.emit("wallpaper-adjust", on);
     took
+}
+
+/// Code Town's control switch (the pill next to the island on macOS). Windows
+/// has no system key tap here yet: this gives the wallpaper focus and tucks the
+/// main window away, and reports keys:false so the UI can say so.
+#[tauri::command]
+fn wallpaper_town_walk(app: AppHandle, on: bool) -> serde_json::Value {
+    if on {
+        if let Some(main) = app.get_webview_window("main") { let _ = main.hide(); }
+    }
+    let Some(win) = app.get_webview_window("wallpaper") else { return serde_json::json!({ "ok": false }) };
+    if on { let _ = win.set_focus(); }
+    diag_log("wallpaper", &format!("town control on={on}"));
+    let _ = app.emit("wallpaper-town-walk", on);
+    let _ = app.emit("town-control", serde_json::json!({ "on": on, "keys": false, "trusted": true }));
+    serde_json::json!({ "ok": true, "on": on, "keys": false, "mouse": false, "trusted": true })
+}
+
+#[tauri::command]
+fn town_control_state() -> serde_json::Value {
+    serde_json::json!({ "on": false, "keys": false, "trusted": true })
+}
+
+#[tauri::command]
+fn townpad_show(app: AppHandle, on: bool) -> bool {
+    match app.get_webview_window("townpad") {
+        Some(w) => { let _ = if on { w.show() } else { w.hide() }; true }
+        None => false,
+    }
 }
 
 /// Page-driven: 3D is on. Note what this does NOT do — move the window.

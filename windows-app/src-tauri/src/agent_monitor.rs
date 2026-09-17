@@ -100,6 +100,22 @@ fn get_process_cwd_by_pid(pid: u32) -> Option<String> {
     None
 }
 
+/// Where zstd lives, for Codex Desktop's compressed .jsonl.zst rollouts.
+///
+/// macOS checks the Homebrew prefixes. Windows has no fixed install location,
+/// so this asks PATH — and keeps only a real .exe, since `where` can also list
+/// an extensionless script CreateProcess cannot start. None means compressed
+/// rollouts read as empty: that session shows no live state, rather than the
+/// app failing.
+pub(crate) fn zstd_binary() -> Option<PathBuf> {
+    let out = crate::hidden_command("where").arg("zstd").output().ok()?;
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(|l| l.trim())
+        .find(|l| l.to_ascii_lowercase().ends_with(".exe") && std::path::Path::new(l).exists())
+        .map(PathBuf::from)
+}
+
 /// Working directories of every agent process we know how to spot.
 ///
 /// The projects list uses this to offer "the folder you are working in right

@@ -58,24 +58,27 @@ void main(){
   }
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float d = -mv.z;
-  gl_PointSize = clamp(aSize * uPx / max(0.2, d), 1.0, 48.0);
+  // 夜里窗和灯的光晕大一圈:暖光要"溢"出窗框,才有夜里的氛围
+  gl_PointSize = clamp(aSize * (1.0 + 0.45 * uNight) * uPx / max(0.2, d), 1.0, 60.0);
   float on = aKind < 1.5 ? uNight * step(aPhase, uLit) : aKind < 2.5 ? mix(0.45, 1.0, uNight) : mix(0.7, 1.0, uNight);
   vA = on * fade * mix(1.0, 0.72 + 0.28 * sin(uTime * 1.9 + aPhase * 19.0), tw);
   // 远处的光被空气吃掉一点(和面那边同一条雾)
   float fd = 1.0 - exp(-uFogA * exp(-uFogB * max(cameraPosition.y, 0.0)) * d);
-  vA *= (1.0 - 0.6 * fd) * smoothstep(0.5, 2.0, d);
+  // 贴着镜头的灯不画成一大团光斑:近处 4 米内淡出
+  vA *= (1.0 - 0.6 * fd) * smoothstep(1.2, 4.0, d);
   vC = aColor;
   gl_Position = projectionMatrix * mv;
 }`;
 const GLOW_FS = `
 precision highp float;
+uniform float uNight;
 varying vec3 vC; varying float vA;
 void main(){
   vec2 d = gl_PointCoord - vec2(0.5);
   float r2 = dot(d, d);
   if (r2 > 0.25) discard;
-  float core = exp(-r2 * 48.0), halo = exp(-r2 * 8.0) * 0.4;
-  gl_FragColor = vec4(vC * (core + halo) * (1.0 - smoothstep(0.15, 0.25, r2)) * 0.62 * vA, 1.0);
+  float core = exp(-r2 * 48.0), halo = exp(-r2 * 8.0) * (0.4 + 0.25 * uNight);
+  gl_FragColor = vec4(vC * (core + halo) * (1.0 - smoothstep(0.15, 0.25, r2)) * (0.62 + 0.3 * uNight) * vA, 1.0);
 }`;
 
 /* 镇上的人:一个人 48 颗点摆成的小人,走路的摆动全在顶点着色器里算 —— 一次 draw call
@@ -132,9 +135,10 @@ void main(){
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float d = -mv.z;
   gl_PointSize = clamp((3.0 + a * 5.0) * uPx / max(1.0, d), 2.0, 150.0);
-  vA = (0.03 + 0.028 * b) * smoothstep(6.0, 30.0, d) * (1.0 - smoothstep(120.0, 175.0, d));
+  vA = (0.03 + 0.028 * b) * (1.0 + 0.5 * uNight) * smoothstep(6.0, 30.0, d) * (1.0 - smoothstep(120.0, 175.0, d));
   float s = pow(max(dot(normalize(p - uCam), uSunDir), 0.0), 6.0);
-  vC = mix(uFogAway, uFogSun, s) * mix(0.55, 0.4, uNight);
+  // 夜里空气里带一点月光的蓝紫:远处"隔着夜色"看,而不是一片死黑
+  vC = mix(uFogAway, uFogSun, s) * mix(0.55, 0.4, uNight) + vec3(0.05, 0.06, 0.12) * uNight;
   gl_Position = projectionMatrix * mv;
 }`;
 const HAZE_FS = `
@@ -145,6 +149,41 @@ void main(){
   float r2 = dot(d, d);
   if (r2 > 0.25) discard;
   gl_FragColor = vec4(vC * exp(-r2 * 7.0) * vA, 1.0);
+}`;
+
+/* 萤火:夜里才有。人身边一个盒子里几百颗暖色的小光点,各自慢慢绕、一明一灭 ——
+   夜里的氛围感大半来自"空气里有东西在发光"。白天整层不画。 */
+const FLY_VS = `
+attribute float aI;
+uniform float uPx, uTime, uNight;
+uniform vec3 uCam;
+varying vec3 vC; varying float vA;
+float h1f(float i, float k){ return fract(sin(i * k) * 43758.5453); }
+void main(){
+  if (uNight < 0.05) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }
+  float a = h1f(aI, 12.9898), b = h1f(aI, 78.233), c = h1f(aI, 37.719), e = h1f(aI, 91.17);
+  vec3 box = vec3(90.0, 7.0, 90.0);
+  float t = uTime * (0.08 + 0.12 * e);
+  vec3 p;
+  p.x = mod(a * box.x + sin(t + a * 20.0) * 3.0 - uCam.x + box.x * 0.5, box.x) - box.x * 0.5 + uCam.x;
+  p.z = mod(c * box.z + cos(t * 0.8 + c * 20.0) * 3.0 - uCam.z + box.z * 0.5, box.z) - box.z * 0.5 + uCam.z;
+  p.y = 0.4 + b * box.y + sin(t * 1.7 + e * 30.0) * 0.5;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  float d = -mv.z;
+  gl_PointSize = clamp(0.11 * uPx / max(0.5, d), 1.5, 7.0);
+  float blink = pow(0.5 + 0.5 * sin(uTime * (0.6 + e) + a * 50.0), 3.0);
+  vA = uNight * blink * smoothstep(2.5, 7.0, d) * (1.0 - smoothstep(35.0, 48.0, d));
+  vC = mix(vec3(1.0, 0.78, 0.38), vec3(0.75, 1.0, 0.55), step(0.7, e));
+  gl_Position = projectionMatrix * mv;
+}`;
+const FLY_FS = `
+precision highp float;
+varying vec3 vC; varying float vA;
+void main(){
+  vec2 d = gl_PointCoord - vec2(0.5);
+  float r2 = dot(d, d);
+  if (r2 > 0.25) discard;
+  gl_FragColor = vec4(vC * (exp(-r2 * 60.0) * 1.1 + exp(-r2 * 10.0) * 0.3) * vA, 1.0);
 }`;
 
 /* 最后一道:暗角 + 一点点抖动。抖动是给渐变用的 —— 天空和雾在 8 位色里会出现一圈圈色阶。 */
@@ -286,7 +325,8 @@ export function createTown(renderer, projects, opts = {}) {
      0.85 盖住七成,是"看得见颗粒的实面"。近处靠像素上限收住,于是近看是细沙,不是珠子。 */
   /* 盖住多少 = (点/点距)²,和远近无关。远处那份点距粗,就让点铺满(0.8 的盖住率:
      一栋房子是一团实的体块);近处那份点距细,点小一点,看得见颗粒。 */
-  U.uDotK.value = 1.6; U.uDotMax.value = 22; U.uSoft.value = 1; U.uFlat.value = 1;
+  U.uDotK.value = 1.85; U.uDotMax.value = 22; U.uSoft.value = 1; U.uFlat.value = 1;
+  U.uGrain.value = 1;         // 边上化开的细沙,不是硬边珠子(见 room-surface 的 DOT_FS)
   U.uBreath.value = 0.035;    // 整座镇子极慢地呼吸(几厘米)
   U.uSparkle.value = 0.3;     // 闪得收敛些:几百万颗一起闪是雪花屏
   U.uBackCull.value = 1;      // 人在房子外面:背面的点只会从缝里透出黑来
@@ -361,13 +401,15 @@ export function createTown(renderer, projects, opts = {}) {
     U.uNight.value = env.night;
     /* 白天压住高光。夜里不再往上提:墙是实心的片以后,提起来整座镇子是一片发亮的淡紫,
        窗反倒成了黑洞 —— 夜里该亮的只有窗、灯、门。 */
-    U.uExposure.value = 0.9 - 0.12 * env.night;
+    U.uExposure.value = 0.9 - 0.03 * env.night;
     U.uSat.value = 1.25;
     /* 轮廓光只在太阳低的时候强:正午打满,整栋房子的边都是粉白的一圈,颜色全被吃掉 */
     const rk = 0.95 * (0.22 + 0.78 * Math.max(0, Math.min(1, (22 - env.sunEl) / 22)));
     U.uRim.value.set(env.glow[0] * rk, env.glow[1] * rk, env.glow[2] * rk);
-    U.uRimNight.value.set(0.06, 0.07, 0.12);
-    U.uMoon.value.set(0.05, 0.058, 0.105);   // 夜里房子还看得出轮廓,不是全黑(再亮就过了辉光的门槛,整面墙发光)
+    /* 夜里:月光把房子的轮廓勾出来(蓝白的边),墙是暗蓝的面 —— 看得清街,又是夜。
+       月光本身仍然低于辉光的门槛(0.7),亮起来的只有窗、灯、萤火。 */
+    U.uRimNight.value.set(0.12, 0.14, 0.26);
+    U.uMoon.value.set(0.085, 0.095, 0.17);
     U.uShadowTint.value.set(0.78, 0.82, 1);
     U.uKeyK.value = 0.26;
     U.uDayGlow.value = 0.35;
@@ -391,7 +433,8 @@ export function createTown(renderer, projects, opts = {}) {
     }
     if (nature) nature.setEnv(env);
     // 天穹:院子里压到四成(怕盖过屋子),镇上白天要亮 —— 正午的天是 #8FC3EA,不是深蓝
-    if (atmos) atmos.uniforms.uGain.value = 0.42 + 0.46 * (1 - env.night) * (1 - 0.35 * fx.cover);
+    // 夜里天穹不压那么狠:星星、银河、月亮要看得见
+    if (atmos) atmos.uniforms.uGain.value = 0.42 + 0.46 * (1 - env.night) * (1 - 0.35 * fx.cover) + 0.3 * env.night * (1 - fx.cover);
     /* 窗里的灯:天黑以后亮,夜深了一盏盏熄 —— 22 点以后只剩一小半,凌晨两点只剩几盏 */
     const hh = env.hour;
     U.uLit.value = hh >= 22 || hh < 5 ? (hh >= 22 ? 1 - (hh - 22) * 0.2 : hh < 2 ? 0.55 - hh * 0.15 : 0.12 + (hh - 2) * 0.03) : 1;
@@ -404,7 +447,7 @@ export function createTown(renderer, projects, opts = {}) {
   const group = S.build(U);
   scene.add(group);
   // 城墙、城门、集市、老房子:一直画(不分远近那两份)
-  const landU = Object.assign({}, U, { uCull: { value: new THREE.Vector2(0, 0) }, uDotK: { value: 1.45 }, uDotMax: { value: 26 } });
+  const landU = Object.assign({}, U, { uCull: { value: new THREE.Vector2(0, 0) }, uDotK: { value: 1.6 }, uDotMax: { value: 26 } });
   const landGroup = built.SL ? built.SL.build(landU) : null;
   if (landGroup) scene.add(landGroup);
   /* 地面:一圈跟着人走的点,查一张烤好的俯视图(街、广场、公园、房子底下)。
@@ -425,7 +468,7 @@ export function createTown(renderer, projects, opts = {}) {
     // 近处那份:点距只有八厘米,点比点距小 —— 贴着墙走是细沙,不是一颗颗珠子
     const Uf = Object.assign({}, U, {
       uCull: { value: new THREE.Vector2(-1, R_FINE) },
-      uDotK: { value: 1.45 }, uDotMax: { value: 26 },
+      uDotK: { value: 1.6 }, uDotMax: { value: 26 },
     });
     const b = buildTown(plan, { budget: B, uniforms: Uf, G: () => {}, seed: opts.seed || '', spacing: FINE_SP, only: ids, props: false });
     const g = b.S.build(Uf);
@@ -449,6 +492,18 @@ export function createTown(renderer, projects, opts = {}) {
   const glow = new THREE.Points(gGeo, gMat);
   glow.frustumCulled = false; glow.renderOrder = 2;
   scene.add(glow);
+
+  const NFLY = Math.round(700 * B);
+  const flyGeo = new THREE.BufferGeometry();
+  const flyI = new Float32Array(NFLY);
+  for (let i = 0; i < NFLY; i++) flyI[i] = i + 1;
+  flyGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NFLY * 3), 3));
+  flyGeo.setAttribute('aI', new THREE.BufferAttribute(flyI, 1));
+  const flyMat = new THREE.ShaderMaterial({ uniforms: { uPx: U.uPx, uTime: U.uTime, uNight: U.uNight, uCam: { value: new THREE.Vector3() } },
+    vertexShader: FLY_VS, fragmentShader: FLY_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const flies = new THREE.Points(flyGeo, flyMat);
+  flies.frustumCulled = false; flies.renderOrder = 3;
+  scene.add(flies);
 
   atmos = createAtmosphere({ open: true, windows: [], roofs: [], budget: B, uPx: U.uPx, reduceMotion, cloudDot: 0.3 });
   scene.add(atmos.group);
@@ -1020,6 +1075,7 @@ export function createTown(renderer, projects, opts = {}) {
     camera.updateMatrixWorld();
     ground.update(camera);
     hazeU.uCam.value.copy(camera.position);
+    flyMat.uniforms.uCam.value.copy(camera.position);
     // 走出十二米就看一眼:近处该细的是不是换了几栋
     if (!fineAt || Math.hypot(px - fineAt[0], pz - fineAt[1]) > 12) { fineAt = [px, pz]; refreshFine(px, pz); }
     atmos.update(dt, t, camera);
@@ -1147,7 +1203,7 @@ export function createTown(renderer, projects, opts = {}) {
     try { closeChat(); } catch (e) {}
     try { play.dispose(); } catch (e) {}
     try { nature.dispose(); life.dispose(); people.dispose(); } catch (e) {}
-    try { if (markPts) { markPts.geometry.dispose(); markPts.material.dispose(); } group.userData.dispose(); if (landGroup) landGroup.userData.dispose(); if (fine) fine.group.userData.dispose(); gGeo.dispose(); gMat.dispose(); peerGeo.dispose(); peerMat.dispose(); ground.dispose(); } catch (e) {}
+    try { if (markPts) { markPts.geometry.dispose(); markPts.material.dispose(); } group.userData.dispose(); if (landGroup) landGroup.userData.dispose(); if (fine) fine.group.userData.dispose(); gGeo.dispose(); gMat.dispose(); flyGeo.dispose(); flyMat.dispose(); peerGeo.dispose(); peerMat.dispose(); ground.dispose(); } catch (e) {}
     try { atmos.dispose(); bloom.dispose(); grade.dispose(); composer.dispose(); if (haze) { haze.geometry.dispose(); haze.material.dispose(); } } catch (e) {}
     try {
       renderer.setRenderTarget(null); renderer.autoClear = prevAuto;

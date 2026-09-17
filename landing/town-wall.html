@@ -15,6 +15,7 @@
                  {target:'terse-town', cmd:'goto', id}     (重盖小镇,站到这栋别墅门口)
                  {target:'terse-town', cmd:'key', type, key, code, shift}  (焦点在宿主时转过来的键)
                  {target:'terse-town', cmd:'mouse', t:'down'|'drag'|'up', dx, dy}  (宿主转来的拖动)
+                 {target:'terse-town', cmd:'exitVilla'}   (宿主的「出去」按钮)
     页面 → 宿主  {source:'terse-town', event:'ready' | 'esc' | 'villa' | 'town' | 'goto' | 'error', ...}
   直接在浏览器里打开也能玩(?lang=zh / ?budget=0.8),只是没登录、只看不走进名单。
 -->
@@ -156,6 +157,9 @@ addEventListener('message', (e) => {
   } else if (d.cmd === 'status') {
     S.needAx = !d.keys && d.trusted === false;
     setTip();
+  } else if (d.cmd === 'exitVilla') {
+    // 宿主(灵动岛旁胶囊上的「出去」)要人走出别墅
+    exitVilla();
   } else if (d.cmd === 'mouse') {
     /* 宿主转来的拖动(Mac:在空白桌面上按住拖;壁纸窗口本身收不到点击,文件图标还在它上面)。
        dx/dy 是屏幕点数,和小镇自己拖动转头同一个灵敏度。 */
@@ -275,6 +279,7 @@ async function enterTown(at) {
   const act = (pr) => pr && pr.then && pr.then(() => {}, () => {});
   const tn = await wp.enterTown(housesOf(S.projects), {
     host, input: host, budget: S.budget, joystick: false, pixelRatio: S.pr,
+    hour: q.get('hour') != null ? +q.get('hour') : undefined,   // 调试:?hour=22 看夜里
     words: zh ? WORDS_ZH : null, noteWords: zh ? NOTES_ZH : null, lang: zh ? 'zh' : 'en',
     onNpcHello: (id, ctx) => Town.npcHello(id, ctx, S.lang),
     onNpcSay: (id, text, ctx) => Town.npcSay(id, text, ctx, S.lang),

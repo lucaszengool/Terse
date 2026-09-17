@@ -74,7 +74,8 @@ void main(){
   // 屏幕上每颗点大小大致不变:大小正比于半径(近处的点就该小)
   gl_PointSize = clamp(r * sz * uPx / max(0.3, d), 1.0, 9.0) * (y > 0.02 ? 0.75 : 1.0);
   vec3 lit = uSky * 0.75 + uSunCol * max(uSunDir.y, 0.0) * 0.7;
-  col *= mix(lit, vec3(0.05, 0.052, 0.062), uNight);   // 夜里的地是暗的,不是一片蓝
+  // 夜里的地:月光下暗暗的蓝灰(看得清街和草地的分界),亮起来的只有灯下那一圈暖光
+  col *= mix(lit, vec3(0.085, 0.095, 0.14), uNight);
   // 灯下一圈暖光(夜里才看得出来):最近的 8 盏
   if (uNight > 0.05 && r < 60.0) {
     vec3 gl = vec3(0.0);
@@ -83,7 +84,7 @@ void main(){
       float dd = length(Lv), win = max(0.0, 1.0 - dd / max(uGL[i].w, 0.01));
       gl += uGLC[i] * win * win / (1.0 + dd * 0.12);
     }
-    col += (m.rgb + 0.05) * gl * 2.6 * uNight;
+    col += (m.rgb + 0.06) * gl * 3.4 * uNight;
   }
   // 雨:街和广场湿了,暗下去,反一点天光
   if (cls > 0.5 && cls < 3.5 || cls > 8.5 && cls < 9.5) col = mix(col, col * 0.55 + uZen * 0.12 * (1.0 - uNight), uWet);
@@ -137,7 +138,7 @@ void main(){
   vec3 lit = uSky * 0.75 + uSunCol * max(uSunDir.y, 0.0) * 0.7;
   bool water = cls > 5.5 && cls < 6.5;
   if (water) m = mix(m, uZen * 0.5, 0.5) * (0.9 + 0.1 * sin(vW.x * 0.9 + uTime) * sin(vW.z * 0.7 - uTime * 0.8));
-  vec3 col = m * mix(lit, vec3(0.05, 0.052, 0.062), uNight) * mix(0.62, 1.3, uNight) * (water ? 1.25 : 1.0);
+  vec3 col = m * mix(lit, vec3(0.085, 0.095, 0.14), uNight) * mix(0.62, 1.3, uNight) * (water ? 1.25 : 1.0);
   if (!water) col = mix(col, vec3(0.8, 0.84, 0.92) * mix(lit, vec3(0.16, 0.18, 0.26), uNight) * 0.8, uSnowG * 0.9);
   if (cls > 0.5 && cls < 3.5) col *= 1.0 - 0.3 * uWet;
   if (uNight > 0.05) {
@@ -147,7 +148,7 @@ void main(){
       float dd = length(Lv), win = max(0.0, 1.0 - dd / max(uGL[i].w, 0.01));
       gl += uGLC[i] * win * win / (1.0 + dd * 0.12);
     }
-    col += (m + 0.05) * gl * 2.0 * uNight;
+    col += (m + 0.06) * gl * 2.7 * uNight;
   }
   float d = length(vW - uCam);
   float fd = 1.0 - exp(-uFogA * exp(-uFogB * max(uCam.y, 0.0)) * d);

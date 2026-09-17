@@ -820,7 +820,7 @@ void main(){ vec2 d = gl_PointCoord - vec2(0.5); if (dot(d, d) > 0.25) discard; 
 const DOT_FS = `
 precision highp float;
 uniform vec3 uFog;
-uniform float uSoft, uFlat;
+uniform float uSoft, uFlat, uGrain;
 varying vec3 vCol, vFogCol; varying float vFog;
 void main(){
   vec2 d = gl_PointCoord - vec2(0.5);
@@ -841,6 +841,13 @@ void main(){
   /* 实心的片(小镇):屋里的点往边上暗进黑里,背景就是黑,看着是发光的粒子;到了室外,
      背后是天,每颗点就成了一颗黑边的珠子,一面墙像一面筛子。这里边上只暗一点点。 */
   c *= mix(a / 0.96, 0.8 + 0.2 * a / 0.96, uFlat);
+  /* 颗粒边(小镇):这条管线不透明、不混合,一颗点的边只能"有"或"没有" —— 远看每颗都是
+     一颗硬边的塑料珠子。这里按离中心的远近**按概率**丢掉边上的像素(每个像素的阈值固定,
+     不闪),一颗点就成了一小团往外化开的细沙;点再略放大一点,补回盖住率。 */
+  if (uGrain > 0.0) {
+    float n = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+    if (n > mix(1.0, smoothstep(1.0, 0.3, r), uGrain)) discard;
+  }
   gl_FragColor = vec4(mix(vFogCol, c, vFog), 1.0);
 }`;
 
@@ -921,6 +928,7 @@ export function makeUniforms() {
     uSparkle: { value: 1 },
     uBackCull: { value: 0 },
     uFlat: { value: 0 },
+    uGrain: { value: 0 },
     uSnowCov: { value: 0 },
     uPick: { value: new THREE.Vector4(0, 0, -99, 0) },
     uForm: { value: 1 }, uStep: { value: new THREE.Vector4(0, 0, -99, 0) },

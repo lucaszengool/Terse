@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 粒子模式要把 agent 的窗口逐帧抓下来重画成粒子。ScreenCaptureKit 是纯 TCC
+         门禁:没有这条说明,系统会直接把 app 杀掉,而不是弹授权框。 -->
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Terse renders your agent windows (Claude, Codex, Cursor…) as a live particle field on the desktop. It reads only the windows you pick, and the pixels never leave this Mac.</string>
+    <!-- 手势控制(Pro):terse-hands 用摄像头 + Apple Vision 识别手的 21 个关节。摄像头权限记在
+         Terse.app 头上(子进程由它负责),没有这条说明系统会直接杀掉进程。 -->
+    <key>NSCameraUsageDescription</key>
+    <string>Gesture Control lets you steer Terse's particles with your hands. Terse reads only hand joint positions from the camera, on this Mac — no video is recorded, stored or sent anywhere.</string>
+</dict>
+</plist>

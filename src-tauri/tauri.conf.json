@@ -32,6 +32,8 @@
     "resources": {
       "../ml/model/complexity-vocab.json": "ml/complexity-vocab.json",
       "../src/helpers/terse-ax": "terse-ax",
+      "../src/helpers/terse-desk": "terse-desk",
+      "../src/helpers/terse-hands": "terse-hands",
       "../src/helpers/terse-compress.js": "terse-compress.js",
       "../src/helpers/terse-rewrite.sh": "terse-rewrite.sh",
       "../src/helpers/hooks/terse-hook-cursor.sh": "hooks/terse-hook-cursor.sh",
@@ -62,7 +64,7 @@
         "transparent": true,
         "alwaysOnTop": false,
         "resizable": true,
-        "shadow": true,
+        "shadow": false,
         "visible": true,
         "visibleOnAllWorkspaces": true,
         "minWidth": 820,

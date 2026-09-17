@@ -315,6 +315,12 @@ fn dlog(msg: &str) {
     if let Some(home) = std::env::var_os("HOME") {
         let dir = std::path::Path::new(&home).join(".terse");
         let _ = std::fs::create_dir_all(&dir);
+        // Rotate at 2 MB: one line per sweep plus one per window, every 1.5s,
+        // had grown this file to 7.7 MB with nothing ever trimming it.
+        let log = dir.join("approvals.log");
+        if std::fs::metadata(&log).map(|m| m.len() > 2_000_000).unwrap_or(false) {
+            let _ = std::fs::rename(&log, dir.join("approvals.log.1"));
+        }
         if let Ok(mut f) = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -430,14 +436,27 @@ pub fn spawn_scanner(app: AppHandle) {
             dlog("Accessibility missing at startup — prompting the user");
             crate::ax_read::prompt_for_trust();
         }
+        let mut was_trusted = true;
         loop {
             // Always scan. This used to be gated on the island being visible, which
             // meant any reason the island was hidden (free tier, user closed it)
             // silently disabled approval detection — a blocked agent went unreported.
             // scan_once() picks the surface: island when it's up, toast otherwise.
-            if !crate::ax_read::is_trusted() {
-                dlog("Terse itself lacks Accessibility — approvals cannot be read");
+            // Without the grant no host window is readable, so a sweep is a `ps`
+            // spawn plus a failed AX walk per host — every 1.5s, forever, for
+            // nothing. Sweep once on losing the grant (so a prompt already on
+            // screen is cleared exactly as before), then wait for it to return.
+            let trusted = crate::ax_read::is_trusted();
+            if !trusted {
+                if was_trusted {
+                    dlog("Terse itself lacks Accessibility — approvals cannot be read; pausing sweeps until it is granted");
+                    scan_once(&app);
+                }
+                was_trusted = false;
+                std::thread::sleep(std::time::Duration::from_millis(1500));
+                continue;
             }
+            was_trusted = true;
             scan_once(&app);
             std::thread::sleep(std::time::Duration::from_millis(1500));
         }

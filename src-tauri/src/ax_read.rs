@@ -233,6 +233,48 @@ pub fn desktop_icon_rects(finder_pid: u32) -> Vec<(f64, f64, f64, f64)> {
     out
 }
 
+/// Just the titles of `pid`'s windows, front first — the cheap read the feed
+/// scanner does every few seconds. No tree walk, and none of the Electron
+/// activation `window_text` does: a title is on the window element itself.
+pub fn window_titles(pid: u32, max: usize) -> Vec<String> {
+    extern "C" {
+        fn AXUIElementSetMessagingTimeout(element: AXUIElementRef, timeout: f32) -> AXError;
+    }
+    let mut out = Vec::new();
+    if !is_trusted() {
+        return out;
+    }
+    unsafe {
+        let app = AXUIElementCreateApplication(pid as pid_t);
+        if app.is_null() {
+            return out;
+        }
+        // A hung app would otherwise hold the scanner for AX's default 6 seconds.
+        AXUIElementSetMessagingTimeout(app, 0.25);
+        if let Some(wins_ref) = copy_attr(app, "AXWindows") {
+            if CFGetTypeID(wins_ref) == CFArrayGetTypeID() {
+                let arr = wins_ref as CFArrayRef;
+                let n = CFArrayGetCount(arr).min(max as isize);
+                for i in 0..n {
+                    let win = CFArrayGetValueAtIndex(arr, i) as CFTypeRef;
+                    if let Some(t) = copy_attr(win, "AXTitle") {
+                        if let Some(s) = as_string(t) {
+                            let s = s.trim();
+                            if !s.is_empty() {
+                                out.push(s.to_string());
+                            }
+                        }
+                        CFRelease(t);
+                    }
+                }
+            }
+            CFRelease(wins_ref);
+        }
+        CFRelease(app);
+    }
+    out
+}
+
 /// One window's visible text.
 pub struct WindowText {
     pub title: String,

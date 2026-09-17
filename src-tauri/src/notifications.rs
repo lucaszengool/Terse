@@ -490,6 +490,7 @@ pub fn toast_action(action: String, app: AppHandle) {
         "open-budget" => "stats",
         "open-alerts" => "alerts",
         "open-team" => "team",
+        "open-msgs" => "msgs",
         _ => "doctor",
     };
     if let Some(win) = app.get_webview_window("main") {

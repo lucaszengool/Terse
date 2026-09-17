@@ -1,13 +1,14 @@
 {
   "identifier": "default",
   "description": "Default capability for Terse windows",
-  "windows": ["main", "popup", "pet", "farm", "doctor", "island", "palette", "wallpaper", "wp3d", "toast", "room"],
+  "windows": ["main", "popup", "pet", "farm", "doctor", "island", "palette", "wallpaper", "wp3d", "townpad", "toast", "room", "sessions-dock", "particles", "dash-*", "desk-overlay"],
   "permissions": [
     "core:default",
     "dialog:allow-open",
     "core:event:default",
     "core:event:allow-listen",
     "core:event:allow-emit",
+    "core:event:allow-emit-to",
     "core:window:default",
     "core:window:allow-show",
     "core:window:allow-hide",

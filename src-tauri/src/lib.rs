@@ -12,6 +12,19 @@ mod permission;
 mod pet_store;
 mod farm_store;
 mod messages;
+mod feeds;
+/// 粒子模式:把别的 agent 的窗口逐帧抓下来,在桌面上重画成粒子。
+mod particle_mode;
+/// 左侧会话栏:hover 展开 Claude Desktop 的会话列表,再 hover 看全文。
+mod session_dock;
+mod dock_hook;
+/// 房间里的 agent 通道:把一段会话接进 Terse 房间(本机 MCP + dock_hook 的 peer 队列)
+mod room_link;
+/// 代码小镇的键盘接管(CGEventTap):灵动岛旁那颗「操控小镇」按钮开着时,小镇的键归小镇
+#[cfg(target_os = "macos")]
+mod town_keys;
+mod desk;
+mod hands;
 mod doctor;
 mod notifications;
 mod circuit;
@@ -717,6 +730,10 @@ const ISLAND_CARD_DEFAULT_H: f64 = 520.0;
 const ISLAND_Y: f64 = 4.0;
 /// 3D 视角按钮的直径。比灵动岛矮一点,并排放着不抢戏。
 const WP3D_BTN: f64 = 36.0;
+/// 「操控小镇」胶囊按钮的尺寸(灵动岛左边)
+const TOWNPAD_W: f64 = 150.0;
+const TOWNPAD_H: f64 = 34.0;
+const TOWNPAD_W_VILLA: f64 = 236.0;
 
 // ── Floating dashboard widget windows ──
 // Each entry is one small frameless always-on-top card showing ONE rich live
@@ -1056,20 +1073,33 @@ fn focus_island(agent_type: Option<String>, app: AppHandle) {
 
 // ── Agent Monitor Commands ──
 
+// The agent-monitor readers below are `async` so Tauri runs them on a worker
+// thread. As plain `fn`s they ran on the MAIN thread, and the monitor lock is
+// held by the 5s scanner for the whole of scan() + read_new_lines(): every poll
+// from the wallpaper, island and nine dash windows froze the UI until the scan
+// let go (measured: ~19% of main-thread time parked in this mutex). Same lock,
+// same data, same result — only which thread waits for it changed.
 #[tauri::command]
-fn get_agent_detections(state: tauri::State<'_, AppState>) -> Vec<serde_json::Value> {
+async fn get_agent_detections(state: tauri::State<'_, AppState>) -> Result<Vec<serde_json::Value>, String> {
     let monitor = lock_or_recover(&state.agent_monitor);
     let d = monitor.get_pending_detections();
     eprintln!("[terse] get_agent_detections: {} pending", d.len());
-    d
+    Ok(d)
+}
+
+/// 粒子面板的 transcript。比快照里那份长得多 —— 见 agent_monitor::transcript。
+#[tauri::command]
+async fn pl_transcript(agent_type: String, state: tauri::State<'_, AppState>) -> Result<Vec<serde_json::Value>, String> {
+    let monitor = lock_or_recover(&state.agent_monitor);
+    Ok(monitor.transcript(&agent_type, 80))
 }
 
 #[tauri::command]
-fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Value> {
+async fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Result<Vec<serde_json::Value>, String> {
     let monitor = lock_or_recover(&state.agent_monitor);
     let sessions = monitor.get_connected_sessions();
     eprintln!("[terse] get_agent_sessions: {} connected", sessions.len());
-    sessions
+    Ok(sessions)
 }
 
 // ── Phone link (desktop ⇄ Terse phone web app) ──
@@ -1183,9 +1213,9 @@ fn activate_session(session_id: Option<u32>, agent_type: Option<String>, state: 
 }
 
 #[tauri::command]
-fn get_agent_analytics(agent_type: String, state: tauri::State<'_, AppState>) -> Option<serde_json::Value> {
+async fn get_agent_analytics(agent_type: String, state: tauri::State<'_, AppState>) -> Result<Option<serde_json::Value>, String> {
     let monitor = lock_or_recover(&state.agent_monitor);
-    monitor.get_session_snapshot(&agent_type)
+    Ok(monitor.get_session_snapshot(&agent_type))
 }
 
 // ── Terse Cowork (team collaboration) ──
@@ -1953,10 +1983,13 @@ async fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> Re
 
 // ── Stats Commands ──
 
+/// `async` for the same reason as get_agent_sessions: the stats store is locked
+/// by the 30s usage scan while it rewrites stats.json, and a main-thread caller
+/// froze the UI for that long.
 #[tauri::command]
-fn get_stats(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
+async fn get_stats(period: String, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
-    store.get_stats(&period)
+    Ok(store.get_stats(&period))
 }
 
 /// The screen rect (logical points, top-left origin) of the wallpaper's message
@@ -2031,13 +2064,13 @@ fn start_wallpaper_hover_poll(_app: AppHandle) {}
 
 /// Per-app notification style, so the setup checklist can tell the user exactly
 /// which app is on Banner (invisible to the feed) and needs to be Alert.
-#[tauri::command]
+#[tauri::command(async)]
 fn messages_notification_settings() -> serde_json::Value {
     serde_json::to_value(messages::notification_settings()).unwrap_or_default()
 }
 
 /// Social apps Terse has actually seen messages from, each with its wallpaper switch.
-#[tauri::command]
+#[tauri::command(async)]
 fn messages_detected_apps() -> Result<serde_json::Value, String> {
     Ok(serde_json::to_value(messages::detected_apps()?).unwrap_or_default())
 }
@@ -2046,12 +2079,123 @@ fn messages_detected_apps() -> Result<serde_json::Value, String> {
 /// wallpaper — the message centre still shows everything, so this never loses mail.
 #[tauri::command]
 fn messages_set_app_on_wallpaper(app_id: String, on: bool) -> Result<(), String> {
-    messages::set_app_on_wallpaper(&app_id, on)
+    messages::set_app_on_wallpaper(&app_id, on)?;
+    feeds::mirror_notif_switch(&app_id, on);
+    Ok(())
+}
+
+/// One line into `~/.terse/diag.log` (rotated at 1 MB). Shared by the pages'
+/// `T.diagNote` and native diagnostics.
+fn diag_write(name: &str, line: &str) {
+    use std::io::Write;
+    let p = dirs::home_dir().unwrap_or_default().join(".terse").join("diag.log");
+    if std::fs::metadata(&p).map(|m| m.len() > 1_000_000).unwrap_or(false) {
+        let _ = std::fs::rename(&p, p.with_extension("log.1"));
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+        let _ = writeln!(f, "{} [{}] {}", chrono::Local::now().format("%m-%d %H:%M:%S"), name, line);
+    }
+}
+
+/// `T.diagNote(name, line)` from any page. The bridge has always exposed it and
+/// the wallpaper calls it for its overlay/boot reports, but no command backed
+/// it — every call was a rejected invoke and those reports went nowhere.
+#[tauri::command(async)]
+fn diag_note(name: String, line: String) {
+    diag_write(&name, &line);
+}
+
+/// Write `~/.terse/webview-pids.json`: window label → its WebKit WebContent pid.
+///
+/// Every webview is a separate `com.apple.WebKit.WebContent` process, and
+/// Activity Monitor / `top` show twenty of them with identical names. When one
+/// sits at 100% CPU there is no other way to tell which window it is. Read-only
+/// and invisible; refreshed each minute so windows built later are included.
+#[cfg(target_os = "macos")]
+fn record_webview_pids(app: AppHandle) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(20));
+        // Once: does WebKit know a hidden window is hidden? If a page in a hidden
+        // window reports `visible`, its CSS animations and timers keep running
+        // for nobody — worth knowing before deciding what to pause.
+        for (label, win) in app.webview_windows() {
+            diag_write("vis", &format!("{label} native_visible={}", win.is_visible().unwrap_or(false)));
+            let js = format!(
+                "try{{window.__TAURI__&&window.__TAURI__.core.invoke('diag_note',{{name:'vis',line:'{label} page='+document.visibilityState+' hidden='+document.hidden}})}}catch(e){{}}"
+            );
+            let _ = win.eval(&js);
+        }
+        loop {
+            let map = std::sync::Arc::new(std::sync::Mutex::new(serde_json::Map::new()));
+            for (label, win) in app.webview_windows() {
+                let m = map.clone();
+                let _ = win.with_webview(move |wv| {
+                    use cocoa::base::{id, BOOL, NO};
+                    use objc::{msg_send, sel, sel_impl};
+                    let wk = wv.inner() as id;
+                    unsafe {
+                        let ok: BOOL = msg_send![wk, respondsToSelector: sel!(_webProcessIdentifier)];
+                        if ok == NO { return; }
+                        let pid: i32 = msg_send![wk, _webProcessIdentifier];
+                        m.lock().unwrap_or_else(|e| e.into_inner()).insert(label, serde_json::json!(pid));
+                    }
+                });
+            }
+            // with_webview runs on the main thread; give it a moment to land.
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let p = dirs::home_dir().unwrap_or_default().join(".terse").join("webview-pids.json");
+            let body = serde_json::to_string_pretty(&*map.lock().unwrap_or_else(|e| e.into_inner())).unwrap_or_default();
+            let _ = std::fs::write(p, body);
+            std::thread::sleep(std::time::Duration::from_secs(60));
+        }
+    });
+}
+
+#[cfg(not(target_os = "macos"))]
+fn record_webview_pids(_app: AppHandle) {}
+
+/// 信息流: every source Terse has found (notifications, system, windows, media),
+/// each with its wallpaper switch, plus the auto-add setting.
+#[tauri::command(async)]
+fn feeds_sources() -> serde_json::Value {
+    feeds::sources_json()
+}
+
+/// Switch one source on or off for the wallpaper. Also answers its prompt.
+#[tauri::command]
+fn feeds_set_source(key: String, on: bool) -> Result<(), String> {
+    feeds::set_source(&key, on)
+}
+
+/// Whether a newly found source starts playing before the user answers.
+#[tauri::command]
+fn feeds_set_auto_add(on: bool) {
+    feeds::set_auto_add(on)
+}
+
+/// Answer every open prompt at once (`on` null = keep as they are).
+#[tauri::command]
+fn feeds_resolve_pending(on: Option<bool>) {
+    feeds::resolve_pending(on)
+}
+
+/// "去开启" on the missing-permission card: raise the system prompt
+/// (Accessibility) or open the exact Privacy list (Full Disk Access).
+#[tauri::command]
+fn feeds_fix_permission(which: String) {
+    feeds::fix_permission(&which)
+}
+
+/// What the wallpaper big text plays: every switched-on source, newest first.
+/// `async` (off the main thread): it reads the notification SQLite every 5s.
+#[tauri::command]
+async fn feeds_for_wallpaper(limit: Option<usize>) -> serde_json::Value {
+    serde_json::to_value(feeds::for_wallpaper(limit.unwrap_or(24))).unwrap_or_default()
 }
 
 /// What the wallpaper should show: recent messages minus the muted apps.
 #[tauri::command]
-fn messages_for_wallpaper(limit: Option<usize>) -> Result<serde_json::Value, String> {
+async fn messages_for_wallpaper(limit: Option<usize>) -> Result<serde_json::Value, String> {
     Ok(serde_json::to_value(messages::recent_for_wallpaper(limit.unwrap_or(20))?).unwrap_or_default())
 }
 
@@ -2075,14 +2219,14 @@ fn messages_send_open(app_id: String, text: String) -> serde_json::Value {
 }
 
 /// Can the message feed be read? Drives the Full Disk Access prompt in the UI.
-#[tauri::command]
+#[tauri::command(async)]
 fn messages_status() -> serde_json::Value {
     serde_json::to_value(messages::status()).unwrap_or_default()
 }
 
 /// Recent social-app messages, newest first.
 #[tauri::command]
-fn messages_recent(limit: Option<usize>, chat_only: Option<bool>) -> Result<serde_json::Value, String> {
+async fn messages_recent(limit: Option<usize>, chat_only: Option<bool>) -> Result<serde_json::Value, String> {
     let msgs = messages::recent(limit.unwrap_or(30), chat_only.unwrap_or(true))?;
     Ok(serde_json::to_value(msgs).unwrap_or_default())
 }
@@ -2097,7 +2241,7 @@ fn messages_recent(limit: Option<usize>, chat_only: Option<bool>) -> Result<serd
 /// a detected boolean: the flag layout in ncprefs is undocumented and a previous
 /// guess at it was wrong. Claiming a wrong "already on" is worse than sending the
 /// user to look, so that one is surfaced as a step with a deep link, not a check.
-#[tauri::command]
+#[tauri::command(async)]
 fn messages_permission_report() -> serde_json::Value {
     let fda = messages::status().available;
     let ax = ax_is_trusted();
@@ -2766,6 +2910,31 @@ fn start_graph_autobuild(app: AppHandle) {
     });
 }
 
+/// The palette window, built the first time it is needed — same size, place and
+/// flags it used to get at startup, when it cost a WebContent process on every
+/// launch although nothing opened it.
+fn ensure_palette(app: &AppHandle) -> Option<tauri::WebviewWindow> {
+    if let Some(w) = app.get_webview_window("palette") { return Some(w); }
+    let (palette_w, palette_h) = (560.0, 480.0);
+    let screen_width = app.primary_monitor().ok().flatten()
+        .map(|m| m.size().to_logical::<f64>(m.scale_factor()).width)
+        .unwrap_or(1440.0);
+    tauri::WebviewWindowBuilder::new(app, "palette", tauri::WebviewUrl::App("palette.html".into()))
+        .title("Terse Prompt Palette")
+        .inner_size(palette_w, palette_h)
+        .position((screen_width - palette_w) / 2.0, 120.0)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .resizable(false)
+        .shadow(false)
+        .skip_taskbar(true)
+        .focused(false)
+        .visible(false)
+        .build()
+        .ok()
+}
+
 /// Open the prompt palette. Captures the frontmost app first (so an inserted
 /// prompt is pasted back into it), then shows + focuses the palette window.
 fn open_palette(app: &AppHandle) {
@@ -2776,7 +2945,7 @@ fn open_palette(app: &AppHandle) {
             let name = st.palette_target.lock().map(|mut g| { *g = front.name.clone(); }).is_ok();
             let _ = name;
         }
-        if let Some(w) = app.get_webview_window("palette") {
+        if let Some(w) = ensure_palette(&app) {
             let _ = w.show();
             let _ = w.set_focus();
             let _ = app.emit("palette-open", ());
@@ -2875,7 +3044,7 @@ pub(crate) fn b64(data: &[u8]) -> String {
 ///
 /// 缩图用系统自带的 `sips`(macOS 本来就有),省掉一个图像处理依赖;
 /// 结果缓存在 ~/.terse/wallpaper-bg.jpg,壁纸窗口每次启动直接读缓存。
-#[tauri::command]
+#[tauri::command(async)]
 fn get_desktop_picture(force: Option<bool>) -> Option<String> {
     let cache = dirs::home_dir()?.join(".terse").join("wallpaper-bg.jpg");
     let fresh = std::fs::metadata(&cache)
@@ -2930,7 +3099,7 @@ fn get_desktop_picture(force: Option<bool>) -> Option<String> {
     Some(format!("data:image/jpeg;base64,{}", b64(&bytes)))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_wallpaper_config() -> serde_json::Value {
     std::fs::read_to_string(wallpaper_config_path())
         .ok()
@@ -3131,8 +3300,8 @@ fn set_wallpaper_enabled(on: bool, app: AppHandle) -> Result<(), String> {
 
 /// Cheap token counter (today, in+out) that the wallpaper polls to drive pulses.
 #[tauri::command]
-fn get_token_pulse(state: tauri::State<'_, AppState>) -> u64 {
-    state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).today_total_tokens()
+async fn get_token_pulse(state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    Ok(state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).today_total_tokens())
 }
 
 /// Navigate the MAIN window to the wallpaper control page in-place.
@@ -3461,10 +3630,10 @@ fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
 /// Step-by-step timeline for the Observe view. `agentType` empty → busiest
 /// connected session.
 #[tauri::command]
-fn get_session_timeline(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> serde_json::Value {
+async fn get_session_timeline(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let at = agent_type.unwrap_or_default();
     let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
-    monitor.get_timeline_for(&at, 400).unwrap_or_else(|| serde_json::json!({ "steps": [], "totalSteps": 0 }))
+    Ok(monitor.get_timeline_for(&at, 400).unwrap_or_else(|| serde_json::json!({ "steps": [], "totalSteps": 0 })))
 }
 
 /// HTML-escape for embedding text in the self-contained replay.
@@ -3554,7 +3723,7 @@ fn export_session_replay(agent_type: Option<String>, state: tauri::State<'_, App
 
 /// Discover CLAUDE.md files: the global `~/.claude/CLAUDE.md` plus one per
 /// project recorded in `~/.claude.json`. Returns path + always-on token weight.
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_list() -> serde_json::Value {
     let home = dirs::home_dir().unwrap_or_default();
     let mut candidates: Vec<(std::path::PathBuf, &str)> = vec![
@@ -3589,7 +3758,7 @@ fn claude_md_list() -> serde_json::Value {
     serde_json::json!({ "files": files })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_read(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
@@ -4524,7 +4693,14 @@ fn cowork_relay(app: tauri::AppHandle, payload: serde_json::Value) {
 /// 已经加进来的项目。
 #[tauri::command]
 fn project_list() -> serde_json::Value {
-    serde_json::to_value(projects::load()).unwrap_or_else(|_| serde_json::json!([]))
+    let mut list = projects::load();
+    // 旧胶囊在这里**自动补料**:代码城市 / 天际线 / 星座都是后来才有的字段,一颗
+    // 上个版本扫的胶囊里没有它们。不补的话,人点预览看到的还是老样子,而他没有
+    // 任何理由知道该去按「重新扫描」—— 那等于这个功能对他根本不存在。
+    if projects::upgrade_stale(&mut list) {
+        projects::save(&list);
+    }
+    serde_json::to_value(list).unwrap_or_else(|_| serde_json::json!([]))
 }
 
 /// 还没加进来、但**此刻正有 agent 在里面干活**的文件夹。
@@ -4579,11 +4755,14 @@ fn project_update(id: String, patch: serde_json::Value) -> Result<serde_json::Va
         return Err("no such project".into());
     };
     let c = &mut list[i];
-    for key in ["title", "subtitle", "cover"] {
+    for key in ["title", "subtitle", "desc", "cover"] {
         if let Some(v) = patch.get(key).and_then(|v| v.as_str()) {
             match key {
                 "title" => c.title = v.to_string(),
                 "subtitle" => c.subtitle = v.to_string(),
+                // 介绍。600 字在服务端也是同一个上限(api/projects.js),
+                // 两边都夹一次:客户端夹是为了体验,服务端夹是为了账单。
+                "desc" => c.desc = v.chars().take(600).collect(),
                 _ => c.cover = v.to_string(),
             }
             if !c.edited.iter().any(|e| e == key) {
@@ -4595,6 +4774,15 @@ fn project_update(id: String, patch: serde_json::Value) -> Result<serde_json::Va
         c.lines = v.iter().filter_map(|x| x.as_str()).map(|s| s.to_string()).take(4).collect();
         if !c.edited.iter().any(|e| e == "lines") {
             c.edited.push("lines".into());
+        }
+    }
+    if let Some(v) = patch.get("style").and_then(|v| v.as_str()) {
+        // 风格是用户挑的,所以它进 `edited` —— 重新扫描不许把它冲回默认。
+        // 白名单在渲染那边(city-styles.js 认不出的一律退回现代),这里只存字符串:
+        // 前端加一种新风格不该还要改一次 Rust。
+        c.style = v.chars().take(16).collect();
+        if !c.edited.iter().any(|e| e == "style") {
+            c.edited.push("style".into());
         }
     }
     if let Some(v) = patch.get("published").and_then(|v| v.as_bool()) {
@@ -4618,11 +4806,168 @@ fn project_remove(id: String) -> bool {
 ///
 /// 走事件而不是写配置:这是一次**演出**,不是一个设置。写进 wallpaper.json 就得再
 /// 想怎么把它擦掉。
+/// 粒子模式那层覆盖窗:严丝合缝盖在目标窗口上,**鼠标穿透**。
+///
+/// 穿透是这个功能成不成立的关键。盖上去的是一层画,可键盘、光标、右键菜单、输入法
+/// 必须还在原来那个 app 手里 —— 只要它吃掉一次点击,这就不再是"同一个窗口",
+/// 而是一张挡在前面的图。
+///
+/// 层级用 NSFloatingWindowLevel(3),不是壁纸那个 1000:它只需要压住**目标窗口**,
+/// 不需要压住整个系统。用 1000 的话,任何一个通知、任何一个 Spotlight 都会被这团
+/// 粒子盖住。
+/// 粒子面板这次连的是谁。页面加载完之后自己来拿 —— 见 pm_overlay 里的说明。
+static PM_TARGET: std::sync::LazyLock<std::sync::Mutex<serde_json::Value>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(serde_json::json!({
+        "pid": 0, "label": "", "interactive": false
+    })));
+
+#[tauri::command]
+fn pl_target() -> serde_json::Value {
+    PM_TARGET.lock().map(|v| v.clone()).unwrap_or_else(|e| e.into_inner().clone())
+}
+
+#[tauri::command]
+fn pm_overlay(app: AppHandle, x: f64, y: f64, w: f64, h: f64,
+              interactive: Option<bool>, pid: Option<u32>, label: Option<String>)
+    -> Result<(), String>
+{
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    let win = match app.get_webview_window("particles") {
+        Some(win) => win,
+        None => WebviewWindowBuilder::new(&app, "particles", WebviewUrl::App("particle-window.html".into()))
+            .title("Terse Particles")
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .shadow(false)
+            .skip_taskbar(true)
+            .focused(false)
+            .resizable(false)
+            .build()
+            .map_err(|e| e.to_string())?,
+    };
+    // 位置和大小每次都重设:目标窗口会被拖、会被缩,覆盖层得跟着走。
+    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+    let _ = win.set_size(tauri::LogicalSize::new(w.max(1.0), h.max(1.0)));
+    let _ = win.show();
+    if interactive.unwrap_or(false) {
+        let _ = win.set_focus();
+    }
+    /* 告诉那一页它这次连的是谁。
+       ⚠ **推送 + 可拉取,两条都要**。窗口是第一次打开时,这个 emit 发生在页面加载完
+       之前 —— 那一页还没注册 listener,这条事件就掉了,`interactive` 一直是 false,
+       于是底下那行 ❯ 根本不画,人看到的是一块"没法交互"的面板。
+       所以同时存一份,页面起来之后自己来 `pl_target()` 拿。 */
+    let target = serde_json::json!({
+        "pid": pid.unwrap_or(0),
+        "label": label.clone().unwrap_or_default(),
+        "interactive": interactive.unwrap_or(false),
+    });
+    if let Ok(mut slot) = PM_TARGET.lock() {
+        *slot = target.clone();
+    }
+    let _ = app.emit("pm-target", target);
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::base::{id, nil, NO, YES};
+        use objc::{class, msg_send, sel, sel_impl};
+        if let Ok(ptr) = win.ns_window() {
+            let ns: id = ptr as id;
+            unsafe {
+                let _: () = msg_send![ns, setLevel: 3i64];           // NSFloatingWindowLevel
+                // 跟着去每一个 Space,也能盖在全屏 app 上 —— 不然人一进全屏,粒子就没了,
+                // 而那正是最想看到它的时候。
+                let _: () = msg_send![ns, setCollectionBehavior: ((1u64 << 0) | (1u64 << 8))];
+                /* 能不能点,得看它这一次是干什么用的。
+                   **只看**(直连一个 agent 光看它在干嘛):穿透,它就是壁纸的一部分,
+                   鼠标当它不存在。
+                   **要说话**(在上面打字发指令):必须收得到鼠标和键盘 —— 一块穿透的
+                   面板是点不进输入框的,那个输入框就只是画上去的装饰。 */
+                let inter = interactive.unwrap_or(false);
+                let _: () = msg_send![ns, setIgnoresMouseEvents: if inter { NO } else { YES }];
+                let _: () = msg_send![ns, setHasShadow: NO];
+                let _: () = msg_send![ns, setOpaque: NO];
+                let clear: id = msg_send![class!(NSColor), clearColor];
+                let _: () = msg_send![ns, setBackgroundColor: clear];
+                let _ = nil;
+                let _ = NO;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// 收起覆盖层。**只是藏起来,不销毁** —— 一秒后可能又要开,重建一个 webview
+/// 要几百毫秒,那段空白看起来就像卡住了。
+#[tauri::command]
+fn pm_overlay_hide(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("particles") {
+        let _ = win.hide();
+    }
+}
+
 #[tauri::command]
 fn project_preview(app: AppHandle, capsule: serde_json::Value, ms: Option<u64>) -> bool {
     let payload = serde_json::json!({ "capsule": capsule, "ms": ms.unwrap_or(20_000) });
     let _ = app.emit("wallpaper-project", payload);
     true
+}
+
+/// 自己挑一张图加进项目(最多 5 张:封面 + 4)。
+///
+/// 扫描能自动找出 README 里那张图,但作者对"该拿哪张给人看"永远比启发式清楚。
+/// 挑完立刻缩到 224px 编码进胶囊 —— 存的是**参数**,不是文件路径:胶囊要能离线
+/// 生成,也要能整颗传给别人。
+#[tauri::command]
+async fn project_add_image(app: AppHandle, id: String) -> Result<serde_json::Value, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .add_filter("Images", &["png", "jpg", "jpeg", "webp", "gif"])
+        .pick_file(move |f| { let _ = tx.send(f); });
+    let picked = rx.await.map_err(|e| e.to_string())?;
+    let Some(path) = picked.and_then(|fp| fp.into_path().ok()) else {
+        return Ok(serde_json::json!({ "cancelled": true }));
+    };
+    let url = projects::image_data_url(&path).ok_or("could not read that image")?;
+
+    let mut list = projects::load();
+    let Some(i) = list.iter().position(|c| c.id == id) else { return Err("no such project".into()) };
+    let c = &mut list[i];
+    if c.cover.is_empty() {
+        c.cover = url;
+        if !c.edited.iter().any(|e| e == "cover") { c.edited.push("cover".into()); }
+    } else {
+        if c.shots.len() >= projects::MAX_SHOTS {
+            return Err(format!("at most {} images", projects::MAX_SHOTS + 1));
+        }
+        c.shots.push(url);
+        if !c.edited.iter().any(|e| e == "shots") { c.edited.push("shots".into()); }
+    }
+    let out = serde_json::to_value(c.clone()).map_err(|e| e.to_string())?;
+    projects::save(&list);
+    Ok(out)
+}
+
+/// 去掉第 n 张(0 = 封面)。删掉封面就让第一张附图顶上 —— 一个没有封面、却还留着
+/// 附图的项目在预览里只会是一堆字。
+#[tauri::command]
+fn project_remove_image(id: String, index: usize) -> Result<serde_json::Value, String> {
+    let mut list = projects::load();
+    let Some(i) = list.iter().position(|c| c.id == id) else { return Err("no such project".into()) };
+    let c = &mut list[i];
+    if index == 0 {
+        c.cover = if c.shots.is_empty() { String::new() } else { c.shots.remove(0) };
+    } else if index - 1 < c.shots.len() {
+        c.shots.remove(index - 1);
+    }
+    for f in ["cover", "shots"] {
+        if !c.edited.iter().any(|e| e == f) { c.edited.push(f.to_string()); }
+    }
+    let out = serde_json::to_value(c.clone()).map_err(|e| e.to_string())?;
+    projects::save(&list);
+    Ok(out)
 }
 
 /// 一颗胶囊要上传的那一份(去掉本机路径),外加它有多大 —— 大小就是这个功能的
@@ -4643,8 +4988,10 @@ fn project_capsule(id: String) -> Result<serde_json::Value, String> {
 ///
 /// 拿不到(没有辅助功能授权、Finder 结构变了)就返回空数组 —— 前端据此**不接管鼠标**。
 /// 宁可少一个功能,也不能让人点不动自己的文件。
+/// `async`: it runs `pgrep` and walks Finder's AX tree, every 4s from the 3D
+/// wallpaper — on the main thread that was a visible hitch each time.
 #[tauri::command]
-fn desktop_icon_rects() -> serde_json::Value {
+async fn desktop_icon_rects() -> serde_json::Value {
     #[cfg(target_os = "macos")]
     {
         let pid = std::process::Command::new("pgrep")
@@ -4682,6 +5029,90 @@ fn desktop_icon_rects() -> serde_json::Value {
 static WP_3D_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 /// 是否正在调节态(那颗圆钮亮着)。它决定壁纸抬到哪一层 —— 见 wallpaper_set_interactive。
 static WP_ADJUST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// 正在逛代码小镇:这段时间壁纸铺在所有窗口最上面(第一人称,看得见才逛得了)。
+static WP_TOWN_WALK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// 代码小镇的「操控小镇」开关(灵动岛旁边那颗按钮;「代码小镇」页也走这里)。
+///
+/// 小镇就是壁纸,而且**一直留在桌面图标后面** —— 开关开着也一样,文件照常看得见、点得到。
+/// 开关决定的是键盘鼠标归谁,在系统这一层判断(town_keys,CGEventTap):
+///   · 开:WASD / 方向键 / Q R E / 空格 / Esc 归小镇(不管前台是谁);
+///         在**空白桌面**上按住拖动 = 转视角;按在文件、窗口、Dock、菜单栏上照常。
+///   · 关:一个事件都不拦,Mac 和平时一模一样。
+/// 窗口层级、透明度、点击穿透一律不动。不查 Pro(广场本来免费)。
+#[tauri::command]
+fn wallpaper_town_walk(app: tauri::AppHandle, on: bool) -> serde_json::Value {
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::atomic::Ordering;
+        WP_TOWN_WALK.store(on, Ordering::SeqCst);
+        if on { let _ = show_wallpaper_window(&app); }
+        // 窗口保持壁纸本来的样子(桌面层、穿透)
+        if let Some(win) = app.get_webview_window("wallpaper") {
+            let overlay = overlay_allowed(&get_wallpaper_config());
+            let win2 = win.clone();
+            let _ = app.run_on_main_thread(move || pin_wallpaper_window(&win2, overlay));
+        }
+        let keys = town_keys::set_capture(&app, on);
+        let trusted = ax_is_trusted();
+        diag_write("town", &format!("control on={on} keys={keys} ax={trusted}"));
+        if on {
+            if let Some(main) = app.get_webview_window("main") {
+                if keys {
+                    // 接管成功:主窗口让出桌面
+                    let _ = main.hide();
+                } else {
+                    /* 缺辅助功能授权:把主窗口带到「代码小镇」页,那里弹出一步一步的引导
+                       (系统自己的授权框不一定会弹 —— 列表里有旧的 Terse 时它就不弹了)。 */
+                    let _ = main.show();
+                    let _ = main.set_focus();
+                    navigate_to_projects(app.clone());
+                    let _ = app.emit("town-need-ax", ());
+                }
+            }
+        }
+        let _ = app.emit("wallpaper-town-walk", on);
+        let _ = app.emit("town-control", serde_json::json!({ "on": on, "keys": keys, "trusted": trusted }));
+        serde_json::json!({ "ok": true, "on": on, "keys": keys, "trusted": trusted })
+    }
+    #[cfg(not(target_os = "macos"))]
+    { let _ = (app, on); serde_json::json!({ "ok": false }) }
+}
+
+/// 「操控小镇」按钮此刻的状态(按钮刚打开时问一次)。
+#[tauri::command]
+fn town_control_state() -> serde_json::Value {
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::atomic::Ordering;
+        serde_json::json!({ "on": WP_TOWN_WALK.load(Ordering::SeqCst), "keys": town_keys::active(), "trusted": ax_is_trusted() })
+    }
+    #[cfg(not(target_os = "macos"))]
+    { serde_json::json!({ "on": false, "keys": false, "trusted": true }) }
+}
+
+/// 走进 / 走出别墅:胶囊变宽,多出一个「出去」(小镇里的按钮点不到 —— 点击到不了壁纸)。
+#[tauri::command]
+fn townpad_villa(app: tauri::AppHandle, inside: bool) -> bool {
+    let Some(w) = app.get_webview_window("townpad") else { return false };
+    let screen_w = w.current_monitor().ok().flatten()
+        .map(|m| m.size().width as f64 / m.scale_factor()).unwrap_or(1440.0);
+    let width = if inside { TOWNPAD_W_VILLA } else { TOWNPAD_W };
+    let x = (screen_w - ISLAND_PILL_W) / 2.0 - width - 10.0;
+    let _ = w.set_size(tauri::LogicalSize::new(width, TOWNPAD_H));
+    let _ = w.set_position(tauri::LogicalPosition::new(x, ISLAND_Y + (ISLAND_PILL_H - TOWNPAD_H) / 2.0));
+    let _ = app.emit_to("townpad", "town-villa", inside);
+    true
+}
+
+/// 小镇开着才显示那颗按钮(壁纸页在开 / 关小镇时调用)。
+#[tauri::command]
+fn townpad_show(app: tauri::AppHandle, on: bool) -> bool {
+    match app.get_webview_window("townpad") {
+        Some(w) => { let _ = if on { w.show() } else { w.hide() }; true }
+        None => false,
+    }
+}
 
 /// 调节态:整块屏幕交给壁纸,直到用户再按一次。
 ///
@@ -4936,6 +5367,41 @@ fn list_open_windows() -> serde_json::Value {
     serde_json::json!({ "windows": [], "screen": { "w": 1920.0, "h": 1080.0 } })
 }
 
+/// 面板此刻能不能成为 key window(收键盘)。平时不能 —— 壁纸和圆钮永远不该抢键盘;
+/// 只有「逛代码小镇」那一段打开(wallpaper_town_walk),WASD 才进得来。
+#[cfg(target_os = "macos")]
+static PANEL_KEYABLE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// NSPanel 的一个子类,只多一件事:canBecomeKeyWindow 听 PANEL_KEYABLE 的。
+///
+/// ⚠ 为什么不能直接用 NSPanel:tao 原来的 TaoWindow 重写了 canBecomeKeyWindow(返回
+/// focusable),object_setClass 换成 NSPanel 以后这个重写就没了,AppKit 的默认规矩是
+/// "没有标题栏/缩放栏的窗口不能成为 key" —— 壁纸是无边框的,于是 set_focus /
+/// makeKeyAndOrderFront 全被静静放弃,键盘事件一个都到不了页面。
+/// (Plash 的"浏览模式"也是靠重写 canBecomeKey 才收得到输入。)
+/// 子类不加 ivar,和换成 NSPanel 一样安全。canBecomeMainWindow 一律 NO。
+#[cfg(target_os = "macos")]
+fn terse_panel_class() -> Option<&'static objc::runtime::Class> {
+    use objc::declare::ClassDecl;
+    use objc::runtime::{Class, Object, Sel, BOOL, NO, YES};
+    use objc::{sel, sel_impl};
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let Some(sup) = Class::get("NSPanel") else { return };
+        let Some(mut decl) = ClassDecl::new("TerseKeyablePanel", sup) else { return };
+        extern "C" fn can_key(_: &Object, _: Sel) -> BOOL {
+            if PANEL_KEYABLE.load(std::sync::atomic::Ordering::SeqCst) { YES } else { NO }
+        }
+        extern "C" fn can_main(_: &Object, _: Sel) -> BOOL { NO }
+        unsafe {
+            decl.add_method(sel!(canBecomeKeyWindow), can_key as extern "C" fn(&Object, Sel) -> BOOL);
+            decl.add_method(sel!(canBecomeMainWindow), can_main as extern "C" fn(&Object, Sel) -> BOOL);
+        }
+        decl.register();
+    });
+    Class::get("TerseKeyablePanel").or_else(|| Class::get("NSPanel"))
+}
+
 /// 把一个窗口变成**不抢焦点的面板**(nonactivating panel)。
 ///
 /// AppKit 的默认规矩:点击一个非活动 app 的窗口,那一下只用来激活它,事件**不会**
@@ -4959,7 +5425,7 @@ fn make_nonactivating_panel(win: &tauri::WebviewWindow) {
     let Ok(ptr) = win.ns_window() else { return };
     unsafe {
         let ns: id = ptr as id;
-        let Some(panel) = Class::get("NSPanel") else { return };
+        let Some(panel) = terse_panel_class() else { return };
         object_setClass(ns as *mut Object, panel as *const Class);
         // NSWindowStyleMaskNonactivatingPanel = 1 << 7
         let mask: u64 = msg_send![ns, styleMask];
@@ -5037,6 +5503,12 @@ fn wallpaper_set_interactive(app: tauri::AppHandle, on: bool) -> bool {
                         let _ = app2.run_on_main_thread(move || {
                             // 看门狗醒来 = 页面没能自己收场,调节态一并作废
                             WP_ADJUST.store(false, Ordering::SeqCst);
+                            // 逛小镇也一样,并且告诉页面(按钮和小镇都跟着回到"没在逛")
+                            PANEL_KEYABLE.store(false, Ordering::SeqCst);
+                            if WP_TOWN_WALK.swap(false, Ordering::SeqCst) {
+                                town_keys::set_capture(&app3, false);
+                                let _ = app3.emit("wallpaper-town-walk", false);
+                            }
                             let back = if overlay_allowed(&get_wallpaper_config()) {
                                 WP_LEVEL_OVERLAY
                             } else {
@@ -5216,7 +5688,21 @@ pub fn run() {
         )
         .manage(AppState::default())
         .manage(permission::PermissionHub::default())
+        // 抓帧只留一路:两个粒子窗口各抓各的,等于把风扇拉满去画两团光。
+        .manage(std::sync::Arc::new(particle_mode::Capture::default()))
         .setup(|app| {
+            // 粒子模式的自检:只在 ~/.terse/pm-probe 存在时跑一次(装完想验证抓帧
+            // 能不能用的时候才需要),普通用户一次都碰不到。
+            particle_mode::selftest();
+            // 左侧会话栏开机就在 —— 从 Rust 这边直接起,不等任何一页加载完。
+            // (pm-target 那次的教训:靠页面加载后再来叫,第一下一定会丢。)
+            session_dock::start(app.handle().clone());
+            dock_hook::start(app.handle().clone());
+            room_link::start(app.handle().clone());
+            // 手势控制(Pro):开着、而且还是 Pro,就在后台起摄像头追踪
+            { let h = app.handle().clone(); std::thread::spawn(move || hands::autostart(h)); }
+            // 粒子光标控制桌面(Pro):开着就把光标层建出来(窗口要在主线程建,这里直接调)
+            desk::autostart(app.handle().clone());
             // 让**每一块 webview 都接住第一下点击**。
             //
             // AppKit 的默认规矩:点击一个非活动 app 的窗口,那一下只用来激活它,
@@ -5376,22 +5862,9 @@ pub fn run() {
             // ── Prompt palette window (⌘⇧K) ──
             // Frameless, transparent, always-on-top, centred near the top of the
             // screen like a Spotlight/Raycast launcher. Hidden until the hotkey.
-            let palette_w = 560.0;
-            let palette_h = 480.0;
-            let palette_x = ((screen_width - palette_w) / 2.0) as f64;
-            let _palette = WebviewWindowBuilder::new(app, "palette", WebviewUrl::App("palette.html".into()))
-                .title("Terse Prompt Palette")
-                .inner_size(palette_w, palette_h)
-                .position(palette_x, 120.0)
-                .decorations(false)
-                .transparent(true)
-                .always_on_top(true)
-                .resizable(false)
-                .shadow(false)
-                .skip_taskbar(true)
-                .focused(false)
-                .visible(false)
-                .build()?;
+            // The prompt palette is built on first open (see ensure_palette), not
+            // here: nothing in the app opens it any more (⌘⇧K goes to the main
+            // window), and a hidden window is still a whole WebContent process.
 
             // ── Live token wallpaper window (desktop-pinned; hidden until enabled) ──
             // Built once here on the main thread; enable/disable just shows/hides it.
@@ -5554,6 +6027,35 @@ pub fn run() {
             // 还在普通的浮层高度,就被自己那张壁纸盖住了 —— 进得去出不来。
             #[cfg(target_os = "macos")]
             if let Ok(ptr) = _wp3d_win.ns_window() {
+                use objc::{msg_send, sel, sel_impl};
+                unsafe {
+                    let ns = ptr as cocoa::base::id;
+                    let _: () = msg_send![ns, setLevel: WP_LEVEL_OVERLAY + 200];
+                }
+            }
+
+            // ── 「操控小镇」按钮:灵动岛左边一颗胶囊,小镇开着才显示 ──
+            let townpad_x = ((screen_width - ISLAND_PILL_W) / 2.0) as f64 - TOWNPAD_W - 10.0;
+            let _townpad = WebviewWindowBuilder::new(app, "townpad", WebviewUrl::App("townpad.html".into()))
+                .title("Terse Code Town")
+                .inner_size(TOWNPAD_W, TOWNPAD_H)
+                .position(townpad_x, ISLAND_Y + (ISLAND_PILL_H - TOWNPAD_H) / 2.0)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+            #[cfg(target_os = "macos")]
+            make_nonactivating_panel(&_townpad);
+            // 永远在壁纸之上(操控开着时壁纸抬到了图标层之上,按钮不能被它盖住)
+            #[cfg(target_os = "macos")]
+            if let Ok(ptr) = _townpad.ns_window() {
                 use objc::{msg_send, sel, sel_impl};
                 unsafe {
                     let ns = ptr as cocoa::base::id;
@@ -6002,6 +6504,13 @@ pub fn run() {
             // and (once configured) budget burn through the unified alert layer.
             start_alert_monitor(app.handle().clone());
 
+            // 信息流: watch notifications, window titles and Now Playing, and
+            // prompt when a source appears that was not there before.
+            feeds::start(app.handle().clone());
+
+            // Which WebContent process is which window — see record_webview_pids.
+            record_webview_pids(app.handle().clone());
+
             // Auto-build knowledge graphs for every repo an agent is working in,
             // caching them locally so the Graph tab opens instantly and agents get
             // an up-to-date token-saving digest without the user lifting a finger.
@@ -6267,6 +6776,13 @@ pub fn run() {
             messages_set_app_on_wallpaper,
             messages_for_wallpaper,
             messages_notification_settings,
+            feeds_sources,
+            feeds_set_source,
+            feeds_set_auto_add,
+            feeds_resolve_pending,
+            feeds_for_wallpaper,
+            feeds_fix_permission,
+            diag_note,
             get_budget,
             set_budget,
             get_budget_status,
@@ -6397,12 +6913,77 @@ pub fn run() {
             project_update,
             project_remove,
             project_preview,
+            particle_mode::pm_windows,
+            particle_mode::pm_window_rect,
+            particle_mode::pm_start,
+            particle_mode::pm_stop,
+            particle_mode::pm_status,
+            particle_mode::pm_has_permission,
+            particle_mode::pm_request_permission,
+            particle_mode::pl_send,
+            pl_transcript,
+            pl_target,
+            session_dock::sd_sessions,
+            session_dock::sd_active,
+            session_dock::sd_usage,
+            session_dock::sd_git,
+            session_dock::sd_diff,
+            session_dock::sd_codex_open,
+            dock_hook::sd_queue,
+            dock_hook::sd_unqueue,
+            dock_hook::sd_answer,
+            dock_hook::sd_direct_status,
+            dock_hook::sd_direct_set,
+            session_dock::sd_open_claude,
+            session_dock::sd_jump,
+            session_dock::sd_send,
+            session_dock::sd_stop,
+            session_dock::sd_alert,
+            session_dock::sd_focus_input,
+            hands::hands_start,
+            hands::hands_stop,
+            hands::hands_status,
+            hands::hands_camera_status,
+            hands::hands_camera_request,
+            hands::hands_open_camera_settings,
+            desk::desk_call,
+            desk::desk_get_enabled,
+            desk::desk_set_enabled,
+            desk::desk_trust,
+            desk::desk_open_ax_settings,
+            desk::desk_overlay_visible,
+            hands::hands_get_enabled,
+            hands::hands_set_enabled,
+            session_dock::sd_transcript,
+            session_dock::sd_image,
+            session_dock::sd_dock,
+            session_dock::sd_dock_hide,
+            session_dock::sd_dock_open,
+            pm_overlay,
+            pm_overlay_hide,
             project_capsule,
+            project_add_image,
+            project_remove_image,
             app_icon,
             wallpaper_set_3d_mode,
             wallpaper_set_adjust,
+            wallpaper_town_walk,
+            town_control_state,
+            townpad_show,
+            townpad_villa,
             show_room_window,
             hide_room_window,
+            room_link::rl_status,
+            room_link::rl_link,
+            room_link::rl_unlink,
+            room_link::rl_inbound,
+            room_link::rl_whisper,
+            room_link::rl_halt,
+            room_link::rl_wake,
+            room_link::rl_file_decide,
+            room_link::rl_fetch_file,
+            room_link::rl_reveal,
+            room_link::rl_mcp_install,
             cowork_claim_owner,
             cowork_release_owner,
             cowork_relay,

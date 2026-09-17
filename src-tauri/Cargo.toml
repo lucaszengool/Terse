@@ -4,7 +4,7 @@ version = "1.3.3"
 edition = "2021"
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
+tauri = { version = "2", features = ["tray-icon", "macos-private-api", "image-png"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-shell = "2"
@@ -20,13 +20,42 @@ notify = "8"
 dirs = "6"
 chrono = "0.4"
 sha2 = "0.10"
+# 房间 agent 通道:外发前的密钥扫描(regex),本机 MCP 的路径 token(getrandom)。两者都已在依赖树里。
+regex = "1"
+getrandom = "0.2"
+# 私密房间端到端加密:AES-256-GCM,和房间窗口里 WebCrypto 的格式一致("e1:" + base64url(iv|密文))
+aes-gcm = "0.10"
 ignore = "0.4"
 tree-sitter = "0.24"
 tree-sitter-javascript = "0.23"
 tree-sitter-typescript = "0.23"
+# 读通知中心那个 SQLite 库(消息投屏的数据源)。bundled 是必须的:
+# 系统自带的 libsqlite3 版本随 macOS 变,自带一份省得为此调试。
+rusqlite = { version = "0.32", features = ["bundled"] }
+# 通知内容存成二进制 plist,得解出 titl / subt / body 三个字段
+plist = "1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
+# 粒子模式:把别的 app 的窗口逐帧抓下来。
+# **必须在 app 进程里做**,不能交给命令行小工具 —— 屏幕录制是纯 TCC 门禁(没有任何
+# entitlement 能绕过),而直接跑起来的 CLI 根本不会弹授权框,只会静静地拿不到画面。
+# ScreenCaptureKit 走 objc2 那一族的绑定,**不用** `screencapturekit` crate:
+# 那个 crate 拖着 apple-metal,而 apple-metal 里有一段 Swift bridge 需要比这台机器
+# (SDK 15.0)更新的 Xcode 才编得过 —— 为了一个我们根本用不到的 Metal 模块,
+# 让整个 app 编不出来是不划算的。
+objc2 = "0.6"
+# 回调式的 ObjC API(取窗口列表、抓一帧)全靠它包成 Rust 闭包
+block2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSString", "NSValue", "NSGeometry", "NSError", "NSDictionary"] }
+objc2-screen-capture-kit = { version = "0.3", features = ["SCStream", "SCShareableContent", "SCScreenshotManager", "objc2-core-graphics", "objc2-core-media", "block2"] }
+objc2-core-graphics = { version = "0.3", features = ["CGImage", "CGGeometry", "CGColorSpace", "CGContext", "CGDataProvider", "CGBitmapContext", "CGEvent", "CGEventTypes", "CGEventSource"] }
+objc2-core-foundation = { version = "0.3", features = ["CFCGTypes"] }
+# 帧要过一次 IPC 才到得了渲染层。480px 的 JPEG 约 25KB,12fps ≈ 300KB/s;
+# 原始 BGRA 是每秒 7MB,那条路走不通。sips 是外部进程,一帧一次进程启动更不行。
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+# 会话栏里的截图是 base64 塞在 transcript 里的 —— 要解码才能缩小再变粒子
+base64 = "0.22"
 core-foundation = "0.10"
 core-foundation-sys = "0.8"
 objc = "0.2"

@@ -221,7 +221,19 @@ jobs:
             }
           }
 
+      # The Microsoft Store variant compiles out every system input hook
+      # (--features msstore, see town_keys.rs). Type-check it so that variant
+      # cannot rot unseen — the Store workflow only runs at submission time.
+      - name: Check the Store variant compiles (no input hooks)
+        run: |
+          cd windows-app\src-tauri
+          cargo check --target x86_64-pc-windows-msvc --lib --features msstore
+
       - name: Upload to GitHub Release
+        # Only main (or a tag) may replace the public installer. A manual run on
+        # a feature branch is a test run: it replaced the v1.3.3 download with a
+        # feat/windows-parity build twice before this line existed.
+        if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.3.3

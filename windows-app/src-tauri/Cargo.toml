@@ -60,6 +60,8 @@ windows = { version = "0.58", features = [
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_System_Com",
     "Win32_System_Threading",
+    # town_keys: GetModuleHandleW for the low-level hooks.
+    "Win32_System_LibraryLoader",
     "Win32_System_ProcessStatus",
     "Win32_System_Diagnostics_ToolHelp",
     # desktop_icon_rects reads Explorer's icon ListView, which lives in another
@@ -78,3 +80,8 @@ tauri-build = { version = "2", features = [] }
 [lib]
 name = "terse_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[features]
+# Microsoft Store build: compiles out every system input hook (Code Town's
+# town_keys). The Store submission states Terse installs no keyboard hook.
+msstore = []

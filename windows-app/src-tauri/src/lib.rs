@@ -31,6 +31,7 @@ mod prompt_store;
 mod session_history;
 mod graph_store;
 mod graph_extract;
+mod town_keys;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -1943,6 +1944,11 @@ const ISLAND_CARD_DEFAULT_H: f64 = 520.0;
 const ISLAND_Y: f64 = 4.0;
 /// Diameter of the round 3D button that sits beside the island.
 const WP3D_BTN: f64 = 36.0;
+/// Code Town's "Control town" pill, left of the island (same sizes as macOS).
+const TOWNPAD_W: f64 = 150.0;
+const TOWNPAD_H: f64 = 34.0;
+/// Inside a villa the pill grows a "Leave" button.
+const TOWNPAD_W_VILLA: f64 = 236.0;
 
 const DASHBOARDS: &[(&str, f64, f64)] = &[
     ("session", 322.0, 372.0),
@@ -2782,6 +2788,41 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
             // it is ever resized — a square GDI region on a circular button shows
             // as four opaque corners.
             (w, WP3D_BTN / 2.0)
+        }
+        // Code Town's "Control town" pill, left of the island, shown only while
+        // the town is the wallpaper. It is the switch that decides whether the
+        // keyboard and bare-desktop drags go to the town (town_keys), so it has
+        // to be clickable without ever taking focus from the app in front —
+        // otherwise switching it on would itself move the keys somewhere else.
+        "townpad" => {
+            let x = ((screen_width - ISLAND_PILL_W) / 2.0) - TOWNPAD_W - 10.0;
+            let w = WebviewWindowBuilder::new(app, "townpad", WebviewUrl::App("townpad.html".into()))
+                .title("Terse Code Town")
+                .inner_size(TOWNPAD_W, TOWNPAD_H)
+                .position(x, ISLAND_Y + (ISLAND_PILL_H - TOWNPAD_H) / 2.0)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .resizable(false)
+                .shadow(false)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible_on_all_workspaces(true)
+                .visible(false)
+                .build()?;
+            if let Ok(raw) = w.hwnd() {
+                use windows::Win32::Foundation::HWND;
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+                };
+                unsafe {
+                    let hwnd = HWND(raw.0);
+                    let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+                    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | (WS_EX_NOACTIVATE.0 | WS_EX_TOOLWINDOW.0) as isize);
+                }
+            }
+            (w, TOWNPAD_H / 2.0)
         }
         // The alert banner, built on the first alert rather than at every launch.
         //
@@ -4655,6 +4696,7 @@ pub fn run() {
             wallpaper_town_walk,
             town_control_state,
             townpad_show,
+            townpad_villa,
             desktop_icon_rects,
             wallpaper_set_interactive,
             notifications::toast_action,
@@ -7029,32 +7071,72 @@ fn wallpaper_set_adjust(app: AppHandle, on: bool) -> bool {
     took
 }
 
-/// Code Town's control switch (the pill next to the island on macOS). Windows
-/// has no system key tap here yet: this gives the wallpaper focus and tucks the
-/// main window away, and reports keys:false so the UI can say so.
-#[tauri::command]
+/// Code Town's "Control town" switch (the pill left of the island; the Code
+/// Town page uses it too). Same contract as macOS:
+///   · on:  WASD / arrows / Q R E / Space / Esc go to the town whatever app is in
+///          front, and a drag on bare desktop turns the camera; presses on
+///          icons, windows and the taskbar go through as usual.
+///   · off: nothing is intercepted.
+/// The wallpaper window is never moved, lifted or made clickable for this — the
+/// desktop icons stay visible and usable the whole time. No Pro gate.
+static WP_TOWN_WALK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[tauri::command(async)]
 fn wallpaper_town_walk(app: AppHandle, on: bool) -> serde_json::Value {
-    if on {
+    use std::sync::atomic::Ordering;
+    WP_TOWN_WALK.store(on, Ordering::SeqCst);
+    let keys = town_keys::set_capture(&app, on);
+    // Low-level hooks need no permission on Windows, so there is never an
+    // Accessibility guide to show: trusted is always true.
+    diag_log("town", &format!("control on={on} keys={keys}"));
+    if on && keys {
+        // Capture works: the main window gets out of the way of the desktop.
         if let Some(main) = app.get_webview_window("main") { let _ = main.hide(); }
     }
-    let Some(win) = app.get_webview_window("wallpaper") else { return serde_json::json!({ "ok": false }) };
-    if on { let _ = win.set_focus(); }
-    diag_log("wallpaper", &format!("town control on={on}"));
     let _ = app.emit("wallpaper-town-walk", on);
-    let _ = app.emit("town-control", serde_json::json!({ "on": on, "keys": false, "trusted": true }));
-    serde_json::json!({ "ok": true, "on": on, "keys": false, "mouse": false, "trusted": true })
+    let _ = app.emit("town-control", serde_json::json!({ "on": on, "keys": keys, "trusted": true }));
+    serde_json::json!({ "ok": true, "on": on, "keys": keys, "trusted": true })
 }
 
+/// The pill's state, asked once when it opens.
 #[tauri::command]
 fn town_control_state() -> serde_json::Value {
-    serde_json::json!({ "on": false, "keys": false, "trusted": true })
+    use std::sync::atomic::Ordering;
+    serde_json::json!({ "on": WP_TOWN_WALK.load(Ordering::SeqCst), "keys": town_keys::active(), "trusted": true })
 }
 
+/// Into / out of a villa: the pill widens with a "Leave" button (the town's own
+/// buttons cannot be clicked — clicks never reach the wallpaper).
 #[tauri::command]
+fn townpad_villa(app: AppHandle, inside: bool) -> bool {
+    let Some(w) = app.get_webview_window("townpad") else { return false };
+    let width = if inside { TOWNPAD_W_VILLA } else { TOWNPAD_W };
+    let x = (island_screen_width(&app) - ISLAND_PILL_W) / 2.0 - width - 10.0;
+    // Resized re-cuts the rounded region (attach_lazy_chrome).
+    let _ = w.set_size(tauri::LogicalSize::new(width, TOWNPAD_H));
+    let _ = w.set_position(tauri::LogicalPosition::new(x, ISLAND_Y + (ISLAND_PILL_H - TOWNPAD_H) / 2.0));
+    let _ = app.emit_to("townpad", "town-villa", inside);
+    true
+}
+
+/// The pill exists only while the town is the wallpaper (the wallpaper page
+/// calls this when it turns the town on or off). Async: building the window
+/// waits on the main thread.
+#[tauri::command(async)]
 fn townpad_show(app: AppHandle, on: bool) -> bool {
-    match app.get_webview_window("townpad") {
-        Some(w) => { let _ = if on { w.show() } else { w.hide() }; true }
-        None => false,
+    if on {
+        match ensure_window(&app, "townpad") {
+            Some(w) => { let _ = w.show(); true }
+            None => false,
+        }
+    } else {
+        // The town is gone: nothing may stay captured behind a hidden pill.
+        if WP_TOWN_WALK.swap(false, std::sync::atomic::Ordering::SeqCst) {
+            town_keys::set_capture(&app, false);
+            let _ = app.emit("town-control", serde_json::json!({ "on": false, "keys": false, "trusted": true }));
+        }
+        if let Some(w) = app.get_webview_window("townpad") { let _ = w.hide(); }
+        true
     }
 }
 

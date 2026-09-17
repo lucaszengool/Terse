@@ -2813,15 +2813,23 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .visible_on_all_workspaces(true)
                 .visible(false)
                 .build()?;
+            // WS_EX_TOOLWINDOW keeps it out of the taskbar and Alt+Tab. NOT
+            // WS_EX_NOACTIVATE, although the macOS pill is a non-activating
+            // panel: with it set, CI clicked the pill at its own coordinates and
+            // nothing happened — WebView2 in a window that never activates does
+            // not act on the click. The island, which users click all day, does
+            // not set it either. The cost is that clicking the pill takes focus,
+            // which matters little here: the click hands the keyboard to the town
+            // anyway.
             if let Ok(raw) = w.hwnd() {
                 use windows::Win32::Foundation::HWND;
                 use windows::Win32::UI::WindowsAndMessaging::{
-                    GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+                    GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TOOLWINDOW,
                 };
                 unsafe {
                     let hwnd = HWND(raw.0);
                     let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-                    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | (WS_EX_NOACTIVATE.0 | WS_EX_TOOLWINDOW.0) as isize);
+                    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW.0 as isize);
                 }
             }
             (w, TOWNPAD_H / 2.0)

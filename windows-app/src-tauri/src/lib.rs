@@ -1944,11 +1944,13 @@ const ISLAND_CARD_DEFAULT_H: f64 = 520.0;
 const ISLAND_Y: f64 = 4.0;
 /// Diameter of the round 3D button that sits beside the island.
 const WP3D_BTN: f64 = 36.0;
-/// Code Town's "Control town" pill, left of the island (same sizes as macOS).
-const TOWNPAD_W: f64 = 150.0;
+/// Code Town's "Control town" pill, left of the island. Wider than the Mac's
+/// 150/236: Segoe UI sets the same label wider than SF Pro, and CI's screenshot
+/// showed it clipped to "Control t...".
+const TOWNPAD_W: f64 = 176.0;
 const TOWNPAD_H: f64 = 34.0;
 /// Inside a villa the pill grows a "Leave" button.
-const TOWNPAD_W_VILLA: f64 = 236.0;
+const TOWNPAD_W_VILLA: f64 = 268.0;
 
 const DASHBOARDS: &[(&str, f64, f64)] = &[
     ("session", 322.0, 372.0),

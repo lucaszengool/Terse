@@ -1794,6 +1794,157 @@ jobs:
           Write-Host "pill at $($r.L),$($r.T) - $($r.R),$($r.B)"
           Shot "town-pill"
 
+          # A text box of our own IN FRONT (topmost — the Doctor window covers
+          # this part of the screen, and a check reading a box nobody is typing
+          # into reports whatever it likes).
+          $f = New-Object System.Windows.Forms.Form
+          $f.Text = "town-target"; $f.StartPosition = "Manual"; $f.Location = New-Object System.Drawing.Point 60, 120; $f.Size = New-Object System.Drawing.Size 420, 160
+          $f.TopMost = $true
+          $tb = New-Object System.Windows.Forms.TextBox
+          $tb.Dock = "Fill"; $tb.Multiline = $true
+          $f.Controls.Add($tb); $f.Show(); $f.Activate(); Pump 800
+          $tp = $tb.PointToScreen((New-Object System.Drawing.Point 20, 20))
+          function Focus-Box { [TownT]::Click($tp.X, $tp.Y); Pump 400 }
+          function Type-Keys($keys) { $tb.Text = ""; Pump 200; foreach ($k in $keys) { [TownT]::Key($k) }; Pump 700; return $tb.Text.ToLower() }
+          function Wait-Log($pattern, $secs) {
+            $end = (Get-Date).AddSeconds($secs)
+            while ((Get-Date) -lt $end) {
+              if ((Test-Path $log) -and ((Get-Content $log -Raw) -match $pattern)) { return $true }
+              Pump 300
+            }
+            return $false
+          }
+          function Click-Pill { [TownT]::Click([int](($r.L + $r.R) / 2), [int](($r.T + $r.B) / 2)); Pump 1500 }
+
+          # 0. the harness itself: if our own box is not the one receiving keys,
+          #    nothing below means anything.
+          Focus-Box
+          $sanity = Type-Keys @(0x58)
+          Write-Host "$(Get-Date -Format HH:mm:ss) harness: typed x -> '$sanity'"
+          if ($sanity -ne 'x') { Shot "town-no-focus"; throw "TEST HARNESS: the text box never received a keystroke — the readings below would be meaningless" }
+
+          # 1. pill off: everything reaches the app
+          $before = Type-Keys @(0x57, 0x58)
+          Write-Host "$(Get-Date -Format HH:mm:ss) pill OFF, typed w x -> '$before'"
+
+          # 2. pill on: the town's keys must not reach the app
+          Click-Pill
+          if (-not (Wait-Log 'control on=true keys=true' 10)) { Shot "town-no-capture"; throw "TOWN FAIL: clicking the pill did not install the hooks" }
+          Focus-Box
+          $during = Type-Keys @(0x57, 0x41, 0x53, 0x44, 0x58)
+          Write-Host "$(Get-Date -Format HH:mm:ss) pill ON, typed w a s d x -> '$during'"
+          $gotKey = Wait-Log 'first key captured' 5
+
+          # 3. a drag on bare desktop (our box out of the way first)
+          $f.Hide(); Pump 400
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $cx = [int]($b.Width / 2); $cy = [int]($b.Height / 2)
+          Write-Host "under the drag point ($cx,$cy): $([TownT]::ClassAt($cx, $cy))"
+          [TownT]::Drag($cx, $cy); Pump 800
+          Shot "town-on"
+          $f.Show(); $f.Activate(); Pump 400
+
+          # 4. pill off again: every key comes back
+          Click-Pill
+          if (-not (Wait-Log 'control on=false' 6)) { Write-Host "second click did not register — clicking once more"; Click-Pill }
+          $offAgain = Wait-Log 'control on=false' 6
+          Focus-Box
+          $after = Type-Keys @(0x57, 0x58)
+          Write-Host "$(Get-Date -Format HH:mm:ss) pill OFF again, typed w x -> '$after'"
+          $f.Close()
+
+          $txt = if (Test-Path $log) { Get-Content $log -Raw } else { "" }
+          if ($txt -match '"status":"loaded"') {
+            $d = if ($txt -match '"delegate":"(\w+)"') { $Matches[1] } else { "?" }
+            Write-Host "GESTURE TRACKER OK: MediaPipe and the hand model loaded inside WebView2 (delegate $d)"
+          } elseif ($txt -match 'not bundled') {
+            Write-Warning "GESTURE TRACKER FAIL: MediaPipe was not embedded in the exe"
+          } elseif ($txt -match 'model failed') {
+            Write-Warning "GESTURE TRACKER FAIL: the hand model did not load"
+          } elseif ($txt -match 'autostart: camera denied') {
+            Write-Warning "GESTURE TRACKER INCONCLUSIVE: the runner's camera privacy setting is Deny, so it never started"
+          } else {
+            Write-Warning "GESTURE TRACKER INCONCLUSIVE: no load report"
+          }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $log) { Copy-Item $log artifacts/hands.log }
+          Relaunch "false" 5
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      # 代码小镇 on Windows, end to end. The town is the wallpaper; the pill left
+      # of the island decides whether WASD and bare-desktop drags go to it. Three
+      # things can only be seen on a real desktop:
+      #   1. the pill appears when the town is on (frontend -> townpad_show),
+      #   2. clicking it installs the hooks, and the town's keys then do NOT
+      #      reach the app in front — while other keys still do,
+      #   3. a press on bare desktop is taken as a drag.
+      # And switching it off must give every key back.
+      - name: Prove Code Town takes the keyboard and gives it back
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $log = Join-Path $dir "town.log"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          '{"enabled":true,"engine":"cinematic","theme":"neon","quality":56,"angle":55,"intensity":1.0,"town":{"on":true,"budget":0.5}}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 45
+          $cs = @(
+            'using System; using System.Runtime.InteropServices; using System.Text;',
+            'public class TownT {',
+            '  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }',
+            '  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }',
+            '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindowW(string c, string t);',
+            '  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);',
+            '  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);',
+            '  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);',
+            '  [DllImport("user32.dll")] public static extern void mouse_event(uint f, int x, int y, uint d, UIntPtr e);',
+            '  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte sc, uint f, UIntPtr e);',
+            '  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();',
+            '  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);',
+            '  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint f);',
+            '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, StringBuilder s, int n);',
+            '  public static IntPtr ByTitle(string t) { return FindWindowW(null, t); }',
+            '  public static void Click(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(60); mouse_event(4,0,0,0,UIntPtr.Zero); }',
+            '  public static void Drag(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); for (int i = 1; i <= 10; i++) { System.Threading.Thread.Sleep(20); SetCursorPos(x + i * 12, y); } mouse_event(4,0,0,0,UIntPtr.Zero); }',
+            '  public static void Key(byte vk) { keybd_event(vk,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(40); keybd_event(vk,0,2,UIntPtr.Zero); System.Threading.Thread.Sleep(40); }',
+            '  public static string ClassAt(int x, int y) { POINT p; p.X = x; p.Y = y; IntPtr h = GetAncestor(WindowFromPoint(p), 2); StringBuilder s = new StringBuilder(64); GetClassNameW(h, s, 64); return s.ToString(); }',
+            '}'
+          ) -join "`n"
+          Add-Type -TypeDefinition $cs
+          $null = [TownT]::SetProcessDPIAware()
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+            $bmp.Save("artifacts/$name.png")
+            $g.Dispose(); $bmp.Dispose()
+          }
+          function Pump($ms) { $end = (Get-Date).AddMilliseconds($ms); while ((Get-Date) -lt $end) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 20 } }
+
+          # 1. the pill
+          # Through C#: PowerShell turns $null into "" for a string parameter, and
+          # FindWindowW with class "" matches nothing.
+          $pad = [TownT]::ByTitle("Terse Code Town")
+          if ($pad -eq [IntPtr]::Zero -or -not [TownT]::IsWindowVisible($pad)) {
+            Shot "town-no-pill"
+            foreach ($n in "wallpaper.log", "lazy-window.log", "town.log") {
+              $pl = Join-Path $dir $n
+              if (Test-Path $pl) { Write-Host "--- $n (tail) ---"; Get-Content $pl -Tail 25 | ForEach-Object { Write-Host "  $_" } }
+            }
+            throw "TOWN FAIL: the Control-town pill never appeared (town on in wallpaper.json)"
+          }
+          $r = New-Object TownT+RECT
+          $null = [TownT]::GetWindowRect($pad, [ref]$r)
+          Write-Host "pill at $($r.L),$($r.T) - $($r.R),$($r.B)"
+          Shot "town-pill"
+
           # A text box of our own in front, so we can read what reached the app.
           $f = New-Object System.Windows.Forms.Form
           $f.Text = "town-target"; $f.StartPosition = "Manual"; $f.Location = New-Object System.Drawing.Point 60, 500; $f.Size = New-Object System.Drawing.Size 420, 160
@@ -1837,10 +1988,10 @@ jobs:
           if (Test-Path $log) { Copy-Item $log artifacts/town.log }
           $ok = $true
           if ($txt -notmatch 'control on=true keys=true') { Write-Warning "TOWN FAIL: the pill did not install the hooks"; $ok = $false }
-          if ($txt -notmatch 'first key captured') { Write-Warning "TOWN FAIL: no key was captured"; $ok = $false }
+          if (-not $gotKey) { Write-Warning "TOWN FAIL: no key was captured while the pill was on"; $ok = $false }
           if ($during.ToLower() -ne 'x') { Write-Warning "TOWN FAIL: with the pill on the app got '$during' (want only 'x')"; $ok = $false }
           if ($before.ToLower() -ne 'wx' -or $after.ToLower() -ne 'wx') { Write-Warning "TOWN FAIL: with the pill off keys did not reach the app ('$before' / '$after')"; $ok = $false }
-          if ($txt -notmatch 'control on=false') { Write-Warning "TOWN FAIL: the second click did not switch it off"; $ok = $false }
+          if (-not $offAgain) { Write-Warning "TOWN FAIL: clicking the pill again did not switch it off"; $ok = $false }
           if ($txt -match 'drag started on bare desktop') { Write-Host "TOWN OK: a bare-desktop press was taken as a drag" }
           else { Write-Warning "TOWN INCONCLUSIVE: no bare-desktop drag (see the class under the point above)" }
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force

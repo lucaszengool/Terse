@@ -12,7 +12,8 @@
   和宿主之间只说 postMessage:
     宿主 → 页面  {target:'terse-town', cmd:'init', identity, name, lang}
                  {target:'terse-town', cmd:'walk', on}
-    页面 → 宿主  {source:'terse-town', event:'ready' | 'esc' | 'villa' | 'town' | 'error', ...}
+                 {target:'terse-town', cmd:'goto', id}     (重盖小镇,站到这栋别墅门口)
+    页面 → 宿主  {source:'terse-town', event:'ready' | 'esc' | 'villa' | 'town' | 'goto' | 'error', ...}
   直接在浏览器里打开也能玩(?lang=zh / ?budget=0.8),只是没登录、只看不走进名单。
 -->
 <html lang="zh">
@@ -132,8 +133,30 @@ addEventListener('message', (e) => {
     S.inited = true;
   } else if (d.cmd === 'walk') {
     setWalking(!!d.on);
+  } else if (d.cmd === 'goto') {
+    gotoProject(String(d.id || ''));
   }
 });
+
+/* 带人去看一栋别墅(刚发布的那栋):重新拉一遍广场、重盖小镇,站到它门外 4 米,看着门。 */
+async function gotoProject(id) {
+  if (!S.wp || !id) return;
+  if (S.inVilla) await exitVilla();
+  if (S.busy) return;
+  S.busy = true;
+  try {
+    await loadProjects().catch(() => {});
+    try { window.Town.leave(); } catch (e) {}
+    try { S.wp.exitRoom(); } catch (e) {}
+    S.town = null;
+    await enterTown(null);
+  } finally {
+    S.busy = false;
+  }
+  const d = S.town && S.town.doors.find((x) => x.project && x.project.id === id);
+  if (d) S.town.at(d.x - Math.sin(d.yaw) * 4, d.z - Math.cos(d.yaw) * 4, d.yaw + Math.PI);
+  tell({ event: 'goto', found: !!d });
+}
 
 function setWalking(on) {
   S.walking = on;
@@ -157,7 +180,9 @@ addEventListener('keydown', (e) => {
   if (!S.walking) return;
   e.preventDefault();
   if (S.inVilla) { exitVilla(); return; }
-  if (document.querySelector('.town-sheet:not([hidden]), .town-chat:not([hidden])')) return;
+  // 面板/聊天开着:这一下 Esc 归它们(town-scene 用 CSS 收起,不是 hidden 属性,所以看实际显示没有)
+  const open = [...document.querySelectorAll('.town-sheet, .town-chat')].some((el) => el.getClientRects().length > 0);
+  if (open) return;
   if (embedded) tell({ event: 'esc' }); else setWalking(true);
 }, true);
 

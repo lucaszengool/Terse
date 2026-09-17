@@ -1562,6 +1562,8 @@ const roomsRouter = require('./rooms');
 app.use('/api/cloud/rooms', cloudIngestLimiter, roomsRouter);
 // 房主(NPC):挂在 /town 前面,免得被它吞掉(见 api/npc.js)
 app.use('/api/cloud/town/npc', cloudIngestLimiter, require('./npc'));
+// 小镇里能玩的那一半:光点、告示、谜题、钓 bug、种树(见 api/play.js)
+app.use('/api/cloud/town/play', cloudIngestLimiter, require('./play'));
 // 小镇上的人:谁在镇上、各自站在哪(SSE + POST,见 api/town.js)
 app.use('/api/cloud/town', cloudIngestLimiter, require('./town'));
 

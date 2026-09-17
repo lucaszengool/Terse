@@ -130,6 +130,32 @@
       if (!identity()) return Promise.resolve({ error: 'signin' });
       return post('npc/' + encodeURIComponent(id) + '/say', { text: text, lang: lang || 'en', ctx: ctx || {} });
     },
+    /* ── 能玩的(api/play.js):告示、谜题、钓鱼、卷轴、种树、装饰 ── */
+    play: {
+      state: function () {
+        return fetch('/api/cloud/town/play/state', { headers: { 'x-terse-identity': identity() } })
+          .then(function (r) { return r.json().catch(function () { return {}; }); }).catch(function () { return {}; });
+      },
+      event: function (ev) { return identity() ? post('play/event', ev) : Promise.resolve({}); },
+      riddle: function (guess) { return post('play/riddle', { guess: guess }); },
+      cast: function (p) { return post('play/cast', p); },
+      reel: function (p) { return post('play/reel', p); },
+      scroll: function (id) { return post('play/scroll', { id: id }); },
+      plant: function (villa) { return post('play/tree', { villa: villa }); },
+      water: function (id) { return post('play/tree/' + encodeURIComponent(id) + '/water', {}); },
+      decor: function (villa, item, value) { return post('play/decor', { villa: villa, item: item, value: value }); },
+      chest: function () { return post('play/chest', {}); },
+      /* 敲门 = 给这个项目点赞(只点亮,不取消 —— 再敲一次不该把赞收回去) */
+      knock: function (villa) {
+        if (!identity()) return Promise.resolve({});
+        var url = '/api/cloud/projects/' + encodeURIComponent(villa) + '/like';
+        var hdr = { method: 'POST', headers: { 'x-terse-identity': identity() } };
+        return fetch(url, hdr).then(function (r) { return r.json(); }).then(function (r) {
+          // 点赞接口是切换的:原来就点过,这一下把它取消了 —— 再点一次点回来
+          if (r && r.on === false) return fetch(url, hdr);
+        }).catch(function () {});
+      },
+    },
     npcBye: function (id, lang) {
       if (!identity()) return Promise.resolve({});
       return post('npc/' + encodeURIComponent(id) + '/bye', { lang: lang || 'en' });

@@ -2256,3 +2256,179 @@ Object.assign(module.exports, {
   npcTurnAdd, npcTurnsRecent, npcTurnsSince, npcTurnPrune,
   townEventAdd, townEventsRecent, npcUsageGet, npcUsageBump,
 });
+
+// ── 小镇里能玩的那一半(api/play.js):光点、差事、印章、图鉴、树、装饰 ──
+// day 是 dayIndex()(UTC 的第几天),和 src/renderer/town-play.mjs 同一个。
+db.exec(`
+  CREATE TABLE IF NOT EXISTS play_profile (
+    user_id TEXT PRIMARY KEY,
+    glim INTEGER NOT NULL DEFAULT 0,
+    xp INTEGER NOT NULL DEFAULT 0,
+    quest_days INTEGER NOT NULL DEFAULT 0,
+    name TEXT,
+    updated INTEGER
+  );
+  -- 一个人一天:挣了多少、各项小上限用了多少、差事进度、谜题
+  CREATE TABLE IF NOT EXISTS play_day (
+    user_id TEXT NOT NULL,
+    day INTEGER NOT NULL,
+    earned INTEGER NOT NULL DEFAULT 0,
+    fish_glim INTEGER NOT NULL DEFAULT 0,
+    scroll_n INTEGER NOT NULL DEFAULT 0,
+    water_n INTEGER NOT NULL DEFAULT 0,
+    knock_glim INTEGER NOT NULL DEFAULT 0,
+    casts INTEGER NOT NULL DEFAULT 0,
+    progress TEXT,
+    riddle TEXT,
+    done_all INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day)
+  );
+  -- 去重:今天在这栋房子已经算过一次 visit / talk / knock 进度了
+  CREATE TABLE IF NOT EXISTS play_seen (
+    user_id TEXT NOT NULL,
+    day INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    villa TEXT NOT NULL,
+    PRIMARY KEY (user_id, day, kind, villa)
+  );
+  CREATE TABLE IF NOT EXISTS play_stamp (
+    user_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    day INTEGER NOT NULL,
+    PRIMARY KEY (user_id, key)
+  );
+  -- 图鉴:kind = bug(key = bug id)| scroll(key = 卷轴 id,extra = {villa,file})| page(护照页已发过奖)
+  CREATE TABLE IF NOT EXISTS play_codex (
+    user_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    key TEXT NOT NULL,
+    n INTEGER NOT NULL DEFAULT 0,
+    best INTEGER NOT NULL DEFAULT 0,
+    extra TEXT,
+    PRIMARY KEY (user_id, kind, key)
+  );
+  CREATE TABLE IF NOT EXISTS play_cast (
+    user_id TEXT NOT NULL,
+    day INTEGER NOT NULL,
+    n INTEGER NOT NULL,
+    bug TEXT NOT NULL,
+    len INTEGER NOT NULL,
+    reeled INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day, n)
+  );
+  CREATE TABLE IF NOT EXISTS play_tree (
+    id INTEGER PRIMARY KEY,
+    villa TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    planter TEXT NOT NULL,
+    planter_name TEXT,
+    planted_day INTEGER NOT NULL,
+    water_days INTEGER NOT NULL DEFAULT 0,
+    last_water_day INTEGER NOT NULL DEFAULT -1,
+    UNIQUE (villa, slot),
+    UNIQUE (villa, planter)
+  );
+  CREATE TABLE IF NOT EXISTS play_water (
+    tree_id INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
+    day INTEGER NOT NULL,
+    PRIMARY KEY (tree_id, user_id, day)
+  );
+  CREATE TABLE IF NOT EXISTS play_decor (
+    villa TEXT NOT NULL,
+    item TEXT NOT NULL,
+    value INTEGER NOT NULL DEFAULT 0,
+    owner TEXT NOT NULL,
+    PRIMARY KEY (villa, item)
+  );
+  -- 房主的日报:今天有几个人来过、敲过门、浇过水、种过树(只有数,没有是谁)
+  CREATE TABLE IF NOT EXISTS play_owner (
+    day INTEGER NOT NULL,
+    villa TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    n INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, villa, kind)
+  );
+  CREATE TABLE IF NOT EXISTS play_knock (
+    day INTEGER NOT NULL,
+    villa TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    PRIMARY KEY (day, villa, user_id)
+  );
+  CREATE TABLE IF NOT EXISTS play_ledger (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    ts INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    delta INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    ref TEXT
+  );
+  CREATE INDEX IF NOT EXISTS play_ledger_user ON play_ledger (user_id, id);
+`);
+const playProfileGet = db.prepare('SELECT * FROM play_profile WHERE user_id = ?');
+const playProfileEnsure = db.prepare('INSERT OR IGNORE INTO play_profile (user_id, updated) VALUES (?, 0)');
+const playProfileAdd = db.prepare(`
+  UPDATE play_profile SET glim = glim + @glim, xp = xp + @xp, quest_days = quest_days + @qd, updated = @now
+  WHERE user_id = @user_id`);
+const playProfileName = db.prepare('UPDATE play_profile SET name = @name WHERE user_id = @user_id');
+const playDayGet = db.prepare('SELECT * FROM play_day WHERE user_id = @user_id AND day = @day');
+const playDayEnsure = db.prepare('INSERT OR IGNORE INTO play_day (user_id, day) VALUES (@user_id, @day)');
+/* 只加不减的计数列;列名来自 api/play.js 里一张固定的白名单,不来自请求。 */
+const PLAY_DAY_COLS = ['earned', 'fish_glim', 'scroll_n', 'water_n', 'knock_glim', 'casts'];
+const playDayBumpStmts = Object.fromEntries(PLAY_DAY_COLS.map((c) => [c,
+  db.prepare(`UPDATE play_day SET ${c} = ${c} + @n WHERE user_id = @user_id AND day = @day`)]));
+const playDayBump = (col, p) => playDayBumpStmts[col].run(p);
+const playDaySetProgress = db.prepare(
+  'UPDATE play_day SET progress = @progress, done_all = @done_all WHERE user_id = @user_id AND day = @day');
+const playDaySetRiddle = db.prepare('UPDATE play_day SET riddle = @riddle WHERE user_id = @user_id AND day = @day');
+const playSeenAdd = db.prepare(
+  'INSERT OR IGNORE INTO play_seen (user_id, day, kind, villa) VALUES (@user_id, @day, @kind, @villa)');
+const playStampAdd = db.prepare('INSERT OR IGNORE INTO play_stamp (user_id, key, day) VALUES (@user_id, @key, @day)');
+const playStampsOf = db.prepare('SELECT key FROM play_stamp WHERE user_id = ? ORDER BY key');
+const playCodexGet = db.prepare('SELECT * FROM play_codex WHERE user_id = @user_id AND kind = @kind AND key = @key');
+const playCodexAdd = db.prepare(`
+  INSERT INTO play_codex (user_id, kind, key, n, best, extra) VALUES (@user_id, @kind, @key, 1, @best, @extra)
+  ON CONFLICT(user_id, kind, key) DO UPDATE SET n = n + 1, best = MAX(best, @best)`);
+const playCodexOf = db.prepare('SELECT kind, key, n, best, extra FROM play_codex WHERE user_id = ? ORDER BY kind, key LIMIT 2000');
+const playCastAdd = db.prepare(
+  'INSERT INTO play_cast (user_id, day, n, bug, len) VALUES (@user_id, @day, @n, @bug, @len)');
+const playCastGet = db.prepare('SELECT * FROM play_cast WHERE user_id = @user_id AND day = @day AND n = @n');
+const playCastReel = db.prepare(
+  'UPDATE play_cast SET reeled = 1 WHERE user_id = @user_id AND day = @day AND n = @n AND reeled = 0');
+const playTreeAdd = db.prepare(`
+  INSERT INTO play_tree (villa, slot, planter, planter_name, planted_day) VALUES (@villa, @slot, @planter, @planter_name, @day)`);
+const playTreeGet = db.prepare('SELECT * FROM play_tree WHERE id = ?');
+const playTreesAt = db.prepare('SELECT * FROM play_tree WHERE villa = ? ORDER BY slot');
+const playTreesAll = db.prepare('SELECT * FROM play_tree ORDER BY villa, slot LIMIT 2000');
+const playTreeWatered = db.prepare(`
+  UPDATE play_tree SET water_days = water_days + 1, last_water_day = @day WHERE id = @id AND last_water_day != @day`);
+const playWaterAdd = db.prepare('INSERT OR IGNORE INTO play_water (tree_id, user_id, day) VALUES (@tree_id, @user_id, @day)');
+const playWateredBy = db.prepare('SELECT tree_id FROM play_water WHERE user_id = @user_id AND day = @day');
+const playDecorGet = db.prepare('SELECT * FROM play_decor WHERE villa = @villa AND item = @item');
+const playDecorSet = db.prepare(`
+  INSERT INTO play_decor (villa, item, value, owner) VALUES (@villa, @item, @value, @owner)
+  ON CONFLICT(villa, item) DO UPDATE SET value = @value, owner = @owner`);
+const playDecorAll = db.prepare('SELECT villa, item, value FROM play_decor LIMIT 5000');
+const playOwnerBump = db.prepare(`
+  INSERT INTO play_owner (day, villa, kind, n) VALUES (@day, @villa, @kind, 1)
+  ON CONFLICT(day, villa, kind) DO UPDATE SET n = n + 1`);
+const playOwnerDay = db.prepare('SELECT villa, kind, n FROM play_owner WHERE day = ?');
+const playKnockAdd = db.prepare('INSERT OR IGNORE INTO play_knock (day, villa, user_id) VALUES (@day, @villa, @user_id)');
+const playLedgerAdd = db.prepare(
+  'INSERT INTO play_ledger (user_id, ts, day, delta, reason, ref) VALUES (@user_id, @ts, @day, @delta, @reason, @ref)');
+const playLedgerOf = db.prepare('SELECT * FROM play_ledger WHERE user_id = @user_id ORDER BY id DESC LIMIT @limit');
+const playPrune = db.prepare('DELETE FROM play_cast WHERE day < ?');
+const playPruneSeen = db.prepare('DELETE FROM play_seen WHERE day < ?');
+const playPruneKnock = db.prepare('DELETE FROM play_knock WHERE day < ?');
+const playPruneWater = db.prepare('DELETE FROM play_water WHERE day < ?');
+
+Object.assign(module.exports, {
+  playProfileGet, playProfileEnsure, playProfileAdd, playProfileName,
+  playDayGet, playDayEnsure, playDayBump, playDaySetProgress, playDaySetRiddle,
+  playSeenAdd, playStampAdd, playStampsOf, playCodexGet, playCodexAdd, playCodexOf,
+  playCastAdd, playCastGet, playCastReel,
+  playTreeAdd, playTreeGet, playTreesAt, playTreesAll, playTreeWatered, playWaterAdd, playWateredBy,
+  playDecorGet, playDecorSet, playDecorAll, playOwnerBump, playOwnerDay, playKnockAdd,
+  playLedgerAdd, playLedgerOf, playPrune, playPruneSeen, playPruneKnock, playPruneWater,
+});

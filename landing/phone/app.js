@@ -4412,6 +4412,7 @@
           });
         },
         onNpcBye: function (id) { Town.npcBye(id, lang); },
+        play: Town.play,
         notes: function () { return Town.notes(); },
         onEnter: function (house) { if (window.TerseFeel) window.TerseFeel.tap('heavy'); enterVilla(house.project || house); },
         onMove: function (x, z, yaw, v) { Town.move(x, z, yaw, v); },

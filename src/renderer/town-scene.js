@@ -30,6 +30,7 @@ import { kelvin } from './room-styles.js';
 import { createNature } from './town-nature.js';
 import { createLife } from './town-life.js';
 import { createPeople } from './town-people.js';
+import { createPlay } from './town-play-ui.js';
 
 const D2R = Math.PI / 180;
 const TOWN_FORM = 60;   // uForm 到这里,1.8 公里以内的点都落定了
@@ -220,7 +221,7 @@ const CSS = `
 .town-chat form button{border:0;border-radius:999px;background:#e9b25a;color:#1c130a;font-weight:700;padding:0 14px;cursor:pointer}
 .town-chat .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .town-chat .chips button{border:1px solid rgba(255,214,150,.3);background:rgba(255,214,150,.08);color:#f4ead8;border-radius:999px;padding:5px 10px;font-size:12px;cursor:pointer}
-.town-hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:4;pointer-events:none;
+.town-hint{position:absolute;left:50%;top:48px;transform:translateX(-50%);z-index:4;pointer-events:none;
   font:500 11px/1.3 -apple-system,BlinkMacSystemFont,sans-serif;color:rgba(235,245,255,.72);text-shadow:0 1px 6px rgba(0,0,0,.7)}`;
 function injectCss() {
   if (typeof document === 'undefined' || document.getElementById('town-scene-css')) return;
@@ -742,6 +743,7 @@ export function createTown(renderer, projects, opts = {}) {
   let nearDoor = null;
   on(doorBtn, 'click', (e) => { e.stopPropagation(); tryEnter(); });
   function tryEnter() {
+    if (nearDoor) { try { play.event({ type: 'enter', villa: String(nearDoor.project.id) }); } catch (err) {} }
     if (nearDoor && opts.onEnter) { try { opts.onEnter(nearDoor.project); } catch (err) {} }
   }
 
@@ -793,6 +795,7 @@ export function createTown(renderer, projects, opts = {}) {
     const add = (cls, text) => { const q = el('p', cls, log); q.textContent = text; log.scrollTop = log.scrollHeight; return q; };
     chat = { f, box, log, add, busy: false, turns: 0 };
     // 打招呼:先用本地的模板说一句,服务器记得你的话再换成记得你的那一句
+    play.event({ type: 'talk', villa: f.id });
     const first = add('npc', people.greetingFor(f, null, envCtx()));
     sayOver(f, first.textContent);
     people.emote(f, 'wave', 2, t);
@@ -888,6 +891,14 @@ export function createTown(renderer, projects, opts = {}) {
     for (let i = ni; i < folkEls.length; i++) folkEls[i].style.display = 'none';
     for (let i = bi; i < folkBub.length; i++) folkBub[i].style.display = 'none';
   }
+  /* 能玩的:告示、谜题、钓 bug、卷轴、敲门种树、护照(见 town-play-ui.js) */
+  const play = createPlay({
+    scene, U, host, el, on, project, plan, built, people, lang: opts.lang, words: opts.words, api: opts.play || null,
+    player: () => ({ x: px, z: pz, yaw }),
+    env: () => ({ hour: env.hour, weather: env.weather, season: env.season }),
+    speak: (f, text) => sayOver(f, text, 3),
+    guide: (f) => { greeted.add(f.id); },
+  });
   const noteEls = Array.from({ length: 12 }, () => { const d = document.createElement('div'); d.className = 'town-note'; d.style.display = 'none'; layer.appendChild(d); return d; });
 
   /* 右边一列:招手、欢呼、坐下、说一句、点一盏灯、留一张字条。 */
@@ -950,7 +961,7 @@ export function createTown(renderer, projects, opts = {}) {
     const toggle = (fn) => () => { if (sheet.style.display !== 'none') closeSheet(); else fn(); };
     if (opts.onSay) mk('💬', w.town_say, toggle(openSay));
     if (opts.onMark) {
-      mk('🏮', w.town_lantern, () => { try { opts.onMark('lantern', px, pz, 0); } catch (err) {} });
+      mk('🏮', w.town_lantern, () => { try { opts.onMark('lantern', px, pz, 0); play.event({ type: 'lantern' }); } catch (err) {} });
       mk('📝', w.town_note, toggle(openNotes));
     }
   }
@@ -1019,6 +1030,7 @@ export function createTown(renderer, projects, opts = {}) {
     if (update._bell !== undefined && hourNow !== update._bell) { try { life.ring(); } catch (e) {} if (opts.onBell) { try { opts.onBell(hourNow); } catch (e) {} } }
     update._bell = hourNow;
     npcTick(dt);
+    play.update(dt, t, nearDoor);
 
     // 身边那 24 盏灯进 uniform(表里放得下的就这么多)
     if (!update._lit || Math.hypot(px - update._lit[0], pz - update._lit[1]) > 8) {
@@ -1133,6 +1145,7 @@ export function createTown(renderer, projects, opts = {}) {
     try { layer.remove(); } catch (e) {}
     try { if (document.pointerLockElement === input) document.exitPointerLock(); } catch (e) {}
     try { closeChat(); } catch (e) {}
+    try { play.dispose(); } catch (e) {}
     try { nature.dispose(); life.dispose(); people.dispose(); } catch (e) {}
     try { if (markPts) { markPts.geometry.dispose(); markPts.material.dispose(); } group.userData.dispose(); if (landGroup) landGroup.userData.dispose(); if (fine) fine.group.userData.dispose(); gGeo.dispose(); gMat.dispose(); peerGeo.dispose(); peerMat.dispose(); ground.dispose(); } catch (e) {}
     try { atmos.dispose(); bloom.dispose(); grade.dispose(); composer.dispose(); if (haze) { haze.geometry.dispose(); haze.material.dispose(); } } catch (e) {}
@@ -1151,7 +1164,7 @@ export function createTown(renderer, projects, opts = {}) {
     says(id, text) { bubbles.set(id, { text: String(text || '').slice(0, 120), until: t + 6 }); },
     /** 自己此刻的表情(发给别人的那个数)。 */
     emote: () => emote,
-    plan, doors, labels, uniforms: U, atmos, bloom, composer, people, life, nature,
+    plan, doors, labels, uniforms: U, atmos, bloom, composer, people, life, nature, play,
     /** 站到某个人面前,和他说话(调试、带路) */
     talk(id) { const f = people.folk.find((q) => q.id === String(id)); if (f) { px = f.x + 1.6; pz = f.z + 1.6; openChat(f); } return !!f; },
     env: () => env,

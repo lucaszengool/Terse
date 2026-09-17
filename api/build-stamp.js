@@ -45,8 +45,10 @@ const ENGINE_ASSETS = [
   'town-plan.js', 'town-build.js', 'town-ground.js', 'town-scene.js',
   // 镇上的人(房主):浏览器和 api/npc.js 共用的那份纯函数
   'town-folk.mjs',
+  // 小镇里能玩的规则(告示、谜题、图鉴、奖励表):浏览器和 api/play.js 共用
+  'town-play.mjs',
   // 小镇的外观、地标、树和烟、动物、人
-  'town-villa.js', 'town-landmarks.js', 'town-nature.js', 'town-life.js', 'town-life-sim.js', 'town-people.js',
+  'town-villa.js', 'town-landmarks.js', 'town-nature.js', 'town-life.js', 'town-life-sim.js', 'town-people.js', 'town-play-ui.js',
   // 屋子外面的天(钟、季节、天气)、天穹和天气粒子、在楼之间换场
   'room-sky.js', 'room-atmos.js', 'room-travel.js',
 ];

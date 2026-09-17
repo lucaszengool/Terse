@@ -7,13 +7,14 @@
   html, body { margin: 0; background: #05070c; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; }
   #box { position: relative; width: 100vw; height: 100vh; touch-action: none; }
   canvas { position: absolute; inset: 0; display: block; }
-  #hud { position: absolute; left: 12px; top: 12px; color: #cfe6ff; font: 12px/1.5 -apple-system, sans-serif; z-index: 6;
+  #hud { position: absolute; right: 12px; bottom: 12px; color: #cfe6ff; font: 12px/1.5 -apple-system, sans-serif; z-index: 6;
     background: rgba(5,8,14,.5); padding: 8px 11px; border-radius: 10px; pointer-events: none; }
 </style>
 <div id="box"><div id="hud"></div></div>
 <script type="module">
 import * as THREE from 'three';
 import { createTown } from '/app-assets/town-scene.js';
+import * as PL from '/app-assets/town-play.mjs';
 
 const q = new URLSearchParams(location.search);
 const N = +(q.get('n') || 90);
@@ -29,6 +30,42 @@ const projects = Array.from({ length: N }, (_, i) => ({
   style: ['modern', 'tang', 'persia', 'norse', 'hellas'][i % 5],
 }));
 
+
+// 本地的假账(原型页用):和 api/play.js 同一份规则,但只在内存里
+function fakePlay(getTown) {
+  const day = PL.dayIndex();
+  const me = { glim: 90, xp: 90, questDays: 6, earned: 0, stamps: new Set(), bugs: {}, scrolls: [], casts: [], progress: {}, riddle: { guesses: 0, solved: false, failed: false } };
+  let trees = [], decor = {}, taken = new Set();
+  const houses = () => getTown().people.folk.map((f) => ({ id: f.id, lang: f.facts.lang, style: (getTown().plan.plots.find((p) => p.id === f.id) || {}).project?.massing?.style || 'modern', trade: f.persona.trade, busy: false, hot: 'src/' + f.id + '.ts', facts: f.facts, extra: { hot: 'src/main.ts', people: 3 } }));
+  const quests = () => PL.dailyQuests(day, { houses: houses() }).map((q) => Object.assign({}, q, { progress: me.progress[q.id] || 0, done: (me.progress[q.id] || 0) >= q.n }));
+  const riddle = () => { const R = PL.riddleOf(day, houses()); const done = me.riddle.solved || me.riddle.failed; return { clues: R.clues.slice(0, done ? 99 : me.riddle.guesses + 1), guesses: me.riddle.guesses, solved: me.riddle.solved, failed: me.riddle.failed, max: 6, answer: done ? R.answer : undefined, title: done ? R.title : undefined, share: done ? PL.riddleShare(day, me.riddle.guesses, me.riddle.solved, 'zh') : undefined, _ans: R.answer }; };
+  const profile = () => ({ glim: me.glim, xp: me.xp, level: PL.levelOf(me.xp), questDays: me.questDays, chestReady: me.questDays >= 7, earnedToday: me.earned, cap: PL.CAPS.perDay });
+  const give = (n) => { const g = Math.max(0, Math.min(n, PL.CAPS.perDay - me.earned)); me.glim += g; me.xp += g; me.earned += g; return g; };
+  const bump = (ev) => { let g = 0; const out = []; for (const q of quests()) { if (q.done || !PL.questMatches(q, ev)) continue; me.progress[q.id] = (me.progress[q.id] || 0) + 1; const nq = quests().find((x) => x.id === q.id); if (nq.done) { g += give(q.reward); out.push(Object.assign(nq, { justDone: true })); } } if (quests().every((q) => q.done) && !me.allDone) { me.allDone = true; me.questDays++; } return { g, out }; };
+  const scrolls = () => PL.scrollsOf(day, houses()).map((x) => Object.assign({ taken: taken.has(x.id) }, x));
+  const state = () => ({ ok: true, day, festival: PL.festivalOn(), profile: profile(), quests: quests(), riddle: riddle(), stamps: [...me.stamps], codex: { bugs: me.bugs, scrolls: me.scrolls }, scrolls: scrolls(), castsLeft: 60 - me.casts.length, trees, decor, mine: [houses()[0].id], digest: { visits: 3, knocks: 1, waters: 0, plants: 0 } });
+  return {
+    state: async () => state(),
+    event: async (ev) => {
+      const h = houses().find((x) => x.id === ev.villa) || {};
+      const e2 = Object.assign({}, ev, { lang: h.lang, style: h.style, trade: h.trade });
+      let g = 0; const st = [];
+      if (ev.type === 'visit') for (const k of PL.stampsFor(h)) if (!me.stamps.has(k)) { me.stamps.add(k); st.push(k); g += give(PL.REWARD.stampNew); }
+      const b = bump(e2);
+      return { ok: true, gained: g + b.g, stamps: st, quests: quests().map((q) => Object.assign(q, { justDone: b.out.some((o) => o.id === q.id) })), profile: profile() };
+    },
+    riddle: async (guess) => { const R = riddle(); me.riddle.guesses++; let g = 0; const correct = guess === R._ans; if (correct) { me.riddle.solved = true; g = give(15); bump({ type: 'riddle' }); } else if (me.riddle.guesses >= 6) me.riddle.failed = true; return { ok: true, correct, gained: g, riddle: riddle(), profile: profile(), quests: quests() }; },
+    cast: async (p) => { const n = me.casts.length; const c = PL.castResult('me|' + day + '|' + n, p.where, p.hour, p.weather, p.langs); me.casts.push(c); return { ok: true, cast: { n, bite: c.bite, window: c.window + 1.2, bug: c.bug, len: c.len }, castsLeft: 60 - me.casts.length }; },
+    reel: async (p) => { const c = me.casts[p.n]; if (!p.ok || !c) return { ok: true, caught: false }; const b0 = me.bugs[c.bug.id]; me.bugs[c.bug.id] = { n: (b0 ? b0.n : 0) + 1, best: Math.max(b0 ? b0.best : 0, c.len) }; const g = give(PL.REWARD.fish(c.bug)) + bump({ type: 'fish' }).g; return { ok: true, caught: true, bug: c.bug, len: c.len, gained: g, newSpecies: !b0, codex: { bugs: me.bugs, scrolls: me.scrolls }, quests: quests(), profile: profile() }; },
+    scroll: async (id) => { const x = scrolls().find((q) => q.id === id); if (!x || taken.has(id)) return { ok: false, error: 'gone' }; taken.add(id); me.scrolls.push({ id, villa: x.villa, file: x.file }); const g = give(3) + bump({ type: 'scroll' }).g; return { ok: true, gained: g, codex: { bugs: me.bugs, scrolls: me.scrolls }, scrolls: scrolls(), quests: quests(), profile: profile() }; },
+    plant: async (villa) => { if (me.glim < 60) return { error: 'Not enough glim' }; me.glim -= 60; const slot = trees.filter((x) => x.villa === villa).length; trees = trees.concat([{ id: 't' + trees.length, villa, slot, stage: 0, waterDays: 0, planter: 'me', wateredToday: false }]); const b = bump({ type: 'plant' }); return { ok: true, gained: b.g, trees, profile: profile(), quests: quests() }; },
+    water: async (id) => { trees = trees.map((x) => x.id === id ? Object.assign({}, x, { waterDays: x.waterDays + 2, stage: PL.treeStage(x.waterDays + 2), wateredToday: true }) : x); const g = give(2) + bump({ type: 'water' }).g; return { ok: true, gained: g, trees, profile: profile(), quests: quests() }; },
+    decor: async (villa, item, value) => { decor = Object.assign({}, decor, { [villa]: Object.assign({}, decor[villa] || {}, { [item]: value }) }); return { ok: true, decor, profile: profile() }; },
+    chest: async () => { if (me.questDays < 7) return { error: 'not yet' }; me.questDays -= 7; me.glim += 100; me.xp += 100; return { ok: true, gained: 100, profile: profile() }; },
+    knock: async () => ({ ok: true }),
+  };
+}
+
 const box = document.getElementById('box'), hud = document.getElementById('hud');
 const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
@@ -43,6 +80,8 @@ const town = createTown(renderer, projects, {
   hour: num('hour'), weather: q.get('weather') || undefined, season: q.get('season') || undefined,
   onEnter: (p) => { hud.textContent = 'ENTER ' + p.title; },
   onNear: (p) => { hud.dataset.near = p ? p.title : ''; },
+  lang: q.get('lang') || 'zh',
+  play: q.get('play') ? fakePlay(() => window.__town) : null,
   notes: ['somebody was here', 'try this one', 'look up', 'beautiful at night'],
   onSay: (text) => { hud.dataset.said = text; },
   onMark: (kind, x, z, note) => { MARKS.unshift({ id: 'm' + MARKS.length, kind, x, z, name: 'me', text: kind === 'note' ? ['somebody was here', 'try this one', 'look up', 'beautiful at night'][note] : null }); town.setMarks(MARKS); },

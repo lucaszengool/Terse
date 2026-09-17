@@ -174,6 +174,23 @@ export function buildLandmarks(ctx) {
       out.stalls.push({ x: st.x, z: st.z, fx: F.f[0], fz: F.f[2] });
       out.perches.push({ x: F.P(0, 2.4, 0)[0], y: 2.4, z: F.P(0, 2.4, 0)[2] });
     });
+    // 告示牌:两根柱子、一块木板、上面钉着几张纸(今天的差事)
+    {
+      const a = 2.2, bx = M.x + Math.cos(a) * Math.max(3.4, M.r * 0.3), bz = M.z + Math.sin(a) * Math.max(3.4, M.r * 0.3);
+      const F = frame(bx, bz, M.x - bx, M.z - bz);
+      for (const s of [-1, 1]) S.tube(F.P(s * 0.95, 0, 0), F.P(s * 0.95, 2.4, 0), 0.07, oak);
+      S.box(F.P(0, 0.9, 0), F.r, F.f, 2.0, 1.3, 0.1, sp(MAT.wood, [0.4, 0.28, 0.17], [0.3, 0.2, 0.12]));
+      for (const s of [-1, 1]) S.quad(F.P(-1.15, 2.6, 0), F.V(2.3, 0, 0), add(F.V(0, 0, s * 0.45), [0, -0.3, 0]), sp(MAT.shingle, [0.3, 0.22, 0.15]), F.V(0, 1, s));
+      for (let k = 0; k < 6; k++) {
+        const u = -0.75 + (k % 3) * 0.55, y = 1.25 + Math.floor(k / 3) * 0.5;
+        S.quad(F.P(u - 0.18, y, 0.06), F.V(0.36, 0, 0), [0, 0.42, 0], sp(MAT.paper, [0.86, 0.8, 0.66], [0.5, 0.4, 0.3]), F.f);
+        S.quad(F.P(u - 0.18, y, -0.06), F.V(0.36, 0, 0), [0, 0.42, 0], sp(MAT.paper, [0.86, 0.8, 0.66], [0.5, 0.4, 0.3]), F.V(0, 0, -1));
+      }
+      for (let k = 0; k < 16; k++) G(bx + (rnd() - 0.5) * 1.8, 1.2 + rnd() * 1.1, bz + (rnd() - 0.5) * 0.3, [1, 0.85, 0.5], 0.05, 0.9, 2);
+      block(bx, bz, 1.1);
+      out.board = { x: bx, z: bz };
+      out.perches.push({ x: bx, y: 2.7, z: bz });
+    }
     // 广场四角的长椅
     for (let i = 0; i < 4; i++) {
       const a = i / 4 * TAU + 0.8, bx = M.x + Math.cos(a) * M.r * 0.42, bz = M.z + Math.sin(a) * M.r * 0.42;

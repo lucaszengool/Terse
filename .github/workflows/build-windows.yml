@@ -648,6 +648,34 @@ jobs:
       #   2. the user's other settings survive — we removed only our own line
       #   3. it is still gone after the proxy has been up ~40s — the ChatGPT-auth
       #      check held and the proxy did not re-inject it
+      # The room agent channel, end to end, on a real Windows machine.
+      #
+      # Unit tests prove the parsing; they cannot prove the two local servers
+      # actually come up when the app starts, or that their security gates hold
+      # on Windows. Both are checked against the running app:
+      #   · the hook endpoint agents post to (47823) answers a PreToolUse event;
+      #   · the room MCP (47824) refuses a request carrying an Origin header —
+      #     the gate that stops a web page from driving your local agent — and
+      #     answers 404 to a path without the right token.
+      # 000 means connection refused: that server never started.
+      - name: Probe the room channel's local servers
+        continue-on-error: true
+        run: |
+          $body = Join-Path $env:RUNNER_TEMP "hook-probe.json"
+          '{"session_id":"ci-probe","hook_event_name":"PreToolUse","tool_name":"Read"}' |
+            Set-Content -Path $body -Encoding ascii -NoNewline
+          $hook = curl.exe -s -m 10 -o NUL -w "%{http_code}" -X POST -H "Content-Type: application/json" `
+                    --data-binary "@$body" http://127.0.0.1:47823/terse-dock/pre
+          $origin = curl.exe -s -m 5 -o NUL -w "%{http_code}" -H "Origin: https://example.invalid" `
+                    http://127.0.0.1:47824/mcp/anything
+          $token = curl.exe -s -m 5 -o NUL -w "%{http_code}" http://127.0.0.1:47824/mcp/not-the-token
+          Write-Host "hook endpoint   POST /terse-dock/pre   -> $hook   (want 2xx)"
+          Write-Host "room MCP        with Origin header     -> $origin (want 403)"
+          Write-Host "room MCP        wrong token path       -> $token  (want 404)"
+          $ok = ($hook -match '^2\d\d$') -and ($origin -eq '403') -and ($token -eq '404')
+          if ($ok) { Write-Host "ROOM CHANNEL OK: both servers are up and both gates hold" }
+          else { Write-Warning "ROOM CHANNEL FAIL: hook=$hook origin=$origin token=$token" }
+
       - name: Verify the Codex config was repaired and left alone
         continue-on-error: true
         run: |

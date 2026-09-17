@@ -630,3 +630,164 @@ fn strip_tags(s: &str) -> String {
 fn clip(s: &str, n: usize) -> String {
     if s.chars().count() <= n { s.to_string() } else { s.chars().take(n).collect::<String>() + "…" }
 }
+
+/// Codex 的全文(和 parse_transcript 一样的形状)。有 event_msg 就用它(那才是人和模型说的话),
+/// 没有(老 CLI 格式)才从 response_item 里捡
+fn codex_transcript(path: &Path) -> Vec<Value> {
+    let text = codex_read(path);
+    let (mut ev, mut ri): (Vec<Value>, Vec<Value>) = (vec![], vec![]);
+    for line in text.lines() {
+        let Ok(d) = serde_json::from_str::<Value>(line) else { continue };
+        let ts = d.get("timestamp").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let t = d.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let p = d.get("payload").cloned().unwrap_or(Value::Null);
+        let pt = p.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let row = |role: &str, kind: &str, text: String| json!({ "role": role, "kind": kind, "text": clip(&text, 60000), "ts": ts });
+        let s = |k: &str| p.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if t == "event_msg" {
+            match pt {
+                "user_message" if !s("message").trim().is_empty() => ev.push(row("user", "text", s("message"))),
+                "agent_message" if !s("message").trim().is_empty() => ev.push(row("assistant", "text", s("message"))),
+                "exec_command_begin" => ev.push(row("assistant", "tool", format!("Shell  {}", clip(&codex_cmd(p.get("command")), 300)))),
+                "patch_apply_begin" => ev.push(row("assistant", "tool", format!("Patch  {}", codex_patch_files(&p).join(", ")))),
+                _ => {}
+            }
+        } else if t == "response_item" {
+            match pt {
+                "message" => {
+                    let role = p.get("role").and_then(|v| v.as_str()).unwrap_or("");
+                    if role != "user" && role != "assistant" { continue; }
+                    let txt = p.get("content").and_then(|c| c.as_array()).map(|a| a.iter().filter_map(|x| x.get("text").and_then(|v| v.as_str())).collect::<Vec<_>>().join("\n")).unwrap_or_default();
+                    if !txt.trim().is_empty() && !txt.trim_start().starts_with('<') { ri.push(row(role, "text", txt)); }
+                }
+                "function_call" => ri.push(row("assistant", "tool", format!("{}  {}", s("name"), clip(&s("arguments"), 300)))),
+                _ => {}
+            }
+        }
+    }
+    if ev.iter().any(|r| r["kind"] == "text") { ev } else { ri }
+}
+
+// macOS's session_dock tests for the functions this port carries. The fourth,
+// sd_git_only_counts_paths_inside_the_repo, is left behind with sd_git itself.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The one piece of this file written for Windows rather than copied:
+    /// finding live Claude sessions from process command lines instead of
+    /// `ps -axo args=`. The macOS tests cannot reach it, so this starts a real
+    /// process whose command line carries a `--resume=<id>` marker and checks
+    /// live_ids() sees it.
+    ///
+    /// PowerShell joins every argument after -Command into one script, so the
+    /// trailing `#` turns the marker into a comment: the child just sleeps, but
+    /// its command line — which is all live_ids reads — still contains the id.
+    #[cfg(windows)]
+    #[test]
+    fn live_ids_finds_a_resume_id_on_a_real_command_line() {
+        let id = "11111111-2222-3333-4444-555555555555";
+        let mut child = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", "Start-Sleep -Seconds 30; #"])
+            .arg(format!("--resume={id}"))
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .expect("spawn powershell");
+        // Let it appear in the process table before the (uncached) first scan.
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        let found = live_ids();
+        let _ = child.kill();
+        let _ = child.wait();
+        assert!(found.contains(id), "live_ids did not see the marker; found {} ids", found.len());
+    }
+
+    fn write_transcript(name: &str, lines: &[Value]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("sd_test_{}_{name}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("t.jsonl");
+        std::fs::write(&p, lines.iter().map(|l| l.to_string()).collect::<Vec<_>>().join("\n")).unwrap();
+        p
+    }
+
+    #[test]
+    fn tail_state_reads_pending_question_pr_and_edits() {
+        let now = chrono::Utc::now();
+        let ts = |s: i64| (now - chrono::Duration::seconds(s)).to_rfc3339();
+        let mut lines = vec![
+            json!({"type":"user","timestamp":ts(300),"message":{"role":"user","content":"please fix it"}}),
+            json!({"type":"assistant","timestamp":ts(290),"message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Edit","input":{"file_path":"/repo/a.rs","old_string":"x","new_string":"y"}}]}}),
+            json!({"type":"user","timestamp":ts(280),"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}),
+            json!({"type":"assistant","timestamp":ts(270),"message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"gh pr create"}}]}}),
+            json!({"type":"user","timestamp":ts(260),"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"https://github.com/o/r/pull/42\n"}]}}),
+            json!({"type":"assistant","timestamp":ts(250),"message":{"role":"assistant","content":[
+                {"type":"text","text":"Opened the PR."},
+                {"type":"tool_use","id":"t3","name":"AskUserQuestion","input":{"questions":[{"question":"Merge now?","options":[{"label":"Yes"},{"label":"No"}]}]}}]}}),
+        ];
+        let v = tail_state(&write_transcript("ask", &lines));
+        assert_eq!(v["state"], "ask");
+        assert_eq!(v["ask"]["kind"], "question");
+        assert_eq!(v["ask"]["text"], "Merge now?");
+        assert_eq!(v["ask"]["options"], json!(["Yes", "No"]));
+        assert_eq!(v["prs"], json!(["https://github.com/o/r/pull/42"]));
+        assert_eq!(v["editPaths"], json!(["/repo/a.rs"]));
+        let turn = v["turnStart"].as_i64().unwrap();
+        assert!(turn > 0, "turnStart should come from the human prompt");
+        assert!(v["lastTextTs"].as_i64().unwrap() > turn);
+
+        // 回答之后就不再是"在问你"
+        lines.push(json!({"type":"user","timestamp":ts(10),"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t3","content":"Yes"}]}}));
+        let v = tail_state(&write_transcript("answered", &lines));
+        assert_ne!(v["state"], "ask");
+        assert!(v["ask"].is_null());
+        // 工具结果不算新的一轮
+        assert_eq!(v["turnStart"].as_i64().unwrap(), turn);
+    }
+
+    #[test]
+    fn find_prs_dedupes_and_trims() {
+        let mut out = Vec::new();
+        find_prs("see https://github.com/o/r/pull/7/files and (https://github.com/o/r/pull/7) or https://github.com/o/r/issues/3", &mut out);
+        assert_eq!(out, vec!["https://github.com/o/r/pull/7".to_string()]);
+    }
+
+
+    #[test]
+    fn codex_rollout_state_and_transcript() {
+        let now = chrono::Utc::now();
+        let ts = |s: i64| (now - chrono::Duration::seconds(s)).to_rfc3339();
+        let ev = |s: i64, p: Value| json!({ "timestamp": ts(s), "type": "event_msg", "payload": p });
+        let mut lines = vec![
+            json!({ "timestamp": ts(100), "type": "session_meta", "payload": { "id": "x", "cwd": "/repo" } }),
+            ev(90, json!({ "type": "user_message", "message": "fix the build" })),
+            ev(89, json!({ "type": "task_started", "model_context_window": 272000 })),
+            ev(80, json!({ "type": "exec_approval_request", "call_id": "c1", "command": ["bash", "-lc", "cargo build"] })),
+        ];
+        let p = write_transcript("codex_wait", &lines);
+        let v = codex_state(&p);
+        assert_eq!(v["state"], "tool");
+        assert_eq!(v["waiting"], true);
+        assert_eq!(v["tool"], "Shell");
+        assert_eq!(v["arg"], "cargo build");
+
+        lines.extend([
+            ev(70, json!({ "type": "exec_command_begin", "call_id": "c1", "command": ["bash", "-lc", "cargo build"] })),
+            ev(60, json!({ "type": "exec_command_end", "call_id": "c1", "exit_code": 0, "stdout": "ok" })),
+            ev(50, json!({ "type": "patch_apply_begin", "call_id": "c2", "changes": { "/repo/src/a.rs": {} } })),
+            ev(40, json!({ "type": "token_count", "info": { "last_token_usage": { "input_tokens": 12345 }, "model_context_window": 272000 } })),
+            ev(30, json!({ "type": "agent_message", "message": "Done, see https://github.com/o/r/pull/9" })),
+            ev(29, json!({ "type": "task_complete", "last_agent_message": "Done, see https://github.com/o/r/pull/9" })),
+        ]);
+        let p = write_transcript("codex_done", &lines);
+        let v = codex_state(&p);
+        assert_eq!(v["state"], "done");
+        assert_eq!(v["waiting"], false);
+        assert_eq!(v["ctx"], 12345);
+        assert_eq!(v["ctxMax"], 272000);
+        assert_eq!(v["editPaths"], json!(["/repo/src/a.rs"]));
+        assert_eq!(v["prs"], json!(["https://github.com/o/r/pull/9"]));
+        let tr = codex_transcript(&p);
+        let kinds: Vec<(String, String)> = tr.iter().map(|r| (r["role"].as_str().unwrap().into(), r["kind"].as_str().unwrap().into())).collect();
+        assert_eq!(kinds, vec![("user".into(), "text".into()), ("assistant".into(), "tool".into()), ("assistant".into(), "tool".into()), ("assistant".into(), "text".into())]);
+        assert_eq!(tr[1]["text"], "Shell  cargo build");
+    }
+}

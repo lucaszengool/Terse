@@ -1755,6 +1755,7 @@ jobs:
             '  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);',
             '  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint f);',
             '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, StringBuilder s, int n);',
+            '  public static IntPtr ByTitle(string t) { return FindWindowW(null, t); }',
             '  public static void Click(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(60); mouse_event(4,0,0,0,UIntPtr.Zero); }',
             '  public static void Drag(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); for (int i = 1; i <= 10; i++) { System.Threading.Thread.Sleep(20); SetCursorPos(x + i * 12, y); } mouse_event(4,0,0,0,UIntPtr.Zero); }',
             '  public static void Key(byte vk) { keybd_event(vk,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(40); keybd_event(vk,0,2,UIntPtr.Zero); System.Threading.Thread.Sleep(40); }',
@@ -1777,7 +1778,9 @@ jobs:
           function Pump($ms) { $end = (Get-Date).AddMilliseconds($ms); while ((Get-Date) -lt $end) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 20 } }
 
           # 1. the pill
-          $pad = [TownT]::FindWindowW($null, "Terse Code Town")
+          # Through C#: PowerShell turns $null into "" for a string parameter, and
+          # FindWindowW with class "" matches nothing.
+          $pad = [TownT]::ByTitle("Terse Code Town")
           if ($pad -eq [IntPtr]::Zero -or -not [TownT]::IsWindowVisible($pad)) {
             Shot "town-no-pill"
             foreach ($n in "wallpaper.log", "lazy-window.log", "town.log") {

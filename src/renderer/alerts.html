@@ -4,7 +4,7 @@
   <meta name="color-scheme" content="dark">
   <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
-  <title>Terse Alerts 提醒</title>
+  <title>Terse Alerts</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -210,7 +210,7 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <svg class="hd-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-    <h1>Alert Center<span class="cn">提醒</span></h1>
+    <h1>Alert Center<span class="cn" data-i18n="al_tab">Alerts</span></h1>
   </div>
   <div class="tabs wrap" id="tabs">
     <span class="pill"></span>
@@ -537,5 +537,7 @@
       }
     })();
   </script>
+  <!-- 语言机制。最后加载:先让页面把自己的东西画出来,再统一翻译。 -->
+  <script src="i18n.js"></script>
 </body>
 </html>

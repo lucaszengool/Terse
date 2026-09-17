@@ -215,6 +215,9 @@ uniform float uForm, uVis, uPixel, uPointScale, uTime, uBloomSize;
 uniform float uOut, uInMode, uOutMode, uStagger, uStaggerUv, uDispFade, uTwinkle, uSwirl;
 uniform vec2 uCenter, uSize, uDrift;
 uniform vec3 uTint;
+// 手势(Pro):agent 日志 / 统计的粒子字也听手的。uHandG = (x, y, 半径, 强度 0..1),
+// uLensG = (x, y, 半径, 倍数;1 = 关)—— 都在字所在的 Group 本地坐标里。没有手时强度 0、倍数 1,下面两段不起作用
+uniform vec4 uHandG, uLensG;
 varying vec3 vColor;
 varying float vA;
 
@@ -279,8 +282,22 @@ void main(){
   // uDispFade:散在外面时压暗。0 = 原版(粒子一路都亮着,是"飞"进来的);
   // 接近 1 = 只有落位的粒子才亮,字于是像在原地"显影"。
   vA = on * uVis * (0.62 + 0.38 * sin(uTime * uTwinkle + aRand * 21.0)) * (1.0 - u * uDispFade);
-  vec4 mv = modelViewMatrix * vec4(target + d.xy, d.z, 1.0);
-  gl_PointSize = (2.5 + uForm * 1.5) * uPixel * uPointScale * uBloomSize;
+  vec2 gp = target + d.xy;
+  // 张开手掌:手周围的字被推开,手移走弹回原位
+  if (uHandG.w > 0.01) {
+    vec2 hd = gp - uHandG.xy; float hr = length(hd) + 1e-4;
+    float hk = 1.0 - smoothstep(0.0, uHandG.z, hr);
+    gp += hd / hr * hk * hk * uHandG.z * 0.6 * uHandG.w;
+  }
+  // 指着停住:那一块字放大(点跟着变大,笔画不会散成点阵)
+  float glf = 1.0;
+  if (uLensG.w > 1.001) {
+    vec2 ld = gp - uLensG.xy; float lr = length(ld);
+    glf = mix(uLensG.w, 1.0, smoothstep(uLensG.z * 0.35, uLensG.z, lr));
+    gp = uLensG.xy + ld * glf;
+  }
+  vec4 mv = modelViewMatrix * vec4(gp, d.z, 1.0);
+  gl_PointSize = (2.5 + uForm * 1.5) * uPixel * uPointScale * uBloomSize * glf;
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -411,6 +428,8 @@ export default class MineradioWallpaper {
       uMouseXY: { value: new THREE.Vector2(-999, -999) }, uMouseActive: { value: 0 },
       uHandXY: { value: new THREE.Vector2(-999, -999) }, uHandActive: { value: 0 },
       uGestureGrip: { value: 0 }, uPixel: { value: 1 },
+      // 字形层用的手势 uniform(所有字形槽位共用这两个对象)
+      uHandG: { value: new THREE.Vector4(0, 0, 0.42, 0) }, uLensG: { value: new THREE.Vector4(0, 0, 0.6, 1) },
       uParticleDim: { value: 1 }, uFloatAlpha: { value: 0 }, uLoading: { value: 0 },
       // 3D 自由视角:0 = 平面(原样),1 = 深度图撑成的浮雕。见 _applyView。
       uSpace: { value: 0 },
@@ -537,6 +556,7 @@ export default class MineradioWallpaper {
       uSize: { value: new THREE.Vector2(3.05, 0.52) },
       uTint: { value: new THREE.Color('#C9F03D') },
       uPixel: { value: 1 }, uPointScale: { value: 1 }, uTime: this.u.uTime,
+      uHandG: this.u.uHandG, uLensG: this.u.uLensG,
       uAlpha: { value: 0.95 }, uBloomSize: { value: 1 }, uSoft: { value: 0 },
       // ── 风格参数(见 wallpaper-styles.js / GLYPH_VS 的 dispAt)──
       // uOut 既是消散进度也是"现在该用 out 那套手法了"的开关;其余每次成型时重写。
@@ -760,8 +780,66 @@ export default class MineradioWallpaper {
       data[off] = r.x; data[off + 1] = r.y; data[off + 2] = r.age; data[off + 3] = r.str;
       if (r.str > 0.005) active++;
     }
-    this._rippleTex.needsUpdate = true;
+    // Upload only while something moves. With no live ripple every slot is
+    // rewritten with the same values each frame, so the texture is unchanged;
+    // the frame a ripple dies (its str/age reset) and the very first frame
+    // (a DataTexture is not uploaded until flagged) still go up.
+    if (active || this._rippleLive !== false) this._rippleTex.needsUpdate = true;
+    this._rippleLive = active > 0;
     this.u.uRippleCount.value = RIPPLE_MAX;   // 槽位是稀疏的,让 shader 扫完再按 str 过滤
+  }
+
+  /* ══════════════ 手势(Pro)══════════════
+     没有手的时候这些都不会被调用,壁纸和以前一模一样。
+     shader 里本来就有手的力场(uHandXY / uHandActive)和"握"(uGestureGrip),
+     只是一直没人设 —— 这里把它们接上。 */
+  setRate(r) { this._rate = Math.max(0.05, Math.min(4, +r || 1)); }
+  setFrozen(b) { this._frozen = !!b; }
+  /** 握拳:0..1,粒子向中心收拢 */
+  setGrip(v) { this.u.uGestureGrip.value = Math.max(0, Math.min(1, +v || 0)); }
+  /** 手的位置(屏幕像素);null = 手离开。uHandActive 在 0..1 之间平滑过渡,不会一下子弹开 */
+  setHandScreen(x, y) {
+    if (x == null) { this._handOn = false; this._handTarget = 0; return; }
+    const p = this.screenToPlane ? this.screenToPlane(x, y) : null;
+    if (!p) return;
+    this._handOn = true; this._handTarget = 1;
+    this.u.uHandXY.value.set(p[0], p[1]);
+    // 同一个点换到字形 Group 的本地坐标(3D 模式里这一组整体朝相机转过)
+    const gl = this._glyphLocal(p);
+    if (gl && this.u.uHandG) { this.u.uHandG.value.x = gl[0]; this.u.uHandG.value.y = gl[1]; }
+  }
+  _glyphLocal(p) {
+    const grp = this._glyphLayer && this._glyphLayer.group;
+    _V3.set(p[0], p[1], 0);
+    if (grp) { grp.updateMatrixWorld(); grp.worldToLocal(_V3); }
+    return [_V3.x, _V3.y];
+  }
+  /** 指着停住:agent 日志 / 统计的粒子字在那一处放大;null = 收起 */
+  setLensScreen(x, y) {
+    if (!this.u.uLensG) return;
+    if (x == null) { this.u.uLensG.value.w = 1; return; }
+    const p = this.screenToPlane ? this.screenToPlane(x, y) : null;
+    if (!p) return;
+    const gl = this._glyphLocal(p);
+    this.u.uLensG.value.set(gl[0], gl[1], 0.6, 2.1);
+  }
+  /** 屏幕像素 → SILK 平面坐标(uHandXY / uMouseXY 用的就是这个空间)。
+      从相机穿过这一点打一条射线,和 z=0 平面求交 —— 自由视角下相机转了也照样对 */
+  screenToPlane(px, py) {
+    const cam = this._silk && this._silk.cam;
+    if (!cam || !this.W || !this.H) return null;
+    const ox = cam.position.x, oy = cam.position.y, oz = cam.position.z;
+    _V3.set((px / this.W) * 2 - 1, 1 - (py / this.H) * 2, 0.5).unproject(cam);
+    const dx = _V3.x - ox, dy = _V3.y - oy, dz = _V3.z - oz;
+    if (Math.abs(dz) < 1e-6) return null;
+    const t = -oz / dz;
+    if (!(t > 0)) return null;
+    return [ox + dx * t, oy + dy * t];
+  }
+  _stepHand(dt) {
+    const u = this.u.uHandActive;
+    u.value += ((this._handTarget || 0) - u.value) * Math.min(1, dt * 10);
+    if (this.u.uHandG) this.u.uHandG.value.w = u.value;   // 字形层跟着同一条渐变
   }
 
   /* ══════════════ 公开 API(与 TokenWallpaper3D 一致) ══════════════ */
@@ -775,10 +853,14 @@ export default class MineradioWallpaper {
       this._raf = requestAnimationFrame(loop);
       const now = performance.now();
       const dt = Math.min(0.1, (now - this._last) / 1000);
-      // 壁纸是常驻后台的,锁 30fps 省电
-      if (dt < 1 / 31) return;
+      // 壁纸是常驻后台的,锁 30fps(和原来一样)。**开着手势控制时降到 24fps**:摄像头 + 识别
+      // + 手势都在吃算力,而这是一张全屏透明图层,每一帧 WindowServer 都要把整屏重新合成一遍
+      // (实测空闲时它已经 40% CPU)。手势关着 → 完全是原来的 30fps。
+      // 手在画面里时也不放开到 60 —— 那会让整台机器的所有窗口一起掉帧。
+      if (dt < (globalThis.__terseGestureOn ? 1 / 25 : 1 / 31)) return;
       this._last = now;
-      this._update(dt);
+      // 手势:握拳拧 = 变速,张掌停住 = 定格。没有手势时 _rate = 1,和以前一模一样
+      this._update(this._frozen ? 0 : dt * (this._rate || 1));
       this._render();
     };
     this._raf = requestAnimationFrame(loop);
@@ -988,6 +1070,35 @@ export default class MineradioWallpaper {
     this._logPending = null;
     this._logRot = null;
     this._lastLogLine = '';
+    this._headQueue = [];
+  }
+
+  /** 信息流 —— a notification, a window title, whatever is playing — as a
+   *  headline on the SAME track as the agent log, in the same particle type.
+   *
+   *  Unlike setAgentLog it does not preempt. Feed lines arrive in bursts (five
+   *  notifications at once is normal), and preempting would show only the last
+   *  of them; instead they queue behind the headline on screen and play in the
+   *  order they came, then join the rotation, so feed and log take turns in one
+   *  sequence while nothing new is arriving. Not Pro-gated: the old message
+   *  layer was free, and moving it into the field should not take it away. */
+  feedLine(text, opts) {
+    const t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+    if (!t) return;
+    // Same reason as roomLine: the glyph canvas is fixed-width and the type
+    // shrinks to fit, so a long line is a small smear, not a headline.
+    const max = Math.max(8, Math.min(30, (opts && opts.max) || 22));
+    const label = t.length > max ? t.slice(0, max - 1) + '…' : t;
+    this._headQueue = this._headQueue || [];
+    if (this._headQueue.some((x) => x.label === label)) return;
+    this._headQueue.push({ label, kind: 'log', size: 'big', col: (opts && opts.col) || null });
+    // Bounded like everything else on this path — see _pumpLog.
+    if (this._headQueue.length > 12) this._headQueue.shift();
+    this._logRecent = this._logRecent || [];
+    if (!this._logRecent.includes(label)) {
+      this._logRecent.push(label);
+      if (this._logRecent.length > 10) this._logRecent.shift();
+    }
   }
 
   /** A teammate's line — agent log, or something they actually said.
@@ -1103,50 +1214,139 @@ export default class MineradioWallpaper {
     if (!cap) return false;
     if (!this._projLayer) {
       this._projLayer = new ProjectLayer(this.u.uDotTex.value);
-      // 和字形层同一个 Group:3D 里一起朝相机转,缩影和它的标题不会分家。
-      const grp = this._glyphLayer && this._glyphLayer.group;
-      if (grp) grp.add(this._projLayer.points);
-      else return false;
+      // 挂在字形层里,和统计数字用同一台相机 —— 3D 里一起转。
+      const host = this._glyphLayer && (this._glyphLayer.group || this._glyphLayer.scene);
+      if (!host) return false;
+      host.add(this._projLayer.points);
+      // 城市**不挂在那个 Group 里**。那个 Group 在 3D 模式下会朝相机转正 0.85
+      // (字是拿来读的,转到 70° 就只剩一条亮线)—— 可城市恰恰是**转得到才成立**的
+      // 东西:不转的城市就是一张斜着的图,那还不如直接放封面。所以它挂在场景上,
+      // 跟着相机整个转。材质和 uniform 与图、字共用,所以三者仍旧同进同出。
+      const scene = this._glyphLayer && this._glyphLayer.scene;
+      (scene || host).add(this._projLayer.cityPoints);
     }
     const layer = this._projLayer;
-    const start = () => {
-      layer.play(Math.max(3000, ms | 0));
-      // 标题必须**一定出现**。走 _queueGlyph 是不行的:那条队列有节流、有配额、还要
-      // 等空槽位 —— 用户看到的就是"只有图,没有字"。大字这条路(_logPending)是
-      // 头条槽位专用的,而且下一帧就会被取走。
-      this._glyphQueue.length = 0;
-      this._nextFillAt = 0;
-      if (cap.title) {
-        this._logPending = { label: String(cap.title).slice(0, 26), kind: 'log', size: 'big' };
-      }
-      // 其余信息跟在后面,和平时的统计数字用同一套聚散手法。
-      if (cap.subtitle) this._queueGlyph(String(cap.subtitle).slice(0, 34), 'cache');
-      for (const l of (cap.lines || []).slice(0, 3)) {
-        if (l) this._queueGlyph(String(l).slice(0, 30), 'agents');
-      }
-      this.pulse(0.8);
-    };
-    if (!cap.cover) {
-      // 没有封面也要能演:标题和信息本来就是粒子。
-      layer.stop();
-      start();
+    clearInterval(this._projRotate);
+    // 广场预览带来的评论。列表接口已经把它们一起发过来了,所以这里
+    // **不需要再请求一次**。
+    //
+    // 每一条都带着**说话的人的名字**:壁纸上飘过的是"谁说了什么",不是几行
+    // 无主的字。字符串形式(老胶囊)还认,但那种就没有署名了。
+    const notes = (cap.comments || []).map((c) => (typeof c === 'string'
+      ? { body: c, author: '' }
+      : { body: (c && c.body) || '', author: (c && (c.author || c.name)) || '' }
+    )).filter((c) => c.body);
+
+    // **一屏三条,翻页给你看**,而不是把十条挤进同一块字里。
+    //
+    // 这一块字是按"总高"缩放到固定大小的:多塞一行,每一行就跟着细一分。九条挤在
+    // 一起的时候,九条都糊了 —— 那不是"看到更多评论",那是"一条也读不了"。翻页
+    // 之后每一屏都还是原来那个字号,而一段演出本来就有好几次重新聚拢,顺手就翻了。
+    const PAGE = 3;
+    const pages = Math.max(1, Math.ceil(notes.length / PAGE));
+    // 标题和信息**属于这一层**,和图一起采、一起浮现、一起散去。
+    //
+    // 走壁纸原有的字形队列是不行的,试过两次:那条队列有节流、有配额、要等空槽位,
+    // 槽位数量还随 Pro 变 —— 用户看到的就是"只有图,没有字"。项目自己的字不该去
+    // 排别人的队。
+    // 语言占比那一行原本是**一串字**("rust 86% · js 10%")。现在它由图例那一行
+    // 带颜色地画出来,所以要把纯文字的那份摘掉 —— 同一件事说两遍,还占掉一行。
+    // 用扫描端一模一样的写法拼一遍来比对:对不上就什么也不删(宁可重一行,
+    // 也不能误删人家自己写的一行字)。
+    const autoLangLine = (cap.langs || []).slice(0, 3)
+      .map((l) => `${l[0]} ${Math.round((+l[1] || 0) * 100)}%`).join(' · ');
+    const infoLines = [cap.subtitle, ...(cap.lines || [])]
+      .filter(Boolean)
+      .filter((l) => !(autoLangLine && String(l).trim() === autoLangLine));
+
+    // 右边那一格**跟着拍子换读法**:星座 → 年轮 → 热点 → 人。城市是主语,它不动;
+    // 换的是谓语。四种全塞进同一屏是不行的 —— 那一格只有巴掌大,塞四样等于四样都
+    // 看不清,而且真正要紧的城市也会被挤瘦。
+    const textAt = (i) => ({
+      scene: i,
+      title: cap.title || '',
+      lines: infoLines,
+      // 语言图例:哪个颜色是哪门语言。城市所有的颜色都指着它。
+      langs: cap.langs || [],
+      comments: notes.slice((i % pages) * PAGE, (i % pages) * PAGE + PAGE),
+      // 代码城市:一个顶层目录一座塔。胶囊里就那十几个数字,城市是**在这台机器上
+      // 摆出来的** —— 和封面走的是同一条"传参数、本地生成"的路。
+      dirs: cap.dirs || [],
+      // 建筑风格。认不出来的一律退回现代 —— 胶囊是别人机器上传来的。
+      style: cap.style || '',
+      // 目录之间的依赖 —— 城市上空那几道弧。没建过知识图谱就没有。
+      links: cap.links || [],
+      // 提交天际线(53 周 × 7 天)和依赖星座。都是扫描时算好的参数,不是画面。
+      commits: cap.commits || [],
+      graph: cap.graph || null,
+      // 右边那一格的四种读法要用的料:热点(改得最勤的文件)和贡献者。
+      hot: cap.hot || [],
+      people: cap.people || [],
+    });
+    const SIZE = 1.95;
+
+    // 一个项目最多五张图。全部画完要 100 秒,而一段演出只有 20 秒 —— 所以是**轮播**:
+    // 每张停留一段,换图时粒子从上一张重新排成下一张,那正是这个功能最好看的地方。
+    const urls = [cap.cover, ...(cap.shots || [])].filter(Boolean);
+    const imgs = [];
+    let shown = false;
+
+    const render = (img, page) => {
+      if (!layer.setShow(img, textAt(page || 0), SIZE)) return false;
+      if (!shown) { layer.play(Math.max(3000, ms | 0)); this.pulse(0.8); shown = true; }
       return true;
-    }
-    const img = new Image();
-    img.onload = () => {
-      // 缩影摆多大:SILK 平面半高 2.4,给它 1.5 —— 是"缩影",不是铺满。
-      // 缩影摆多大:SILK 平面半高 2.4,给它 1.25 —— 留出上下给标题,
-      // 而且同样的粒子数摊在更小的面上,图就更清楚。
-      if (layer.setImage(img, 1.25)) start();
-      else { layer.stop(); start(); }
     };
-    img.onerror = () => { layer.stop(); start(); };
-    img.src = cap.cover;
+
+    /** 图和评论**同一拍**换:一次重新聚拢换掉整屏内容,而不是图先动、字过一会儿
+     *  再动 —— 那看起来像两个东西各转各的。轮播的拍数取两者里多的那个,所以就算
+     *  只有一张封面,评论照样翻得完。 */
+    const rotate = (live) => {
+      // 拍数取三者里最多的那个:图、评论页、右边那一格的读法数。少了谁都会有一样
+      // 东西**永远轮不到** —— 而"轮不到"和"没做"在屏幕上是一回事。
+      const scenes = Math.max(1, layer.sceneCount | 0);
+      const slots = Math.max(live.length, pages, scenes);
+      if (slots <= 1) return;
+      const per = Math.max(3200, Math.floor((ms - 1400) / slots));
+      let at = 0;
+      this._projRotate = setInterval(() => {
+        if (!layer.show) { clearInterval(this._projRotate); return; }
+        at = (at + 1) % slots;
+        layer.setShow(live.length ? live[at % live.length] : null, textAt(at), SIZE);
+        layer.reform();          // 重新聚一次,让换屏看得出来
+      }, per);
+    };
+
+    if (!urls.length) {
+      const ok = render(null, 0);
+      if (ok) rotate([]);        // 没有图,但评论可能不止一屏
+      return ok;
+    }
+
+    let loaded = 0;
+    urls.forEach((u, i) => {
+      const im = new Image();
+      im.onload = () => {
+        imgs[i] = im;
+        // 第一张一到就开演,不等其余的 —— 等齐了再开场就是白白的一秒空白。
+        if (i === 0 || !shown) render(im, 0);
+        if (++loaded === urls.length) rotate(imgs.filter(Boolean));
+      };
+      im.onerror = () => {
+        if (++loaded === urls.length) {
+          if (!shown) { if (render(null, 0)) rotate([]); }
+          else rotate(imgs.filter(Boolean));
+        }
+      };
+      im.src = u;
+    });
     return true;
   }
 
   /** 提前收场(用户点了别的项目,或者关掉了预览)。 */
-  hideProject() { if (this._projLayer) this._projLayer.stop(); }
+  hideProject() {
+    clearInterval(this._projRotate);
+    if (this._projLayer) this._projLayer.stop();
+  }
 
   /** 设机位(通常来自 wallpaper.json 或控制面板)。 */
   setView3D(v) {
@@ -1425,13 +1625,15 @@ export default class MineradioWallpaper {
       this._pendingAct = { type: 'session', name: g0.name || '', project: g0.project || '',
                            sessionId: g0.sessionId || g0.id || '' };
     }
-    // Free tier gets the statistics only. The centre headline — the live agent
-    // log — is the Pro differentiator, and it has to be visibly absent on the
-    // free side or the two previews look identical and sell nothing.
-    if (!this.pro) return;
+    // The centre headline — the live agent log — plays on the free engine too
+    // (product decision, 2026-09-13): free and Pro share the same track with
+    // 信息流 (feedLine). What stays Pro is everything around it: four slots
+    // instead of one, the Pro styles, and the faster log cadence above.
     this._logRecent = (this._logRecent || []);
     if (this._logRecent[this._logRecent.length - 1] !== label) this._logRecent.push(label);
-    if (this._logRecent.length > 5) this._logRecent.shift();   // keep the last 5
+    // Ten, not five: 信息流 lines share this rotation (feedLine), and at five a
+    // burst of notifications pushed every agent line out of it.
+    if (this._logRecent.length > 10) this._logRecent.shift();
     // A new line jumps the queue: point the rotation at it and clear the wait so
     // _pumpLog plays it on the next frame. Recording here and letting the pump
     // decide keeps ONE place that chooses what is on screen.
@@ -1468,6 +1670,7 @@ export default class MineradioWallpaper {
   _update(dt) {
     this._time += dt;
     const u = this.u;
+    this._stepHand(Math.max(dt, 1 / 60));   // 定格时(dt=0)手的力场也照样跟手
     // 活动度平滑逼近 + 冲击衰减
     this._activity += (this._activityTarget - this._activity) * Math.min(1, dt * 2.2);
     this._kick *= Math.exp(-dt / 0.62);
@@ -1563,7 +1766,8 @@ export default class MineradioWallpaper {
    *  recent history keeps cycling until something newer arrives. */
   _pumpLog(now) {
     const list = this._logRecent || [];
-    if (!list.length) return;
+    const queued = (this._headQueue || []).length;
+    if (!list.length && !queued) return;
     // Never interrupt a headline that is still on screen.
     if ((this._glyphSlots || []).some(sl => sl.glyph && sl.glyph.size === 'big')) return;
     if (now < (this._logNextAt || 0)) return;
@@ -1582,6 +1786,9 @@ export default class MineradioWallpaper {
     // were observed with zero headlines. Decoupling is the fix — a rate-limited
     // producer can never win a race against an unbounded one.
     if (this._logPending) return;              // one headline waiting is enough
+    // Feed lines that have not played yet go first, oldest first — that is the
+    // "in order" half of sharing the track. The rotation resumes after them.
+    if (queued) { this._logPending = this._headQueue.shift(); return; }
     if (this._logRot == null) this._logRot = list.length - 1;
     const idx = ((this._logRot % list.length) + list.length) % list.length;
     this._logPending = { label: list[idx], kind: 'log', size: 'big' };

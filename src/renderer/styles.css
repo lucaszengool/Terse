@@ -1115,6 +1115,182 @@ button:not(:disabled):active, .sb-item:active, .session-item:active, .theme-dot:
 .conn-detail { font-size: 12px; color: var(--t2); margin-top: 2px; }
 .conn-sugg { font-size: 12px; color: var(--t3); margin-top: 5px; line-height: 1.5; }
 .conn-tag { font-size: 10px; font-weight: 700; color: var(--ac); background: color-mix(in srgb, var(--ac) 15%, transparent); padding: 2px 7px; border-radius: 6px; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FULLY-TRANSPARENT GLASS — DEFAULT THEME ONLY
+   ═══════════════════════════════════════════════════════════════════════════
+   Every rule below is scoped to `horizon`, which is the default (THEME_NAMES[0]).
+   The previous version of this block was unscoped, so picking any other theme
+   still got a see-through window — which is why every swatch in the theme picker
+   looked like glass. Azure, midnight and the rest are now byte-for-byte what
+   they were before any of this work.
+
+   :where() is used for the scope so it adds no specificity of its own; each rule
+   still wins or loses on the merits of its own selector, exactly as it did when
+   these were written unscoped. */
+
+/* ── The window itself ─────────────────────────────────────────────────────
+   body sits BEHIND #shell/#sidebar/#app, so it is the thing that was painting
+   the desktop over. Clearing the panes without clearing body did nothing. */
+:where(html[data-theme="horizon"]) ,
+:where(html[data-theme="horizon"]) body,
+:where(html[data-theme="horizon"]) #shell,
+:where(html[data-theme="horizon"]) #sidebar,
+:where(html[data-theme="horizon"]) #app { background: transparent !important; }
+
+/* backdrop-filter cannot see behind a transparent window on macOS — it only
+   blurs in-app content (tauri#2827, #12804). With nothing behind these panes it
+   is a full-surface convolution per frame for an invisible result. */
+:where(html[data-theme="horizon"]) *,
+:where(html[data-theme="horizon"]) *::before,
+:where(html[data-theme="horizon"]) *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+
+/* ── The window frame ──────────────────────────────────────────────────────
+   ONE rule. There were four accumulated variants of this from successive
+   attempts — html::after, html::before, body::before — and the one that
+   actually won was an early box-shadow-only rim with `border: 0px none`, which
+   is why nothing was ever visible no matter what I changed. Each new attempt
+   was being shadowed by an older sibling I had not removed.
+
+   Deliberately plain and deliberately loud: a solid lime border on a fixed
+   full-window layer. No mask, no gradient, no animation, nothing that can fail
+   quietly. Tune it down only once it is confirmed on screen.
+
+   z-index 9998 puts it above the app and the auth gate (9999 is the gate, so it
+   sits just under that and above everything else the app draws). */
+:where(html[data-theme="horizon"]) body::after {
+  content: '' !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9998 !important;
+  pointer-events: none !important;
+  border: 2px solid var(--btn) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 0 22px -8px var(--btn), 0 0 12px -3px var(--btn) !important;
+  /* body::after is the film-grain overlay in the base sheet; under horizon the
+     frame takes it over entirely, so those grain properties are overridden. */
+  background: none !important;
+  mix-blend-mode: normal !important;
+  opacity: 1 !important;
+}
+
+/* ── Type ──────────────────────────────────────────────────────────────────
+   The island's halo, because on a 100% clear window a glyph can land on white,
+   black or a photo within one line. Two layers rather than three: each is a
+   separate paint pass over every run of text, and the widest contributed least. */
+:where(html[data-theme="horizon"]) #sidebar,
+:where(html[data-theme="horizon"]) #app,
+:where(html[data-theme="horizon"]) #sidebar *,
+:where(html[data-theme="horizon"]) #app * {
+  text-shadow: 0 0 1px rgba(0,0,0,0.95), 0 1px 3px rgba(0,0,0,0.90);
+}
+:where(html[data-theme="horizon"]) #app .ob-btn:not(.ghost),
+:where(html[data-theme="horizon"]) #app .toggle-btn.active,
+:where(html[data-theme="horizon"]) #sidebar .sb-item.active,
+:where(html[data-theme="horizon"]) #app input,
+:where(html[data-theme="horizon"]) #app select,
+:where(html[data-theme="horizon"]) #app textarea { text-shadow: none !important; }
+
+/* Grey is hierarchy on a panel; over an arbitrary desktop it is just low
+   contrast. Lifting the two muted tokens fixes every label at once. */
+/* NO WHITE. White is the single worst ink on a fully transparent window — it is
+   the one colour guaranteed to disappear against a light desktop, and a light
+   desktop is the common case. The lime sits at a luminance that separates from
+   BOTH ends, so it is the base ink here rather than an accent.
+   Overriding the three text tokens does it everywhere at once: every component
+   reads from --t1/--t2/--t3, so no component-by-component chase is needed. */
+/* On BODY, not on #sidebar/#app/#titlebar.
+   doctor.html and history.html load this same stylesheet but have none of those
+   IDs, so they got `background: transparent` from the rule above while keeping
+   their inherited white ink — invisible text over the wallpaper, which is why
+   those pages looked EMPTY. Scoping the ink to body covers every page that
+   loads this file, present and future. */
+:where(html[data-theme="horizon"]) body {
+  --t1: var(--btn);
+  --t2: color-mix(in srgb, var(--btn) 88%, #ffffff 12%);
+  --t3: color-mix(in srgb, var(--btn) 72%, #ffffff 28%);
+  -webkit-font-smoothing: antialiased;
+}
+/* BLACK is correct in exactly one place: on top of a filled lime surface, where
+   lime-on-lime would be invisible. --btn-t is already that near-black, so these
+   just have to keep using it rather than inheriting the new --t1. */
+:where(html[data-theme="horizon"]) #app .ob-btn:not(.ghost),
+:where(html[data-theme="horizon"]) #app .ob-btn:not(.ghost) *,
+:where(html[data-theme="horizon"]) #app .toggle-btn.active,
+:where(html[data-theme="horizon"]) #app .tc-ok,
+:where(html[data-theme="horizon"]) #sidebar .sb-item.active,
+:where(html[data-theme="horizon"]) #sidebar .sb-item.active *,
+:where(html[data-theme="horizon"]) .pro-chip,
+:where(html[data-theme="horizon"]) .sb-logo {
+  color: var(--btn-t) !important;
+  text-shadow: none !important;
+}
+/* Icons follow the ink, never white. Every one is stroke="currentColor". */
+:where(html[data-theme="horizon"]) #sidebar svg,
+:where(html[data-theme="horizon"]) #app svg,
+:where(html[data-theme="horizon"]) .titlebar-btn svg { color: var(--btn); }
+:where(html[data-theme="horizon"]) #sidebar .sb-item.active svg,
+:where(html[data-theme="horizon"]) #app .ob-btn:not(.ghost) svg { color: var(--btn-t); }
+
+/* ── Green, because white vanishes on a light desktop ───────────────────────
+   The lime sits at a luminance that separates from BOTH ends. Icons need no
+   per-icon work: every one is drawn with stroke="currentColor". */
+:where(html[data-theme="horizon"]) #sidebar .sb-item,
+:where(html[data-theme="horizon"]) #sidebar .sb-item > span:not(.sb-emoji),
+:where(html[data-theme="horizon"]) #sidebar svg,
+:where(html[data-theme="horizon"]) .titlebar-btn,
+:where(html[data-theme="horizon"]) .titlebar-btn svg,
+:where(html[data-theme="horizon"]) #app .ob-btn.ghost,
+:where(html[data-theme="horizon"]) #app .ob-btn.ghost svg,
+:where(html[data-theme="horizon"]) #app .toggle-btn:not(.active),
+:where(html[data-theme="horizon"]) #app .ob-title,
+:where(html[data-theme="horizon"]) #app .kval,
+:where(html[data-theme="horizon"]) #app .setting-label { color: var(--btn); }
+/* The window controls were forced white here, which is precisely the case that
+   vanishes on a light desktop. They take the same lime as everything else; the
+   hover fill is what distinguishes them as window chrome, not their colour. */
+:where(html[data-theme="horizon"]) #btnMinimize svg,
+:where(html[data-theme="horizon"]) #btnClose svg,
+:where(html[data-theme="horizon"]) #btnMaximize svg { color: var(--btn); }
+/* Filled controls keep dark ink on their lime ground. */
+:where(html[data-theme="horizon"]) #app .ob-btn:not(.ghost),
+:where(html[data-theme="horizon"]) #app .toggle-btn.active,
+:where(html[data-theme="horizon"]) #sidebar .sb-item.active,
+:where(html[data-theme="horizon"]) #sidebar .sb-item.active svg { color: var(--btn-t); }
+
+/* One drop-shadow, not three: each filter function is a real GPU blur pass, and
+   the icons carry their own contrast now that they are lime. */
+:where(html[data-theme="horizon"]) #sidebar svg,
+:where(html[data-theme="horizon"]) #app svg,
+:where(html[data-theme="horizon"]) .titlebar-btn svg {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.92));
+}
+
+/* ── Perf (all themes) ─────────────────────────────────────────────────────
+   Not scoped: these are pure wins with no visual change anywhere. */
+/* REMOVED — this blanked six pages.
+   It paused every animation while `.win-focused` was absent, and that class is
+   set by app.js, which ONLY index.html loads. On doctor/history/alerts/cowork/
+   graph/stats it therefore never appeared, so every animation stayed frozen at
+   0% — and 24 of them are entrance animations with a fill-mode that starts at
+   opacity:0. The pages rendered perfectly and were held invisible.
+   A blanket `*` rule that depends on a class only one page sets was the mistake;
+   pausing decoration is not worth the risk of freezing content. If it comes
+   back it must target specific decorative elements, never `*`. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+.ob-steps > *, .mcp-list > *, .pl-list > *, #islPermLearned > *, #islPermLog > * {
+  content-visibility: auto; contain-intrinsic-size: auto 44px;
+}
+
 /* ── Decorative loops idle when the page is not being watched ──────────────
    Opt-IN by class, never a blanket `*` rule. The previous attempt paused every
    animation whenever a class was absent, and that class was only ever set by
@@ -1155,3 +1331,219 @@ html:not(.page-awake) .sc-mcp .reqdot {
 /* And the Doctor's scene animations do not run until its page is open at all —
    they are inside #doctorScenes, which only exists once you click 体检. Nothing
    to gate: the cost is already zero until then. */
+
+/* ── Pro 预览横幅 ────────────────────────────────────────────────────────────
+   免费用户进入 Pro 页面时挂在页顶。以前这些页面根本进不来 —— 点一下就是
+   一堵付费墙,功能到底做什么永远没人看得见。 */
+#proPreviewBar{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 13px;
+  border-radius:12px;font-size:12.5px;line-height:1.45;color:var(--text,#e9edf6);
+  background:color-mix(in srgb, var(--accent,#c9f03d) 13%, rgba(12,14,22,.9));
+  border:1px solid color-mix(in srgb, var(--accent,#c9f03d) 42%, transparent);
+  animation:ppbIn .32s cubic-bezier(.2,.9,.25,1)}
+@keyframes ppbIn{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+#proPreviewBar .ppb-dot{width:7px;height:7px;border-radius:50%;flex:none;
+  background:var(--accent,#c9f03d);box-shadow:0 0 9px var(--accent,#c9f03d);
+  animation:ppbPulse 2s ease-in-out infinite}
+@keyframes ppbPulse{0%,100%{opacity:1}50%{opacity:.35}}
+#proPreviewBar .ppb-t{flex:1}
+#proPreviewBar .ppb-btn{flex:none;padding:5px 13px;border-radius:9999px;cursor:pointer;
+  font-weight:800;font-size:11.5px;color:#0b0c12;border:0;
+  background:var(--accent,#c9f03d)}
+#proPreviewBar .ppb-btn:hover{filter:brightness(1.08)}
+
+/* ── 免费层价值计量条 ────────────────────────────────────────────────────────
+   先证明它确实在替你省东西,再开口要钱。数据取不到就整条隐藏,不编数字。 */
+.fh-meter{margin:12px 0 14px;padding:11px 13px;border-radius:12px;
+  background:color-mix(in srgb, var(--btn,#c9f03d) 10%, rgba(255,255,255,.03));
+  border:1px solid color-mix(in srgb, var(--btn,#c9f03d) 30%, transparent)}
+.fh-meter.hidden{display:none}
+.fh-meter-row{display:flex;align-items:baseline;gap:7px}
+.fh-meter-n{font-size:21px;font-weight:800;color:var(--btn,#c9f03d);line-height:1;
+  font-variant-numeric:tabular-nums}
+.fh-meter-l{font-size:11px;color:var(--t2,#aab)}
+.fh-meter-bar{height:5px;border-radius:3px;margin:9px 0 7px;overflow:hidden;
+  background:rgba(255,255,255,.07)}
+.fh-meter-bar i{display:block;height:100%;border-radius:3px;width:0;
+  background:linear-gradient(90deg,var(--btn,#c9f03d),color-mix(in srgb,var(--btn,#c9f03d) 45%,#4dd4ff));
+  transition:width 1.1s cubic-bezier(.2,.9,.25,1)}
+.fh-meter-sub{font-size:10px;color:var(--t3,#7b8496);line-height:1.5}
+
+/* ── 消息中心 ────────────────────────────────────────────────────────────────
+   所有社交 app 的消息汇总在一处,按 app 分类,可以就地回复。 */
+/* 粒子模式那一页:一行一个窗口,点一下就把它变成桌面上的粒子。 */
+.pm-list{padding:4px 0 8px;display:flex;flex-direction:column;gap:5px}
+.pm-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;
+        border:1px solid var(--bd,#23262F);background:var(--s2,#15171C);cursor:pointer}
+.pm-row:hover{border-color:var(--acc,#C9F03D)}
+.pm-row.on{border-color:var(--acc,#C9F03D);background:rgba(201,240,61,.10)}
+.pm-row b{font-size:11.5px;color:var(--t1,#E8EAED);font-weight:700;white-space:nowrap}
+.pm-row i{font-style:normal;font-size:9.5px;color:var(--t3,#7A8194);
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.pm-row s{text-decoration:none;font-size:9px;color:var(--t3,#7A8194);opacity:.7}
+.pm-note{margin:2px 0 0;font-size:9.5px;font-weight:700;line-height:1.55;
+         color:#FF9B84;background:rgba(255,155,132,.10);
+         border:1px solid rgba(255,155,132,.30);border-radius:7px;padding:6px 9px}
+.pm-foot{display:flex;align-items:center;gap:8px;padding:8px 0 0;font-size:10px;
+         color:var(--t3,#7A8194);border-top:1px solid var(--bd,#23262F);margin-top:8px}
+.msgs-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.msgs-title{font-size:15px;font-weight:800;color:var(--t1)}
+.msgs-sub{font-size:11px;font-weight:600;color:var(--t3);margin-left:7px}
+.msgs-head .ob-btn{margin-left:auto}
+/* ── Gesture Control (Pro) ── */
+.gs-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:var(--sf);box-shadow:inset 0 0 0 1px var(--bd);margin-bottom:10px}
+.gs-row-text{flex:1;min-width:0}
+.gs-row-title{font-size:12.5px;font-weight:800;color:var(--t1)}
+.gs-row-sub{font-size:10.5px;font-weight:600;color:var(--t3);margin-top:2px}
+.gs-status{font-size:10.5px;font-weight:700;color:var(--t3);white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.gs-status.on{color:#8FCB2F}
+.gs-switch{position:relative;width:36px;height:20px;flex:none;cursor:pointer}
+.gs-switch input{opacity:0;width:0;height:0;position:absolute}
+.gs-switch span{position:absolute;inset:0;border-radius:999px;background:var(--bd);transition:background .2s}
+.gs-switch span::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.gs-switch input:checked + span{background:#C9F03D}
+.gs-switch input:checked + span::after{transform:translateX(16px)}
+.gs-stage{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#05060a}
+.gs-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.gs-hud{position:absolute;left:12px;top:10px;font:700 11px ui-monospace,Menlo,monospace;color:#D6DBE4;text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none}
+.gs-try{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#C9F03D;color:#101400;padding:10px 18px;font-size:13px}
+.gs-try:hover{transform:translate(-50%,-52%)}
+.gs-tools{display:flex;align-items:center;gap:12px;margin:10px 0}
+.gs-sens{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;color:var(--t2);margin-left:auto}
+.gs-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.gs-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;background:var(--sf);box-shadow:inset 0 0 0 1px var(--bd);font-size:11px;font-weight:700;color:var(--t2)}
+.gs-item b{min-width:34px;font-size:14px;text-align:center}
+.gs-privacy{margin-top:10px;font-size:10px;font-weight:600;color:var(--t3)}
+.msgs-perm{padding:13px 15px;border-radius:12px;margin-bottom:13px;
+  background:color-mix(in srgb,var(--btn,#c9f03d) 11%,rgba(255,255,255,.03));
+  border:1px solid color-mix(in srgb,var(--btn,#c9f03d) 32%,transparent)}
+.msgs-perm.hidden{display:none}
+.msgs-perm-t{font-size:12.5px;font-weight:800;color:var(--t1)}
+.msgs-perm-d{font-size:11px;line-height:1.6;color:var(--t3);margin:6px 0 10px}
+.msgs-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.msgs-tab{padding:5px 12px;border-radius:9999px;cursor:pointer;font-size:11.5px;font-weight:700;
+  color:var(--t2);background:rgba(255,255,255,.04);border:1px solid var(--bd);white-space:nowrap}
+.msgs-tab:hover{background:rgba(255,255,255,.08)}
+.msgs-tab.on{color:#0b0c12;background:var(--btn,#c9f03d);border-color:transparent}
+.msgs-tab .mt-n{opacity:.6;margin-left:5px;font-variant-numeric:tabular-nums}
+.msgs-list{display:flex;flex-direction:column;gap:9px}
+.msgs-empty{padding:28px 0;text-align:center;font-size:12px;color:var(--t3)}
+.msgs-empty.hidden{display:none}
+.mrow{padding:11px 13px;border-radius:12px;background:var(--sf);border:1px solid var(--bd)}
+.mrow-top{display:flex;align-items:baseline;gap:8px}
+.mrow-app{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  padding:2px 7px;border-radius:9999px;color:var(--btn,#c9f03d);
+  background:color-mix(in srgb,var(--btn,#c9f03d) 13%,transparent);flex:none}
+.mrow-room{font-size:11px;font-weight:700;color:var(--t2)}
+.mrow-time{margin-left:auto;font-size:10px;color:var(--t3);font-variant-numeric:tabular-nums}
+.mrow-sender{margin-top:7px;font-size:13px;font-weight:800;color:var(--t1)}
+.mrow-body{margin-top:3px;font-size:12.5px;line-height:1.55;color:var(--t2);
+  white-space:pre-wrap;word-break:break-word}
+.mrow-actions{display:flex;gap:8px;margin-top:9px}
+.mrow-actions input{flex:1;padding:7px 11px;border-radius:9px;font-size:12px;color:var(--t1);
+  background:rgba(255,255,255,.05);border:1px solid var(--bd);outline:none}
+.mrow-actions input:focus{border-color:var(--btn,#c9f03d)}
+.mrow-actions button{padding:7px 15px;border-radius:9px;border:0;cursor:pointer;
+  font-size:12px;font-weight:800;color:#0b0c12;background:var(--btn,#c9f03d)}
+.mrow-actions button:disabled{opacity:.45;cursor:default}
+.mrow-note{margin-top:6px;font-size:10.5px;color:var(--t3);min-height:13px}
+.sb-badge{margin-left:auto;font-size:9px;font-weight:800;padding:1px 6px;border-radius:9999px;
+  color:#0b0c12;background:var(--btn,#c9f03d)}
+.sb-badge.hidden{display:none}
+
+/* ── 社媒开关 ────────────────────────────────────────────────────────────── */
+.msgs-apps-card{padding:12px 14px;border-radius:12px;margin-bottom:13px;
+  background:var(--sf);border:1px solid var(--bd)}
+.msgs-apps-head{display:flex;align-items:baseline;gap:9px;margin-bottom:10px;flex-wrap:wrap}
+.maa-t{font-size:12.5px;font-weight:800;color:var(--t1)}
+.maa-d{font-size:10.5px;color:var(--t3)}
+.msgs-apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:8px}
+.mapp{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--bd)}
+.mapp-n{font-size:12px;font-weight:700;color:var(--t1);flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mapp-c{font-size:10px;color:var(--t3);font-variant-numeric:tabular-nums}
+.mapp-sw{position:relative;width:34px;height:19px;border-radius:9999px;flex:none;cursor:pointer;
+  background:rgba(255,255,255,.14);transition:background .18s}
+.mapp-sw::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
+  background:#fff;transition:transform .18s cubic-bezier(.2,.9,.25,1)}
+.mapp-sw.on{background:var(--btn,#c9f03d)}
+.mapp-sw.on::after{transform:translateX(15px)}
+.mapp.off .mapp-n{color:var(--t3)}
+.msgs-apps-empty{font-size:11px;color:var(--t3);padding:4px 0}
+
+/* ── 信息流 ─────────────────────────────────────────────────────────────── */
+.feed-auto{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--t2);cursor:pointer}
+.feed-pending{padding:10px 12px;border-radius:10px;margin-bottom:10px;
+  background:color-mix(in srgb,var(--btn,#c9f03d) 9%,transparent);border:1px solid color-mix(in srgb,var(--btn,#c9f03d) 35%,transparent)}
+.feed-pending.hidden{display:none}
+.fp-head{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;color:var(--t1);margin-bottom:8px}
+.fp-head .ob-btn{margin-left:auto;padding:4px 10px;font-size:10.5px}
+.fp-row{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px;color:var(--t1)}
+.fp-row .fp-k{font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--t3)}
+.fp-row .fp-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.fp-row button{padding:3px 10px;border-radius:8px;font-size:10.5px;font-weight:800;cursor:pointer;
+  border:1px solid var(--bd);background:transparent;color:var(--t2)}
+.fp-row button.yes{background:var(--btn,#c9f03d);color:#0b0c12;border-color:transparent}
+.feed-groups{display:flex;flex-direction:column;gap:12px}
+.feed-g-t{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--t3);margin-bottom:6px}
+.feed-g-t b{color:var(--t2);font-weight:800;margin-left:4px}
+.mapp .mapp-new{font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px;
+  color:#0b0c12;background:var(--btn,#c9f03d)}
+.feed-note{color:var(--t3)}
+
+/* ── 权限清单 ────────────────────────────────────────────────────────────── */
+.msgs-perm-list{display:flex;flex-direction:column;gap:8px;margin-top:11px}
+.perm-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--bd)}
+.perm-dot{width:9px;height:9px;border-radius:50%;flex:none;background:#ff5f6d;
+  box-shadow:0 0 7px rgba(255,95,109,.7)}
+.perm-dot.ok{background:#4ade80;box-shadow:0 0 7px rgba(74,222,128,.7)}
+.perm-dot.info{background:#f7c948;box-shadow:0 0 7px rgba(247,201,72,.7)}
+.perm-txt{flex:1;min-width:0}
+.perm-name{font-size:12px;font-weight:800;color:var(--t1)}
+.perm-desc{font-size:10.5px;color:var(--t3);line-height:1.45;margin-top:1px}
+.perm-btn{flex:none;padding:6px 13px;border-radius:8px;border:0;cursor:pointer;
+  font-size:11px;font-weight:800;color:#0b0c12;background:var(--btn,#c9f03d)}
+.perm-btn.done{background:rgba(255,255,255,.1);color:var(--t2);cursor:default}
+
+/* 角标:有人在等你回话的时候是**热**的。一堆没读的 app 通知只是数字,
+   一句刚说的话是催促 —— 两者不该长得一样。 */
+.sb-badge.hot{background:#FF6B5A;color:#fff;box-shadow:0 0 0 2px rgba(255,107,90,.18)}
+/* 房间里还没读过的那几条,左边一道亮边 */
+.mrow.fresh{box-shadow:inset 2px 0 0 var(--btn,#c9f03d)}
+
+/* 粒子页 · 会话栏开关和调色板 */
+.pm-dock{display:flex;flex-direction:column;gap:8px;padding:8px 0 4px}
+.pm-dock-hint{font-size:10.5px;color:var(--t3,#7A8194)}
+.pm-colors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px}
+.pm-colors label{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--t2,#A6ADBB)}
+.pm-colors input[type=color]{width:26px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:none;padding:0;cursor:pointer}
+
+/* ── 两级导航:分类落地页 + 协同办公门户 ─────────────────────────────────────
+   侧栏从二十个按钮收成七个(首页 · 协同 · 手机 + 四个分类)。分类按钮点开一张
+   落地页,该类功能铺成卡片网格,再点一下进具体页面。 */
+.sb-cat-chev{margin-left:auto;flex-shrink:0;color:var(--t3);font-weight:700;font-size:15px;line-height:1;opacity:.55}
+.sb-cat .sb-badge,.sb-cat .sb-pill{margin-left:6px}
+.sb-item.sb-cowork{color:var(--ac)}
+
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:8px 12px 16px}
+.cat-tile{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;
+  padding:13px;border:1px solid var(--bd);border-radius:12px;background:var(--sf);color:var(--t1);
+  cursor:pointer;transition:transform .18s var(--ease,ease),border-color .18s ease,background .18s ease}
+.cat-tile:hover{transform:translateY(-2px);border-color:var(--ac);background:var(--bg)}
+.cat-tile:active{transform:scale(.98)}
+.cat-tile-ic{font-size:20px;line-height:1}
+.cat-tile-t{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.cat-tile-d{font-size:10.5px;color:var(--t3);line-height:1.5}
+.cat-tile-pro{font-size:8px;font-weight:800;letter-spacing:.05em;padding:1px 5px;border-radius:9999px;
+  background:linear-gradient(180deg,#D7F866,var(--btn));color:var(--btn-t)}
+
+.cw-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.cw-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;
+  padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--sf);color:var(--t1);
+  cursor:pointer;transition:transform .18s var(--ease,ease),border-color .18s ease,background .18s ease}
+.cw-card:hover{transform:translateY(-2px);border-color:var(--ac);background:var(--bg)}
+.cw-card:active{transform:scale(.98)}
+.cw-card-ic{font-size:18px;line-height:1}
+.cw-card-t{font-size:12.5px;font-weight:700}
+.cw-card-d{font-size:10px;color:var(--t3);line-height:1.5}

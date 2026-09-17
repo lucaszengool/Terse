@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Terse Cursor</title>
+<!-- Particle cursor for desktop control (Pro). Full-screen, transparent, click-through window:
+     it only draws — the particle cursor, the outline of the window you grabbed, and the
+     pre-locked target. All clicks are performed by terse-desk through the Accessibility API. -->
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
+  #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<!-- The particle hand: a small canvas that follows your hand (moved by a CSS transform, never a
+     full-screen redraw). It mirrors all 21 joints so you always see what the camera sees. -->
+<canvas id="ghost" style="position:fixed;left:0;top:0;pointer-events:none;will-change:transform;opacity:0"></canvas>
+<script type="module" src="desk-cursor.js"></script>
+</body>
+</html>

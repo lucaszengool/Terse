@@ -4,6 +4,12 @@
   <meta name="color-scheme" content="dark">
   <meta charset="UTF-8">
   <title>Terse</title>
+  <!-- The Gesture page's preview imports the wallpaper engine, which does `import 'three'`.
+       Without this map that bare specifier fails to resolve and the whole Gesture page module
+       never loads (buttons did nothing). Same map as wallpaper.html / wallpaper-control.html. -->
+  <script type="importmap">
+  { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/jsm/" } }
+  </script>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="onboarding.css">
   <link rel="stylesheet" href="tour.css">
@@ -97,81 +103,61 @@
         <div class="sb-name">Terse<span>Agent Butler</span></div>
         <button id="sbHelp" type="button" title="Replay the guide">?</button>
       </div>
+      <!-- 两级导航:上面三个是「一直在」的固定入口(首页 · 协同 · 手机),
+           下面四个是分类。点分类不直接进页面,而是先打开这个分类的落地页
+           (categoryView),那一页把这一类的按钮铺开,再点一下才进具体页面。
+           这样主界面从二十个按钮收成七个,而每个功能仍在原来的 data-page 上,
+           落地页只是转发到同一套 SB_ACTIONS。 -->
       <nav class="sb-nav">
-        <div class="sb-group-label">Monitor</div>
+        <!-- 代码小镇 —— 原来底部的「项目」。放在最上面:它是广场那座第一人称的粒子小镇,
+             点进去可以把它开成桌面壁纸、在壁纸上逛,发布自己的项目时挑一块地盖别墅。 -->
+        <button class="sb-item sb-town" data-page="projects" title="Code Town — the plaza's particle town as your wallpaper">
+          <span class="sb-emoji">🏘️</span>
+          <span data-i18n="nav_projects">Code Town</span>
+        </button>
         <button class="sb-item active" data-page="overview">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-          <span>Overview</span>
+          <span>概览</span>
         </button>
-        <button class="sb-item" data-page="observe">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span>Observe</span>
+        <!-- 协同办公 —— 一个门户页,把散在各处的 好友/房间/广场/团队 收进一处:
+             顶部一个大按钮直接开协同房间并给出邀请链接+二维码,好友连上各自
+             本地的 agent 就在同一个 working session 里。 -->
+        <button class="sb-item sb-cowork" data-page="collab" title="邀请好友，各自连上本地 agent，开一个协同工作房间">
+          <span class="sb-emoji">🤝</span>
+          <span>协同办公</span>
         </button>
-        <button class="sb-item" data-page="msgs" title="所有社交 app 的消息">
-          <span class="sb-emoji">💬</span>
-          <span>消息</span>
+        <!-- 连接手机 —— 从原来的「扫码」单独拎出来做常驻入口。页面里有一张直达
+             Terse 手机版的二维码,拿手机相机扫一下就打开,agent 状态随身看。 -->
+        <button class="sb-item" data-page="pair" title="用手机扫码连接，agent 状态随身看">
+          <span class="sb-emoji">📱</span>
+          <span>连接手机</span>
+          <span class="sb-badge hidden" id="sbPairBadge">●</span>
+        </button>
+
+        <div class="sb-group-label">分类</div>
+        <button class="sb-item sb-cat" data-cat="monitor">
+          <span class="sb-emoji">👁</span>
+          <span>监控</span>
           <span class="sb-badge hidden" id="sbMsgBadge">0</span>
-        </button>
-        <button class="sb-item" data-page="stats" data-pro>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="10" y="9" width="4" height="12" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
-          <span>Stats</span>
-          <span class="sb-pro">PRO</span>
-        </button>
-        <button class="sb-item" data-page="connection" data-pro>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
-          <span>Connection</span>
           <span class="sb-pill hidden" id="sbConnPill">!</span>
-          <span class="sb-pro">PRO</span>
+          <span class="sb-cat-chev">›</span>
         </button>
-
-        <div class="sb-group-label">Optimize</div>
-        <button class="sb-item" data-page="doctor">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
-          <span>Doctor</span>
+        <button class="sb-item sb-cat" data-cat="optimize">
+          <span class="sb-emoji">⚡</span>
+          <span>优化</span>
+          <span class="sb-cat-chev">›</span>
         </button>
-        <button class="sb-item" data-page="cleanup" data-pro>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2v-4h18v4a2 2 0 01-2 2z"/><path d="M12 3v12"/><path d="M8 9l4-4 4 4"/></svg>
-          <span>Cleanup</span>
-          <span class="sb-pro">PRO</span>
-        </button>
-        <button class="sb-item" data-page="rules">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          <span>Rules</span>
-        </button>
-
-        <div class="sb-group-label">Secure</div>
-        <button class="sb-item" data-page="mcp">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span>MCP</span>
+        <button class="sb-item sb-cat" data-cat="secure">
+          <span class="sb-emoji">🛡</span>
+          <span>安全</span>
           <span class="sb-pill hidden" id="sbMcpPill">0</span>
-        </button>
-        <button class="sb-item" data-page="alerts">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-          <span>Alerts</span>
           <span class="sb-pill hidden" id="sbAlertPill">0</span>
+          <span class="sb-cat-chev">›</span>
         </button>
-
-        <div class="sb-group-label">Library</div>
-        <button class="sb-item" data-page="prompts">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v14H8l-4 3V4z"/><path d="M8 9h8M8 13h5"/></svg>
-          <span>Prompts</span>
-        </button>
-        <button class="sb-item" data-page="graph">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7 7l3.5 9M17 7l-3.5 9M7 6h10"/></svg>
-          <span>Graph</span>
-        </button>
-        <button class="sb-item" data-page="history">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
-          <span>History</span>
-        </button>
-        <button class="sb-item" data-page="team" data-pro>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span>Team</span>
-          <span class="sb-pro">PRO</span>
-        </button>
-        <button class="sb-item" data-page="farm">
-          <span class="sb-emoji">🌾</span>
-          <span>Farm</span>
+        <button class="sb-item sb-cat" data-cat="library">
+          <span class="sb-emoji">📚</span>
+          <span>资料</span>
+          <span class="sb-cat-chev">›</span>
         </button>
       </nav>
       <div class="sb-bottom">
@@ -193,9 +179,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l4-4 4 4 4-5 6 6"/></svg>
           <span data-i18n="nav_wallpaper">Wallpaper</span>
         </button>
-        <button class="sb-item" data-page="projects">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg>
-          <span data-i18n="nav_projects">Projects</span>
+        <button class="sb-item" data-page="gesture" data-pro title="Gesture Control">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6"/><path d="M11 11V4a1.5 1.5 0 0 1 3 0v7"/><path d="M14 11V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3 14a1.5 1.5 0 0 1 2.5-1.6L8 15"/></svg>
+          <span data-i18n="nav_gesture">Gestures</span>
+          <span class="sb-pro">PRO</span>
         </button>
         <button class="sb-item" data-page="pals">
           <span class="sb-emoji" id="sbPalIcon">🐾</span>
@@ -221,26 +208,9 @@
              puts a PreToolUse hook in the agent's critical path, so it must be
              a deliberate choice, never something an untouched install inherits
              (lib.rs forces it off on every launch). -->
-        <!-- 好友 — the social surface: invite link, roster, and the switch that
-             puts teammates' agents on your wallpaper. Sits at the bottom with
-             the other "people" items rather than in Settings, because it is a
-             place you go, not a preference you set. -->
-        <button class="sb-item" data-page="friends" title="Friends">
-          <span class="sb-emoji">👥</span>
-          <span>Friends</span>
-        </button>
-        <!-- Room — the live session, distinct from Friends on purpose: friends
-             are who you know, a room is who you are on the wallpaper with now. -->
-        <button class="sb-item" data-page="room" title="Room">
-          <span class="sb-emoji">🪟</span>
-          <span>Room</span>
-        </button>
-        <!-- 广场 — where rooms are found. Separate from Room because browsing
-             strangers' rooms and being in one are different activities. -->
-        <button class="sb-item" data-page="plaza" title="Plaza">
-          <span class="sb-emoji">🏛</span>
-          <span>Plaza</span>
-        </button>
+        <!-- 好友 / 房间 / 广场 曾经各占一个侧栏按钮,现在都收进「协同办公」这一个
+             门户里(见 sb-nav 顶部)。视图(friendsView/roomView/plazaView)和它们
+             的 data-page 都还在,门户页用卡片转发过去,所以侧栏收窄不丢任何功能。 -->
         <button class="sb-item" data-page="island"
                 title="Answer Claude's permission prompts on the Dynamic Island">
           <span class="sb-emoji">🛡</span>
@@ -483,6 +453,201 @@
           <!-- ── 消息中心 ────────────────────────────────────────────────────────
            所有社交 app 的消息汇总到一处,按 app 分类,可以直接回复。
            数据和壁纸大字是同一个来源(通知中心),所以两边永远一致。 -->
+      <!-- ── 扫码配对 ────────────────────────────────────────────────────────
+           手机端(terseai.org/m)扫一下就连上。原来这个功能藏在设置里,而它是
+           一个**会被主动找**的功能 —— 人拿起手机的时候就想立刻找到它。 -->
+      <!-- ── 粒子模式 ────────────────────────────────────────────────────────
+           把 Claude / Codex / Cursor 的窗口逐帧抓下来,在桌面上重画成粒子。
+           盖上去那一层是**鼠标穿透**的:你看到的是粒子,点下去的还是原来那个窗口。 -->
+      <div id="particlesView" class="hidden">
+        <div class="msgs-head">
+          <div class="msgs-title">粒子模式 <span class="msgs-sub">让 agent 的窗口长在桌面上</span></div>
+          <button id="pmRefresh" class="ob-btn ghost" title="重新扫描窗口">↻</button>
+        </div>
+        <div id="pmNote" class="pm-note hidden"></div>
+        <div id="pmList" class="pm-list"></div>
+        <div class="pm-foot">
+          <span id="pmState">未开启</span>
+          <button id="pmStop" class="ob-btn ghost hidden">关闭</button>
+        </div>
+      </div>
+
+      <!-- Gesture Control (Pro): steer every particle with your hands. The preview runs the
+           real engines on this page (same approach as the wallpaper preview); the camera is
+           read by terse-hands (Apple Vision) and only hand-joint positions ever reach the UI. -->
+      <div id="gestureView" class="hidden">
+        <div class="msgs-head">
+          <div class="msgs-title"><span data-i18n="gs_title">Gesture Control</span> <span class="msgs-sub" data-i18n="gs_sub">Steer every particle with your hands — the session dock, the wallpaper, the particle text</span></div>
+        </div>
+        <div class="gs-row">
+          <label class="gs-switch"><input type="checkbox" id="gsEnable"><span></span></label>
+          <div class="gs-row-text">
+            <div class="gs-row-title" data-i18n="gs_enable">Enable gesture control</div>
+            <div class="gs-row-sub" data-i18n="gs_enable_sub">The camera light is on while it runs; with no hand in view everything behaves exactly as before</div>
+          </div>
+          <button id="gsFix" class="ob-btn ghost hidden" data-i18n="gs_fix">Open System Settings</button>
+          <span id="gsStatus" class="gs-status" data-i18n="gs_off">Camera off</span>
+        </div>
+        <div class="gs-row">
+          <label class="gs-switch"><input type="checkbox" id="deskEnable"><span></span></label>
+          <div class="gs-row-text">
+            <div class="gs-row-title" data-i18n="desk_title">Particle cursor controls the desktop</div>
+            <div class="gs-row-sub" data-i18n="desk_sub">Make a fist over any window to grab it · the cursor pre-locks the nearest button · swipe to switch · pinch to press · fist again to let go</div>
+          </div>
+          <button id="deskAx" class="ob-btn ghost hidden" data-i18n="desk_ax">Allow Accessibility</button>
+          <span id="deskStatus" class="gs-status" data-i18n="desk_off">Off</span>
+        </div>
+        <div id="gsStage" class="gs-stage">
+          <canvas id="gsWall"></canvas>
+          <canvas id="gsFx"></canvas>
+          <div id="gsHud" class="gs-hud"></div>
+          <button id="gsTry" class="ob-btn gs-try" data-i18n="gs_try">Open preview — try it</button>
+        </div>
+        <div class="gs-tools">
+          <button id="gsStop" class="ob-btn ghost hidden" data-i18n="gs_stop">Close preview</button>
+          <label class="gs-sens"><span data-i18n="gs_sens">Sensitivity</span><input id="gsSens" type="range" min="0.6" max="1.8" step="0.1" value="1"></label>
+        </div>
+        <div class="gs-list">
+          <div class="gs-item"><b>🤏</b><span data-i18n="gs_g_pinch">Pinch · click</span></div>
+          <div class="gs-item"><b>✊↕</b><span data-i18n="gs_g_drag">Pinch and drag · scroll / orbit</span></div>
+          <div class="gs-item"><b>🤏↔🤏</b><span data-i18n="gs_g_zoom">Pinch with both hands and pull apart · zoom</span></div>
+          <div class="gs-item"><b>☝️</b><span data-i18n="gs_g_dwell">Point and hold · select and magnify</span></div>
+          <div class="gs-item"><b>🖐</b><span data-i18n="gs_g_palm">Open palm, hold still · freeze</span></div>
+          <div class="gs-item"><b>✊⟳</b><span data-i18n="gs_g_twist">Fist and twist · particle speed</span></div>
+          <div class="gs-item"><b>🖐→</b><span data-i18n="gs_g_swipe">Open-palm swipe · switch / open</span></div>
+          <div class="gs-item"><b>🖐~</b><span data-i18n="gs_g_push">Move an open palm · push particles aside</span></div>
+        </div>
+        <div class="gs-privacy" data-i18n="gs_privacy">Only the 21 hand-joint positions are read — no video is recorded, stored or uploaded</div>
+      </div>
+
+      <div id="pairView" class="hidden">
+        <div class="msgs-head">
+          <div class="msgs-title">连接手机 <span class="msgs-sub">扫码打开 Terse 手机版</span></div>
+        </div>
+        <!-- 直达手机版的静态二维码:编码的就是 terseai.org/m 这个网址,拿任何手机
+             相机扫一下就在手机浏览器里打开,不依赖配对流程。配对(把这台机器绑到
+             手机账号)是下面那条路,两者分开摆:一张是"去手机上看",一张是"把这台
+             连上手机"。 -->
+        <div style="text-align:center;padding:6px 12px 4px">
+          <div id="pvSiteQr" style="display:inline-flex;flex-direction:column;align-items:center;gap:8px"></div>
+          <div style="font-size:11px;color:var(--t2);line-height:1.7;padding:10px 6px 2px">
+            用手机相机扫上面的码,直接打开 <b style="color:var(--t1)">terseai.org/m</b>。
+          </div>
+          <div style="font-size:10.5px;color:var(--t3);line-height:1.6;padding:2px 6px 0">
+            连上手机后,agent 的运行状态、剩余额度和提醒都能随身看 —— 人不在电脑前也知道它在干什么。
+          </div>
+        </div>
+        <div class="setting-group" style="margin:12px 12px 0;border-top:1px solid var(--bd);padding-top:14px">
+        <div style="text-align:center;padding:0 0 16px">
+          <div style="font-size:11px;color:var(--t2);font-weight:600;padding:0 0 8px">把这台机器绑到你的手机账号</div>
+          <div id="pvStatus" style="font-size:11px;color:var(--t3);padding:2px 0 10px">Not linked</div>
+          <div id="pvIdle">
+            <button id="pvPairBtn" class="ob-btn primary">Link phone</button>
+            <button id="pvUnlinkBtn" class="ob-btn ghost hidden" style="margin-top:6px">Unlink</button>
+            <label class="setting-row hidden" id="pvShareRow" style="margin-top:10px;justify-content:center;gap:8px">
+              <span style="font-size:11px">Show my agents on my phone</span>
+              <input type="checkbox" id="pvShare">
+            </label>
+            <div style="font-size:10.5px;color:var(--t3);line-height:1.6;padding:14px 6px 0">
+              手机浏览器打开 <b style="color:var(--t2)">terseai.org/m</b>,或者直接用相机扫下面的码。
+            </div>
+          </div>
+          <div id="pvPairing" class="hidden">
+            <canvas id="pvQr" style="border-radius:10px;background:#fff;display:block;margin:2px auto 10px"></canvas>
+            <div id="pvCode" style="font-family:ui-monospace,Menlo,monospace;font-size:20px;letter-spacing:.26em;font-weight:600;color:var(--t1)"></div>
+            <div style="font-size:10.5px;color:var(--t3);line-height:1.6;padding:8px 6px 10px">
+              用 iPhone 的相机对准它,或者在 terseai.org/m 里输入这串码。
+            </div>
+            <button id="pvCancelBtn" class="ob-btn ghost">Cancel</button>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- 分类落地页 —— 点侧栏四个分类之一先到这里,JS 把该类的按钮铺成网格
+           (catRender),点其中一个再转发到原来的 SB_ACTIONS 进具体页面。 -->
+      <div id="categoryView" class="hidden">
+        <div class="msgs-head">
+          <div class="msgs-title" id="catTitle">分类 <span class="msgs-sub" id="catSub"></span></div>
+        </div>
+        <div id="catGrid" class="cat-grid"></div>
+      </div>
+
+      <!-- 协同办公门户 —— 顶部一键开房+邀请链接/二维码,下面用卡片转发到
+           好友 / 房间 / 广场 / 团队 这些原有页面。 -->
+      <div id="collabView" class="hidden">
+        <div class="ob-head">
+          <div>
+            <div class="ob-title">协同办公</div>
+            <div class="ob-sub">邀请好友,各自连上本地 agent,在同一个房间一起干活</div>
+          </div>
+          <div class="ob-actions">
+            <button class="ob-btn ghost" id="cwRefresh">↻</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">开始协同办公</label>
+          <p style="font-size:11px;color:var(--t3);line-height:1.7;margin:6px 0 10px">
+            建一个工作房间,把链接发给好友。他们打开就进来,各自连上本地的
+            Claude / Codex / Cursor —— 你们就在同一个 working session 里。
+          </p>
+          <div id="cwOut">
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="cwRoomName" placeholder="房间名(如:今晚一起写 Terse)" spellcheck="false"
+                     style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                            padding:8px 10px;color:var(--t1);font-size:12px">
+              <button class="ob-btn primary" id="cwStart">开始协同房间</button>
+            </div>
+            <label style="display:flex;gap:7px;align-items:center;margin-top:9px;font-size:11px;color:var(--t3)">
+              <input type="checkbox" id="cwAgents" checked>
+              <span>允许成员连自己的 agent(每人各自选择加入)</span>
+            </label>
+            <p id="cwOutMsg" style="font-size:11px;color:var(--t3);margin:8px 0 0;min-height:14px"></p>
+          </div>
+          <div id="cwIn" class="hidden">
+            <p style="font-size:11.5px;color:var(--t1);font-weight:600;margin:0 0 8px">房间已就绪 —— 把链接或二维码发给好友</p>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="cwLink" readonly spellcheck="false"
+                     style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+                            padding:8px 10px;color:var(--t1);font:11px ui-monospace,Menlo,monospace">
+              <button class="ob-btn" id="cwCopy">复制</button>
+            </div>
+            <div id="cwQr" style="margin-top:12px;display:flex;gap:12px;align-items:center"></div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="ob-btn" id="cwOpenRoom">打开房间页 →</button>
+              <button class="ob-btn ghost" id="cwOpenChat">💬 打开聊天窗口</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">更多协作入口</label>
+          <div class="cw-cards">
+            <button class="cw-card" data-go="friends">
+              <span class="cw-card-ic">👥</span>
+              <span class="cw-card-t">好友</span>
+              <span class="cw-card-d">发好友邀请链接,互相把 agent 显示在壁纸上</span>
+            </button>
+            <button class="cw-card" data-go="room">
+              <span class="cw-card-ic">🪟</span>
+              <span class="cw-card-t">房间</span>
+              <span class="cw-card-d">建/进房间的完整控制:成员、二维码、审批、公开</span>
+            </button>
+            <button class="cw-card" data-go="plaza">
+              <span class="cw-card-ic">🏛</span>
+              <span class="cw-card-t">广场</span>
+              <span class="cw-card-d">浏览公开房间,申请加入别人的 working session</span>
+            </button>
+            <button class="cw-card" data-go="team">
+              <span class="cw-card-ic">🤝</span>
+              <span class="cw-card-t">团队</span>
+              <span class="cw-card-d">团队协作台(独立窗口),一起盯每个 agent</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div id="msgsView" class="hidden">
         <div class="msgs-head">
           <div class="msgs-title">消息 <span class="msgs-sub">所有社交 app</span></div>
@@ -497,12 +662,17 @@
         </div>
         <!-- 社媒:Terse 实际检测到的 app,每个一个壁纸开关。
              列表是检测出来的不是写死的 —— 装了什么、在用什么因人而异。 -->
+        <!-- 信息流:通知、系统通知、窗口标题、正在播放 —— 自动识别,默认全部放进壁纸大字。
+             每个来源一个开关;新出现的来源会弹提示,也在这里置顶等你决定。 -->
         <div class="msgs-apps-card">
           <div class="msgs-apps-head">
-            <span class="maa-t">社媒</span>
-            <span class="maa-d">已识别到的 app · 关掉后不再出现在壁纸上(消息中心仍可见)</span>
+            <span class="maa-t">信息流</span>
+            <span class="maa-d">自动识别到的来源 · 打开的会在壁纸大字里轮播,关掉只影响壁纸(消息中心仍可见)</span>
+            <label class="feed-auto"><span class="mapp-sw" id="feedAutoSw"></span>新来源自动加入</label>
           </div>
-          <div id="msgsApps" class="msgs-apps"></div>
+          <div id="feedPending" class="feed-pending hidden"></div>
+          <div id="feedNote" class="msgs-apps-empty hidden"></div>
+          <div id="msgsApps" class="feed-groups"></div>
         </div>
         <div id="msgsTabs" class="msgs-tabs"></div>
         <div id="msgsList" class="msgs-list"></div>
@@ -671,6 +841,12 @@
           <label style="display:flex;gap:7px;align-items:center;margin-top:9px;font-size:11px;color:var(--t3)">
             <input type="checkbox" id="rmPublic">
             <span>List it on the Plaza so anyone can ask to join</span>
+          </label>
+          <!-- Each person still decides for themselves whether their own agent
+               joins; this only says whether the room allows agents at all. -->
+          <label style="display:flex;gap:7px;align-items:center;margin-top:6px;font-size:11px;color:var(--t3)">
+            <input type="checkbox" id="rmAgents" checked>
+            <span>Let people connect their agents (each person opts in; public rooms: text only, no files)</span>
           </label>
         </div>
         <div class="setting-group">

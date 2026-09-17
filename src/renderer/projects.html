@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Terse Projects</title>
+  <title>Terse · Code Town</title>
   <!-- 主题跟着主窗口走。和 history/graph 那几页同一行:在样式表之前就把 data-theme
        打上,否则第一帧会闪一下默认配色。 -->
   <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
@@ -60,11 +60,123 @@
     .edit{margin-top:9px;padding:10px;border:1px solid var(--bd,#23262F);border-radius:11px;
       background:rgba(255,255,255,.02)}
     .edit label{display:block;font-size:9.5px;color:var(--t3,#7A8194);margin:6px 0 3px;font-weight:700}
-    .edit input[type=text]{width:100%;box-sizing:border-box;font-size:12px;padding:6px 9px;
+    .edit input[type=text],.edit textarea{width:100%;box-sizing:border-box;font-size:12px;padding:6px 9px;
       border-radius:8px;border:1px solid var(--bd,#23262F);background:#0d0f14;color:var(--t1,#E8ECF5)}
+    /* The description is a paragraph, so it gets a box shaped like one — and it
+       resizes vertically only: a textarea that can be dragged wider breaks the
+       column it sits in. */
+    .edit textarea{font-family:inherit;line-height:1.5;resize:vertical;min-height:64px}
+    .edit #eDescN{text-align:right;margin-top:3px}
     .edit .row{display:flex;gap:8px;align-items:center;margin-top:9px}
     .empty-note{font-size:11px;color:var(--t3,#7A8194);padding:14px 2px;line-height:1.7}
     .size{font-size:9.5px;color:var(--t3,#7A8194);margin-left:auto;font-variant-numeric:tabular-nums}
+
+    /* ── 图片条(最多五张)────────────────────────────────────────────── */
+    .shots{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px}
+    /* 风格选择:一排芯片。锁着的那几个不是灰掉不能点 —— 点得动、看得见、
+       只有发布那一步才拦。人得先看见它好看,才会想为它付钱。 */
+    /* 缺料要看得见:静悄悄地少一块,和功能没做长得一样。 */
+    .citywarn.perm{color:#FF9B84;background:rgba(255,155,132,.10);border-color:rgba(255,155,132,.30);
+                   font-weight:600;line-height:1.55}
+    .citywarn{flex-basis:100%;margin-top:6px;font-size:9.5px;font-weight:700;
+              color:#E8B54A;background:rgba(232,181,74,.10);border:1px solid rgba(232,181,74,.28);
+              border-radius:7px;padding:4px 8px}
+    .styles{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+    .sty{position:relative;font-size:10.5px;padding:5px 9px;border-radius:999px;cursor:pointer;
+         border:1px solid var(--bd,#23262F);background:var(--s2,#15171C);color:var(--t2,#A6ADBB);
+         font-weight:700;white-space:nowrap}
+    .sty:hover{border-color:var(--acc,#C9F03D)}
+    .sty.on{background:var(--acc,#C9F03D);color:#0B0D10;border-color:var(--acc,#C9F03D)}
+    .sty i{font-style:normal;opacity:.62;font-weight:600;margin-left:4px;font-size:9px}
+    .sty.on i{opacity:.72}
+    .styhint{font-size:9.5px;color:var(--t3,#7A8194);margin-top:5px;line-height:1.5}
+    /* 作者署名 + 私信 */
+    .byline{font-size:10px;color:var(--t3,#7A8194);font-weight:700;margin-left:2px}
+    .thread.dm{padding-top:6px}
+    .dmlog{max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+    .dmm{align-self:flex-start;max-width:82%;font-size:11px;line-height:1.5;padding:5px 8px;
+         border-radius:9px 9px 9px 3px;background:var(--s2,#15171C);color:var(--t1,#E6E9F0)}
+    .dmm.me{align-self:flex-end;border-radius:9px 9px 3px 9px;
+            background:var(--acc,#C9F03D);color:#0B0D10;font-weight:600}
+    .shot{position:relative;width:64px;height:44px;border-radius:6px;overflow:hidden;
+      border:1px solid var(--bd);background:#0d0f16}
+    .shot img{width:100%;height:100%;object-fit:cover;display:block}
+    /* 第一张是封面 —— 预览时它先出场,所以标出来 */
+    .shot b{position:absolute;left:0;bottom:0;right:0;font-size:8px;font-weight:800;
+      text-align:center;background:rgba(0,0,0,.62);color:#C9F03D;letter-spacing:.04em}
+    .shot .x{position:absolute;right:2px;top:2px;width:15px;height:15px;line-height:13px;
+      border-radius:50%;border:0;background:rgba(0,0,0,.66);color:#fff;font-size:12px;
+      cursor:pointer;padding:0}
+    .shot .x:hover{background:#e0483d}
+
+    /* ── 点赞 / 收藏 / 评论 ──────────────────────────────────────────── */
+    .social{display:flex;align-items:center;gap:6px;padding:6px 12px 10px}
+    .pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bd);
+      background:transparent;color:var(--t2);border-radius:9999px;padding:3px 10px;
+      font-size:11px;font-weight:700;cursor:pointer;transition:.15s}
+    .pill:hover{background:rgba(255,255,255,.06)}
+    .pill.on{border-color:var(--btn);color:var(--btn);background:rgba(201,240,61,.10)}
+    /* 出错要**看得见**:这个文件上一个 bug(域名不解析)活了一整轮,
+       就是因为错误被咽掉、界面只说"没反应"。悬停能看到服务端的原话。 */
+    .pill.err{border-color:#e0564a;color:#e0564a;background:rgba(224,86,74,.10)}
+    .pill s{text-decoration:none;font-size:12px}
+    .pill i{font-style:normal;font-variant-numeric:tabular-nums}
+    .pill.mini{padding:1px 7px;font-size:10px}
+    .social .views{margin-left:auto;font-size:10px;color:var(--t3)}
+
+    /* ── 评论线程(只有两层)──────────────────────────────────────────── */
+    .thread{border-top:1px solid var(--bd);padding:8px 12px 12px;display:flex;
+      flex-direction:column;gap:8px}
+    .cmt{display:flex;flex-direction:column;gap:4px}
+    /* 回复缩进一次就够 —— 深度封顶在 1,所以永远不会缩成一条看不懂的细线 */
+    .cmt.reply{margin-left:16px;padding-left:8px;border-left:2px solid var(--bd)}
+    .cb{font-size:12px;line-height:1.5;color:var(--t1);white-space:pre-wrap;word-break:break-word}
+    .cm{display:flex;align-items:center;gap:8px}
+    .cm .who{font-size:10px;color:var(--t3)}
+    .lnk{background:none;border:0;padding:0;font-size:10.5px;font-weight:700;
+      color:var(--t3);cursor:pointer}
+    .lnk:hover{color:var(--t1)}
+    .rbox{display:flex;gap:6px;margin-top:2px}
+    .rbox.top{margin-top:4px}
+    .rbox input{flex:1;min-width:0;background:#0d0f16;border:1px solid var(--bd);
+      border-radius:8px;color:var(--t1);font-size:12px;padding:6px 9px;outline:none}
+    .rbox input:focus{border-color:var(--btn)}
+
+    /* ── 代码小镇:壁纸上的第一人称小镇 ─────────────────────────────── */
+    .town{background:radial-gradient(130% 150% at 0% 0%, rgba(201,240,61,.12), transparent 55%), var(--sf,#131519)}
+    .town .state{margin-left:auto;font-size:10px;font-weight:700;color:var(--t3,#7A8194)}
+    .town .state.live{color:var(--btn,#C9F03D)}
+    .town .keys{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .town .keys span{font-size:9.5px;color:var(--t2,#B7BECD);border:1px solid var(--bd,#23262F);
+      border-radius:6px;padding:2px 7px}
+    .town .row{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+    .town .btn{font-size:12px;padding:6px 15px}
+
+    /* ── 挑一块地(发布时)──────────────────────────────────────────── */
+    .pk-back{position:fixed;inset:0;background:rgba(0,0,0,.58);display:flex;align-items:center;
+      justify-content:center;z-index:50;padding:16px}
+    .pk-back[hidden]{display:none}
+    .pk{width:min(520px,100%);max-height:100%;overflow:auto;background:#12141b;box-shadow:0 20px 60px rgba(0,0,0,.6);
+      border:1px solid var(--bd,#23262F);border-radius:16px;padding:14px 15px;box-sizing:border-box}
+    .pk canvas{width:100%;aspect-ratio:1;display:block;border-radius:12px;background:#070a10;
+      cursor:crosshair;margin-top:8px}
+    .pk .info{font-size:11px;min-height:36px;margin:8px 0;line-height:1.55}
+    .pk .info b{color:var(--btn,#C9F03D)}
+    .pk .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+    .pk .btn[disabled]{opacity:.45;cursor:default}
+
+    /* ── 辅助功能授权引导(操控小镇缺权限时自动弹出)───────────────────── */
+    .ax h2{font-size:15px;margin:0 0 6px}
+    .ax ol{margin:10px 0 4px 18px;padding:0;font-size:12px;line-height:1.7}
+    .ax ol li{margin-bottom:4px}
+    .ax ol b{color:var(--btn,#C9F03D)}
+    .ax .st{margin:12px 0;padding:9px 11px;border-radius:10px;font-size:12px;font-weight:700;
+      background:rgba(232,181,74,.12);border:1px solid rgba(232,181,74,.32);color:#E8B54A}
+    .ax .st.ok{background:rgba(201,240,61,.12);border-color:rgba(201,240,61,.4);color:var(--btn,#C9F03D)}
+    .ax .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin-right:7px;
+      animation:axp 1.2s ease-in-out infinite}
+    .ax .st.ok .dot{animation:none}
+    @keyframes axp{0%,100%{opacity:1}50%{opacity:.25}}
   </style>
 </head>
 <body>
@@ -72,11 +184,30 @@
     <button class="back-btn" id="btnBack" title="Back">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg>
-    <h1>Projects<span class="cn" data-i18n="pj_sub">Your work, as particles</span></h1>
+    <span style="font-size:17px">🏘️</span>
+    <h1><span data-i18n="nav_projects">Code Town</span><span class="cn" data-i18n="pj_sub">Your work, as particles</span></h1>
   </div>
 
   <div class="scroll">
+    <!-- 代码小镇 —— 广场那座第一人称的粒子小镇(和 Terse 手机版 / 网页同一座),开成桌面壁纸。
+         「开启」换壁纸;「进去逛」让它接管键盘鼠标,铺满屏幕,Esc 还回来。 -->
+    <div class="card town" id="cardTown">
+      <div class="card-t"><span data-i18n="tw_t">Code Town, on your desktop</span>
+        <span class="state" id="townState"></span></div>
+      <div class="note" data-i18n="tw_d">The plaza's first-person particle town becomes your wallpaper — every published project is a villa, its owner lives there, and other people walk the streets. The “Control town” switch next to the Dynamic Island decides who gets the keyboard and mouse: on, they steer the town; off, your Mac works exactly as usual.</div>
+      <div class="keys">
+        <span data-i18n="tw_k_walk">WASD · walk</span>
+        <span data-i18n="tw_k_look">drag, Q / R or ← → · turn</span>
+        <span data-i18n="tw_k_door">E at a door · enter the villa</span>
+        <span data-i18n="tw_k_esc">Esc · give keyboard and mouse back</span>
+        <span data-i18n="tw_k_pause">switch next to the Dynamic Island · on / off</span>
+      </div>
+      <div class="row">
+        <button class="btn pri" id="btnTown">Turn on</button>
+        <button class="btn" id="btnWalk">Control town</button>
+      </div>
+    </div>
+
     <div class="tabs">
       <button class="tab on" id="tabMine" data-i18n="pj_tab_mine">Mine</button>
       <button class="tab" id="tabPlaza" data-i18n="pj_tab_plaza">Plaza</button>
@@ -104,6 +235,40 @@
       </div>
       <div class="note" data-i18n="pj_plaza_d">Projects other people published. Previewing one costs nothing to run: what travels is the capsule — a title, a 96px cover and a few lines — and your own machine builds the particles from it.</div>
       <div id="plazaList"></div>
+    </div>
+  </div>
+
+  <!-- 发布时挑一块地:小镇上的 120 块地,画在它们真实的位置上 -->
+  <div class="pk-back" id="pkBack" hidden>
+    <div class="pk" role="dialog" aria-modal="true">
+      <div class="card-t"><span id="pkTitle">Pick a plot for your villa</span></div>
+      <div class="note" id="pkNote">Each dot is a plot in Code Town — the closer to the middle, the closer to the market square. Grey rings are free; coloured dots already have a villa. Your plot stays yours: it does not move when other people publish.</div>
+      <canvas id="pkMap" width="1040" height="1040"></canvas>
+      <div class="info" id="pkInfo"></div>
+      <div class="row">
+        <button class="btn" id="pkCancel">Cancel</button>
+        <button class="btn" id="pkAuto">Let the town place it</button>
+        <button class="btn pri" id="pkOk" disabled>Build here</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 操控小镇缺「辅助功能」授权时自动弹出:一步一步怎么开,授权一到自动变绿、自动开始操控 -->
+  <div class="pk-back" id="axBack" hidden>
+    <div class="pk ax" role="dialog" aria-modal="true">
+      <h2 data-i18n="ax_t">Let Terse control the town</h2>
+      <div class="note" data-i18n="ax_d">To steer Code Town with the arrow keys, WASD and drags on the desktop, macOS needs you to give Terse the Accessibility permission. Terse only uses it while “Control town” is on.</div>
+      <ol>
+        <li data-i18n-html="ax_s1">Click <b>Open System Settings</b> below.</li>
+        <li data-i18n-html="ax_s2">In <b>Accessibility</b>, turn on the switch next to <b>Terse</b>.</li>
+        <li data-i18n-html="ax_s3">If Terse is already on the list but this window stays yellow, select Terse, click <b>−</b> to remove it, then click <b>+</b> and choose <b>Terse</b> in Applications. (Every Terse update needs this once.)</li>
+        <li data-i18n-html="ax_s4">Come back — this turns green and the town takes the keyboard by itself.</li>
+      </ol>
+      <div class="st" id="axSt"><span class="dot"></span><span id="axStT">Waiting for permission…</span></div>
+      <div class="row">
+        <button class="btn" id="axLater" data-i18n="ax_later">Later</button>
+        <button class="btn pri" id="axOpen" data-i18n="ax_open">Open System Settings</button>
+      </div>
     </div>
   </div>
 

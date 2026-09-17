@@ -3,14 +3,37 @@ const $$ = s => document.querySelectorAll(s);
 const T = window.terse;
 
 let prevView = 'sessions';
-const views = { msgs: $('#msgsView'), sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView') };
+const views = { gesture: $('#gestureView'), particles: $('#particlesView'), msgs: $('#msgsView'), sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView'), pair: $('#pairView'), category: $('#categoryView'), collab: $('#collabView') };
+// 两级导航:大部分老页面(data-page)现在住在某个分类落地页或协同门户里,不再
+// 各占一个侧栏按钮。子页面点亮它的**父入口**,这张表就是"子页面 → 分类"。
+const CAT_OF = {
+  particles: 'monitor', observe: 'monitor', msgs: 'monitor', stats: 'monitor', connection: 'monitor',
+  doctor: 'optimize', cleanup: 'optimize', rules: 'optimize',
+  mcp: 'secure', alerts: 'secure',
+  prompts: 'library', graph: 'library', history: 'library', team: 'library', farm: 'library',
+};
+// 好友/房间/广场 都从「协同办公」门户进,所以它们点亮的是 collab 那个按钮。
+const COLLAB_PAGES = ['friends', 'room', 'plaza', 'collab'];
+function setSidebarActive(name) {
+  if (name === 'category') return;      // 分类落地页由 openCategory 自己点亮分类按钮
+  const nm = name === 'sessions' ? 'overview' : name;
+  let sel;
+  if (COLLAB_PAGES.includes(nm)) sel = b => b.dataset.page === 'collab';
+  else if (CAT_OF[nm]) sel = b => b.dataset.cat === CAT_OF[nm];
+  else sel = b => b.dataset.page === nm;
+  $$('.sb-item').forEach(b => b.classList.toggle('active', sel(b)));
+}
 function show(name) {
   Object.values(views).forEach(v => v && v.classList.add('hidden'));
   views[name].classList.remove('hidden');
   if (name !== 'settings') prevView = name;
   // keep the sidebar highlight in sync with the visible page
-  const page = ['cleanup', 'settings', 'boost', 'prompts', 'observe', 'mcp', 'rules', 'connection', 'island', 'friends', 'room', 'plaza', 'msgs'].includes(name) ? name : 'overview';
-  $$('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  setSidebarActive(name);
+  // 离开手势页:预览关掉(摄像头要不要一起关由全局开关决定,见 gsClosePreview)
+  if (name !== 'gesture' && window.__gesturePage && window.__gesturePage.running && window.__gsClose) window.__gsClose();
+  // 手势页不管从哪条路显示出来,都先把开关和按钮接上(gestureInit 自己防重复)。
+  // 第一版只在点侧栏时接 —— 别的路显示出这一页时开关是个空按钮,点了什么都不发生
+  if (name === 'gesture') setTimeout(() => { try { gestureInit(); } catch (e) {} }, 0);
 }
 
 // Init
@@ -428,7 +451,12 @@ async function startTrialCheckout(tier, noTrial = false, paymentMethod = null) {
   let auth;
   try { auth = await T.getAuth(); } catch (e) { toast('Auth error: ' + e, true); return; }
   if (!auth.signedIn || !auth.clerkUserId) { toast('Not signed in (signedIn=' + auth.signedIn + ')', true); return; }
-  toast('Fetching checkout URL…');
+  // 微信/支付宝要先在 Stripe 那边开发票才有二维码，比刷卡慢好几秒。说清楚在等什么，
+  // 用户就不会以为卡死了去连点 —— 连点只会生成更多待付发票。
+  const isChinaPay = paymentMethod === 'wechat_pay' || paymentMethod === 'alipay';
+  toast(isChinaPay
+    ? (paymentMethod === 'wechat_pay' ? '正在生成微信支付二维码，请稍候…' : '正在生成支付宝付款页，请稍候…')
+    : 'Fetching checkout URL…');
   const API_BASE = 'https://www.terseai.org';
   try {
     const body = { tier, clerkUserId: auth.clerkUserId, clerkUserEmail: auth.email };
@@ -552,6 +580,9 @@ window.addEventListener('focus', () => {
   if (T.getAuth && T.verifyLicense) {
     T.getAuth().then(auth => {
       if (auth.signedIn && auth.clerkUserId) {
+        // One person, one identity: rooms and friends use the account id too, so
+        // the Plaza, DMs, friends and rooms — here and on the phone — all agree.
+        window.TerseRooms?.adoptIdentity?.(auth.clerkUserId);
         T.verifyLicense(auth.clerkUserId).then(() => { updateLicenseBanner(); checkPaywall(); });
         // Sync Stripe-purchased pets from server
         if (T.syncPetPurchases) T.syncPetPurchases();
@@ -1585,6 +1616,73 @@ function renderProPreviewBanner() {
    —— 详见 messages.rs 里那段说明:发错人是收不回来的。 */
 let msgsAll = [], msgsFilter = '*', msgsTimer = null;
 
+/* ── Terse 自己的消息 ───────────────────────────────────────────────────────
+   这一页原本只汇总**别的 app** 的消息。可是广场一有私信和好友申请,人就会在两个
+   地方找消息:陌生人来的私信在项目页里、好友申请在房间里、微信在这儿 —— 三个
+   收件箱,哪个都不完整。
+
+   所以 Terse 自己的消息也进这一页,而且是**置顶的两类**:「私信」和「好友申请」。
+   分类不是装饰:一条陌生人的搭讪和一条同事的房间发言,该被区别对待,合在一起
+   只会让人两样都懒得看。 */
+const DM_API_URL = (window.TERSE_API || 'https://www.terseai.org') + '/api/cloud/dm';
+let dmThreads = [], dmUnread = 0, friendReqs = [];
+
+/** 身份头。和广场、房间同一套 —— 本机那串 Clerk id。 */
+async function cloudHeaders() {
+  try {
+    const lic = await (T.getLicense ? T.getLicense() : null);
+    const id = (lic && lic.clerkUserId) || '';
+    return id ? { 'x-terse-identity': id } : {};
+  } catch (e) { return {}; }
+}
+
+/* ── 房间聊天,搬到主界面 ──────────────────────────────────────────────────
+   房间的聊天原来**只能在房间窗口里开**。可"有人跟我说话了"这件事,和私信、好友申请
+   是同一类事 —— 它们应该在同一个地方等你,而不是分散在三个窗口里让人自己去巡。
+   所以房间也进这一页,和私信、好友申请并列。 */
+let roomMsgs = [], roomUnread = 0, roomName = '';
+const LS_ROOM_SEEN = 'terse-room-seen-seq';
+
+/** 已读到哪一条。**按 seq 记**,不是按条数:条数会因为服务端裁剪历史而漂,
+ *  而 seq 是单调的,漂不了。 */
+function roomSeen() { try { return +(localStorage.getItem(LS_ROOM_SEEN) || 0) || 0; } catch (e) { return 0; } }
+function roomMarkSeen() {
+  const top = roomMsgs.reduce((m, x) => Math.max(m, +x.seq || 0), 0);
+  try { localStorage.setItem(LS_ROOM_SEEN, String(top)); } catch (e) {}
+  roomUnread = 0;
+}
+
+async function roomInboxRefresh() {
+  const R = window.TerseRooms;
+  if (!R || !R.inRoom || !R.inRoom()) { roomMsgs = []; roomUnread = 0; roomName = ''; return; }
+  try {
+    const snap = await R.snapshot();
+    roomMsgs = ((snap && (snap.messages || snap.msgs)) || []).slice(-40);
+    roomName = (snap && (snap.name || (snap.room && snap.room.name))) || '房间';
+    const seen = roomSeen();
+    // 自己发的不算未读 —— 角标是"别人找你",不是"你说过话"
+    const me = (snap && snap.you) || '';
+    roomUnread = roomMsgs.filter((m) => (+m.seq || 0) > seen && m.member_id !== me).length;
+  } catch (e) { /* 房间不通就当没有,不编内容 */ }
+}
+
+async function terseInboxRefresh() {
+  try {
+    const r = await fetch(DM_API_URL, { headers: await cloudHeaders() });
+    const j = await r.json();
+    dmThreads = (j && j.threads) || [];
+    dmUnread = (j && j.unread) || 0;
+  } catch (e) { /* 云不通就当作没有新私信,不编内容 */ }
+  await roomInboxRefresh();
+  try {
+    const R = window.TerseRooms;
+    const j = R && R.listFriends ? await R.listFriends() : null;
+    // 只留**等着我处理**的那些。已经是好友的不该在收件箱里躺着。
+    friendReqs = ((j && (j.incoming || j.requests)) || []).filter((x) => x && x.status !== 'accepted');
+  } catch (e) { /* 同上 */ }
+}
+
+
 function msgFmtTime(ts) {
   const d = new Date((ts || 0) * 1000), n = new Date();
   const p = (x) => String(x).padStart(2, '0');
@@ -1597,7 +1695,12 @@ function msgsRenderTabs() {
   if (!host) return;
   const counts = new Map();
   msgsAll.forEach(m => counts.set(m.app_name, (counts.get(m.app_name) || 0) + 1));
-  const tabs = [['*', '全部', msgsAll.length]]
+  // Terse 自己的两类**排在最前面**:它们是这个 app 自己的事,不该混在一堆
+  // 第三方 app 名字中间按数量排序 —— 那样人永远找不到它们。
+  const tabs = [['*', '全部', msgsAll.length + dmThreads.length + friendReqs.length + roomUnread]]
+    .concat(roomMsgs.length ? [['@room', roomName || '房间', roomUnread]] : [])
+    .concat(dmThreads.length ? [['@dm', '私信', dmUnread || dmThreads.length]] : [])
+    .concat(friendReqs.length ? [['@friend', '好友申请', friendReqs.length]] : [])
     .concat([...counts.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => [n, n, c]));
   host.innerHTML = tabs.map(([key, label, n]) =>
     `<div class="msgs-tab${key === msgsFilter ? ' on' : ''}" data-k="${String(key).replace(/"/g, '&quot;')}">`
@@ -1605,6 +1708,101 @@ function msgsRenderTabs() {
   host.querySelectorAll('.msgs-tab').forEach(t => t.addEventListener('click', () => {
     msgsFilter = t.dataset.k; msgsRenderTabs(); msgsRenderList();
   }));
+}
+
+const esc0 = (x) => String(x == null ? '' : x)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** 房间聊天:一条一行,底下一个输入框,和在房间窗口里说话是同一条路。
+ *
+ *  打开这一页就等于**读过了** —— 角标要的是"还有没有人在等我",不是"这里一共有多少条"。 */
+function msgsRenderRoom(host) {
+  $('#msgsEmpty')?.classList.toggle('hidden', roomMsgs.length > 0);
+  const seen = roomSeen();
+  host.innerHTML = roomMsgs.slice().reverse().map((m) => `
+    <div class="mrow${(+m.seq || 0) > seen ? ' fresh' : ''}">
+      <div class="mrow-top">
+        <span class="mrow-app">${esc0(roomName || '房间')}</span>
+        <span class="mrow-time">${msgFmtTime(m.at || m.ts)}</span>
+      </div>
+      <div class="mrow-sender">${esc0(m.name || m.author || '某个人')}</div>
+      <div class="mrow-body">${esc0(m.body || m.text || '')}</div>
+    </div>`).join('')
+    + `<div class="mrow"><div class="mrow-actions">
+         <input type="text" id="roomSay" placeholder="对房间说…" autocomplete="off">
+         <button id="roomSend">发送</button></div></div>`;
+  const input = host.querySelector('#roomSay');
+  const send = async () => {
+    const body = (input.value || '').trim();
+    if (!body) return;
+    input.value = '';
+    try {
+      await window.TerseRooms.sendMessage(body);
+      await roomInboxRefresh(); roomMarkSeen(); msgsRenderTabs(); msgsRenderList();
+      msgsBadgePaint();
+    } catch (e) { input.value = body; }
+  };
+  host.querySelector('#roomSend')?.addEventListener('click', send);
+  input?.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') send(); });
+  // 看过就算读过
+  roomMarkSeen(); msgsBadgePaint();
+}
+
+/** 私信:一条线一行,点开就地回。 */
+function msgsRenderDm(host) {
+  $('#msgsEmpty')?.classList.toggle('hidden', dmThreads.length > 0);
+  host.innerHTML = dmThreads.map((t, i) => `
+    <div class="mrow" data-dm="${esc0(t.peer)}" data-i="${i}">
+      <div class="mrow-top">
+        <span class="mrow-app">私信</span>
+        ${t.unread ? `<span class="mrow-room">${t.unread} 未读</span>` : ''}
+        <span class="mrow-time">${msgFmtTime(t.at)}</span>
+      </div>
+      <div class="mrow-sender">${esc0(t.name || '广场上的某个人')}</div>
+      <div class="mrow-body">${esc0(t.last ? t.last.body : '')}</div>
+      <div class="mrow-actions">
+        <input type="text" placeholder="回复…" autocomplete="off">
+        <button>发送</button>
+      </div>
+    </div>`).join('');
+  host.querySelectorAll('.mrow').forEach((row) => {
+    const peer = row.dataset.dm;
+    const input = row.querySelector('input');
+    const send = async () => {
+      const body = input.value.trim();
+      if (!body) return;
+      input.value = '';
+      try {
+        await fetch(DM_API_URL + '/' + encodeURIComponent(peer), {
+          method: 'POST',
+          headers: Object.assign({ 'content-type': 'application/json' }, await cloudHeaders()),
+          body: JSON.stringify({ body, author: await displayName() }),
+        });
+        await terseInboxRefresh(); msgsRenderTabs(); msgsRenderList();
+      } catch (e) { input.value = body; }
+    };
+    row.querySelector('button')?.addEventListener('click', send);
+    input?.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') send(); });
+  });
+}
+
+/** 好友申请:两个按钮的事,不该让人跑去房间里找。 */
+function msgsRenderFriends(host) {
+  $('#msgsEmpty')?.classList.toggle('hidden', friendReqs.length > 0);
+  host.innerHTML = friendReqs.map((f, i) => `
+    <div class="mrow" data-fr="${esc0(f.id)}" data-i="${i}">
+      <div class="mrow-top"><span class="mrow-app">好友申请</span>
+        <span class="mrow-time">${msgFmtTime(f.created_at || f.at)}</span></div>
+      <div class="mrow-sender">${esc0(f.name || f.email || '某个人')}</div>
+      <div class="mrow-body">想加你为好友。</div>
+      <div class="mrow-actions"><button data-a="yes">接受</button><button data-a="no">忽略</button></div>
+    </div>`).join('');
+  host.querySelectorAll('.mrow').forEach((row) => {
+    row.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+      try { await window.TerseRooms?.respondFriend?.(row.dataset.fr, b.dataset.a === 'yes'); } catch (e) {}
+      await terseInboxRefresh(); msgsRenderTabs(); msgsRenderList();
+    }));
+  });
 }
 
 /** 哪些 app 能直接回复 —— 和 messages.rs 里的配方表一一对应。
@@ -1616,6 +1814,9 @@ const canReply = (id) => REPLYABLE.includes(String(id || '').toLowerCase());
 function msgsRenderList() {
   const host = $('#msgsList');
   if (!host) return;
+  if (msgsFilter === '@dm') return msgsRenderDm(host);
+  if (msgsFilter === '@friend') return msgsRenderFriends(host);
+  if (msgsFilter === '@room') return msgsRenderRoom(host);
   const list = msgsAll.filter(m => msgsFilter === '*' || m.app_name === msgsFilter);
   $('#msgsEmpty')?.classList.toggle('hidden', list.length > 0);
   const esc = (x) => String(x == null ? '' : x)
@@ -1681,41 +1882,136 @@ function msgsRenderList() {
   });
 }
 
-/** 社媒面板:检测到的 app + 每个的壁纸开关。 */
-async function msgsRenderApps() {
-  const host = $('#msgsApps');
-  if (!host) return;
+/* ── 信息流 ────────────────────────────────────────────────────────────────
+   壁纸大字不只放聊天消息了:每个 app 的通知、系统通知、每个窗口的标题、正在播放的
+   音乐和视频,Rust 那边(feeds.rs)一直在自动识别。第一次跑时找到的全部默认打开;
+   之后冒出来的新来源会弹提示,也在这里置顶,等人说一声要不要。 */
+const FEED_KIND = { notif: '通知', system: '系统通知', window: '窗口', media: '正在播放 · 视频 / 音乐' };
+const FEED_KIND_SHORT = { notif: '通知', system: '系统', window: '窗口', media: '播放' };
+
+/** 旧的"社媒"面板(只有聊天 app)—— Windows 端还没有信息流时用它。 */
+async function msgsRenderAppsLegacy(host) {
   let apps = [];
   try { apps = await (T.messagesDetectedApps ? T.messagesDetectedApps() : []); } catch (e) { apps = []; }
   if (!Array.isArray(apps) || !apps.length) {
     host.innerHTML = '<div class="msgs-apps-empty">还没识别到社交 app。收到消息后会自动出现在这里。</div>';
     return;
   }
-  const esc = (x) => String(x == null ? '' : x)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  host.innerHTML = apps.map((a, i) => `
+  host.innerHTML = '<div class="msgs-apps">' + apps.map((a, i) => `
     <div class="mapp${a.on_wallpaper ? '' : ' off'}" data-i="${i}">
-      <span class="mapp-n" title="${esc(a.app_id)}">${esc(a.app_name)}</span>
+      <span class="mapp-n" title="${esc0(a.app_id)}">${esc0(a.app_name)}</span>
       <span class="mapp-c">${a.count}</span>
       <span class="mapp-sw${a.on_wallpaper ? ' on' : ''}"></span>
-    </div>`).join('');
-
+    </div>`).join('') + '</div>';
   host.querySelectorAll('.mapp').forEach(el => {
     const a = apps[+el.dataset.i];
-    const sw = el.querySelector('.mapp-sw');
-    sw.addEventListener('click', async () => {
-      const next = !sw.classList.contains('on');
-      // 先动 UI 再写盘 —— 开关必须立刻有反应
-      sw.classList.toggle('on', next);
-      el.classList.toggle('off', !next);
-      try { await T.messagesSetAppOnWallpaper(a.app_id, next); }
-      catch (e) {                       // 写失败就把开关退回去,别让界面撒谎
-        sw.classList.toggle('on', !next);
-        el.classList.toggle('off', next);
-      }
+    wireSwitch(el, (next) => T.messagesSetAppOnWallpaper(a.app_id, next));
+  });
+}
+
+/** 开关:先动 UI 再写盘(必须立刻有反应),写失败就退回去,别让界面撒谎。 */
+function wireSwitch(el, save) {
+  const sw = el.querySelector('.mapp-sw');
+  sw.addEventListener('click', async () => {
+    const next = !sw.classList.contains('on');
+    sw.classList.toggle('on', next);
+    el.classList.toggle('off', !next);
+    el.querySelector('.mapp-new')?.remove();
+    try { await save(next); }
+    catch (e) { sw.classList.toggle('on', !next); el.classList.toggle('off', next); }
+  });
+}
+
+async function msgsRenderApps() {
+  const host = $('#msgsApps');
+  if (!host) return;
+  if (!T.feedsSources) return msgsRenderAppsLegacy(host);
+  let st = null;
+  try { st = await T.feedsSources(); } catch (e) { st = null; }
+  if (!st) return msgsRenderAppsLegacy(host);
+  const sources = Array.isArray(st.sources) ? st.sources : [];
+
+  const auto = $('#feedAutoSw');
+  if (auto) {
+    auto.classList.toggle('on', !!st.autoAdd);
+    if (!auto.dataset.wired) {
+      auto.dataset.wired = '1';
+      auto.parentElement.addEventListener('click', async () => {
+        const next = !auto.classList.contains('on');
+        auto.classList.toggle('on', next);
+        try { await T.feedsSetAutoAdd(next); } catch (e) { auto.classList.toggle('on', !next); }
+      });
+    }
+  }
+
+  // 窗口来源要辅助功能权限才读得到标题 —— 没给就明说,而不是一个空的分组
+  const note = $('#feedNote');
+  if (note) {
+    note.textContent = st.accessibility ? '' : '窗口标题要「辅助功能」权限才读得到(上面清单里去设置)。';
+    note.classList.toggle('hidden', !!st.accessibility);
+  }
+
+  // 等人决定的新来源置顶
+  const pend = sources.filter((s) => s.pending);
+  const ph = $('#feedPending');
+  if (ph) {
+    ph.classList.toggle('hidden', !pend.length);
+    ph.innerHTML = pend.length ? `
+      <div class="fp-head">发现 ${pend.length} 个新信息流${st.autoAdd ? ' · 已先放进壁纸' : ''}
+        <button class="ob-btn ghost" data-all="keep">都保留</button></div>
+      ${pend.map((s, i) => `
+        <div class="fp-row" data-i="${i}">
+          <span class="fp-k">${esc0(FEED_KIND_SHORT[s.kind] || '')}</span>
+          <span class="fp-n" title="${esc0(s.app_id)}">${esc0(s.name)}</span>
+          <button class="yes" data-on="1">加入壁纸</button><button data-on="0">不要</button>
+        </div>`).join('')}` : '';
+    ph.querySelector('[data-all]')?.addEventListener('click', async () => {
+      try { await T.feedsResolvePending(null); } catch (e) {}
+      msgsRenderApps();
+    });
+    ph.querySelectorAll('.fp-row').forEach((row) => {
+      const s = pend[+row.dataset.i];
+      row.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+        try { await T.feedsSetSource(s.key, b.dataset.on === '1'); } catch (e) {}
+        msgsRenderApps();
+      }));
+    });
+  }
+
+  if (!sources.length) {
+    host.innerHTML = '<div class="msgs-apps-empty">正在识别…窗口、通知、正在播放的内容出现后会自动列在这里。</div>';
+    return;
+  }
+  const groups = ['notif', 'system', 'window', 'media']
+    .map((k) => [k, sources.filter((s) => s.kind === k)])
+    .filter(([, list]) => list.length);
+  host.innerHTML = groups.map(([k, list]) => `
+    <div class="feed-g">
+      <div class="feed-g-t">${esc0(FEED_KIND[k] || k)}<b>${list.filter((s) => s.on).length}/${list.length}</b></div>
+      <div class="msgs-apps">${list.map((s) => `
+        <div class="mapp${s.on ? '' : ' off'}" data-k="${esc0(s.key)}">
+          <span class="mapp-n" title="${esc0(s.app_id)}">${esc0(s.name)}</span>
+          ${s.pending ? '<span class="mapp-new">新</span>' : ''}
+          <span class="mapp-sw${s.on ? ' on' : ''}"></span>
+        </div>`).join('')}</div>
+    </div>`).join('');
+  host.querySelectorAll('.mapp').forEach((el) => {
+    wireSwitch(el, async (next) => {
+      await T.feedsSetSource(el.dataset.k, next);
+      // 拨过开关就等于回答了提示,置顶那条"待决定"要跟着消失
+      if (ph && !ph.classList.contains('hidden')) msgsRenderApps();
     });
   });
 }
+
+/* 新来源一冒出来就刷新这一页的待决定列表 —— 弹的提示关掉了,问题还在这儿。 */
+try {
+  if (window.__TAURI__ && window.__TAURI__.event) {
+    window.__TAURI__.event.listen('feeds-new', () => {
+      if (!$('#msgsView')?.classList.contains('hidden')) msgsRenderApps();
+    });
+  }
+} catch (e) {}
 
 /** 权限清单。能真检测的只报真状态(完全磁盘访问、辅助功能);
  *  微信通知样式那一项检测不可靠,所以标成"建议",给深链让人自己看一眼,
@@ -1778,13 +2074,59 @@ async function msgsRefresh() {
                   || (st && st.available === false && st.reason !== 'no_database');
     $('#msgsPerm')?.classList.remove('hidden');   // 清单常驻:随时能看状态、去设置
     msgsRenderPerms(report);
-    if (st && !st.available) { msgsAll = []; msgsRenderTabs(); msgsRenderList(); msgsRenderApps(); return; }
+    if (st && !st.available) {
+      // 读不到别的 app(没给权限)**不该连带把 Terse 自己的消息也藏了** ——
+      // 那是两件事,而混在一起的后果是:没给权限的人永远收不到私信。
+      msgsAll = [];
+      await terseInboxRefresh();
+      msgsRenderTabs(); msgsRenderList(); msgsRenderApps();
+      const b0 = $('#sbMsgBadge');
+      const n0 = dmUnread + friendReqs.length;
+      if (b0) { b0.textContent = String(n0); b0.classList.toggle('hidden', !n0); }
+      return;
+    }
     const list = await T.messagesRecent(120, true);
     msgsAll = Array.isArray(list) ? list : [];
+    await terseInboxRefresh();
     msgsRenderTabs(); msgsRenderList(); msgsRenderApps();
-    const b = $('#sbMsgBadge');
-    if (b) { b.textContent = String(msgsAll.length); b.classList.toggle('hidden', !msgsAll.length); }
+    msgsBadgePaint();
   } catch (e) { /* 读不到就保持空,不编内容 */ }
+}
+
+/** 侧栏那个数字。
+ *  **未读优先**:一条没人回的私信、一句房间里刚说的话,比二十条早就读过的 app 消息
+ *  要紧得多。 */
+function msgsBadgePaint() {
+  const b = $('#sbMsgBadge');
+  if (!b) return;
+  const n = msgsAll.length + dmUnread + friendReqs.length + roomUnread;
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.classList.toggle('hidden', !n);
+  // 有人在等你回话的时候,角标是**热**的;只是一堆没读的 app 通知就保持安静。
+  b.classList.toggle('hot', (dmUnread + friendReqs.length + roomUnread) > 0);
+}
+
+/** 不开消息页也要知道有没有人找你。
+ *
+ *  原来角标只在**打开消息页**的时候才算一次 —— 也就是说,你不点进去就永远看不到
+ *  有新消息,而那正是角标存在的全部意义。这里每 30 秒轻轻问一次云:只拉计数那几个
+ *  接口,不碰别的 app 的消息(那个要权限、也贵)。 */
+let inboxPollTimer = null;
+async function inboxPollStart() {
+  const tick = async () => {
+    try { await terseInboxRefresh(); msgsBadgePaint(); } catch (e) {}
+  };
+  await tick();
+  clearInterval(inboxPollTimer);
+  inboxPollTimer = setInterval(tick, 30000);
+}
+
+/* 角标要在**没人点进消息页**的时候也是准的 —— 那才是角标的用处。
+   DOM 一就绪就开始轻轻问,和打开哪一页无关。 */
+if (typeof document !== 'undefined') {
+  const startPoll = () => { try { inboxPollStart(); } catch (e) {} };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startPoll, { once: true });
+  else setTimeout(startPoll, 0);
 }
 
 let msgsWired = false;
@@ -1799,8 +2141,139 @@ function msgsInit() {
   msgsTimer = setInterval(msgsRefresh, 10000);
 }
 
+/* ── 手势控制(Pro)───────────────────────────────────────────────────────
+   页面本身免费用户也能进来看(PRO_PREVIEW_PAGES),真正的闸在「开启」和「试一试」那一下;
+   Rust 的 hands_start / hands_set_enabled 也各查一次许可。 */
+const gsInvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
+const gsTr = (k, fb) => { try { const v = window.t && window.t(k); return v && v !== k ? v : fb; } catch { return fb; } };
+function gsStatus(s) {
+  const el = $('#gsStatus'); if (!el || !s) return;
+  const live = !!s.fps || s.status === 'running';
+  const denied = s.status === 'denied' || s.status === 'restricted';
+  const txt = s.fps ? `● ${Math.round(s.fps)} fps · ${Math.round(s.ms || 0)} ms`
+    : ({ running: gsTr('gs_st_running', '● Camera on'), starting: gsTr('gs_st_starting', 'Starting camera…'),
+         asking: gsTr('gs_st_asking', 'Waiting for you to allow the camera…'),
+         'needs-permission': gsTr('gs_st_needs', 'Camera permission needed — flip the switch to ask again'),
+         denied: gsTr('gs_st_denied', 'Camera blocked — open System Settings and allow Terse'),
+         restricted: gsTr('gs_st_denied', 'Camera blocked — open System Settings and allow Terse'),
+         timeout: gsTr('gs_st_timeout', 'No answer to the camera prompt'),
+         'no-camera': gsTr('gs_st_nocam', 'No camera found'), paused: 'paused',
+         stopped: gsTr('gs_off', 'Camera off'), pro: gsTr('gs_off', 'Camera off') }[s.status] || String(s.status || ''));
+  el.textContent = txt;
+  el.classList.toggle('on', live);
+  $('#gsFix')?.classList.toggle('hidden', !denied);
+}
+/* 摄像头权限:用户每次打开开关 / 点「试一试」都先查一遍 ——
+   已允许 → 直接开;没问过 → 弹系统框;被拒过(多半是更新后旧记录对不上新签名)→
+   清掉 Terse 自己的那条记录再问一次(系统会重新弹框);还被拒 → 显示「打开系统设置」。
+   第一版不查,新 build 装上后被静默拒绝,用户只看到"摄像头未开启",没有任何提示。 */
+async function gsEnsureCamera() {
+  let st = 'unknown';
+  try { st = await gsInvoke('hands_camera_status'); } catch {}
+  gsLog('camera status ' + st);
+  if (st === 'authorized') return true;
+  gsStatus({ status: 'asking' });
+  let r = 'error', didReset = st !== 'notDetermined';
+  try { r = await gsInvoke('hands_camera_request', { reset: didReset }); } catch (e) { r = String(e); }
+  gsLog('camera request (reset=' + didReset + ') -> ' + r);
+  // 查到"没问过",请求却立刻被拒:TCC 里还躺着一条旧签名的"允许"(系统设置里显示的那条),
+  // 对不上新程序,系统既不弹框也不放行。清掉 Terse 自己那条记录再问一次 —— 这次一定会弹框。
+  if (r !== 'authorized' && r !== 'timeout' && !didReset) {
+    try { r = await gsInvoke('hands_camera_request', { reset: true }); } catch (e) { r = String(e); }
+    gsLog('camera request (reset=true, retry) -> ' + r);
+  }
+  if (r === 'authorized') return true;
+  gsStatus({ status: r === 'timeout' ? 'timeout' : 'denied' });
+  return false;
+}
+async function gsOpenPreview() {
+  const p = window.__gesturePage; if (!p) return;
+  await p.start();
+  $('#gsTry')?.classList.add('hidden'); $('#gsStop')?.classList.remove('hidden');
+  if (!(await gsEnsureCamera())) return;   // 预览照样开着(没有手也能看),摄像头等权限
+  gsStatus({ status: 'starting' });
+  try { gsStatus({ status: await gsInvoke('hands_start') }); } catch (e) { gsStatus({ status: String(e) }); }
+}
+async function gsClosePreview() {
+  const p = window.__gesturePage; if (!p) return;
+  p.stop();
+  $('#gsTry')?.classList.remove('hidden'); $('#gsStop')?.classList.add('hidden');
+  // 全局开关没开:预览关了就把摄像头也关掉(灯灭)
+  try { if (!(await gsInvoke('hands_get_enabled'))) { await gsInvoke('hands_stop'); gsStatus({ status: 'stopped' }); } } catch {}
+}
+window.__gsClose = gsClosePreview;
+function deskStatus(s) {
+  const el = $('#deskStatus'); if (!el || !s) return;
+  const needAx = s.enabled && s.trusted === false;
+  el.textContent = s.error ? String(s.error)
+    : !s.enabled ? gsTr('desk_off', 'Off')
+    : needAx ? gsTr('desk_need_ax', 'Needs Accessibility permission')
+    : gsTr('desk_on', '● On — make a fist over a window');
+  el.classList.toggle('on', !!s.enabled && !needAx && !s.error);
+  $('#deskAx')?.classList.toggle('hidden', !needAx);
+}
+let gsWired = false;
+const gsLog = (m) => { try { gsInvoke('debug_log', { msg: '[gesture] ' + m }); } catch {} };
+async function gestureInit() {
+  const root = $('#gestureView'); if (!root) return;
+  /* 先把开关和按钮的响应挂好,**再**去加载预览模块。
+     第一版把这些都放在 import() 之后:主界面当时没有 importmap,壁纸引擎里的
+     `import 'three'` 解析失败 → 整个模块加载失败 → 按钮一个都没挂上,开关只是看起来开了,
+     摄像头从来没起过(用户实测"点了没反应")。现在模块坏了,开关也照样能开摄像头,
+     而且失败原因会显示在状态栏、写进 terse 日志。 */
+  if (!gsWired) {
+    gsWired = true;
+    // 实时状态:摄像头启动 / 被拒 / 帧率 —— 不依赖预览模块
+    window.__TAURI__?.event?.listen?.('hand-status', (ev) => gsStatus(ev.payload || {}));
+    $('#gsTry')?.addEventListener('click', () => proGuard('pro_gate_gesture', gsOpenPreview));
+    $('#gsStop')?.addEventListener('click', gsClosePreview);
+    $('#gsFix')?.addEventListener('click', () => gsInvoke('hands_open_camera_settings').catch(() => {}));
+    // 粒子光标控制桌面(Pro):需要辅助功能权限 —— 没有就显示「允许辅助功能」按钮
+    $('#deskAx')?.addEventListener('click', () => gsInvoke('desk_open_ax_settings').catch(() => {}));
+    $('#deskEnable')?.addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      gsLog('desk toggle -> ' + on);
+      if (on && !(await isPro())) { e.target.checked = false; openPaywall(TT('pro_gate_gesture')); return; }
+      if (on && !(await gsInvoke('hands_get_enabled').catch(() => false))) {
+        // 光标要靠手势驱动:先把手势控制也打开(会走一遍摄像头权限)
+        $('#gsEnable').checked = true; $('#gsEnable').dispatchEvent(new Event('change'));
+      }
+      try { deskStatus(await gsInvoke('desk_set_enabled', { on })); }
+      catch (err) { e.target.checked = !on; deskStatus({ error: String(err) }); }
+    });
+    $('#gsEnable')?.addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      gsLog('toggle clicked -> ' + on);   // 第一行就记:以后"到底有没有点到"一眼就能看出来
+      if (on && !(await isPro())) { e.target.checked = false; openPaywall(TT('pro_gate_gesture')); return; }
+      if (on && !(await gsEnsureCamera())) { e.target.checked = false; return; }
+      gsStatus({ status: on ? 'starting' : 'stopped' });
+      try { gsStatus({ status: await gsInvoke('hands_set_enabled', { on }) }); gsLog('enabled=' + on); }
+      catch (err) { e.target.checked = !on; gsStatus({ status: String(err) }); gsLog('set_enabled failed: ' + err); }
+    });
+    const sens = $('#gsSens');
+    if (sens) {
+      try { sens.value = localStorage.getItem('terse-gesture-sens') || '1'; } catch {}
+      sens.addEventListener('input', () => { try { localStorage.setItem('terse-gesture-sens', sens.value); } catch {} });
+    }
+  }
+  if (!window.__gesturePage) {
+    try {
+      const mod = await import('./gesture-page.js');
+      const listen = window.__TAURI__?.event?.listen || (async () => () => {});
+      window.__gesturePage = mod.mount(root, { listen, t: gsTr, onStatus: gsStatus });
+    } catch (err) {
+      gsStatus({ status: 'preview failed to load: ' + (err && err.message || err) });
+      gsLog('preview import failed: ' + (err && err.message || err));
+    }
+  }
+  try { $('#gsEnable').checked = !!(await gsInvoke('hands_get_enabled')); } catch {}
+  try { const on = !!(await gsInvoke('desk_get_enabled')); $('#deskEnable').checked = on; deskStatus({ enabled: on, trusted: on ? await gsInvoke('desk_trust') : undefined }); } catch {}
+  try { gsStatus(await gsInvoke('hands_status')); } catch {}
+}
+
 const SB_ACTIONS = {
   overview: () => show('sessions'),
+  gesture:  () => { show('gesture'); gestureInit(); },
   cleanup:  () => { show('cleanup'); if (!clState.scanned) clScan(); },
   alerts:   () => T.navigateToAlerts && T.navigateToAlerts(),
   settings: () => show('settings'),
@@ -1816,6 +2289,9 @@ const SB_ACTIONS = {
   prompts:  () => { show('prompts'); promptsInit(); },
   observe:  () => { show('observe'); observeInit(); },
   msgs:     () => { show('msgs'); msgsInit(); },
+  pair:     () => { show('pair'); drawPairSiteQr(); phoneLinkPage && phoneLinkPage.refresh(); },
+  collab:   () => { show('collab'); collabInit(); },
+  particles:() => { show('particles'); pmInit(); },
   mcp:      () => { show('mcp'); mcpInit(); },
   rules:    () => { show('rules'); rulesInit(); },
   connection: () => { show('connection'); connInit(); },
@@ -1836,6 +2312,11 @@ const SB_ACTIONS = {
 // BLOCKED:统计和团队这两页,"看" 本身就是那个功能。开放浏览等于白送,
 //   所以仍然拦下来,只是把文案换成针对这一个功能的说明。
 const PRO_PREVIEW_PAGES = {
+  // 粒子模式:让人先进来看见自己的窗口列在这儿,真正的闸在「开启」那一下。
+  // 门口就拦住的话,他连这个功能是干什么的都不知道。
+  particles:  'pro_gate_particles',
+  // 手势:页面和手势说明谁都能看;「开启」和「试一试」才要 Pro
+  gesture:    'pro_gate_gesture',
   boost:      'pro_gate_boost',
   cleanup:    'pro_gate_cleanup',
   connection: 'pro_gate_connection',
@@ -1844,8 +2325,10 @@ const PRO_BLOCKED_PAGES = {
   team:       'pro_gate_team',
   stats:      'pro_gate_stats',
 };
-$$('.sb-item').forEach(b => b.addEventListener('click', () => {
-  const page = b.dataset.page;
+// 导航到某个页面。原来这段逻辑内联在侧栏 click 里;抽出来是因为分类落地页里
+// 那些平铺按钮也要走同一条路 —— 一样的 Pro 闸门、一样的横幅,不能有第二套。
+function goToPage(page) {
+  if (!page) return;
   // 免费用户点 Pro 页:让他进去看。
   //
   // 以前这里直接弹付费墙、根本不导航 —— 于是"这个功能到底给我什么"永远没有
@@ -1857,26 +2340,80 @@ $$('.sb-item').forEach(b => b.addEventListener('click', () => {
   proPreviewPage = (free && PRO_PREVIEW_PAGES[page]) ? page : null;
   // 试用期里(此时 is-free 还没挂上)真正打开过的 Pro 页面 —— 到期时用得上
   if (!free) markTrialFeatureUsed(page);
-  // Same-frame feedback: highlight instantly; for cross-page navigations also
-  // dim the pane so the click visibly registered before the new page loads.
-  if (page !== 'pals') $$('.sb-item').forEach(x => x.classList.toggle('active', x === b));
   if (['doctor', 'stats', 'team', 'alerts', 'history', 'farm', 'wallpaper', 'graph'].includes(page)) document.body.classList.add('navigating');
   SB_ACTIONS[page]?.();
-  // 页面切换是同步的,等一帧让新页可见再挂横幅
+  // 页面切换是同步的,等一帧让新页可见再挂横幅。in-pane 的页面由 show() 里的
+  // setSidebarActive 点亮父入口;开新窗口的页面不切换主窗内容,高亮保持不动。
   setTimeout(renderProPreviewBanner, 0);
+}
+
+// 打开一个分类的落地页:先把这一类的按钮铺成网格,再点亮那个分类按钮。
+const CATEGORIES = {
+  monitor: { label: '监控', sub: '实时盯着每个 agent', items: [
+    { page: 'particles',  label: '粒子', emoji: '✦', pro: true, d: '把 agent 窗口变成桌面粒子' },
+    { page: 'observe',    label: '观察', emoji: '👁', d: '逐步追踪当前会话' },
+    { page: 'msgs',       label: '聊天', emoji: '💬', d: '房间 · 私信 · 好友申请 · 各 app 消息' },
+    { page: 'stats',      label: '统计', emoji: '📊', pro: true, d: 'token 花在哪儿' },
+    { page: 'connection', label: '连接', emoji: '📶', pro: true, d: '连接体检与自动修复' },
+  ] },
+  optimize: { label: '优化', sub: '把浪费省下来', items: [
+    { page: 'doctor',  label: '体检', emoji: '🩺', d: '一键检查 agent 健康' },
+    { page: 'cleanup', label: '清理', emoji: '🧹', pro: true, d: '回收浪费的 token 和磁盘' },
+    { page: 'rules',   label: '规则', emoji: '📏', d: '压缩与改写规则' },
+  ] },
+  secure: { label: '安全', sub: '看住权限与告警', items: [
+    { page: 'mcp',    label: 'MCP',  emoji: '🛡', d: 'MCP 服务器与工具' },
+    { page: 'alerts', label: '提醒', emoji: '🔔', d: '告警与通知' },
+  ] },
+  library: { label: '资料', sub: '提示词 · 图谱 · 历史 · 团队', items: [
+    { page: 'prompts', label: '提示词', emoji: '📝', d: '提示词库' },
+    { page: 'graph',   label: 'Graph', emoji: '🕸', d: '知识图谱' },
+    { page: 'history', label: '历史', emoji: '🕘', d: '历史会话' },
+    { page: 'team',    label: '团队', emoji: '🤝', pro: true, d: '团队协作台' },
+    { page: 'farm',    label: '农场', emoji: '🌾', d: 'Terse 农场' },
+  ] },
+};
+function openCategory(cat) {
+  const c = CATEGORIES[cat];
+  if (!c) return;
+  const title = $('#catTitle');
+  if (title && title.firstChild) title.firstChild.textContent = c.label + ' ';
+  const sub = $('#catSub'); if (sub) sub.textContent = c.sub;
+  const grid = $('#catGrid');
+  if (grid) {
+    grid.innerHTML = c.items.map(it => `
+      <button class="cat-tile" data-page="${it.page}">
+        <span class="cat-tile-ic">${it.emoji}</span>
+        <span class="cat-tile-t">${it.label}${it.pro ? ' <span class="cat-tile-pro">PRO</span>' : ''}</span>
+        <span class="cat-tile-d">${it.d}</span>
+      </button>`).join('');
+  }
+  show('category');
+  // show() 对 'category' 提前返回,不动高亮;这里自己点亮当前分类按钮。
+  $$('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+}
+$('#catGrid')?.addEventListener('click', e => {
+  const t = e.target.closest('.cat-tile');
+  if (t) goToPage(t.dataset.page);
+});
+
+$$('.sb-item').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.cat) { openCategory(b.dataset.cat); return; }
+  goToPage(b.dataset.page);
 }));
 
 // Entry point for out-of-window callers (alert toasts) — routes through the same
-// sidebar handler so Pro gating and the active-item highlight stay consistent.
+// path so Pro gating and the active-item highlight stay consistent.
 window.__terseOpenPage = (page) => {
   const btn = document.querySelector(`.sb-item[data-page="${page}"]`);
-  if (btn) btn.click(); else SB_ACTIONS[page]?.();
+  if (btn) btn.click(); else goToPage(page);
 };
 
 // Small i18n helper that falls back to English text if the key/dict is missing.
 function TT(key) {
   const map = {
     pro_gate_boost:      'Speed Up is a Pro feature. Start your free trial to cut your agent bill.',
+    pro_gate_gesture:    'Gesture Control is a Pro feature. Start your free trial to steer every particle with your hands.',
     pro_prev_cta:        'Unlock',
     trial_preview_tier:  'Free preview',
     trial_min_left:      'min left · enjoy Terse',
@@ -2806,7 +3343,8 @@ async function roomInit() {
       try {
         await R.create(($('#rmName')?.value || '').trim(), await displayName(), await currentEmail(),
                        { visibility: $('#rmPublic')?.checked ? 'public' : 'private',
-                         category: $('#rmCategory')?.value });
+                         category: $('#rmCategory')?.value,
+                         agents: $('#rmAgents') ? $('#rmAgents').checked : true });
         msg.textContent = '';
         refresh();
         // Being in a room means being in the conversation, so the window that
@@ -2944,7 +3482,7 @@ async function roomInit() {
     nothing durable to attach the friendship to. */
 async function currentEmail() {
   try {
-    const a = await T.getAuthState?.();
+    const a = await T.getAuth?.();
     return a?.email || null;
   } catch (e) { return null; }
 }
@@ -2957,7 +3495,7 @@ async function displayName() {
   const nick = window.TerseRooms?.nickname?.();
   if (nick) return nick;
   try {
-    const a = await T.getAuthState?.();
+    const a = await T.getAuth?.();
     if (a?.email) return String(a.email).split('@')[0];
   } catch (e) {}
   return 'someone';
@@ -3018,6 +3556,8 @@ async function plazaInit() {
             TT('pz_cat_' + (r.category || 'other')),
             TTn('rm_online_n', r.online),
             r.members === 1 ? TT('rm_member_1') : TTn('rm_members_n', r.members),
+            // Agents are part of what you walk into, so the listing says so up front.
+            r.agents_allowed === false ? '🚫🤖' : (r.agents ? '🤖 ' + r.agents : null),
             r.owner ? TT('rm_yours') : (r.joined ? TT('rm_member_of') : null),
           ].filter(Boolean).join(' · ');
           return `
@@ -3124,7 +3664,10 @@ function renderFriendRequests(incoming) {
   box.innerHTML = incoming.length
     ? incoming.map(r => `
         <div class="mcp-row" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
-          <span>${esc(r.name || r.email)}</span>
+          <span>${esc(r.name || r.email || 'someone on the plaza')}</span>
+          <!-- 从哪儿敲的:房间里认识的和广场上敲门的是两回事,
+               而这正是决定要不要接受时最想知道的一条。 -->
+          <span style="opacity:.55;font-size:10px">${r.room_id ? 'room' : 'plaza'}</span>
           <span style="margin-left:auto;display:flex;gap:6px">
             <button class="ob-btn" style="font-size:10.5px;padding:2px 10px" data-accept="${esc(r.id)}">Accept</button>
             <button class="ob-btn ghost" style="font-size:10.5px;padding:2px 10px" data-decline="${esc(r.id)}">Decline</button>
@@ -3314,6 +3857,86 @@ async function friendsInit() {
   refresh();
 }
 
+/* ── 协同办公门户 · Cowork ────────────────────────────────────────────────────
+   好友/房间/广场/团队 一直都在,但入口散在侧栏底部三四个按钮里,"跟朋友一起干活"
+   这件最该一眼看见的事反而要翻。这一页把它收成一个门户:顶部一个大按钮直接建一个
+   工作房间并给出邀请链接+二维码(复用 rooms.js 的 R.create / inviteUrl,不另起一套),
+   下面用卡片转发到那几页的完整控制。 */
+let collabWired = false;
+async function collabInit() {
+  const R = window.TerseRooms;
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  async function refresh() {
+    const inRoom = !!(R && R.inRoom && R.inRoom());
+    $('#cwOut')?.classList.toggle('hidden', inRoom);
+    $('#cwIn')?.classList.toggle('hidden', !inRoom);
+    if (!inRoom) return;
+    const url = R.inviteUrl();
+    const st = R.state() || {};
+    const link = $('#cwLink'); if (link) link.value = url || '';
+    const qr = $('#cwQr');
+    if (qr) {
+      qr.innerHTML = '';
+      if (url && window.TerseQR) {
+        try {
+          qr.innerHTML = window.TerseQR.svg(url, { size: 132, quiet: 2 }) +
+            `<div style="font-size:11px;color:var(--t3);line-height:1.6">
+               <div style="font:700 17px ui-monospace,Menlo,monospace;color:var(--t1);letter-spacing:2px">${esc(st.code || '')}</div>
+               <div style="margin-top:4px">好友用手机相机扫码即可加入</div>
+             </div>`;
+        } catch (e) { /* payload too long is the only throw; leave it empty */ }
+      }
+    }
+  }
+
+  if (!collabWired) {
+    collabWired = true;
+    $('#cwStart')?.addEventListener('click', async () => {
+      const msg = $('#cwOutMsg');
+      if (!R || !R.create) { if (msg) msg.textContent = '房间功能暂不可用'; return; }
+      if (msg) msg.textContent = '正在创建…';
+      try {
+        // 协同房间默认私有:能一起干活的房间不该被陌生人搜到。允许连 agent 默认开,
+        // 但每个人仍各自选择自己的 agent 要不要加入(和 roomInit 里一致)。
+        await R.create(($('#cwRoomName')?.value || '').trim(), await displayName(), await currentEmail(),
+                       { visibility: 'private', category: 'work',
+                         agents: $('#cwAgents') ? $('#cwAgents').checked : true });
+        if (msg) msg.textContent = '';
+        await refresh();
+        T.showRoomWindow?.();
+        window.showToast?.(TT('rm_created'));
+      } catch (e) { if (msg) msg.textContent = String(e.message || e); }
+    });
+    $('#cwCopy')?.addEventListener('click', async () => {
+      const v = $('#cwLink')?.value || ''; if (!v) return;
+      try { await navigator.clipboard.writeText(v); window.showToast?.(TT('rm_copied')); }
+      catch (e) { window.showToast?.(String(e)); }
+    });
+    $('#cwOpenRoom')?.addEventListener('click', () => goToPage('room'));
+    $('#cwOpenChat')?.addEventListener('click', () => T.showRoomWindow?.());
+    $('#cwRefresh')?.addEventListener('click', refresh);
+    // 卡片转发到既有页面 —— 走 goToPage 才能带上 Pro 闸门(团队是 Pro 页)。
+    document.querySelector('#collabView .cw-cards')?.addEventListener('click', e => {
+      const c = e.target.closest('.cw-card');
+      if (c) goToPage(c.dataset.go);
+    });
+  }
+  refresh();
+}
+
+/* 「连接手机」页顶部那张直达手机版的二维码。编码的就是 terseai.org/m 这个网址本身,
+   和下面的配对码是两回事:这张纯粹是"用手机打开 Terse 手机版",拿任何相机一扫即到,
+   不依赖配对流程,也不会过期。只画一次。 */
+function drawPairSiteQr() {
+  const el = $('#pvSiteQr');
+  if (!el || el.dataset.done === '1' || !window.TerseQR) return;
+  try {
+    el.innerHTML = window.TerseQR.svg('https://terseai.org/m', { size: 150, quiet: 2 });
+    el.dataset.done = '1';
+  } catch (e) { /* leave empty on the one throw (payload too long) */ }
+}
+
 /* ── Link phone ───────────────────────────────────────────────────────────────
    The pairing sheet in Settings. The QR is drawn locally with TerseQR — this
    webview has no network guarantee, and "link my phone" failing because a CDN is
@@ -3322,19 +3945,22 @@ async function friendsInit() {
    Polling only runs while the sheet is open. A background poll would keep a
    request going every few seconds for a screen nobody is looking at, forever.
    ---------------------------------------------------------------------------- */
-(function initPhoneLink() {
-  var pairBtn = document.getElementById('btnPhonePair');
+/* 同一套逻辑要挂两个地方:设置里那份(老位置,不动),和左边「扫码」那一页。
+   所以它是**工厂**,不是 IIFE —— 复制一份控制器出来,两处就会各自漂,而配对
+   这种"只在出问题时才被注意到"的功能,漂了没人会发现。 */
+function initPhoneLink(ids) {
+  var pairBtn = document.getElementById(ids.pair);
   if (!pairBtn) return;                       // not the main window
 
-  var idle = document.getElementById('phoneIdle');
-  var sheet = document.getElementById('phonePairing');
-  var statusEl = document.getElementById('phoneStatus');
-  var unlinkBtn = document.getElementById('btnPhoneUnlink');
-  var cancelBtn = document.getElementById('btnPhoneCancel');
-  var shareRow = document.getElementById('phoneShareRow');
-  var shareBox = document.getElementById('phoneShare');
-  var codeEl = document.getElementById('phoneCode');
-  var qrCanvas = document.getElementById('phoneQr');
+  var idle = document.getElementById(ids.idle);
+  var sheet = document.getElementById(ids.sheet);
+  var statusEl = document.getElementById(ids.status);
+  var unlinkBtn = document.getElementById(ids.unlink);
+  var cancelBtn = document.getElementById(ids.cancel);
+  var shareRow = document.getElementById(ids.shareRow);
+  var shareBox = document.getElementById(ids.share);
+  var codeEl = document.getElementById(ids.code);
+  var qrCanvas = document.getElementById(ids.qr);
   var poll = null;
 
   var PT = function (key, fallback) {
@@ -3429,9 +4055,230 @@ async function friendsInit() {
     T.phoneStatus().then(render).catch(function () {});
   }
 
-  // The sheet is inside Settings, so its state only needs to be current when
-  // Settings is opened — not on a timer for the life of the app.
-  var settingsBtn = document.getElementById('btnSettings');
-  if (settingsBtn) settingsBtn.addEventListener('click', refreshStatus);
+  // 状态只在**要看的时候**才刷新 —— 常驻定时器等于为一个没人看的屏幕每隔几秒
+  // 发一次请求,永远。
+  var opener = ids.opener && document.getElementById(ids.opener);
+  if (opener) opener.addEventListener('click', refreshStatus);
   refreshStatus();
-})();
+  return { refresh: refreshStatus };
+}
+
+/* 两处宿主:设置里那份(老位置)和左边「扫码」那一页。 */
+var phoneLinkSettings = initPhoneLink({
+  pair: 'btnPhonePair', idle: 'phoneIdle', sheet: 'phonePairing', status: 'phoneStatus',
+  unlink: 'btnPhoneUnlink', cancel: 'btnPhoneCancel', shareRow: 'phoneShareRow',
+  share: 'phoneShare', code: 'phoneCode', qr: 'phoneQr', opener: 'btnSettings',
+});
+var phoneLinkPage = initPhoneLink({
+  pair: 'pvPairBtn', idle: 'pvIdle', sheet: 'pvPairing', status: 'pvStatus',
+  unlink: 'pvUnlinkBtn', cancel: 'pvCancelBtn', shareRow: 'pvShareRow',
+  share: 'pvShare', code: 'pvCode', qr: 'pvQr',
+});
+
+/** 这台机器现在是不是 Pro。每次现问,不缓存 —— 缓存下来的"不是 Pro"会在人刚付完钱
+ *  的那一刻正好挡住他,那是最糟的一次拦截。 */
+async function proNow() {
+  try { const l = await T.getLicense(); return !!(l && l.isPro); } catch (e) { return false; }
+}
+
+/* ── 粒子模式 ──────────────────────────────────────────────────────────────
+   把 Claude / Codex / Cursor 的窗口逐帧抓下来,在桌面上重画成粒子。
+
+   这一页只做三件事:列窗口、开一个、跟着它走。真正的活在两头 ——
+   Rust 那边抓帧(particle_mode.rs),覆盖窗那边把帧采成粒子(particle-window.js)。
+
+   ⚠ **跟着它走**这件事比看起来重要。覆盖层是一块死死钉在屏幕坐标上的窗户,而人会
+   拖动、会缩放、会换 Space。不跟,粒子就和窗口错开,整个"同一个窗口"的错觉当场崩掉。
+   所以这里有一条轻量的轮询:只在开着的时候跑,只在**位置真的变了**的时候才去动窗口。 */
+let pmWins = [], pmOn = 0, pmTrack = null;
+
+async function pmInit() {
+  const note = $('#pmNote'), list = $('#pmList');
+  note.classList.add('hidden');
+  list.innerHTML = '';
+
+  /* ── 直连(主路)──────────────────────────────────────────────────────
+     Claude Code / Codex / dsh 每说一句话都会往自己的 JSONL 里追加一行,而
+     agent_monitor 早就在盯着那些文件。也就是说**内容本来就在手上**:
+     不用截屏、不用任何系统授权,agent 一写这边就动。
+
+     抓屏那条路的 Rust 代码还留着(Claude Desktop 那种不写日志的 app 只能靠它),
+     但**界面上不再出现** —— 屏幕录制是纯 TCC 门禁,给不给全看用户,app 一换版本
+     授权就失效。把一个每次更新都可能失灵的东西摆在主界面上,只会让人以为
+     这个功能就是靠截屏做的。 */
+  let agents = [];
+  try { agents = (await T.getAgentSessions()) || []; } catch (e) {}
+  /* ⚠ 快照里这个字段叫 **recentMessages**,不叫 messages(见 agent_monitor.rs 的
+     get_snapshot)。我先前写的是 `a.messages`,于是这个 filter 永远是空数组 ——
+     直连那一栏一直显示"没有正在说话的 agent",哪怕屏幕上就开着一个 Claude Code。
+     功能是好的,名字错了,而**错的名字不会报错,只会让整块东西消失**。 */
+  const live = agents.filter((a) => a && (a.recentMessages || []).length);
+
+  /* ── 会话栏 + 文字颜色 ──────────────────────────────────────────────
+     会话栏是屏幕左边那条线:碰一下就展开成 Claude Desktop 的会话列表,停在一条上
+     就铺开那段对话的全部历史,字和图都是粒子。这里是它的开关和调色板。
+     颜色存在 localStorage —— 会话栏那个窗口和这里同源,改了它立刻收到 storage 事件。 */
+  const dock = document.createElement('div');
+  dock.className = 'pm-dock';
+  const open = document.createElement('button');
+  open.className = 'ob-btn primary';
+  open.textContent = TT('pm_dock_open', '打开左侧会话栏');
+  open.addEventListener('click', async () => {
+    if (!(await proNow())) {
+      openPaywall(TT('pro_gate_particles', '粒子模式是 Pro 功能:把 Claude、Codex 正在说的话变成桌面上的一团粒子。'));
+      return;
+    }
+    try { await T.pmOverlayHide?.(); } catch (e) {}   // 旧的那块粒子面板收起来,别两个叠在一起
+    try { await T.sdDockOpen(); } catch (e) { window.showToast?.(String(e).slice(0, 120)); }
+  });
+  dock.appendChild(open);
+  const hint = document.createElement('div');
+  hint.className = 'pm-dock-hint';
+  hint.textContent = TT('pm_dock_hint', '以后把鼠标贴到屏幕最左边就会出来。');
+  dock.appendChild(hint);
+  const DEF = { title: '#FFFFFF', list: '#EEF1F6', sub: '#8A93A6', user: '#9FC4FF', assistant: '#EEF1F6', tool: '#A8F5D0' };
+  let cur; try { cur = Object.assign({}, DEF, JSON.parse(localStorage.getItem('terse-dock-colors') || '{}')); } catch (e) { cur = Object.assign({}, DEF); }
+  const save = () => { try { localStorage.setItem('terse-dock-colors', JSON.stringify(cur)); } catch (e) {} };
+  const grid = document.createElement('div');
+  grid.className = 'pm-colors';
+  const rows = [
+    ['all', TT('pm_c_all', '全部文字')], ['list', TT('pm_c_list', '会话标题')], ['user', TT('pm_c_user', '你的消息')],
+    ['assistant', TT('pm_c_assistant', '回答')], ['tool', TT('pm_c_tool', '工具调用')], ['sub', TT('pm_c_sub', '次要信息')],
+  ];
+  const inputs = {};
+  for (const [k, label] of rows) {
+    const lab = document.createElement('label');
+    const inp = document.createElement('input');
+    inp.type = 'color';
+    inp.value = k === 'all' ? cur.assistant : cur[k];
+    inp.addEventListener('input', () => {
+      if (k === 'all') { for (const kk of ['title', 'list', 'user', 'assistant', 'tool']) { cur[kk] = inp.value; if (inputs[kk]) inputs[kk].value = inp.value; } }
+      else cur[k] = inp.value;
+      save();
+    });
+    inputs[k] = inp;
+    lab.appendChild(inp);
+    lab.appendChild(document.createTextNode(label));
+    grid.appendChild(lab);
+  }
+  dock.appendChild(grid);
+  const reset = document.createElement('button');
+  reset.className = 'ob-btn ghost';
+  reset.textContent = TT('pm_c_reset', '恢复默认颜色');
+  reset.addEventListener('click', () => {
+    cur = Object.assign({}, DEF); save();
+    for (const [k, inp] of Object.entries(inputs)) inp.value = k === 'all' ? DEF.assistant : DEF[k];
+  });
+  dock.appendChild(reset);
+  list.appendChild(dock);
+
+  const head = document.createElement('div');
+  head.style.cssText = 'font-size:9.5px;color:var(--t3,#7A8194);font-weight:700;padding:10px 0 2px';
+  head.textContent = TT('pm_live_head', '直连 · 读 agent 自己的记录,不截屏');
+  list.appendChild(head);
+
+  if (!live.length) {
+    const e = document.createElement('div');
+    e.className = 'empty-note';
+    e.textContent = TT('pm_no_agent', '现在没有正在说话的 agent —— 开一个 Claude Code 或 Codex 就会出现在这儿。');
+    list.appendChild(e);
+  }
+  for (const a of live) {
+    const row = document.createElement('div');
+    row.className = 'pm-row' + (pmOn === 'live:' + a.agentType ? ' on' : '');
+    const b = document.createElement('b'); b.textContent = (a.agentIcon ? a.agentIcon + ' ' : '') + (a.agentName || a.agentType);
+    const i = document.createElement('i'); i.textContent = a.project || '—';
+    const s2 = document.createElement('s'); s2.textContent = (a.recentMessages || []).length + ' 条 · ' + (a.turns || 0) + ' 轮';
+    row.appendChild(b); row.appendChild(i); row.appendChild(s2);
+    // 点一个 agent = 打开左侧会话栏。旧的那块粒子面板(Terse Particles)不再从这里开 ——
+    // 它就是用户截图里那片盖住整个屏幕、字叠字的东西。
+    row.addEventListener('click', () => open.click());
+    list.appendChild(row);
+  }
+
+  pmPaintState();
+}
+
+/** 直连一个 agent:开一块粒子面板,它自己去听 agent-update。
+ *  这条路**不碰任何系统权限**,所以 Pro 闸是这个功能唯一的闸。 */
+async function pmLive(a) {
+  if (pmOn === 'live:' + a.agentType) { await pmOff(); return; }
+  if (!(await proNow())) {
+    openPaywall(TT('pro_gate_particles',
+      '粒子模式是 Pro 功能:把 Claude、Codex 正在说的话变成桌面上的一团粒子。'));
+    return;
+  }
+  try {
+    // 面板摆在屏幕右侧,不盖住任何人 —— 直连模式下它是一块**独立的**幕,
+    // 不需要和某个窗口对齐(那是抓屏那条路才要做的事)。
+    // interactive:true —— 这一块是要**打字**的,不能穿透。
+    // pid 是"把话发回去"的唯一凭据:pl_send 靠它把那个 agent 的窗口提到前台。
+    await T.pmOverlay(60, 90, 760, 560, {
+      interactive: true, pid: a.pid || 0, label: a.agentName || a.agentType,
+    });
+    pmOn = 'live:' + a.agentType;
+  } catch (e) {
+    window.showToast?.(String(e && e.message || e).slice(0, 140));
+    return;
+  }
+  pmInit();
+}
+
+async function pmToggle(w) {
+  if (pmOn === w.id) { await pmOff(); return; }
+  // Pro 闸在**开启**这一步,不在这一页的门口:让人先看见自己的窗口列在这儿,
+  // 再告诉他这一下要 Pro —— 反过来做,他根本不知道自己错过了什么。
+  if (!(await proNow())) {
+    openPaywall(TT('pro_gate_particles',
+      '粒子模式是 Pro 功能:把 Claude、Codex 的窗口变成桌面上的一团粒子,照样能点、能打字。'));
+    return;
+  }
+  try {
+    await T.pmStart(w.id, 12);
+    await T.pmOverlay(w.x, w.y, w.w, w.h);
+    pmOn = w.id;
+    pmTrackStart(w);
+  } catch (e) {
+    window.showToast?.(String(e && e.message || e).slice(0, 140));
+    return;
+  }
+  pmInit();
+}
+
+async function pmOff() {
+  clearInterval(pmTrack); pmTrack = null;
+  pmOn = 0;
+  try { await T.pmStop(); } catch (e) {}
+  try { await T.pmOverlayHide(); } catch (e) {}
+  pmInit();
+}
+
+/** 跟着目标窗口走。1.5 秒问一次位置,**变了才动** —— 每次都调一遍
+ *  set_position 会让覆盖窗一直在重排,那是看得出来的抖。 */
+function pmTrackStart(w) {
+  clearInterval(pmTrack);
+  let last = `${w.x},${w.y},${w.w},${w.h}`;
+  pmTrack = setInterval(async () => {
+    if (!pmOn) { clearInterval(pmTrack); pmTrack = null; return; }
+    try {
+      const r = await T.pmWindowRect(pmOn);
+      if (!r) { await pmOff(); return; }      // 窗口关了:粒子也该收
+      const key = r.join(',');
+      if (key !== last) { last = key; await T.pmOverlay(r[0], r[1], r[2], r[3]); }
+    } catch (e) {}
+  }, 1500);
+}
+
+function pmPaintState() {
+  const st = $('#pmState'), stop = $('#pmStop');
+  if (!st) return;
+  const w = pmWins.find((x) => x.id === pmOn);
+  st.textContent = w ? `正在把「${w.app}」画成粒子`
+    : (typeof pmOn === 'string' && pmOn.startsWith('live:')) ? `正在直连「${pmOn.slice(5)}」`
+    : '未开启';
+  stop?.classList.toggle('hidden', !pmOn);
+}
+
+$('#pmRefresh')?.addEventListener('click', () => pmInit());
+$('#pmStop')?.addEventListener('click', () => pmOff());
+

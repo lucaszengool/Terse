@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>代码别墅 · Terse</title>
+<!-- villa 页专属 import map:单独用一份 three r0.180 + Spark(其它页仍是 r160,互不影响) -->
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three-0180/three.module.js",
+  "three/addons/": "./vendor/three-0180/addons/",
+  "@sparkjsdev/spark": "./vendor/spark/spark.module.js"
+} }
+</script>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #05060a; overflow: hidden; color: #eef; }
+  #stage { position: fixed; inset: 0; }
+  #hud {
+    position: fixed; left: 14px; bottom: 14px; z-index: 6; max-width: 72vw;
+    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 8px 13px; border-radius: 12px; background: rgba(10,12,20,.55);
+    border: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(10px);
+  }
+  #hud b { font-weight: 700; }
+  #tools { position: fixed; right: 14px; top: 14px; z-index: 6; display: flex; gap: 8px; flex-direction: column; align-items: flex-end; }
+  .tbtn {
+    font: 600 12px system-ui; color: #dfe; cursor: pointer; user-select: none;
+    padding: 7px 12px; border-radius: 10px; background: rgba(20,24,36,.6);
+    border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(8px);
+  }
+  .tbtn:hover { background: rgba(40,48,70,.7); }
+  #floors { display: flex; gap: 6px; }
+  #loading {
+    position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+    background: radial-gradient(circle at 50% 40%, #0b1020, #05060a);
+    transition: opacity .6s; font: 500 15px system-ui; color: #9fb;
+  }
+  #loading .ring { width: 46px; height: 46px; margin: 0 auto 16px; border-radius: 50%;
+    border: 3px solid rgba(120,220,255,.2); border-top-color: #7fd7ff; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #err { position: fixed; left: 14px; top: 14px; z-index: 30; color: #f99; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; max-width: 80vw; display: none; }
+  #enterHint { position: fixed; left: 50%; top: 62%; transform: translateX(-50%); z-index: 6;
+    font: 600 14px system-ui; color: #cfe; padding: 9px 16px; border-radius: 999px;
+    background: rgba(10,14,24,.5); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(8px);
+    pointer-events: none; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-6px);} }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">加载中…</div>
+<div id="enterHint" hidden>点击房子 · 走进你的代码</div>
+<div id="tools">
+  <div class="tbtn" id="btnExit" hidden>← 回到屋外</div>
+  <div id="floors"></div>
+</div>
+<div id="err"></div>
+<div id="loading"><div><div class="ring"></div>正在把你的代码砌成一栋别墅…</div></div>
+
+<script type="module">
+import { startVilla } from './villa.js';
+
+const errBox = document.getElementById('err');
+const showErr = (m) => { errBox.style.display = 'block'; errBox.textContent = 'FATAL: ' + m; };
+window.addEventListener('error', (e) => showErr(e.message || e.error));
+window.addEventListener('unhandledrejection', (e) => showErr((e.reason && (e.reason.stack || e.reason.message)) || e.reason));
+
+/* 一个像 Terse 仓库的样例胶囊 —— 独立打开(没有 Tauri 桥)时用它,方便预览。 */
+const SAMPLE = {
+  title: 'Terse', subtitle: '把你的代码变成一座城 / 一栋别墅',
+  files: 612, langs: [['rust', 0.42], ['ts', 0.31], ['swift', 0.12], ['css', 0.08], ['markdown', 0.07]],
+  dirs: [
+    { name: 'src-tauri', kind: 'source', lang: 'rust', files: 168, age_days: 1, churn: 240, langs: [['rust', 0.95]] },
+    { name: 'renderer', kind: 'source', lang: 'ts', files: 120, age_days: 0, churn: 300, langs: [['ts', 0.6], ['js', 0.4]] },
+    { name: 'helpers', kind: 'source', lang: 'swift', files: 34, age_days: 6, churn: 60, langs: [['swift', 1]] },
+    { name: 'android-app', kind: 'source', lang: 'kotlin', files: 52, age_days: 20, churn: 30, langs: [['kotlin', 1]] },
+    { name: 'docs', kind: 'docs', lang: 'markdown', files: 40, age_days: 3, churn: 22, langs: [['markdown', 1]] },
+    { name: 'tests', kind: 'test', lang: 'ts', files: 46, age_days: 2, churn: 44, langs: [['ts', 1]] },
+    { name: 'assets', kind: 'assets', lang: 'css', files: 88, age_days: 40, churn: 8, langs: [['css', 1]] },
+    { name: 'scripts', kind: 'config', lang: 'shell', files: 24, age_days: 12, churn: 14, langs: [['shell', 1]] },
+    { name: '.github', kind: 'config', lang: 'yaml', files: 10, age_days: 30, churn: 4, langs: [['yaml', 1]] },
+    { name: 'examples', kind: 'docs', lang: 'js', files: 18, age_days: 60, churn: 3, langs: [['js', 1]] },
+  ],
+  hot: [
+    { name: 'src-tauri/src/lib.rs', churn: 120, bytes: 40000 },
+    { name: 'renderer/villa.js', churn: 90, bytes: 20000 },
+    { name: 'renderer/city-styles.js', churn: 70, bytes: 30000 },
+    { name: 'tests/wallpaper.test.mjs', churn: 30, bytes: 8000 },
+  ],
+};
+
+async function loadCapsule() {
+  const T = window.terse;
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.get('sample')) return SAMPLE;
+    if (T && T.projectCapsule) {
+      let id = params.get('id');
+      if (!id && T.projectList) {
+        const list = await T.projectList();
+        const arr = Array.isArray(list) ? list : (list && list.projects) || [];
+        // 选文件最多的项目当默认别墅
+        arr.sort((a, b) => (b.files || 0) - (a.files || 0));
+        id = arr[0] && arr[0].id;
+      }
+      if (id) {
+        const r = await T.projectCapsule(id);
+        const cap = (r && r.capsule) || r;
+        if (cap && Array.isArray(cap.dirs) && cap.dirs.length) return cap;
+      }
+    }
+  } catch (e) { console.warn('[villa] capsule load fell back to sample:', e); }
+  return SAMPLE;
+}
+
+(async () => {
+  const capsule = await loadCapsule();
+  const hud = document.getElementById('hud');
+  const villa = startVilla(capsule, { mount: document.getElementById('stage'), hud });
+  window.__villa = villa;
+
+  // 楼层切换 + 出门
+  const floorsBox = document.getElementById('floors');
+  const btnExit = document.getElementById('btnExit');
+  const enterHint = document.getElementById('enterHint');
+  const nf = villa.model.bounds.floors;
+  const floorBtns = [];
+  for (let f = 0; f < nf; f++) {
+    const b = document.createElement('div'); b.className = 'tbtn'; b.textContent = 'F' + (f + 1);
+    b.onclick = () => villa.gotoFloor(f);
+    floorsBox.appendChild(b); floorBtns.push(b);
+  }
+  btnExit.onclick = () => villa.exit();
+
+  // 依据模式显示工具
+  function syncTools() {
+    const inside = villa._state.mode !== 'exterior';
+    btnExit.hidden = !inside;
+    floorsBox.style.display = (inside && nf > 1) ? 'flex' : 'none';
+    enterHint.hidden = villa._state.mode !== 'exterior';
+    floorBtns.forEach((b, i) => b.style.borderColor = (i === villa._state.floor) ? 'rgba(127,215,255,.8)' : 'rgba(255,255,255,.12)');
+  }
+  setInterval(syncTools, 200); syncTools();
+
+  // 收尾
+  const loading = document.getElementById('loading');
+  setTimeout(() => { loading.style.opacity = '0'; setTimeout(() => loading.remove(), 700); }, 500);
+  console.log('[villa] splats:', villa.numSplats());
+})();
+</script>
+</body>
+</html>

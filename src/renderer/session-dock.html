@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Terse Sessions</title>
+<style>
+  /* 背后是 NSVisualEffectView(HudWindow,不透明度压到 0.62)那层真的毛玻璃 —— 尽量透。
+     **所有的字、图、按钮都是粒子**(画在 #gl 上);这里只剩一层很淡的底色。
+     可读性靠每个粒子字自带的暗色光晕(pdock-engine.js 的 raster),不靠把玻璃做厚。 */
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden;-webkit-user-select:none;user-select:none;cursor:default}
+  /* 100% 透明:窗口本身什么都不画 */
+  #wrap{position:absolute;inset:0;background:transparent}
+  #gl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  /* 输入框(不是粒子 —— 打字要真的输入框)。回车 = 发给这一段会话 */
+  .bar{display:none;position:absolute;box-sizing:border-box;height:34px;padding:0 12px;
+    border-radius:10px;border:1px solid rgba(201,240,61,.45);background:rgba(10,12,18,.62);color:#F4F6FA;
+    font:500 13px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;outline:none;-webkit-user-select:text;user-select:text}
+  .bar::placeholder{color:rgba(214,219,228,.55)}
+  .bar:focus{border-color:#C9F03D;background:rgba(10,12,18,.8)}
+  /* 输入框下 / 上那一行:这次回车会怎么送(直接送进去 / 在 Claude 里替你打字) */
+  .hint{display:none;position:absolute;box-sizing:border-box;height:16px;font:600 11px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+    color:rgba(214,219,228,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;text-shadow:0 0 4px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.95)}
+  /* 预览的回复框放在标题那几行正下方(原来贴窗口底边,经常被程序坞挡住看不到) */
+  #reply{left:422px;top:112px;width:512px}
+  #replyHint{left:424px;top:150px;width:508px}
+  /* 列表底部常驻输入栏:不用先打开预览,发给你最后指过的那张卡(没指过就是排在最上面的) */
+  #qbar{left:14px;bottom:14px;width:372px}
+  #qhint{left:16px;bottom:52px;width:368px}
+</style>
+</head>
+<body>
+<div id="wrap"></div>
+<canvas id="gl"></canvas>
+<input id="reply" class="bar" type="text" placeholder="回复这一段会话… 回车发送" autocomplete="off" spellcheck="false">
+<div id="replyHint" class="hint"></div>
+<input id="qbar" class="bar" type="text" placeholder="回复… 回车发送" autocomplete="off" spellcheck="false">
+<div id="qhint" class="hint"></div>
+
+<script type="module" src="./session-dock.js"></script>
+</body>
+</html>

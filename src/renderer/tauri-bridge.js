@@ -176,6 +176,9 @@ if (window.__TAURI__) {
     getDesktopPicture: (force) => invoke('get_desktop_picture', { force: !!force }),
     setWallpaperConfig: (config) => invoke('set_wallpaper_config', { config }),
     setWallpaperEnabled: (on) => invoke('set_wallpaper_enabled', { on }),
+    // 代码小镇:「操控小镇」开关 —— 开 = 键盘(系统层拦截)和鼠标归小镇,关 = 全还给 Mac。
+    // 返回 {ok, on, keys, mouse, trusted}
+    wallpaperTownWalk: (on) => invoke('wallpaper_town_walk', { on: !!on }),
     // Pro: lift the particles above every window (or drop them back to the
     // desktop layer). Re-levels the live window immediately.
     setWallpaperOverlay: (on) => invoke('set_wallpaper_overlay', { on }),
@@ -201,7 +204,31 @@ if (window.__TAURI__) {
     projectUpdate: (id, patch) => invoke('project_update', { id, patch }),
     projectRemove: (id) => invoke('project_remove', { id }),
     projectPreview: (capsule, ms) => invoke('project_preview', { capsule, ms: ms || null }),
+    // 粒子模式:把别的 agent 的窗口抓成粒子,盖一层穿透的覆盖窗上去。
+    pmWindows: () => invoke('pm_windows'),
+    pmWindowRect: (id) => invoke('pm_window_rect', { id }),
+    pmStart: (id, fps) => invoke('pm_start', { id, fps: fps || null }),
+    pmStop: () => invoke('pm_stop'),
+    pmStatus: () => invoke('pm_status'),
+    // 左侧会话栏:从粒子页主动展开(在人移进去之前不会自己收起)
+    sdDockOpen: () => invoke('sd_dock_open'),
+    pmHasPermission: () => invoke('pm_has_permission'),
+    pmRequestPermission: () => invoke('pm_request_permission'),
+    pmOverlay: (x, y, w, h, opts) => invoke('pm_overlay', {
+      x, y, w, h,
+      interactive: !!(opts && opts.interactive),
+      pid: (opts && opts.pid) || 0,
+      label: (opts && opts.label) || '',
+    }),
+    // 从粒子面板把一句话发给 agent —— 走它**已经开着的那个窗口**,
+    // 不新起进程、不要 API 凭据。
+    plSend: (pid, text) => invoke('pl_send', { pid, text }),
+    pmOverlayHide: () => invoke('pm_overlay_hide'),
     projectCapsule: (id) => invoke('project_capsule', { id }),
+    // 自己挑图加进项目(最多 5 张:封面 + 4)。扫描能找出 README 里那张,但作者
+    // 对"该拿哪张给人看"永远比启发式清楚。
+    projectAddImage: (id) => invoke('project_add_image', { id }),
+    projectRemoveImage: (id, index) => invoke('project_remove_image', { id, index }),
     // 某个进程所属 app 的图标(PNG data URL)。不需要任何权限 —— 「始终置顶」演示卡
     // 靠它让人一眼认出"这是我的窗口"(窗口内容截不了,见 lib.rs 的 app_icon)。
     appIcon: (pid, size) => invoke('app_icon', { pid, size: size || null }),
@@ -217,6 +244,12 @@ if (window.__TAURI__) {
     messagesDetectedApps: () => invoke('messages_detected_apps'),
     messagesSetAppOnWallpaper: (appId, on) => invoke('messages_set_app_on_wallpaper', { appId, on }),
     messagesForWallpaper: (limit) => invoke('messages_for_wallpaper', { limit: limit ?? null }),
+    // 信息流:通知 / 系统 / 窗口 / 正在播放,每个来源一个壁纸开关
+    feedsSources: () => invoke('feeds_sources'),
+    feedsSetSource: (key, on) => invoke('feeds_set_source', { key, on }),
+    feedsSetAutoAdd: (on) => invoke('feeds_set_auto_add', { on }),
+    feedsResolvePending: (on) => invoke('feeds_resolve_pending', { on: on ?? null }),
+    feedsForWallpaper: (limit) => invoke('feeds_for_wallpaper', { limit: limit ?? null }),
     messagesOpenChat: (appId, target) => invoke('messages_open_chat', { appId, target }),
     messagesSendOpen: (appId, text) => invoke('messages_send_open', { appId, text }),
     messagesNotificationSettings: () => invoke('messages_notification_settings'),

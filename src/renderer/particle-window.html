@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Terse Particles</title>
+<style>
+  html, body { margin:0; padding:0; background:transparent; overflow:hidden; height:100%; }
+  /* 整个窗口都是穿透的(原生那边 setIgnoresMouseEvents),这里再钉一次:
+     万一哪天原生那一步没生效,至少 CSS 不会让它吃掉点击。 */
+  * { pointer-events:none !important; user-select:none; }
+  #gl { display:block; width:100vw; height:100vh; }
+  /* 还没有第一帧的时候,给一条极淡的扫描线 —— 完全空白会让人以为没开起来。 */
+  #boot { position:fixed; inset:0; display:grid; place-items:center;
+          font:11px ui-monospace, Menlo, monospace; color:#7CF6C8; letter-spacing:.22em;
+          text-shadow:0 0 12px rgba(124,246,200,.55); opacity:.75; }
+  #boot.gone { display:none; }
+</style>
+<canvas id="gl"></canvas>
+<div id="boot">CAPTURING…</div>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+<script type="module" src="./particle-window.js"></script>

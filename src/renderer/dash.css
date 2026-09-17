@@ -44,19 +44,36 @@ html, body.dash-mode {
   flex-direction: column;
   border-radius: 20px;
   border: 1px solid rgba(255,255,255,0.12);
-  /* Real frosted glass: a translucent charcoal tint over a strong backdrop blur,
-     so the desktop behind shows through softly — high-end, simple, clean. */
+  /* Same material as the island and the main window: a NEARLY CLEAR dark tint
+     with a white crystal rim, so the desktop reads through it rather than being
+     hidden behind a charcoal slab.
+     The old values (0.60→0.74 alpha over blur(36px)) were opaque enough that the
+     backdrop barely mattered — it looked like tinted plastic, and it cost a
+     36px blur to produce something you could not see through anyway. */
   background:
-    radial-gradient(120% 70% at 50% -8%, color-mix(in srgb, var(--ac) 18%, transparent) 0%, transparent 58%),
-    linear-gradient(180deg, rgba(26,29,38,0.60) 0%, rgba(15,17,23,0.70) 60%, rgba(10,11,16,0.74) 100%);
+    radial-gradient(120% 70% at 50% -8%, color-mix(in srgb, var(--ac) 12%, transparent) 0%, transparent 58%),
+    linear-gradient(160deg, rgba(15,17,22,0.26) 0%, rgba(7,9,13,0.48) 100%);
+  /* The crystal rim, matching the island: a bright hairline on top, a faint
+     inner glow, and one thin outline. This is what carries the "glass" read once
+     the fill is this transparent. */
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.18),
-    inset 0 0 0 1px rgba(255,255,255,0.03),
-    0 20px 56px rgba(0,0,0,0.5);
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.34),
+    inset 0 0 30px 8px rgba(255,255,255,0.045),
+    inset 0 -18px 40px -22px rgba(255,255,255,0.10),
+    0 0 0 1px rgba(255,255,255,0.14),
+    0 20px 56px rgba(0,0,0,0.45);
   overflow: hidden;
   color: var(--t1, #fff);
-  -webkit-backdrop-filter: blur(36px) saturate(170%);
-  backdrop-filter: blur(36px) saturate(170%);
+  /* 36px → 8px. A backdrop blur is a separable convolution the compositor runs
+     over the whole card every frame, and its cost scales with the radius; these
+     windows are full-screen-height and there are often six or eight of them at
+     once, so this was the single most expensive thing on screen. At this tint
+     the large radius bought nothing visible.
+     brightness() lifts the backdrop rather than laying more tint on top, which
+     is what keeps it reading as glass instead of paint. */
+  -webkit-backdrop-filter: blur(8px) saturate(1.35) brightness(1.03);
+  backdrop-filter: blur(8px) saturate(1.35) brightness(1.03);
 }
 
 /* moving sheen across the top edge */
@@ -69,7 +86,11 @@ html, body.dash-mode {
   content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 60%;
   background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
   will-change: transform;
-  animation: sheen 7s ease-in-out infinite;
+  /* Was `infinite`. Six or eight floating windows each running a perpetual
+     translate meant the compositor never got to idle — on integrated graphics
+     that is a real, constant tax for a decoration that reads once. It now plays
+     on arrival and stops. */
+  animation: sheen 7s ease-in-out 1 both;
   opacity: 0.7;
 }
 @keyframes sheen { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(270%,0,0); } }
@@ -103,7 +124,10 @@ html, body.dash-mode {
 }
 .dash-tab .tab-ico { font-size: 11px; }
 .dash-close {
-  flex-shrink: 0; width: 18px; height: 18px; border-radius: 6px;
+  /* First in the header's flex row — top-left, matching every other window on
+     this platform. `order` is not used: the DOM order is the tab order too, and
+     the dismiss control should come first there as well. */
+  flex-shrink: 0; width: 18px; height: 18px; border-radius: 6px; margin-right: 2px;
   display: flex; align-items: center; justify-content: center;
   background: transparent; border: none; cursor: pointer;
   color: var(--t3, rgba(255,255,255,0.4)); font-size: 12px; line-height: 1;
@@ -159,6 +183,8 @@ html, body.dash-mode {
   content: ''; position: absolute; inset: 0; border-radius: 50%;
   background: color-mix(in srgb, var(--ac) 70%, transparent);
   pointer-events: none; will-change: transform, opacity;
+  /* Kept infinite — this one is a live-status indicator, so it has to keep
+     signalling. It is a 6px dot, which is nothing next to a full-card blur. */
   animation: livepulse 1.5s ease-out infinite;
 }
 @keyframes livepulse {
@@ -232,6 +258,11 @@ html, body.dash-mode {
   animation: eq 1.1s ease-in-out infinite;
 }
 .w-eq.idle i { animation: none; height: 14%; opacity: 0.4; }
+
+/* "We have not measured this yet" — deliberately quiet. It must not read as a
+   good result or a bad one, because it is neither. */
+.w-bar-fill.idle { background: rgba(255,255,255,0.16); }
+.w-pill.idle { background: rgba(255,255,255,0.08); color: var(--t3, rgba(255,255,255,0.45)); }
 @keyframes eq { 0%,100% { transform: scaleY(0.22); } 50% { transform: scaleY(0.92); } }
 
 /* ── Savings money ── */
@@ -510,4 +541,59 @@ html, body.dash-mode {
   background: rgba(9,11,15,0.42);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
+}
+
+
+/* Honour the system setting: with reduced motion on, none of the decorative
+   loops should run at all. */
+@media (prefers-reduced-motion: reduce) {
+  .dash-sheen::after { animation: none; }
+  .dash-live { animation: none; }
+}
+
+/* ── Glass = rim only. No fill, no backdrop-filter. ────────────────────────
+   backdrop-filter does NOT see behind a transparent window on macOS — it only
+   blurs content inside the app (tauri#2827, #12804, #12437). So every blur here
+   was paying a full-card separable convolution per frame to produce nothing
+   visible, and the only thing actually dimming the desktop was the tint fill.
+   Remove both and the window is genuinely 100% clear, at zero GPU cost.
+
+   What still reads as glass is the EDGE: a bright hairline along the top, a
+   faint inner glow, one crisp outline. That is what the eye uses to infer a
+   pane of glass — not the fill. */
+
+.dash-card, #card, body {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.dash-card, #card {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.50),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.26),
+    inset 0 -18px 40px -24px rgba(255,255,255,0.10),
+    0 0 0 1px rgba(255,255,255,0.13),
+    0 18px 46px rgba(0,0,0,0.40) !important;
+  border-color: rgba(255,255,255,0.16) !important;
+}
+/* With no fill left, text has to carry its own contrast against whatever is
+   behind the window. A tight halo, not a plate — a plate would be the film all
+   over again. Fonts and sizes are untouched. */
+.dash-card, #card { text-shadow: 0 0 1px rgba(0,0,0,.95), 0 1px 2px rgba(0,0,0,.8), 0 0 8px rgba(0,0,0,.45); }
+.dash-card .pill, .dash-card button, .dash-card input, .dash-card select { text-shadow: none; }
+
+/* ── Global: no backdrop-filter anywhere ───────────────────────────────────
+   On a transparent macOS window backdrop-filter cannot reach the desktop; it
+   only ever blurred content inside the app (tauri#2827, #12804, #12437). With
+   the panels now unfilled there IS no in-app content behind them, so every
+   remaining rule was a full-surface separable convolution per frame producing
+   an invisible result — the single largest avoidable GPU cost in the app.
+
+   Declared last and !important so it neutralises the rules above without having
+   to hunt each one down and risk missing a state (hover, expanded, peek).
+   Nothing else about those elements changes: fills, borders, fonts, layout and
+   every animation are exactly as they were. */
+*, *::before, *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }

@@ -134,11 +134,11 @@
   // `pages` are data-page values; `sel` is used for the non-nav bottom items.
   const STEPS = [
     { key: 's0', target: '#sidebar', pages: [] },
-    { key: 's1', pages: ['overview', 'observe', 'stats', 'connection'], icons: ['▦', '◉', '▮', '≋'] },
-    { key: 's2', pages: ['doctor', 'cleanup', 'rules'], icons: ['🩺', '🧹', '📐'] },
-    { key: 's3', pages: ['mcp', 'alerts'], icons: ['🛡', '🔔'] },
-    { key: 's4', pages: ['prompts', 'graph', 'history', 'team', 'farm'], icons: ['💬', '🕸', '🕘', '👥', '🌾'] },
-    { key: 's5', pages: ['boost', 'wallpaper', 'pals', 'settings'], icons: ['⚡', '🖼', '🐾', '⚙'] },
+    { key: 's1', spot: ['monitor'],  list: ['overview', 'observe', 'stats', 'connection'], icons: ['▦', '◉', '▮', '≋'] },
+    { key: 's2', spot: ['optimize'], list: ['doctor', 'cleanup', 'rules'], icons: ['🩺', '🧹', '📐'] },
+    { key: 's3', spot: ['secure'],   list: ['mcp', 'alerts'], icons: ['🛡', '🔔'] },
+    { key: 's4', spot: ['library'],  list: ['prompts', 'graph', 'history', 'team', 'farm'], icons: ['💬', '🕸', '🕘', '👥', '🌾'] },
+    { key: 's5', spot: ['boost', 'wallpaper', 'pals', 'settings'], list: ['boost', 'wallpaper', 'pals', 'settings'], icons: ['⚡', '🖼', '🐾', '⚙'] },
     { key: 's6', target: '#sidebar', pages: [] },
   ];
   const PRO = new Set(['stats', 'connection', 'cleanup', 'team', 'boost']);
@@ -169,9 +169,14 @@
     });
   }
 
+  // 两级导航后,大多数功能藏在四个分类按钮或协同门户里。聚光灯打在 `spot`
+  // 指定的那个入口(可能是 data-cat 的分类按钮,也可能是 data-page 的固定按钮);
+  // 卡片里的功能清单仍用 `list`,那只是文案,不需要页面上真有对应的按钮。
   function targets(step) {
     if (step.target) return [document.querySelector(step.target)].filter(Boolean);
-    return step.pages.map(p => document.querySelector(`.sb-item[data-page="${p}"]`)).filter(Boolean);
+    const toks = step.spot || step.pages || [];
+    return toks.map(p => document.querySelector(`.sb-item[data-cat="${p}"]`)
+                      || document.querySelector(`.sb-item[data-page="${p}"]`)).filter(Boolean);
   }
 
   function go(n) {
@@ -194,7 +199,7 @@
       nav.scrollTop = Math.max(0, runTop - Math.max(0, (nav.clientHeight - runH) / 2));
     }
 
-    const rows = step.pages.map((p, k) => `
+    const rows = (step.list || step.pages || []).map((p, k) => `
       <div class="tour-row">
         <div class="tour-ic">${esc((step.icons && step.icons[k]) || '•')}</div>
         <div class="tour-rt">

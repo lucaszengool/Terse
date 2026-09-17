@@ -1,3 +1,9 @@
+/* WebView2 renders every scrollbar and form control the ::-webkit-scrollbar
+   rules don't match in LIGHT mode unless this is declared — classic silver
+   #C0C0C0 widgets on a dark page. macOS happened to default to the look we
+   wanted, so this was never needed there. */
+:root { color-scheme: dark; }
+
 /* ──────────────────────────────────────────────────────────────────────────
    Dynamic Island (灵动岛) overlay.
    Loaded AFTER popup.css. The agent monitor (#agentPanel) keeps all of popup.css's
@@ -1078,3 +1084,132 @@ body.island-mode.approving #islandAlert .ia-count {
 }
 .ilg-v.bump { animation: ilgTick .42s cubic-bezier(.22,.61,.36,1); }
 body.island-mode.calm .ilg-v.bump { animation: none; }
+
+
+/* ── Permission prompt card ──────────────────────────────────────────────
+   Answering Claude Code's Allow/Deny from the island. The preview block is
+   the point of the card — approving a command you cannot see is worse than
+   switching to the terminal. */
+#islandPerm { padding: 10px 12px 11px; }
+#islandPerm[hidden] { display: none; }
+body.island-mode.permitting #islandPill,
+body.island-mode.permitting #islandCard { display: none; }
+
+/* The card is the same slab of glass as the pill, in EVERY theme — not a black
+   panel that happens to appear where the island was. The horizon material is
+   restated here rather than inherited because the permission card can come up
+   under any theme, and a decision this consequential should not look like a
+   different app's dialog. */
+body.island-mode.permitting {
+  /* Real glass, not a black panel. The readability comes from DARKENING THE
+     BACKDROP — brightness() inside backdrop-filter — rather than from piling on
+     alpha. That is the difference between the desktop showing through (you can
+     see your wallpaper's shapes and colour move behind the card) and a slab
+     that merely happens to sit where the island was. An earlier pass used 0.74
+     → 0.88 alpha and looked solid black, which is exactly what this avoids. */
+  background: linear-gradient(160deg, rgba(16,18,24,0.30), rgba(8,10,14,0.44));
+  backdrop-filter: blur(22px) saturate(1.5) brightness(0.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5) brightness(0.5);
+}
+body.island-mode.permitting #islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.34),
+    inset 0 0 30px 8px rgba(255,255,255,0.045),
+    inset 0 -18px 40px -22px rgba(255,255,255,0.10),
+    0 0 0 1px rgba(255,255,255,0.14);
+}
+
+/* Type on glass: white or the island's own accent, never grey. Grey text was
+   legible on the opaque panel and stopped being legible the moment the desktop
+   showed through it. */
+.ip-head { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.ip-badge { font-size: 8.5px; font-weight: 800; letter-spacing: .07em;
+  padding: 2px 6px; border-radius: 9999px; background: var(--ac); color: #0b0b0d; }
+.ip-tool { font-size: 12px; font-weight: 700; color: #fff; }
+.ip-cwd { font-size: 9.5px; color: rgba(255,255,255,0.78); margin-left: auto;
+  max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; }
+/* Context above the command: what the user asked, then what the agent said it
+   was doing. Read to make sense of the command, so it sits above it. */
+.ip-task { font-size: 10px; line-height: 1.45; color: rgba(255,255,255,0.82); margin-bottom: 5px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ip-task::before { content: '❝ '; color: var(--ac); }
+.ip-context { font-size: 10.5px; line-height: 1.5; color: #fff; margin-bottom: 7px;
+  padding-left: 8px; border-left: 2px solid var(--ac);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ip-preview { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; line-height: 1.5;
+  /* The command is the thing being judged, so it gets the highest contrast on
+     the card: white on a darkened well. The accent is reserved for the chrome
+     (badge, quote, rule) — as an accent it changes with the theme, and a
+     command you have to squint at is a command you approve blind. */
+  color: #fff; background: rgba(0,0,0,0.34); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 9px; padding: 7px 9px; max-height: 92px; overflow: auto;
+  white-space: pre-wrap; word-break: break-all; margin-bottom: 9px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.ip-actions { display: flex; gap: 6px; }
+.ip-btn { flex: 1; padding: 7px 8px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.22);
+  font-size: 11px; font-weight: 700; cursor: default; background: rgba(255,255,255,0.06); color: #fff;
+  transition: background .15s ease, color .15s ease, transform .15s ease; }
+.ip-btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.13); }
+.ip-allow { background: var(--ac); color: #0b0b0d; border-color: transparent; }
+.ip-always { color: #fff; }
+.ip-deny { color: #ff9b9b; border-color: rgba(255,155,155,0.38); }
+
+/* Countdown to the terminal hand-off. Mirrors the alert layer's iaDrain so the
+   two timed cards read as the same mechanism. */
+/* The track is a white hairline, not the theme's border grey: on glass, grey on
+   grey leaves the bar with no visible end to drain towards. */
+.ip-life { height: 3px; border-radius: 9999px; background: rgba(255,255,255,0.18);
+  overflow: hidden; margin: 0 0 9px; }
+.ip-life > span { display: block; height: 100%; width: 100%;
+  background: var(--ac); transform-origin: left center; }
+.ip-life > span.run { animation: ipDrain 10s linear forwards; }
+@keyframes ipDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* ── Glass = rim only. No fill, no backdrop-filter. ────────────────────────
+   backdrop-filter does NOT see behind a transparent window on macOS — it only
+   blurs content inside the app (tauri#2827, #12804, #12437). So every blur here
+   was paying a full-card separable convolution per frame to produce nothing
+   visible, and the only thing actually dimming the desktop was the tint fill.
+   Remove both and the window is genuinely 100% clear, at zero GPU cost.
+
+   What still reads as glass is the EDGE: a bright hairline along the top, a
+   faint inner glow, one crisp outline. That is what the eye uses to infer a
+   pane of glass — not the fill. */
+
+body.island-mode,
+body.island-mode[data-theme="horizon"],
+[data-theme="horizon"] body.island-mode,
+#islandRoot {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#islandRoot {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.58),
+    inset 0 0 1.5px 1px rgba(255,255,255,0.32),
+    inset 0 -16px 36px -22px rgba(255,255,255,0.12),
+    0 0 0 1px rgba(255,255,255,0.15),
+    0 14px 40px rgba(0,0,0,0.42) !important;
+}
+#islandRoot, #islandRoot span, #islandRoot b, #islandRoot div {
+  text-shadow: 0 0 1px rgba(0,0,0,.95), 0 1px 2px rgba(0,0,0,.85), 0 0 8px rgba(0,0,0,.5);
+}
+#islandRoot .ip-btn, #islandRoot button { text-shadow: 0 1px 1px rgba(0,0,0,.5); }
+
+/* ── Global: no backdrop-filter anywhere ───────────────────────────────────
+   On a transparent macOS window backdrop-filter cannot reach the desktop; it
+   only ever blurred content inside the app (tauri#2827, #12804, #12437). With
+   the panels now unfilled there IS no in-app content behind them, so every
+   remaining rule was a full-surface separable convolution per frame producing
+   an invisible result — the single largest avoidable GPU cost in the app.
+
+   Declared last and !important so it neutralises the rules above without having
+   to hunt each one down and risk missing a state (hover, expanded, peek).
+   Nothing else about those elements changes: fills, borders, fonts, layout and
+   every animation are exactly as they were. */
+*, *::before, *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

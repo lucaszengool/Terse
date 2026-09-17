@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="color-scheme" content="dark">
   <meta charset="UTF-8">
   <title>Terse Island</title>
   <link rel="stylesheet" href="popup.css">
@@ -13,6 +14,10 @@
     references and renders the agent monitor identically. island.css hides all popup chrome
     except #agentPanel; island.js drives the pill, hover expand/collapse and window visibility.
   -->
+  <!-- Real refraction lives here. WKWebView renders NOTHING for an SVG filter
+       in backdrop-filter and silently drops the rest of the chain with it (see
+       liquid-glass.js), so the lens is drawn ourselves: this canvas sits under
+       the UI, samples the desktop picture, and bends it around #islandRoot. -->
   <div id="islandRoot">
     <!-- Collapsed pill (always rendered; visible when not expanded) -->
     <div id="islandPill">
@@ -30,6 +35,31 @@
 
     <!-- Alert banner — the pill morphs into this when a notification arrives.
          Its own layer so the pill/card states stay untouched. -->
+    <!-- Permission prompt from Claude Code (PreToolUse hook → permission.rs).
+         Shows WHAT is being approved, not just buttons: a blind "Allow?" is how
+         users end up approving destructive commands. -->
+    <div id="islandPerm" hidden>
+      <div class="ip-head">
+        <span class="ip-badge">PERMISSION</span>
+        <span id="ipTool" class="ip-tool"></span>
+        <span id="ipCwd" class="ip-cwd"></span>
+      </div>
+      <!-- Why, before what. The command alone cannot be judged: `rm -rf build`
+           is routine mid-clean and alarming out of nowhere, and only the turn
+           it came from separates the two. -->
+      <div id="ipTask" class="ip-task" hidden></div>
+      <div id="ipContext" class="ip-context" hidden></div>
+      <pre id="ipPreview" class="ip-preview"></pre>
+      <!-- 10s drain: the island only holds the call that long before Claude
+           Code's own prompt takes over, so the bar is the user's honest budget,
+           not decoration. -->
+      <div class="ip-life"><span id="ipLife"></span></div>
+      <div class="ip-actions">
+        <button class="ip-btn ip-deny"   data-d="deny">Deny</button>
+        <button class="ip-btn ip-always" data-d="always">Always allow</button>
+        <button class="ip-btn ip-allow"  data-d="allow">Allow once</button>
+      </div>
+    </div>
     <div id="islandAlert">
       <span class="island-aurora"></span>
       <span class="island-sheen island-sheen-card"></span>
@@ -162,7 +192,7 @@
       <div id="islandCapture" class="island-capture">
         <button id="icapBtn" class="icap-cta">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg>
-          <span id="icapLabel">优化选中文本 · Capture</span>
+          <span id="icapLabel" data-i18n="isl_capture">Optimise selected text</span>
         </button>
         <div id="icapResult" class="icap-result hidden">
           <div class="icap-head">

@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
   <meta name="color-scheme" content="dark">
-  <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
+  <script>
+    /* 取译文,取不到用英文兜底。取代原来散在各处的 `zh ? 中文 : English`
+       —— 那种写法只认得两种语言,而且没人找得到它去翻。 */
+    function DT(key, fallback){
+      var v = (window.i18n && window.i18n.t) ? window.i18n.t(key) : null;
+      return (v && v !== key) ? v : fallback;
+    }
+(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
-  <title>Terse Doctor 体检</title>
+  <title>Terse Doctor</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -71,14 +78,34 @@
        way out was the ✕ in the corner. New users did not know that, so the very
        first screen of the product was a dead end. Same paint as #scanBtn, so
        "the green button" means the same thing twice on one page. */
-    #firstRunBar{position:sticky;bottom:0;left:0;right:0;z-index:40;display:none;
-      padding:12px 16px 14px;background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 0%,transparent),var(--bg) 38%);}
+    /* FIXED, not sticky. `position:sticky` only pins if the element's own
+       scroll container cooperates; here it sat at the bottom of a very long
+       report, which on first run is far below the fold — so a new user saw the
+       checkup with no visible way forward and the ✕ was the only exit. Fixed to
+       the viewport means it is on screen the moment the page opens, whatever the
+       scroll position. z-index clears the findings and the tooltips. */
+    #firstRunBar{position:fixed;bottom:0;left:0;right:0;z-index:120;display:none;
+      padding:14px 16px 16px;
+      background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 0%,transparent),var(--bg) 34%,var(--bg) 100%);
+      backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+    /* Keep the last findings clear of the bar so nothing is hidden under it. */
+    #firstRunBar.show ~ #findingsRegion, body:has(#firstRunBar.show){padding-bottom:96px}
     #firstRunBar.show{display:block}
     #firstRunCta{-webkit-app-region:no-drag;width:100%;padding:13px;border:none;border-radius:12px;
       background:var(--btn);color:var(--btn-t);font-size:13px;font-weight:800;cursor:pointer;
       letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:8px;
       transition:opacity .15s}
     #firstRunCta:hover{opacity:.9}
+    /* A slow breath on the shadow only — it draws the eye to the next step
+       without moving anything, and stops as soon as the pointer arrives. */
+    #firstRunCta{box-shadow:0 0 0 0 color-mix(in srgb,var(--btn) 60%,transparent);
+      animation:firstRunPulse 2.4s ease-out infinite}
+    #firstRunCta:hover{animation:none}
+    @keyframes firstRunPulse{
+      0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--btn) 55%,transparent)}
+      70%{box-shadow:0 0 0 12px transparent}
+      100%{box-shadow:0 0 0 0 transparent}}
+    @media (prefers-reduced-motion: reduce){#firstRunCta{animation:none}}
     #firstRunHint{text-align:center;font-size:11px;color:var(--t3);margin-bottom:8px}
     #scanBtn:disabled{opacity:.55;cursor:default}
     #scanBtn .spin{width:14px;height:14px;border-radius:50%;
@@ -1400,8 +1427,8 @@
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       <path d="m9 12 2 2 4-4"/>
     </svg>
-    <h1>Terse Doctor<span class="cn">体检</span></h1>
-    <button class="close-btn" id="btnLang" title="Language / 语言" aria-label="Language" style="margin-left:auto">
+    <h1>Terse Doctor<span class="cn" data-i18n="dr_tab">Checkup</span></h1>
+    <button class="close-btn" id="btnLang" title="Language" aria-label="Language" style="margin-left:auto">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
     </button>
     <button class="close-btn" id="closeBtn" title="Close" aria-label="Close">
@@ -1568,22 +1595,35 @@
        Signed-in users never see this: they arrived here on purpose. */
     (async function () {
       try {
-        const T = window.terse; if (!T || !T.getAuth) return;
-        const a = await T.getAuth().catch(function () { return null; });
-        if (a && a.signedIn) return;
+        const T = window.terse;
+        // LABEL AND WIRE FIRST, decide visibility second.
+        //
+        // Everything below used to sit after the auth call, so any failure there
+        // skipped it — and the no-bridge path showed the bar with an EMPTY
+        // button: a blank green slab, worse than no button at all. Building it
+        // fully before anything can throw means the only question left is
+        // whether to reveal it.
         var zh = (document.documentElement.lang || navigator.language || '').toLowerCase().startsWith('zh');
         var bar = document.getElementById('firstRunBar');
         var cta = document.getElementById('firstRunCta');
         var hint = document.getElementById('firstRunHint');
         if (!bar || !cta) return;
-        hint.textContent = zh ? '这是一次只读体检 — 没有改动任何东西' : 'That was a read-only checkup — nothing was changed';
-        cta.textContent = zh ? '下一步 →' : 'Continue →';
-        bar.classList.add('show');
+        hint.textContent = DT('dr_readonly', 'That was a read-only checkup — nothing was changed');
+        cta.textContent = DT('dr_next', 'Continue →');
         cta.addEventListener('click', function () {
-          if (T.navigateBack) T.navigateBack();
-          else if (T.showMainWindow) T.showMainWindow();
+          if (T && T.navigateBack) T.navigateBack();
+          else if (T && T.showMainWindow) T.showMainWindow();
           else location.href = 'index.html';
         });
+
+        // Signed-in users navigated here on purpose and have the sidebar to
+        // leave by. Everyone else needs the button — including when getAuth
+        // throws or returns nothing, which is why only a positive signedIn
+        // hides it.
+        var a = null;
+        if (T && T.getAuth) a = await T.getAuth().catch(function () { return null; });
+        if (a && a.signedIn === true) return;
+        bar.classList.add('show');
       } catch (e) { /* never block the report over a missing button */ }
     })();
 

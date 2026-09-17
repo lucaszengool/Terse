@@ -25,7 +25,7 @@
       agents_watch: 'Watch these agents',
       agents_watching: 'Watching {n} agent(s) · deselect any to ignore',
       agents_none_title: 'No agents running yet.',
-      agents_none_sub: 'Start Claude Code, Cursor, or Codex and Terse picks it up automatically.',
+      agents_none_sub: 'Start Claude Code, Cursor, Codex, or DeepSeek Harness and Terse picks it up automatically.',
       mode_title: 'How hard should it push?',
       mode_sub: 'Watch a real prompt shrink as you choose.',
       mode_sent: 'Sent to model',
@@ -60,7 +60,7 @@
       agents_watch: '监控这些智能体',
       agents_watching: '正在监控 {n} 个智能体 · 可取消不需要的',
       agents_none_title: '暂无运行中的智能体',
-      agents_none_sub: '启动 Claude Code、Cursor 或 Codex，Terse 会自动识别。',
+      agents_none_sub: '启动 Claude Code、Cursor、Codex 或 DeepSeek Harness，Terse 会自动识别。',
       mode_title: '压缩强度设为多少？',
       mode_sub: '拖动查看真实提示词如何被精简。',
       mode_sent: '发送给模型',
@@ -95,7 +95,7 @@
       agents_watch: '監控這些智能體',
       agents_watching: '正在監控 {n} 個智能體 · 可取消不需要的',
       agents_none_title: '暫無執行中的智能體',
-      agents_none_sub: '啟動 Claude Code、Cursor 或 Codex，Terse 會自動辨識。',
+      agents_none_sub: '啟動 Claude Code、Cursor、Codex 或 DeepSeek Harness，Terse 會自動辨識。',
       mode_title: '壓縮強度設為多少？',
       mode_sub: '拖動查看真實提示詞如何被精簡。',
       mode_sent: '傳送給模型',
@@ -154,7 +154,7 @@
     { icon: '📊', title: 'Telemetry cache (statsig)', path: '~/.claude/statsig', bytes: 100663296 },
     { icon: '🧹', title: 'Disposable files in ~/.terse', path: '~/.terse', bytes: 44040192 },
   ];
-  const AGENT_ICON = { 'claude-code': '🤖', 'openclaw': '🦎', 'cursor-agent': '⌘', 'codex': '📁', 'copilot': '∞', 'cline': '◧', 'windsurf': '🏄', 'aider': '✦' };
+  const AGENT_ICON = { 'claude-code': '🤖', 'openclaw': '🦎', 'cursor-agent': '⌘', 'codex': '📁', 'copilot': '∞', 'cline': '◧', 'windsurf': '🏄', 'aider': '✦', 'deepseek-harness': '🐋' };
 
   // ── state ──
   let root = null, onDone = null, step = 0, built = false;
@@ -430,6 +430,18 @@
       renderFindings(findings.slice(0, 6));
     }, totalSweep);
   }
+  /// Enable the Doctor step's "continue" button. Every exit path from the scan
+  /// must reach this — a disabled CTA is a dead end, and the only escape the
+  /// user has left is closing the window, which looks like the app is broken.
+  function enableDocCta(delay) {
+    setTimeout(() => {
+      const b = root && root.querySelector('#onbDocCta');
+      if (!b) return;
+      b.disabled = false;
+      if (preview) b.textContent = L('preview_cta');
+    }, delay || 0);
+  }
+
   function renderFindings(findings) {
     root.querySelector('#onbFindHdr').style.display = 'flex';
     root.querySelector('#onbFindN').textContent = findings.length;
@@ -437,6 +449,10 @@
     if (!findings.length) {
       // Clean bill of health — say that plainly instead of inventing findings.
       list.innerHTML = `<p class="onb-sub" style="margin-top:6px">${esc(L('doctor_clean'))}</p>`;
+      // The CTA is enabled at the END of this function, so returning here used
+      // to leave it disabled forever: a user whose scan came back CLEAN had no
+      // way forward except the window's close button. Enable and return.
+      enableDocCta();
       return;
     }
     findings.forEach((f, i) => {
@@ -464,7 +480,7 @@
       if (hasScene) wireScenePreview(card, f, cat);
       setTimeout(() => { const fill = card.querySelector('.f-impact .fill'); if (fill) requestAnimationFrame(() => fill.style.width = imp + '%'); }, 220 + i * 70);
     });
-    setTimeout(() => { const b = root.querySelector('#onbDocCta'); b.disabled = false; if (preview) b.textContent = L('preview_cta'); }, findings.length * 70 + 300);
+    enableDocCta(findings.length * 70 + 300);
   }
 
   // Per-finding animated scene, reusing the REAL Doctor scene library (window.doctorScenes).

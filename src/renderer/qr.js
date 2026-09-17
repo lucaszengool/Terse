@@ -159,7 +159,7 @@
   }
 
   // ── Drawing ──
-  function build(ver, ecl, dataCw) {
+  function build(ver, ecl, dataCw, forcedMask) {
     var size = ver * 4 + 17;
     var modules = [], isFn = [];
     for (var i = 0; i < size; i++) {
@@ -254,12 +254,20 @@
     }
 
     // Pick the mask the spec prefers: lowest penalty over the four rules.
+    // `forcedMask` skips the choice — nothing in the app passes it; it exists so
+    // qr.test.mjs can drive this encoder and the reference one to the same mask
+    // and compare module for module. The two disagree about the tie-break (see
+    // that file), so without it every comparison would be noise.
     var best = 0, bestPenalty = Infinity;
-    for (var m2 = 0; m2 < 8; m2++) {
-      applyMask(m2); drawFormat(m2);
-      var p = penalty(modules, size);
-      if (p < bestPenalty) { bestPenalty = p; best = m2; }
-      applyMask(m2);                                    // undo (XOR is its own inverse)
+    if (forcedMask != null) {
+      best = forcedMask;
+    } else {
+      for (var m2 = 0; m2 < 8; m2++) {
+        applyMask(m2); drawFormat(m2);
+        var p = penalty(modules, size);
+        if (p < bestPenalty) { bestPenalty = p; best = m2; }
+        applyMask(m2);                                  // undo (XOR is its own inverse)
+      }
     }
     applyMask(best); drawFormat(best);
     return modules;
@@ -308,12 +316,12 @@
     return result;
   }
 
-  function matrix(text, ecl) {
+  function matrix(text, ecl, forcedMask) {
     ecl = ecl || 'M';
     var bytes = utf8Bytes(String(text));
     var ver = pickVersion(bytes.length, ecl);
     if (!ver) throw new Error('QR: payload too long');
-    return build(ver, ecl, codewords(bytes, ver, ecl));
+    return build(ver, ecl, codewords(bytes, ver, ecl), forcedMask);
   }
 
   /** An SVG string — one <path> for every dark module, so it scales cleanly. */

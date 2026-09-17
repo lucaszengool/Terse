@@ -140,6 +140,18 @@ const eq = (l, g, w) => (JSON.stringify(g) === JSON.stringify(w) ? pass++ : fail
   ok('退出时原样落回桌面层', /pin_wallpaper_window\(&win2, false\)/.test(adj));
   ok('调节态**不是**置顶:绝不抬到屏保层', !/WP_LEVEL_OVERLAY/.test(adj));
   ok('层级只由置顶和调节态决定', /if overlay_on \{ WP_LEVEL_OVERLAY \}\s*\n\s*else if adjusting \{ WP_LEVEL_ABOVE_ICONS \}/.test(rs));
+  // 「操控小镇」开关:开 = 键盘(系统层拦截)+ 鼠标(调节态那一套)归小镇;关 = 原样还给 Mac
+  const walk = rs.slice(rs.indexOf('fn wallpaper_town_walk'), rs.indexOf('fn town_control_state'));
+  ok('操控小镇不查 Pro(广场本来免费)', walk.length > 100 && !/is_pro\(\)/.test(walk));
+  ok('操控小镇的键盘走系统层拦截', /town_keys::set_capture\(&app, on\)/.test(walk));
+  ok('操控小镇时壁纸仍在桌面图标后面(不抬窗口、不关穿透)', !/setLevel/.test(walk) && !/wallpaper_set_interactive/.test(walk) && /pin_wallpaper_window\(&win2, overlay\)/.test(walk));
+  ok('看门狗也会把键盘还回去', /WP_TOWN_WALK\.swap\(false[\s\S]{0,80}town_keys::set_capture\(&app3, false\)/.test(rs));
+  const tk = readFileSync(new URL('../../src-tauri/src/town_keys.rs', import.meta.url).pathname, 'utf8');
+  ok('带 ⌘ ⌃ ⌥ 的组合键一律放行', /FLAG_CMD \| FLAG_CTRL \| FLAG_ALT\) != 0 \{ return ev; \}/.test(tk));
+  ok('开关关着时一个键都不拦', /if !ON\.load\(Ordering::SeqCst\) \|\| ev\.is_null\(\) \{ return ev; \}/.test(tk));
+  ok('tap 被系统关掉会自己重开', /EV_TAP_OFF_TIMEOUT/.test(tk));
+  ok('只有空白桌面上的拖动归小镇(文件、窗口照常)', /fn on_bare_desktop[\s\S]{0,200}window_at\(x, y\)[\s\S]{0,200}icon_rects\(\)/.test(tk));
+  ok('读不出图标就不抢鼠标', /let Some\(rects\) = icon_rects\(\) else \{ return false \}/.test(tk));
   ok('页面收到 wallpaper-lift 才撤掉自己的底色', /listen\('wallpaper-lift'/.test(page));
   ok('页面自己也切一次画法(不赌事件到得及时)', /applyOverlay\(on \|\| overlayOK\(\)\);/.test(page));
   ok('抬窗口的授权问引擎,不问配置文件', /wp\.getView3D && wp\.getView3D\(\)\.on/.test(page));

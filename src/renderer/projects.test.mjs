@@ -32,7 +32,7 @@ const ok = (l, c) => (c ? pass++ : fails.push(l));
 // ── 2. 引擎:缩影和标题在同一个 Group 里,3D 一转一起转 ──────────────────
 {
   ok('引擎能演一个项目', /showProject\(cap, ms = 20000\)/.test(eng));
-  ok('缩影挂在字形层那个 Group 下', /grp\.add\(this\._projLayer\.points\)/.test(eng));
+  ok('缩影挂在字形层里(同一台相机,3D 里一起转)', /host\.add\(this\._projLayer\.points\)/.test(eng));
   ok('有缩影就得画那一层', /projLive/.test(eng));
   ok('销毁时一起收掉', /this\._projLayer\.dispose\(\)/.test(eng));
   ok('壁纸页收到事件就演', /listen\('wallpaper-project'/.test(wall));
@@ -40,7 +40,9 @@ const ok = (l, c) => (c ? pass++ : fails.push(l));
 
 // ── 3. 成本:传参数,不传画面 ─────────────────────────────────────────────
 {
-  ok('服务端有硬上限', /MAX_CAPSULE_BYTES = 64 \* 1024/.test(api));
+  ok('服务端有硬上限', /MAX_CAPSULE_BYTES = 160 \* 1024/.test(api));
+  // 张数和大小是**两道闸**:张数由 MAX_SHOTS 管(封面 + 4 = 5),大小由上面那条管。
+  ok('最多五张图', /const MAX_SHOTS = 4/.test(api) && /MAX_SHOTS: usize = 4/.test(rs));
   ok('超了就拒绝', /413/.test(api) && /Capsule too large/.test(api));
   // 远程图会让"预览"变成一次对第三方的请求,而且那张图随时会变。
   ok('只收内联的图', /\^data:image\\\/\(jpeg\|png\|webp\);base64/.test(api));
@@ -48,7 +50,9 @@ const ok = (l, c) => (c ? pass++ : fails.push(l));
   ok('主键带身份,别人覆盖不了你的项目', /function serverId\(identity, srcId\)/.test(api));
   // 列表直接带整颗胶囊 —— 点预览时不再请求服务器,粒子在本机生成。
   ok('列表里就带着胶囊', /capsule = JSON\.parse\(r\.capsule\)/.test(api));
-  ok('点预览不再请求服务器', /preview\(p\.capsule \|\| p\)/.test(page));
+  // 预览时连**最高赞的三条评论**也不用再请求 —— 列表接口已经把它们一起发来了。
+  ok('点预览不再请求服务器', /preview\(Object\.assign\(\{\}, p\.capsule \|\| p, \{ comments/.test(page));
+  ok('三条最高赞评论跟着列表一起来', /topComments/.test(api) && /topComments/.test(page));
   // 224 而不是 96:96 的采样格子比像素还粗,粒子聚出来是一团认不出的色块(实测)。
   ok('换封面在本机缩到和扫描同一个尺寸', /const S = 224;/.test(page) && /toDataURL\('image\/jpeg'/.test(page));
   ok('上传那一份不带本机路径', /pub fn for_upload/.test(rs) && !/"path": self\.path/.test(rs));
@@ -70,8 +74,22 @@ const ok = (l, c) => (c ? pass++ : fails.push(l));
   ok('采样格子比封面细', /SAMPLE_W = 224/.test(layer));
   ok('点小于间距', /1\.15 \+ uForm \* 0\.75/.test(layer));
   // 「只出现了图片,没有标题」:_queueGlyph 有节流有配额,大字那条路才是必到的。
-  ok('标题走必到的大字通道', /this\._logPending = \{ label: String\(cap\.title\)/.test(eng));
-  ok('先清空队列,别排在旧内容后面', /this\._glyphQueue\.length = 0;/.test(eng));
+  // 标题**属于项目自己这一层**,和图一起采、一起浮现、一起散去。
+  //
+  // 试过两次走壁纸原有的字形队列,两次都是同一个结果:用户看到"只有图,没有字"。
+  // 那条队列有节流、有配额、要等空槽位,槽位数量还随 Pro 变 —— 项目自己的字不该
+  // 去排别人的队。这条断言就是不让它再被改回去。
+  const show = eng.slice(eng.indexOf('showProject(cap'), eng.indexOf('hideProject()'));
+  ok('文字和图一次摆好', /layer\.setShow\(img, text/.test(show));
+  ok('标题不再排字形队列', !/_queueGlyph|_logPending/.test(show));
+  // 排版整块做,不是一行一个画布:逐行缩放会把长短不一的行拉成同样宽度的色带,
+  // 屏幕上就是几条糊掉的东西(试过,不行)。
+  ok('文字整块排版后再采样', /function sampleBlock/.test(layer));
+  // 图和字要的点大小不一样:一行 20 多像素高的字,拿画图那种点去画就是实心方块。
+  ok('图和字用不同大小的点', /attribute float aScale/.test(layer));
+  // 那张 soft-dot 精灵是一圈径向渐变 —— 几万颗叠在一张图上,每颗都在糊掉邻居,
+  // 整幅图就"虚"了(用户原话)。这一层自己算边缘。
+  ok('图的粒子不用糊的那张精灵', !/uDotTex/.test(layer.slice(layer.indexOf('PROJ_FS'), layer.indexOf('PROJ_FS') + 700)));
   // 「像 GitHub 那样识别语言百分比」:按字节算(Linguist 的算法),而不是按文件数。
   ok('语言占比按字节算', /m\.len\(\)\.min\(2_000_000\)/.test(rs));
   ok('还带上提交时间/许可证这些事实', /fn project_facts/.test(rs));

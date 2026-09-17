@@ -14,48 +14,6 @@
        只要这里还留着 #05060a,置顶后就是一块盖住整个屏幕的黑板。 */
     html.overlay, html.overlay body, html.overlay #stage { background: transparent !important; }
     #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh}
-    /* ── 消息投屏 ─────────────────────────────────────────────────────────── */
-    #msgLayer{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:6;
-      display:flex;flex-direction:column;align-items:center;gap:14px;pointer-events:none;
-      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC',system-ui,sans-serif;
-      max-width:min(78vw,980px)}
-    #msgLayer.hidden{display:none}
-    #msgBig{text-align:center;transition:opacity .5s,transform .5s}
-    #msgBig.swap{opacity:0;transform:translateY(9px)}
-    .mb-meta{display:flex;align-items:center;justify-content:center;gap:8px;
-      font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-      color:var(--accent,#e146eb);text-shadow:0 0 18px color-mix(in srgb,var(--accent,#e146eb) 55%,transparent)}
-    .mb-dot{opacity:.5}
-    .mb-room:empty,.mb-dot.off{display:none}
-    .mb-sender{margin-top:7px;font-size:34px;font-weight:800;color:#fff;letter-spacing:.01em;
-      text-shadow:0 3px 26px rgba(0,0,0,.66)}
-    .mb-body{margin-top:10px;font-size:20px;font-weight:600;line-height:1.5;
-      color:rgba(255,255,255,.9);text-shadow:0 2px 18px rgba(0,0,0,.6);
-      overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-
-    /* 悬停后展开的那一层:全文 + 直接回复 */
-    #msgPanel{width:min(70vw,720px);padding:16px 18px 14px;border-radius:18px;
-      opacity:0;transform:translateY(-8px) scale(.985);pointer-events:none;
-      transition:opacity .22s ease,transform .22s cubic-bezier(.2,.9,.25,1);
-      background:rgba(10,12,20,.88);border:1px solid rgba(255,255,255,.14);
-      -webkit-backdrop-filter:blur(26px) saturate(1.25);backdrop-filter:blur(26px) saturate(1.25);
-      box-shadow:0 26px 70px rgba(0,0,0,.62)}
-    #msgLayer.open #msgPanel{opacity:1;transform:none;pointer-events:auto}
-    .mp-head{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;
-      letter-spacing:.09em;text-transform:uppercase;color:var(--accent,#e146eb)}
-    .mp-head .mp-time{margin-left:auto;color:rgba(255,255,255,.42);letter-spacing:.04em}
-    .mp-sender{margin-top:9px;font-size:15px;font-weight:800;color:#fff}
-    .mp-body{margin-top:6px;font-size:14px;line-height:1.6;color:rgba(255,255,255,.88);
-      max-height:34vh;overflow:auto;white-space:pre-wrap;word-break:break-word}
-    .mp-reply{display:flex;gap:8px;margin-top:13px}
-    .mp-reply input{flex:1;padding:9px 12px;border-radius:10px;font-size:13px;color:#fff;
-      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);outline:none}
-    .mp-reply input:focus{border-color:var(--accent,#e146eb)}
-    .mp-reply button{padding:9px 18px;border-radius:10px;border:0;cursor:pointer;
-      font-size:13px;font-weight:800;color:#0b0c12;background:var(--accent,#e146eb)}
-    .mp-reply button:disabled{opacity:.45;cursor:default}
-    .mp-note{margin-top:8px;font-size:10.5px;line-height:1.5;color:rgba(255,255,255,.45);min-height:14px}
-
     #panel{position:fixed;left:30px;bottom:30px;padding:15px 20px;border-radius:18px;
       background:rgba(10,12,20,.30);backdrop-filter:blur(18px) saturate(1.2);
       -webkit-backdrop-filter:blur(18px) saturate(1.2);border:1px solid rgba(255,255,255,.11);
@@ -91,29 +49,6 @@
 </head>
 <body>
   <canvas id="stage"></canvas>
-
-  <!-- ── 消息投屏 ───────────────────────────────────────────────────────────
-       壁纸窗口是点击穿透的(桌面层和置顶层都是),所以这一块不能靠 DOM 的
-       mouseenter 来展开 —— 指针根本不会进到这个窗口里来。做法是把这块的屏幕
-       矩形报给 Rust,由那边轮询真实光标位置,进出时才临时打开这个窗口的鼠标
-       事件并广播 wallpaper-hover。和岛屿那套 dash cursor poll 是同一个思路。 -->
-  <div id="msgLayer" class="hidden">
-    <div id="msgBig">
-      <div class="mb-meta"><span class="mb-app"></span><span class="mb-dot">·</span><span class="mb-room"></span></div>
-      <div class="mb-sender"></div>
-      <div class="mb-body"></div>
-    </div>
-    <div id="msgPanel">
-      <div class="mp-head"><span class="mp-app"></span><span class="mp-room"></span><span class="mp-time"></span></div>
-      <div class="mp-sender"></div>
-      <div class="mp-body"></div>
-      <div class="mp-reply">
-        <input id="mpInput" type="text" placeholder="回复…" autocomplete="off" spellcheck="false">
-        <button id="mpSend">发送</button>
-      </div>
-      <div class="mp-note"></div>
-    </div>
-  </div>
 
   <div id="panel">
     <div class="brand"><span class="dot"></span>Terse · Live</div>
@@ -492,7 +427,8 @@
 
     function hoverParallax(x, y){
       if (!wp || !wp.setView3D || !view3dActive()) return;
-      if (orbitOn) return;                 // 人正按着拖,别跟他抢
+      // 人正按着拖,别跟他抢。orbitOn 住在下面那个闭包里,这里读不到(读了就是每次光标移动一个 ReferenceError)
+      if (window.__terseOrbiting && window.__terseOrbiting()) return;
       const base = cfg.view3d || {};
       const sw = window.screen.width || 1, sh = window.screen.height || 1;
       const nx = Math.max(-1, Math.min(1, (x / sw) * 2 - 1));
@@ -709,134 +645,55 @@
       ]);
     }
 
-    /* ══════════════ 消息投屏 ══════════════
-       数据来自通知中心(见 messages.rs):一条通知就是 app + 谁 + 哪个群 + 正文。
-       这里只负责显示:大字是预览,鼠标移上去才展开全文和回复框。
+    /* ══════════════ 信息流 → 粒子大字 ══════════════
+       数据来自 feeds.rs:每个 app 的通知、系统通知、窗口标题、正在播放。
+       它们不再有自己的一层 DOM 大字,而是交给引擎的 feedLine(),和 agent 日志
+       走同一条 headline 轨道、同一种粒子字,按到达顺序排着播,播完一起进轮播。
 
-       两个必须知道的约束:
-        · 壁纸窗口点击穿透,DOM 的 mouseenter 永远不会触发 —— 所以进出由 Rust
-          轮询真实光标位置来判定,这里只听 wallpaper-hover 事件。
-        · 正文会显示在桌面上,谁看见你的屏幕就看见它,置顶时尤其如此。
-          cfg.msgPreview=false 时只显示"谁发的",不显示任何正文。 */
-    let msgs = [], msgIdx = 0, msgHot = false, curMsg = null;
+       · 只把**新**条目交出去(按 id 去重)。第一次拉到的是积压的历史,只放最新几条,
+         免得一开机就把一小时的通知排成一长队。
+       · 引擎会被重建(换引擎、换风格)。新引擎什么都不记得,所以把最近几条补给它。
+       · 正文会显示在桌面上。cfg.msgPreview=false 时只显示是谁发的。 */
+    const FEED_ICON = { notif: '💬', system: '🔔', window: '🪟', media: '▶' };
+    const feedSeen = new Set();
+    let feedRecent = [], feedEngine = null;
 
-    function fmtTime(ts){
-      const d = new Date((ts||0) * 1000), n = new Date();
-      const p2 = (x) => String(x).padStart(2,'0');
-      const hm = p2(d.getHours()) + ':' + p2(d.getMinutes());
-      return (d.toDateString() === n.toDateString()) ? hm : (d.getMonth()+1) + '/' + d.getDate() + ' ' + hm;
+    function feedText(m){
+      const ic = FEED_ICON[m.kind] || '💬';
+      if (m.kind === 'window' || m.kind === 'media') return ic + ' ' + (m.sender || m.app_name || '');
+      const who = m.group ? (m.group + '·' + (m.sender || '')) : (m.sender || m.app_name || '');
+      if (cfg.msgPreview === false || !m.body) return ic + ' ' + who;
+      return ic + ' ' + who + ': ' + m.body;
     }
 
-    function renderMsg(m){
-      if (!m) return;
-      curMsg = m;
-      const L = document.getElementById('msgLayer');
-      const big = document.getElementById('msgBig');
-      if (!L || !big) return;
-      const q = (sel) => L.querySelector(sel);
-      big.classList.add('swap');            // 先淡出再换字,避免硬跳
-      setTimeout(() => {
-        q('.mb-app').textContent  = m.app_name || '';
-        q('.mb-room').textContent = m.group || '';
-        q('.mb-dot').classList.toggle('off', !m.group);
-        q('.mb-sender').textContent = m.sender || '';
-        q('.mb-body').textContent = (cfg.msgPreview === false) ? '' : ('\u300c' + (m.body || '') + '\u300d');
-        q('.mp-app').textContent  = m.app_name || '';
-        q('.mp-room').textContent = m.group ? ('\u00b7 ' + m.group) : '';
-        q('.mp-time').textContent = fmtTime(m.ts);
-        q('.mp-sender').textContent = m.sender || '';
-        q('.mp-body').textContent = m.body || '';
-        q('.mp-note').textContent = '';
-        const inp = document.getElementById('mpInput');
-        if (inp) inp.value = '';
-        big.classList.remove('swap');
-        reportHotRect();
-      }, 260);
-    }
-
-    /** 把大字那块的屏幕矩形报给 Rust —— 它据此判断光标有没有压上来。 */
-    function reportHotRect(){
-      try {
-        const el = document.getElementById('msgBig');
-        if (!el || !T || !T.wallpaperSetHotRect) return;
-        const r = el.getBoundingClientRect();
-        T.wallpaperSetHotRect(Math.round(r.left), Math.round(r.top),
-                              Math.round(r.width), Math.round(r.height));
-      } catch (e) {}
-    }
-
-    function nextMsg(){
-      if (msgHot || !msgs.length) return;   // 展开时不要换 —— 人正在读
-      msgIdx = (msgIdx + 1) % msgs.length;
-      renderMsg(msgs[msgIdx]);
+    function feedPlay(m){
+      try { if (wp && wp.feedLine) wp.feedLine(feedText(m), { max: 24 }); } catch (e) {}
     }
 
     async function pullMessages(){
       try {
-        if (!T || !T.messagesForWallpaper) return;
-        // 走 for_wallpaper 而不是 recent:被用户关掉的 app 在 Rust 那边就滤掉了,
-        // 免得两处各滤一遍、还滤得不一样。
-        const list = await T.messagesForWallpaper(20);
-        if (!Array.isArray(list) || !list.length) return;
-        const fresh = list[0] && (!msgs[0] || list[0].id !== msgs[0].id);
-        msgs = list;
-        document.getElementById('msgLayer')?.classList.remove('hidden');
-        if (fresh) { msgIdx = 0; renderMsg(msgs[0]); }   // 新消息立刻插队
-        else if (!curMsg) renderMsg(msgs[0]);
+        if (!T) return;
+        // 被关掉的来源在 Rust 那边就滤掉了。Windows 端还没有信息流,退回只放消息。
+        let list = null;
+        if (T.feedsForWallpaper) { try { list = await T.feedsForWallpaper(24); } catch (e) { list = null; } }
+        if (!Array.isArray(list) && T.messagesForWallpaper) list = await T.messagesForWallpaper(20);
+        if (!Array.isArray(list)) return;
+        if (wp && wp !== feedEngine) { feedEngine = wp; feedRecent.slice(-6).forEach(feedPlay); }
+        const first = feedSeen.size === 0;
+        const fresh = list.filter((m) => m && m.id && !feedSeen.has(m.id));
+        fresh.forEach((m) => feedSeen.add(m.id));
+        // list 是新的在前;排队要旧的在前,才是"按到达顺序"
+        const play = fresh.slice(0, first ? 5 : 8).reverse();
+        play.forEach((m) => { feedRecent.push(m); feedPlay(m); });
+        feedRecent = feedRecent.slice(-12);
+        if (feedSeen.size > 3000) { feedSeen.clear(); list.forEach((m) => m && m.id && feedSeen.add(m.id)); }
       } catch (e) {}
     }
 
     function initMessages(){
       if (cfg.messages === false) return;
       pullMessages();
-      setInterval(pullMessages, 8000);
-      setInterval(nextMsg, 9000);
-      try {
-        if (window.__TAURI__ && window.__TAURI__.event) {
-          window.__TAURI__.event.listen('wallpaper-hover', (ev) => {
-            msgHot = ev.payload === true;
-            document.getElementById('msgLayer')?.classList.toggle('open', msgHot);
-          });
-        }
-      } catch (e) {}
-
-      const send = document.getElementById('mpSend');
-      const inp  = document.getElementById('mpInput');
-      const note = () => document.querySelector('#msgPanel .mp-note');
-      // 两步:先打开会话交给人看,确认了再发(微信不给读界面,机器无法自证收件人)
-      let armed = false;
-      const resetSend = () => { armed = false; if (send) send.textContent = '\u6253\u5f00\u4f1a\u8bdd'; };
-      resetSend();
-      const doSend = async () => {
-        const text = (inp && inp.value || '').trim();
-        if (!text || !curMsg) return;
-        const n = note();
-        send.disabled = true;
-        try {
-          if (!armed) {
-            const r = await T.messagesOpenChat(curMsg.app_id, curMsg.group || curMsg.sender);
-            if (r && r.ok) {
-              armed = true;
-              send.textContent = '\u786e\u8ba4\u53d1\u9001';
-              if (n) n.textContent = '\u5df2\u6253\u5f00\u4f1a\u8bdd \u2014\u2014 \u8bf7\u5148\u786e\u8ba4\u662f\u300c'
-                                   + (curMsg.group || curMsg.sender) + '\u300d\uff0c\u518d\u70b9\u53d1\u9001\u3002';
-            } else if (n) { n.textContent = '\u6253\u4e0d\u5f00\uff1a' + ((r && r.error) || ''); }
-          } else {
-            const r = await T.messagesSendOpen(curMsg.app_id, text);
-            if (n) n.textContent = (r && r.ok) ? '\u5df2\u53d1\u9001' : ('\u5931\u8d25\uff1a' + ((r && r.error) || ''));
-            if (r && r.ok && inp) inp.value = '';
-            resetSend();
-          }
-        } catch (e) {
-          if (n) n.textContent = '\u5931\u8d25\uff1a' + (e && e.message ? e.message : e);
-          resetSend();
-        }
-        send.disabled = false;
-      };
-      send && send.addEventListener('click', doSend);
-      inp && inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !armed) doSend(); });
-      inp && inp.addEventListener('input', () => { if (armed) resetSend(); });
-      window.addEventListener('resize', reportHotRect);
+      setInterval(pullMessages, 5000);
     }
 
     async function boot(){
@@ -938,7 +795,7 @@
         // 否则那就是一块盖住桌面图标的黑板(和「始终置顶」同一个坑,同一套画法)。
         window.__TAURI__.event.listen('wallpaper-lift', ev => applyOverlay(!!ev.payload || overlayOK()));
       }
-      document.addEventListener('visibilitychange', () => { if (!wp) return; document.hidden ? wp.stop() : wp.start(); });
+      document.addEventListener('visibilitychange', () => { if (!wp || window.__terseTownOn) return; document.hidden ? wp.stop() : wp.start(); });
       window.addEventListener('resize', () => wp && wp.resize());
     }
     boot();
@@ -1018,6 +875,7 @@
          判据是"指针正好压在某个字上"。转视角没有这样一个判据 —— 整幅画都是它的
          热区,自动化的结果就是壁纸一直在抢鼠标。 */
       var orbitOn = false, orbitTimer = 0, dragGuard = 0, lastArmAt = 0, orbitMoved = false;
+      window.__terseOrbiting = function () { return orbitOn; };
       var ORBIT_SECS = 45000;
 
       function canOrbit() {
@@ -1132,11 +990,17 @@
         // 那颗圆钮按下去,Rust 广播这个事件(壁纸和按钮各听各的,状态永远一致)。
         window.__TAURI__.event.listen('wallpaper-adjust', function (e) { setAdjust(!!e.payload); });
         window.__TAURI__.event.listen('wallpaper-arm-toggle', function () {
+          if (window.__terseTownToggle && window.__terseTownToggle()) return;
           if (orbitOn) { setOrbit(false); return; }
           if (canOrbit()) { setOrbit(true); if (orbitOn) return; }
           setArmed(!armed);
         });
         window.__TAURI__.event.listen('wallpaper-cursor', function (ev) {
+          if (window.__terseTownOn) {             // 小镇盖着粒子场:没有字可点,光标交给小镇转头
+            var tp = ev.payload || [];
+            if (window.__terseTownCursor) window.__terseTownCursor(tp[0], tp[2] ? tp[1] : (window.screen.height - tp[1]));
+            return;
+          }
           if (!wp || !wp.hitTest) return;
           var pt = ev.payload || [];
           // Cocoa is bottom-left origin and in points; the DOM is top-left.
@@ -1170,6 +1034,12 @@
       }
       window.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
+        // 正在逛代码小镇:Esc 就是放手(小镇页面里按的 Esc 走 postMessage,这里是焦点在外面时)
+        // 小镇页面已经起来时,Esc 由它决定(在别墅里是回街上);没起来才直接放手
+        if (window.__terseTownWalking) {
+          if (!window.__terseTownReady) core.invoke('wallpaper_town_walk', { on: false }).catch(function () {});
+          return;
+        }
         // 调节态是用户明确进来的,退出也要走同一条路(Rust 会把那颗钮的灯灭掉)
         if (adjustOn) { core.invoke('wallpaper_set_adjust', { on: false }).catch(function () {}); setAdjust(false); return; }
         if (orbitOn) setOrbit(false); else setArmed(false);
@@ -1441,8 +1311,243 @@
         R.publishLog(t.slice(0, 300), 'log');
       };
     })();
+
+    /* ── 代码小镇(壁纸版)─────────────────────────────────────────────────────
+       wallpaper.json 里 town.on 为真时,整幅壁纸换成广场那座第一人称粒子小镇:
+       https://www.terseai.org/town-wall 嵌在一个铺满全屏的 iframe 里 —— 和网页、手机
+       同一台引擎、同一份数据、同一套玩法,小镇在网站上更新,桌面上就跟着更新,
+       不用重新打包。这时下面这台粒子引擎停着,省一份显卡。
+       平时它只是壁纸:窗口照旧点击穿透,iframe 收不到任何输入,镜头自己慢慢转。
+       「代码小镇」页面点「进去逛」→ Rust wallpaper_town_walk 抬窗口、接管键鼠 →
+       这里告诉小镇 walk。Esc 从小镇转回来(或这边按),再请 Rust 放手。 */
+    const TOWN_ORIGIN = 'https://www.terseai.org';
+    const TOWN_URL = TOWN_ORIGIN + '/town-wall';
+    let townFrame = null, townWalking = false, townRenew = 0;
+    // 小镇页面还没加载完时要去的别墅:ready 之后再发(早发的 postMessage 会丢)
+    let townReady = false, townGoto = null;
+    window.__terseTownOn = false;
+    window.__terseTownWalking = false;
+
+    function townLang() {
+      try { return localStorage.getItem('terse-lang') || navigator.language || 'en'; } catch (e) { return 'en'; }
+    }
+    function townPost(msg) {
+      if (!townFrame || !townFrame.contentWindow) return;
+      try { townFrame.contentWindow.postMessage(Object.assign({ target: 'terse-town' }, msg), TOWN_ORIGIN); } catch (e) {}
+    }
+    /** 把身份交给小镇:没登录也能逛,只是不进镇上的名单(说不了话、留不了东西)。 */
+    async function townInit() {
+      let identity = '', name = '';
+      try { const lic = T.getLicense ? await T.getLicense() : null; identity = (lic && lic.clerkUserId) || ''; } catch (e) {}
+      try { name = localStorage.getItem('terse-nickname') || ''; } catch (e) {}
+      if (!name) {
+        try {
+          const a = T.getAuth ? await T.getAuth() : null;
+          name = (a && (a.firstName || String(a.email || '').split('@')[0])) || '';
+        } catch (e) {}
+      }
+      townPost({ cmd: 'init', identity, name, lang: townLang() });
+      townPost({ cmd: 'walk', on: townWalking });
+    }
+    function setTown(on) {
+      on = !!on;
+      if (on === !!townFrame) return;
+      window.__terseTownOn = on;
+      townReady = false;
+      window.__terseTownReady = false;
+      if (on) {
+        const f = document.createElement('iframe');
+        f.id = 'townFrame';
+        const budget = Math.max(0.3, Math.min(1, +((cfg.town && cfg.town.budget) || 0.8)));
+        f.src = TOWN_URL + '?budget=' + budget + '&lang=' + encodeURIComponent(townLang());
+        f.setAttribute('allow', 'fullscreen');
+        f.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;margin:0;z-index:40;background:#05070c;';
+        document.body.appendChild(f);
+        townFrame = f;
+        core_invoke('townpad_show', { on: true });
+        canvas.style.visibility = 'hidden';
+        panel.style.visibility = 'hidden';
+        try { if (wp && wp.stop) wp.stop(); } catch (e) {}
+      } else {
+        if (townWalking) core_invoke('wallpaper_town_walk', { on: false });
+        applyTownWalk(false);
+        try { townFrame.remove(); } catch (e) {}
+        townFrame = null;
+        core_invoke('townpad_show', { on: false });
+        canvas.style.visibility = '';
+        panel.style.visibility = '';
+        try { if (wp && wp.start && !document.hidden) wp.start(); } catch (e) {}
+      }
+    }
+    function core_invoke(cmd, args) {
+      try { return window.__TAURI__.core.invoke(cmd, args || {}).catch(function () {}); } catch (e) { return Promise.resolve(); }
+    }
+    /** Rust 说了算(按钮、Esc、看门狗都走 wallpaper-town-walk),这里只跟着。 */
+    function applyTownWalk(on) {
+      townWalking = !!on && !!townFrame;
+      window.__terseTownWalking = townWalking;
+      clearInterval(townRenew);
+      townPost({ cmd: 'walk', on: townWalking });
+      if (townWalking) {
+        try { window.focus(); townFrame.focus(); } catch (e) {}
+        townFocus = null;               // 下一次轮询一定报一次
+      } else {
+        townKeys = false;
+      }
+    }
+    /* 键盘接管(Rust town_keys,系统层拦截):开着的时候键直接从这里进小镇,不看焦点 */
+    let townKeys = false;
+    /* 键盘还在不在我们这儿。逛的时候窗口留在桌面层、照常点击穿透,用户随时会去点文件、
+       切到别的 app —— 那时键盘就不在壁纸上了,小镇要知道(停住转向、提示 ⌘⇧W 回来)。
+       document.hasFocus() 把 iframe 里的焦点也算在内。 */
+    let townFocus = null;
+    setInterval(function () {
+      if (!townWalking) return;
+      const f = townKeys || document.hasFocus();
+      if (f !== townFocus) { townFocus = f; townPost({ cmd: 'focus', on: f }); }
+    }, 300);
+    /** 光标位置 → 小镇(-1..1,屏幕中心是 0)。桌面层收不到拖动,转头靠它。 */
+    // 操控开着时鼠标直接进小镇(拖动转头),光标靠边转向就不需要了 —— 两个一起会打架
+    const TOWN_CURSOR_EDGE = false;
+    window.__terseTownCursor = function (x, y) {
+      if (!townWalking || !TOWN_CURSOR_EDGE) return;
+      const sw = window.screen.width || 1, sh = window.screen.height || 1;
+      townPost({ cmd: 'cursor', nx: (x / sw) * 2 - 1, ny: (y / sh) * 2 - 1 });
+    };
+    /** ⌘⇧W:小镇开着时是「暂停 / 接着逛」。键盘被别的窗口拿走了,按一下就拿回来。 */
+    window.__terseTownToggle = function () {
+      if (!townFrame) return false;
+      const on = !(townWalking && document.hasFocus());
+      core_invoke('wallpaper_town_walk', { on: on });
+      return true;
+    };
+    /* 键盘:窗口成了 key window 以后,焦点可能停在外层这一页而不是 iframe 里
+       (跨源 iframe 要自己被点过才有焦点)。逛的时候外层收到的键原样转给小镇,
+       小镇在它自己的窗口上再派发一次 —— 于是焦点在哪都一样能走。 */
+    ['keydown', 'keyup'].forEach(function (type) {
+      window.addEventListener(type, function (e) {
+        if (!townWalking || !townFrame) return;
+        townPost({ cmd: 'key', type: type, key: e.key, code: e.code, shift: e.shiftKey, repeat: e.repeat });
+        e.preventDefault();
+      }, true);
+    });
+    window.addEventListener('message', function (e) {
+      if (e.origin !== TOWN_ORIGIN || !townFrame || e.source !== townFrame.contentWindow) return;
+      const d = e.data || {};
+      if (d.source !== 'terse-town') return;
+      if (d.event === 'ready') {
+        townReady = true;
+        window.__terseTownReady = true;
+        townInit().then(function () {
+          if (townGoto) { townPost({ cmd: 'goto', id: townGoto }); townGoto = null; }
+        });
+      }
+      else if (d.event === 'esc') core_invoke('wallpaper_town_walk', { on: false });
+      // 进出别墅:灵动岛旁的胶囊跟着多出 / 收起「出去」
+      else if (d.event === 'villa') core_invoke('townpad_villa', { inside: true });
+      else if (d.event === 'town') core_invoke('townpad_villa', { inside: false });
+      else if (d.event === 'error') console.warn('[town] page error', d.message);
+    });
+    if (window.__TAURI__ && window.__TAURI__.event) {
+      window.__TAURI__.event.listen('wallpaper-town-walk', function (ev) {
+        if (ev.payload && !townFrame && cfg.town && cfg.town.on) setTown(true);
+        applyTownWalk(!!ev.payload);
+      });
+      window.__TAURI__.event.listen('wallpaper-config', function (ev) {
+        const c = ev.payload || {};
+        setTown(!!(c.town && c.town.on));
+      });
+      // 「代码小镇」页面刚发布了一栋别墅:小镇重新盖一遍,把人带到它门口
+      window.__TAURI__.event.listen('town-control', function (ev) {
+        const p = ev.payload || {};
+        townKeys = !!p.keys;
+        // 键盘接管不了的原因要说对:没有辅助功能权限,而不是"键盘在别的窗口上"
+        townPost({ cmd: 'status', keys: townKeys, trusted: p.trusted !== false });
+        townFocus = null;
+      });
+      // 在空白桌面上按住拖动(Rust town_keys 判断过不是文件、不是窗口)→ 小镇转头
+      window.__TAURI__.event.listen('town-mouse', function (ev) {
+        const m = ev.payload || {};
+        if (!townWalking) return;
+        townPost({ cmd: 'mouse', t: String(m.t || ''), dx: +m.dx || 0, dy: +m.dy || 0 });
+      });
+      // 胶囊上的「出去」
+      window.__TAURI__.event.listen('town-exit-villa', function () { townPost({ cmd: 'exitVilla' }); });
+      window.__TAURI__.event.listen('town-key', function (ev) {
+        const k = ev.payload || {};
+        if (!townWalking || !k.key) return;
+        townPost({ cmd: 'key', type: k.t === 'keyup' ? 'keyup' : 'keydown', key: k.key, code: '' });
+      });
+      window.__TAURI__.event.listen('town-goto', function (ev) {
+        const id = ev.payload && ev.payload.id;
+        if (!id) return;
+        if (townFrame && townReady) townPost({ cmd: 'goto', id: String(id) });
+        else townGoto = String(id);
+      });
+    }
+    // 启动时按保存的配置来;引擎换过、刚挂上时也得停住(它自己会 start)
+    (async function () {
+      try {
+        const c = T.getWallpaperConfig ? await T.getWallpaperConfig() : null;
+        setTown(!!(c && c.town && c.town.on));
+      } catch (e) {}
+    })();
+    setInterval(function () {
+      if (townFrame && wp && wp._running && wp.stop) { try { wp.stop(); } catch (e) {} }
+    }, 2000);
   </script>
   <!-- 语言机制:data-i18n 的键在这里被解析。放最后,让它在页面自己的脚本之后跑。 -->
+  <script type="module">
+    /* 手势控制(Pro)—— 桌面壁纸这一层。只有打开了手势控制、摄像头里真有一只手时才有事件;
+       否则这段代码什么都不做,壁纸和以前一模一样。
+         张开手掌移动 → 粒子被手推开(shader 里本来就有的 uHandXY 力场)
+         握拳          → 粒子向中心收拢(uGestureGrip)
+         握拳拧手腕    → 变速          张开手掌停住 → 定格 / 解除
+         开着 3D 时:捏住拖 → 转视角;两只手捏住拉开 → 拉近 / 推远(只动画面,不写盘 —— 和 hoverParallax 一样) */
+    import { listenGestures } from './gesture-core.js';
+    const TE = window.__TAURI__ && window.__TAURI__.event;
+    if (TE) {
+      // 手势控制开没开 —— 两个壁纸引擎按它决定帧率上限(开着才降;关着和原来一样)。
+      // 放在全局上:换风格时引擎会重建,状态不能跟着引擎丢
+      try { window.__TAURI__.core.invoke('hands_get_enabled').then((on) => { globalThis.__terseGestureOn = !!on; }).catch(() => {}); } catch (e) {}
+      TE.listen('hand-enabled', (e) => { globalThis.__terseGestureOn = !!(e && e.payload); });
+      let grip = 0, gripT = 0, gi = 0, orbit = null, zoom0 = null, lensAt = null;
+      const W = () => window.wp;
+      const view = () => { const w = W(); return (w && w._view) ? Object.assign({}, w._view) : { on: false, az: 0, el: 0, dist: 1 }; };
+      const stepGrip = () => {
+        grip += (gripT - grip) * 0.25;
+        const w = W(); if (w && w.setGrip) w.setGrip(grip);
+        if (gripT === 0 && grip < 0.01) { clearInterval(gi); gi = 0; if (w && w.setGrip) w.setGrip(0); }
+      };
+      // 光标层算好的那一份(全屏同一个光标)
+      listenGestures(TE.listen, (e) => {
+        const wp = W(); if (!wp) return;
+        switch (e.type) {
+          case 'hand':
+            if (wp.setHandScreen) wp.setHandScreen(e.pose === 'fist' ? null : e.x, e.y);
+            // 放大镜开着、手挪开了 → 收起
+            if (lensAt && Math.hypot(e.x - lensAt[0], e.y - lensAt[1]) > 140) { if (wp.setLensScreen) wp.setLensScreen(null); lensAt = null; }
+            gripT = e.pose === 'fist' ? 1 : 0;
+            if (!gi && (gripT || grip > 0.01)) gi = setInterval(stepGrip, 33);
+            break;
+          case 'lost': if (wp.setHandScreen) wp.setHandScreen(null); if (wp.setLensScreen) wp.setLensScreen(null); lensAt = null; gripT = 0; orbit = null; zoom0 = null; break;
+          // 指着 agent 日志 / 统计的粒子字停 0.6 秒 → 那一处放大
+          case 'dwell': if (wp.setLensScreen) { wp.setLensScreen(e.x, e.y); lensAt = [e.x, e.y]; } break;
+          case 'freeze': if (wp.setFrozen) wp.setFrozen(e.frozen); else wp._frozen = e.frozen; break;
+          case 'speed': if (wp.setRate) wp.setRate(e.rate); else wp._rate = e.rate; break;
+          case 'pinchstart': { const v = view(); orbit = v.on ? { x: e.x, y: e.y, v } : null; break; }
+          case 'drag':
+            if (orbit && wp.setView3D) wp.setView3D({ on: true, az: orbit.v.az + (e.x - orbit.x) / innerWidth * 2.2,
+              el: Math.max(-1.1, Math.min(1.1, orbit.v.el + (e.y - orbit.y) / innerHeight * 1.6)), dist: orbit.v.dist });
+            break;
+          case 'pinchend': orbit = null; break;
+          case 'zoomstart': { const v = view(); zoom0 = v.on ? v : null; break; }
+          case 'zoom': if (zoom0 && wp.setView3D) wp.setView3D(Object.assign({}, zoom0, { on: true, dist: Math.max(0.55, Math.min(2.6, zoom0.dist / e.scale)) })); break;
+          case 'zoomend': zoom0 = null; break;
+        }
+      }, { screen: [window.screen.width, window.screen.height] });
+    }
+  </script>
   <script src="i18n.js"></script>
 </body>
 </html>

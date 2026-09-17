@@ -78,7 +78,68 @@
     setTimeout(() => { card.remove(); syncSize(); }, 320);
   }
 
+  /* A newly found 信息流 source. Two answers instead of the alert's action +
+     snooze: keep it on the wallpaper, or not. Unanswered, it stays as Rust
+     left it (on, when auto-add is on) and the message page still asks. */
+  function renderFeed(a) {
+    const card = document.createElement('div');
+    card.className = 'tt sev-low';
+    const key = a.feedKey || '';
+    // A missing permission: one click to where it is switched on.
+    if (a.permWhich) {
+      card.className = 'tt sev-medium';
+      card.innerHTML = `
+        <div class="tt-top">
+          <div class="tt-ic">🔐</div>
+          <span class="tt-kind">信息流 · 权限</span>
+          <span class="tt-sp"></span>
+          <button class="tt-x" type="button" title="稍后">✕</button>
+        </div>
+        <div class="tt-title">${esc(a.title || '')}</div>
+        ${a.body ? `<div class="tt-body">${esc(a.body)}</div>` : ''}
+        <div class="tt-acts">
+          <button class="tt-btn" type="button" data-fix="1">去开启</button>
+          <button class="tt-btn ghost" type="button" data-later="1">稍后</button>
+        </div>
+        <div class="tt-life"><i></i></div>`;
+      card.querySelector('.tt-x').addEventListener('click', () => dismiss(card));
+      card.querySelector('[data-later]').addEventListener('click', () => dismiss(card));
+      card.querySelector('[data-fix]').addEventListener('click', () => {
+        invoke('feeds_fix_permission', { which: a.permWhich }).catch(() => {});
+        dismiss(card);
+      });
+      return card;
+    }
+    card.innerHTML = `
+      <div class="tt-top">
+        <div class="tt-ic">📡</div>
+        <span class="tt-kind">信息流</span>
+        <span class="tt-sp"></span>
+        <button class="tt-x" type="button" title="忽略">✕</button>
+      </div>
+      <div class="tt-title">${esc(a.title || '')}</div>
+      ${a.body ? `<div class="tt-body">${esc(a.body)}</div>` : ''}
+      <div class="tt-acts">
+        ${key ? `<button class="tt-btn" type="button" data-on="1">加入壁纸</button>
+                 <button class="tt-btn ghost" type="button" data-on="0">不要</button>`
+              : `<button class="tt-btn" type="button" data-go="1">去看看</button>`}
+      </div>
+      <div class="tt-life"><i></i></div>`;
+    card.querySelector('.tt-x').addEventListener('click', () => dismiss(card));
+    card.querySelectorAll('[data-on]').forEach((b) => b.addEventListener('click', () => {
+      invoke('feeds_set_source', { key, on: b.dataset.on === '1' }).catch(() => {});
+      dismiss(card);
+    }));
+    const go = card.querySelector('[data-go]');
+    if (go) go.addEventListener('click', () => {
+      invoke('toast_action', { action: 'open-msgs' }).catch(() => {});
+      dismiss(card);
+    });
+    return card;
+  }
+
   function render(a) {
+    if (a && a.kind === 'feed') return mount(renderFeed(a));
     const kind = String(a.kind || 'doctor');
     const sev = String(a.severity || 'low').toLowerCase();
     const card = document.createElement('div');
@@ -110,7 +171,10 @@
       invoke('snooze_alert_kind', { kind: e.currentTarget.dataset.snooze, minutes: 60 }).catch(() => {});
       dismiss(card);
     });
+    mount(card);
+  }
 
+  function mount(card) {
     // Hovering the card pauses its life bar so a user reading it isn't cut off.
     const life = card.querySelector('.tt-life > i');
     life.style.animation = `ttDrain ${LIFE_MS}ms linear forwards`;
@@ -124,7 +188,13 @@
     });
 
     stack.appendChild(card);
-    while (stack.children.length > MAX_CARDS) dismiss(stack.firstElementChild);
+    // Evict the oldest cards that are not already leaving. dismiss() only marks
+    // a card and removes it 320ms later, so the old
+    // `while (stack.children.length > MAX_CARDS) dismiss(stack.firstElementChild)`
+    // never shrank the stack: past four cards it re-dismissed the same card
+    // forever and hung this page at 100% CPU — hidden, and deaf to every later alert.
+    const live = Array.prototype.filter.call(stack.children, (c) => !c.dataset.gone);
+    for (let i = 0; i < live.length - MAX_CARDS; i++) dismiss(live[i]);
     nextFrame(() => { card.classList.add('in'); syncSize(); });
     card.dataset.timer = String(setTimeout(() => dismiss(card), LIFE_MS));
   }

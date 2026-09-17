@@ -805,3 +805,19 @@ body { animation: di-appear 0.38s var(--spring-snappy) both; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ── Global: no backdrop-filter anywhere ───────────────────────────────────
+   On a transparent macOS window backdrop-filter cannot reach the desktop; it
+   only ever blurred content inside the app (tauri#2827, #12804, #12437). With
+   the panels now unfilled there IS no in-app content behind them, so every
+   remaining rule was a full-surface separable convolution per frame producing
+   an invisible result — the single largest avoidable GPU cost in the app.
+
+   Declared last and !important so it neutralises the rules above without having
+   to hunt each one down and risk missing a state (hover, expanded, peek).
+   Nothing else about those elements changes: fills, borders, fonts, layout and
+   every animation are exactly as they were. */
+*, *::before, *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

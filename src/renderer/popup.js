@@ -644,6 +644,7 @@ let connectedAgents = {}; // agentType → latest snapshot, for all connected ag
 const AGENT_APP_MAP = {
   'cursor-agent': ['cursor'],
   'codex':        ['codex'],
+  'deepseek-harness': ['dsh', 'deepseek harness', 'deepseek'],
   'aider':        ['aider'],
   'claude-code':  ['claude', 'terminal', 'iterm', 'warp', 'alacritty', 'kitty', 'hyper'],
 };
@@ -717,10 +718,37 @@ const TOKEN_PRICING = {
   'copilot': {
     'default': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
   },
+  // Filled in per-request by getModelPricing — DeepSeek's rate halves off-peak.
+  'deepseek-harness': {},
   'default': { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
 };
 
+// DeepSeek charges full rate 01:00-04:00 and 06:00-10:00 UTC, half otherwise.
+function deepseekIsPeak() {
+  const h = new Date().getUTCHours();
+  return (h >= 1 && h < 4) || (h >= 6 && h < 10);
+}
+
+// Per-1M USD for DeepSeek, picked from the clock and the model tier.
+// cacheWrite has no separate DeepSeek charge — a miss is just full-rate input.
+function deepseekPricing(model) {
+  const pro = (model || '').toLowerCase().includes('pro');
+  const mult = deepseekIsPeak() ? 2 : 1;
+  const base = pro
+    ? { input: 0.66, output: 1.98, cacheRead: 0.022 }
+    : { input: 0.22, output: 0.66, cacheRead: 0.007 };
+  return {
+    input: base.input * mult,
+    output: base.output * mult,
+    cacheRead: base.cacheRead * mult,
+    cacheWrite: base.input * mult,
+  };
+}
+
 function getModelPricing(agentType, model) {
+  if (agentType === 'deepseek-harness' || (model || '').toLowerCase().includes('deepseek')) {
+    return deepseekPricing(model);
+  }
   const agentPricing = TOKEN_PRICING[agentType] || TOKEN_PRICING;
   if (!model) return agentPricing['default'] || TOKEN_PRICING['default'];
   const ml = model.toLowerCase();
@@ -924,10 +952,13 @@ function updateAgentPanel(snapshot) {
   const approxPrefix = approx ? '~' : '';
   document.getElementById('agentCtxShort').textContent = approx ? '—' : ctxFill + '%';
   document.getElementById('agentInputShort').textContent = approxPrefix + formatTokens(snapshot.totalInputTokens || 0);
-  const cacheVal = snapshot.cacheEfficiency || 0;
+  // Same rule as the ctx field just above, which already prints '—' when it does
+  // not know: an unmeasured hit rate is not a zero one.
+  const cacheVal = (snapshot.cacheEfficiency == null ? null : snapshot.cacheEfficiency);
   const cacheShort = document.getElementById('agentCacheShort');
-  cacheShort.textContent = cacheVal + '%';
-  cacheShort.style.color = cacheVal > 50 ? 'var(--ac)' : cacheVal > 20 ? '#fbbf24' : '#f87171';
+  cacheShort.textContent = cacheVal == null ? '—' : cacheVal + '%';
+  cacheShort.style.color = cacheVal == null ? 'var(--t3, #8a8a8a)'
+    : cacheVal > 50 ? 'var(--ac)' : cacheVal > 20 ? '#fbbf24' : '#f87171';
   document.getElementById('agentToolShort').textContent = snapshot.toolCallCount || 0;
 
   // Burn rate
@@ -1078,13 +1109,14 @@ function updateAgentPanel(snapshot) {
   // ── Compact stats ──
   document.getElementById('agentTurns').textContent = snapshot.turns || '0';
   document.getElementById('agentInputTok').textContent = formatTokens(snapshot.totalInputTokens || 0);
-  document.getElementById('agentCacheEff').textContent = (snapshot.cacheEfficiency || 0) + '%';
+  const effVal = (snapshot.cacheEfficiency == null ? null : snapshot.cacheEfficiency);
+  document.getElementById('agentCacheEff').textContent = effVal == null ? '—' : effVal + '%';
   document.getElementById('agentToolCount').textContent = snapshot.toolCallCount || 0;
 
   // Color-code cache
   const cacheEl = document.getElementById('agentCacheEff');
-  cacheEl.style.color = (snapshot.cacheEfficiency || 0) > 50 ? 'var(--ac)' :
-    (snapshot.cacheEfficiency || 0) > 20 ? '#fbbf24' : '#f87171';
+  cacheEl.style.color = effVal == null ? 'var(--t3, #8a8a8a)'
+    : effVal > 50 ? 'var(--ac)' : effVal > 20 ? '#fbbf24' : '#f87171';
 
   // ── Token breakdown by type ──
   const bd = snapshot.tokenBreakdown || {};

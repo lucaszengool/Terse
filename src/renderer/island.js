@@ -245,10 +245,14 @@
   }
   function renderMetrics(s) {
     const red = reductionPct(s);
-    const cache = s.cacheEfficiency || 0;
+    // null = never measured. Coercing to 0 painted a red 0% for sessions whose
+    // logs we could not read at all.
+    const cache = (s.cacheEfficiency == null ? null : s.cacheEfficiency);
     const ctx = s.contextFill || 0;
     setMetric('red',  'Reduce',  red > 0 ? '−' + red + '%' : '0%', 'var(--ac)');
-    setMetric('cache','Cache',   cache + '%', cache > 50 ? 'var(--ac)' : cache > 20 ? '#ffc533' : '#ff6161');
+    setMetric('cache','Cache',   cache == null ? '—' : cache + '%',
+      cache == null ? 'var(--t3, rgba(255,255,255,.45))'
+        : cache > 50 ? 'var(--ac)' : cache > 20 ? '#ffc533' : '#ff6161');
     setMetric('ctx',  'Context', ctx + '%',   ctx > 85 ? '#ff6161' : ctx > 60 ? '#ffc533' : 'var(--ac)');
   }
 
@@ -814,7 +818,17 @@
   // Native hover-open: the Rust cursor poll fires this the instant the pointer
   // touches the pill — no reliance on webview mouseenter (which drops events
   // whenever the overlay window is unfocused).
-  T.on('island-hover', () => { keepOpen(); if (!expanded) expand(); });
+  // While the permission card owns the island, native hover must do nothing.
+  // This event comes from the Rust cursor poll, whose hit test is the WINDOW
+  // rect — and the card makes that window much taller than the pill. Reaching
+  // for Allow/Deny therefore counted as "touching the pill" and opened the
+  // floating dashboards right over the buttons. A JS stopPropagation cannot
+  // help here: the event never travels through the DOM.
+  T.on('island-hover', () => {
+    if (document.body.classList.contains('permitting')) return;
+    keepOpen();
+    if (!expanded) expand();
+  });
 
   // Cap the expanded card to the screen height (fixed px, not 100vh) so its content
   // can be measured uncapped-by-the-window and the card scrolls internally past the cap.
@@ -1194,7 +1208,7 @@
     'zh-Hant': { kind:'待確認',    deny:'拒絕', always:'always',  wait:'等待中' },
   };
   const A = (k) => (APPROVAL_STR[lang()] || APPROVAL_STR.en)[k];
-  const AGENT_ICON = { claude: '🤖', codex: '🧠', cursor: '🖱️' };
+  const AGENT_ICON = { claude: '🤖', codex: '🧠', cursor: '🖱️', 'deepseek-harness': '🐋', deepseek: '🐋' };
 
   function presentApproval(p) {
     active = { approval: p };
@@ -1342,3 +1356,222 @@
     showStatus({ icon: '🔌', kind: S('gone'), title: s.agentName || s.agentType, sev: 'low' });
   });
 })();
+
+/* ── Permission prompts (Claude Code PreToolUse hook) ──────────────────────
+   permission.rs holds the hook's HTTP connection open while this card is up —
+   that held connection is what keeps Claude Code waiting. So every path here
+   MUST end in a permission_respond call or an explicit dismiss, otherwise the
+   agent sits blocked until the 50s server-side timeout. */
+(function () {
+  'use strict';
+  var TAURI = window.__TAURI__;
+  if (!TAURI) return;
+  var invoke = TAURI.core.invoke, listen = TAURI.event.listen;
+
+  var card = document.getElementById('islandPerm');
+  if (!card) return;
+  var elTool = document.getElementById('ipTool');
+  var elCwd = document.getElementById('ipCwd');
+  var elPrev = document.getElementById('ipPreview');
+  var elTask = document.getElementById('ipTask');
+  var elCtx = document.getElementById('ipContext');
+  var current = null, autoTimer = null;
+  // Two agents can be blocked at the same moment and there is one card, so the
+  // second waits its turn rather than being dropped. Each queued request is
+  // ACKed as soon as it lands: the ack means "the island has this and will show
+  // it", which is what entitles the server to keep holding that agent.
+  var queue = [];
+
+  var W = 420;
+
+  // What the user actually needs to see, per tool. A bare tool name is not
+  // enough to make a safety decision — the command or the path is the decision.
+  function preview(name, input) {
+    if (!input || typeof input !== 'object') return String(input == null ? '' : input);
+    if (input.command) return input.command;
+    if (input.file_path) {
+      return input.file_path + (input.old_string
+        ? '\n\n- ' + String(input.old_string).slice(0, 200)
+          + '\n+ ' + String(input.content || input.new_string || '').slice(0, 200)
+        : (input.content ? '\n\n' + String(input.content).slice(0, 300) : ''));
+    }
+    if (input.url) return input.url;
+    if (input.pattern) return input.pattern + (input.path ? '  (' + input.path + ')' : '');
+    var s = JSON.stringify(input, null, 1);
+    return s.length > 500 ? s.slice(0, 500) + '\n…' : s;
+  }
+
+  /** Queue behind the card that is already up, or show straight away. */
+  function enqueue(req) {
+    if (current) {
+      if (!queue.some(function (q) { return q.id === req.id; })) queue.push(req);
+      paintWaiting();
+      return;
+    }
+    show(req);
+  }
+
+  function next() {
+    var q = queue.shift();
+    if (q) show(q);
+  }
+
+  function paintWaiting() {
+    if (!current) return;
+    elCwd.textContent = (current.cwd || '') + (queue.length ? '  ·  +' + queue.length : '');
+  }
+
+  function show(req) {
+    current = req;
+    // Auto mode: the card still appears with the full preview, then presses the
+    // button itself after a beat. Showing it is the whole point — a silent
+    // auto-approve gives the user no way to notice a command they would have
+    // refused.
+    //
+    // A request that already waited its turn gets a shorter dwell: the server
+    // only holds each agent for so long, and a preview that arrives after the
+    // hold expired has shown the user nothing and blocked an agent to do it.
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    if (req.auto === 'once' || req.auto === 'always') {
+      var waited = Date.now() - (req.queuedAt || Date.now());
+      autoTimer = setTimeout(function () {
+        if (!current || current.id !== req.id) return;
+        var id = current.id;
+        dismiss();
+        invoke('permission_respond',
+          { id: id, decision: req.auto === 'always' ? 'always' : 'allow' }).catch(function () {});
+        announceAnswered(id);
+        next();
+      }, Math.max(500, 2000 - waited));
+    }
+    elTool.textContent = req.toolName || 'Tool';
+    elCwd.textContent = req.cwd || '';
+    paintWaiting();
+    // Context is best-effort: an unreadable transcript just means the card
+    // falls back to the command alone rather than showing an empty quote.
+    if (elTask) {
+      elTask.textContent = req.task || '';
+      elTask.hidden = !req.task;
+    }
+    if (elCtx) {
+      elCtx.textContent = req.context || '';
+      elCtx.hidden = !req.context;
+    }
+    elPrev.textContent = preview(req.toolName, req.toolInput);
+    card.hidden = false;
+    document.body.classList.add('permitting');
+    // Restart the drain by reflowing it; re-assigning the class alone would not
+    // replay the animation for a second prompt in the same session.
+    var life = document.getElementById('ipLife');
+    if (life) { life.classList.remove('run'); void life.offsetWidth; life.classList.add('run'); }
+    if (window.terse && window.terse.islandAlertSize) {
+      window.terse.islandAlertSize(W, 150);
+      var measure = function () {
+        var h = Math.ceil(card.scrollHeight) + 4;
+        if (h > 60) window.terse.islandAlertSize(W, h);
+      };
+      if (document.hidden) setTimeout(measure, 0); else requestAnimationFrame(measure);
+    }
+  }
+
+  function dismiss() {
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    current = null;
+    card.hidden = true;
+    document.body.classList.remove('permitting');
+    if (window.terse && window.terse.islandResize) window.terse.islandResize(44);
+    // Answering leaves the pointer sitting on the island, and the pill treats a
+    // pointer as "peek" — so the moment the card closed, the floating metric
+    // windows sprang open every single time. Nobody who just approved a command
+    // asked to see their dashboards. Keep them suppressed until the pointer has
+    // actually left and come back, which is the only unambiguous signal that the
+    // next hover is deliberate.
+    if (window.__islandSuppressDash) window.__islandSuppressDash(true);
+    var release = function () {
+      document.removeEventListener('mouseleave', release, true);
+      window.removeEventListener('blur', release);
+      if (window.__islandSuppressDash) window.__islandSuppressDash(false);
+    };
+    document.addEventListener('mouseleave', release, true);
+    window.addEventListener('blur', release);
+    // Belt and braces: if the pointer never leaves (mouseleave can be missed when
+    // the window resizes under the cursor), release anyway rather than wedging
+    // the dashboards off for the rest of the session.
+    setTimeout(release, 4000);
+  }
+
+  // The permission card must not behave like the pill. Hovering the pill opens
+  // the floating metric windows; with the card mounted in the same window, that
+  // hover fired while the user was reaching for Allow/Deny and the dashboards
+  // covered the buttons. Swallow hover/enter on the card so only the pill peeks.
+  ['mouseenter', 'mouseover', 'mousemove'].forEach(function (ev) {
+    card.addEventListener(ev, function (e) { e.stopPropagation(); }, true);
+  });
+
+  card.addEventListener('click', function (e) {
+    var b = e.target.closest('.ip-btn');
+    if (!b || !current) return;
+    var choice = b.dataset.d;
+    var id = current.id;
+    // "Always allow" still answers this call with allow; persisting the rule
+    // into settings.json is a separate step (not implemented yet), so it is
+    // labelled honestly rather than silently behaving like Allow once.
+    var decision = choice === "deny" ? "deny" : (choice === "always" ? "always" : "allow");
+    dismiss();
+    invoke('permission_respond', { id: id, decision: decision }).catch(function () {});
+    announceAnswered(id);
+    next();
+  });
+
+  // The session dock shows the same requests. Whoever answers first tells the
+  // other, so the loser doesn't keep a card up for a call that is already decided.
+  function announceAnswered(id) {
+    try { window.__TAURI__.event.emit('permission-answered', id); } catch (e) {}
+  }
+  listen('permission-answered', function (e) {
+    var id = e && e.payload;
+    if (!id) return;
+    var i = queue.findIndex(function (q) { return q.id === id; });
+    if (i >= 0) { queue.splice(i, 1); paintWaiting(); return; }
+    if (current && current.id === id) { dismiss(); next(); }
+  });
+
+  listen('permission-request', function (e) {
+    if (!e || !e.payload) return;
+    e.payload.queuedAt = Date.now();
+    enqueue(e.payload);
+    // Confirm on the NEXT frame — after layout, so the ack means "the card is
+    // actually painted and clickable", not merely "the event arrived".
+    //
+    // The backstop timer exists because rAF is throttled to a standstill when
+    // the window is occluded, and an occluded island is still a perfectly
+    // clickable one. A truly wedged JS thread runs NEITHER, which is the case
+    // the ack is there to catch — so the backstop costs nothing.
+    var id = e.payload.id, sent = false;
+    var ack = function () {
+      if (sent) return;
+      sent = true;
+      invoke('permission_ack', { id: id }).catch(function () {});
+    };
+    requestAnimationFrame(function () { requestAnimationFrame(ack); });
+    setTimeout(ack, 300);
+  });
+  // The server gave up on this one — its agent is already back at its own
+  // prompt, so the card is now a lie. Drop it whether it is showing or waiting.
+  listen('permission-timeout', function (e) {
+    var id = e && e.payload;
+    if (!id) return;
+    var i = queue.findIndex(function (q) { return q.id === id; });
+    if (i >= 0) { queue.splice(i, 1); paintWaiting(); return; }
+    if (current && current.id === id) { dismiss(); next(); }
+  });
+})();
+
+/* ── Liquid glass: real refraction under the island ────────────────────────
+   Opt-in at runtime, never assumed. WKWebView will happily accept
+   `-webkit-backdrop-filter: url(#f)` and then render nothing — and drop any
+   blur sitting beside it — so the CSS route cannot give us a lens. We draw it.
+
+   `html.lg-on` is only set once the GL context AND a backdrop texture are both
+   real, because that class strips the existing CSS glass. Setting it early, or
+   on a machine without WebGL, would leave a flat transparent pill. */

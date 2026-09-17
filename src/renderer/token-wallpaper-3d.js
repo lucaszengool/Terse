@@ -1302,12 +1302,15 @@ export default class TokenWallpaper3D {
     //  • fully idle while the page is hidden (occluded / other Space / minimized),
     //  • cap to ~36fps (a slowly rotating platter looks identical, ~40% less GPU).
     if (document.hidden) { this._lastT = now; return; }
-    if (this._lastRender && (now - this._lastRender) < 27) return;
+    // 开着手势控制时降到 ~24fps(摄像头 + 识别在吃算力);关着照旧 ~36fps,和原来一样
+    if (this._lastRender && (now - this._lastRender) < (globalThis.__terseGestureOn ? 40 : 27)) return;
     this._lastRender = now;
     if (!this._lastT) this._lastT = now;
     let dt = (now - this._lastT) / 1000;
     this._lastT = now;
     if (dt > 0.05) dt = 0.05;
+    // 手势(Pro):握拳拧 = 变速,张掌停住 = 定格。没有手势时 _rate 未设 → 1,和以前一样
+    dt = this._frozen ? 0 : dt * (this._rate || 1);
     this._time += dt;
 
     if (this.W > 1 && this.H > 1) {

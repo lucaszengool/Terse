@@ -17,10 +17,14 @@
     live from the same agent-connected/agent-update events the island listens to.
   -->
   <div id="dashRoot" class="dash-root">
+    <!-- Close FIRST, so it sits top-left where macOS puts it. A close control on
+         the right is the Windows convention; on this platform the muscle memory
+         is the left corner, and a floating widget is exactly the kind of thing
+         people dismiss without looking. -->
     <div class="dash-header" data-tauri-drag-region>
+      <button id="dashClose" class="dash-close" title="Hide widget">✕</button>
       <span id="dashTitle" class="dash-title">Terse</span>
       <div id="dashTabs" class="dash-tabs"></div>
-      <button id="dashClose" class="dash-close" title="Hide widget">✕</button>
     </div>
     <div id="dashBody" class="dash-body"></div>
     <span class="dash-sheen"></span>

@@ -1756,7 +1756,17 @@ jobs:
             '  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint f);',
             '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, StringBuilder s, int n);',
             '  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);',
+            '  [DllImport("user32.dll")] public static extern bool EnumWindows(Cb c, IntPtr l);',
+            '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, StringBuilder s, int n);',
+            '  public delegate bool Cb(IntPtr h, IntPtr l);',
+            '  static IntPtr found; static string want;',
             '  public static bool Front(IntPtr h) { return SetForegroundWindow(h); }',
+            '  public static IntPtr ByTitlePart(string part) { want = part.ToLower(); found = IntPtr.Zero; EnumWindows(new Cb(Seen), IntPtr.Zero); return found; }',
+            '  static bool Seen(IntPtr h, IntPtr l) { if (!IsWindowVisible(h)) return true; StringBuilder s = new StringBuilder(256); GetWindowTextW(h, s, 256); if (s.ToString().ToLower().Contains(want)) { found = h; return false; } return true; }',
+            '  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);',
+            '  public static void Min(IntPtr h) { ShowWindow(h, 6); }',
+            '  public static void Restore(IntPtr h) { ShowWindow(h, 9); }',
+            '  public static void Combo(byte mod, byte vk) { keybd_event(mod,0,0,UIntPtr.Zero); keybd_event(vk,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(40); keybd_event(vk,0,2,UIntPtr.Zero); keybd_event(mod,0,2,UIntPtr.Zero); System.Threading.Thread.Sleep(80); }',
             '  public static IntPtr ByTitle(string t) { return FindWindowW(null, t); }',
             '  public static void Click(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); System.Threading.Thread.Sleep(60); mouse_event(4,0,0,0,UIntPtr.Zero); }',
             '  public static void Drag(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(80); mouse_event(2,0,0,0,UIntPtr.Zero); for (int i = 1; i <= 10; i++) { System.Threading.Thread.Sleep(20); SetCursorPos(x + i * 12, y); } mouse_event(4,0,0,0,UIntPtr.Zero); }',
@@ -1795,30 +1805,36 @@ jobs:
           Write-Host "pill at $($r.L),$($r.T) - $($r.R),$($r.B)"
           Shot "town-pill"
 
-          # The app in front is a CONSOLE that reads one line, not a WinForms
-          # window: pwsh 7 is multi-threaded and the form this check used before
-          # never appeared at all, so it read an empty box and treated that as an
-          # answer. A console needs no toolkit — what reaches it is echoed, and
-          # written to a file on Enter.
-          $out = Join-Path $env:RUNNER_TEMP "town-typed.txt"
+          # The app in front is Notepad — the one target this workflow already
+          # starts reliably. pwsh 7 is multi-threaded, so the WinForms window an
+          # earlier version of this check used never appeared and it read an empty
+          # box as an answer; a console could not be found by title either. What
+          # Notepad received is read back through the clipboard (Ctrl+A, Ctrl+C —
+          # combos the town never takes).
+          $np = Start-Process notepad -PassThru
+          Start-Sleep -Seconds 4
+          $note = [IntPtr]::Zero
+          for ($i = 0; $i -lt 30; $i++) { $note = [TownT]::ByTitlePart("notepad"); if ($note -ne [IntPtr]::Zero) { break }; Start-Sleep -Milliseconds 300 }
+          if ($note -eq [IntPtr]::Zero) { throw "TEST HARNESS: Notepad never opened — nothing to type into" }
+          $nr = New-Object TownT+RECT
+          $null = [TownT]::GetWindowRect($note, [ref]$nr)
+          Write-Host "notepad at $($nr.L),$($nr.T) - $($nr.R),$($nr.B)"
           function Type-Keys($keys) {
-            Remove-Item $out -ErrorAction SilentlyContinue
-            $inner = "`$host.ui.RawUI.WindowTitle='town-target'; `$t=[Console]::ReadLine(); [IO.File]::WriteAllText('$out', `$t)"
-            $proc = Start-Process powershell.exe -PassThru -ArgumentList "-NoProfile", "-Command", $inner
-            $w = [IntPtr]::Zero
-            for ($i = 0; $i -lt 60; $i++) { Start-Sleep -Milliseconds 200; $w = [TownT]::ByTitle("town-target"); if ($w -ne [IntPtr]::Zero) { break } }
-            if ($w -eq [IntPtr]::Zero) { $proc | Stop-Process -Force -ErrorAction SilentlyContinue; return "<no console>" }
-            $cr = New-Object TownT+RECT
-            $null = [TownT]::GetWindowRect($w, [ref]$cr)
-            $null = [TownT]::Front($w)
-            [TownT]::Click([int](($cr.L + $cr.R) / 2), [int](($cr.T + $cr.B) / 2))
-            Start-Sleep -Milliseconds 700
+            $null = [TownT]::Front($note)
+            [TownT]::Click([int](($nr.L + $nr.R) / 2), [int](($nr.T + $nr.B) / 2))
+            Start-Sleep -Milliseconds 500
+            [TownT]::Combo(0x11, 0x41)          # Ctrl+A
+            [TownT]::Key(0x2E)                  # Delete — not one of the town's keys
+            Start-Sleep -Milliseconds 300
             foreach ($k in $keys) { [TownT]::Key($k) }
+            Start-Sleep -Milliseconds 500
+            [TownT]::Combo(0x11, 0x41)          # Ctrl+A
+            [TownT]::Combo(0x11, 0x43)          # Ctrl+C
             Start-Sleep -Milliseconds 400
-            [TownT]::Key(0x0D)
-            for ($i = 0; $i -lt 30; $i++) { Start-Sleep -Milliseconds 200; if (Test-Path $out) { break } }
-            $proc | Stop-Process -Force -ErrorAction SilentlyContinue
-            if (Test-Path $out) { return (Get-Content $out -Raw).Trim().ToLower() } else { return "<no answer>" }
+            $t = ""
+            try { $t = Get-Clipboard -Raw } catch {}
+            if ($null -eq $t) { $t = "" }
+            return $t.Trim().ToLower()
           }
           function Wait-Log($pattern, $secs) {
             $end = (Get-Date).AddSeconds($secs)
@@ -1847,12 +1863,16 @@ jobs:
           Write-Host "$(Get-Date -Format HH:mm:ss) pill ON, typed w a s d x -> '$during'"
           $gotKey = Wait-Log 'first key captured' 5
 
-          # 3. a drag on bare desktop (the main window is hidden while capture is on)
+          # 3. a drag on bare desktop. Notepad is over the middle of the screen
+          #    and the main window hides itself while capture is on, so the only
+          #    thing that has to move is Notepad.
+          [TownT]::Min($note); Start-Sleep -Milliseconds 800
           $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $cx = [int]($b.Width / 2); $cy = [int]($b.Height / 2)
           Write-Host "under the drag point ($cx,$cy): $([TownT]::ClassAt($cx, $cy))"
           [TownT]::Drag($cx, $cy); Start-Sleep -Seconds 1
           Shot "town-on"
+          [TownT]::Restore($note); Start-Sleep -Milliseconds 800
 
           # 4. pill off again: every key comes back
           Click-Pill
@@ -1860,6 +1880,7 @@ jobs:
           $offAgain = Wait-Log 'control on=false' 6
           $after = Type-Keys @(0x57, 0x58)
           Write-Host "$(Get-Date -Format HH:mm:ss) pill OFF again, typed w x -> '$after'"
+          $np | Stop-Process -Force -ErrorAction SilentlyContinue
 
           $txt = if (Test-Path $log) { Get-Content $log -Raw } else { "" }
           Write-Host "--- town.log ---"; Write-Host $txt

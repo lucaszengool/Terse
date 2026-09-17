@@ -754,6 +754,8 @@ export default class MineradioWallpaper {
       /* 走进楼的时候,画布是那间屋子的:外面这片场一帧都不画(见 enterRoom)。
          不锁 30fps —— 这是有人在走,不是挂在后台的壁纸,掉帧走起来就晕。 */
       if (this._room) {
+        // roomFps:宿主可以给屋子/小镇封一个帧率(桌面壁纸上没人在逛时锁 30,省电);默认 0 = 不封
+        if (this.roomFps > 0 && dt < 1 / (this.roomFps + 1)) return;
         this._last = now;
         try { this._room.update(dt); this._room.render(); }
         catch (e) { this.exitRoom(); }        // 一间画不出来的屋子不能把场一起拖黑

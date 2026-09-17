@@ -76,14 +76,21 @@ const S = {
   walking: !embedded,          // 直接打开这一页 = 就是来逛的
   inited: !embedded,
   wp: null, town: null, projects: [], pos: null, inVilla: false, busy: false,
+  // 桌面壁纸是全屏的:按 1 倍像素画(Retina 下像素少四倍,辉光那几道后处理省得最多)
+  pr: Math.max(0.5, Math.min(2, +(q.get('pr') || (embedded ? 1 : Math.min(2, devicePixelRatio || 1))))),
+  focused: true,          // 键盘在不在我们这儿(宿主告诉;别的窗口拿走了就暂停转向)
+  cursor: null,           // 宿主转来的光标位置 {nx, ny},-1..1,屏幕中心是 0
+  turnKeys: new Set(),    // 按住的转向键:Q / ← 向左,R / → 向右(E 留给进门;箭头只在桌面壁纸上转向)
 };
 
 const TXT = {
-  zh: { tipTown: 'WASD 走 · 拖动看四周 · 到门口按 E 进别墅 · Esc 回到桌面',
+  zh: { tipTown: 'WASD 走 · Q/R 或把光标移到屏幕边上转向 · 门口按 E 进别墅 · Esc 停下',
+        tipPaused: '键盘在别的窗口上 —— 按 ⌘⇧W 回来接着逛',
         tipVilla: '拖动看四周 · WASD 走 · 点家具看文件 · Esc 回到小镇',
         villa: '{t} 的别墅 · Esc 回到小镇', loading: '小镇正在盖…', empty: '广场上还没有项目',
         noEngine: '这台电脑的显卡跑不起小镇', files: '{n} 个文件' },
-  en: { tipTown: 'WASD to walk · drag to look · E at a door to go in · Esc to go back to the desktop',
+  en: { tipTown: 'WASD to walk · Q/R or push the cursor to a screen edge to turn · E at a door to go in · Esc to stop',
+        tipPaused: 'The keyboard is on another window — press ⌘⇧W to keep walking',
         tipVilla: 'drag to look · WASD to walk · click furniture to read a file · Esc back to town',
         villa: "{t}'s villa · Esc back to town", loading: 'Building the town…', empty: 'Nothing published yet',
         noEngine: 'This graphics card cannot run the town', files: '{n} files' },
@@ -115,7 +122,7 @@ function boot(text) {
   b.classList.remove('gone'); b.textContent = text;
 }
 function setTip() {
-  $('tip').textContent = S.inVilla ? tx('tipVilla') : tx('tipTown');
+  $('tip').textContent = embedded && !S.focused ? tx('tipPaused') : S.inVilla ? tx('tipVilla') : tx('tipTown');
 }
 
 /* ── 宿主说话 ─────────────────────────────────────────────────────────── */
@@ -136,6 +143,12 @@ addEventListener('message', (e) => {
     setWalking(!!d.on);
   } else if (d.cmd === 'goto') {
     gotoProject(String(d.id || ''));
+  } else if (d.cmd === 'cursor') {
+    S.cursor = { nx: Math.max(-1, Math.min(1, +d.nx || 0)), ny: Math.max(-1, Math.min(1, +d.ny || 0)) };
+  } else if (d.cmd === 'focus') {
+    S.focused = !!d.on;
+    if (!S.focused) { S.turnKeys.clear(); try { window.dispatchEvent(new Event('blur')); } catch (e) {} }
+    setTip();
   } else if (d.cmd === 'key') {
     /* 宿主转过来的键(焦点停在宿主那一页时)。在这一页里原样再派发一次:town-scene
        听的是 window 上的 keydown/keyup,Esc 也走同一条路。合成的键不会往输入框里打字 ——
@@ -171,6 +184,10 @@ async function gotoProject(id) {
 function setWalking(on) {
   S.walking = on;
   document.body.classList.toggle('idle', !on);
+  // 没人在逛:这只是壁纸,锁 30 帧省电;逛的时候不封顶,掉帧走起来会晕
+  if (S.wp) S.wp.roomFps = on ? 0 : 30;
+  if (!on) S.turnKeys.clear();
+  setTip();
   if (on) {
     try { window.focus(); host.focus({ preventScroll: true }); } catch (e) {}
   } else {
@@ -180,6 +197,23 @@ function setWalking(on) {
     $('card').hidden = true;
   }
 }
+
+/* 转向键。桌面壁纸上收不到拖动(桌面图标那一层压在上面),所以转头靠键盘和光标。 */
+const TURN = { q: 1, arrowleft: 1, r: -1, arrowright: -1 };
+// 小镇里 ← → 本来是横着走;在桌面上没有鼠标转视角,它们改成转头(浏览器里直接开这页时不改)
+const ARROWS_TURN = embedded;
+addEventListener('keydown', (e) => {
+  const k = String(e.key || '').toLowerCase(), a = document.activeElement;
+  if (!(k in TURN) || (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'))) return;
+  if (k.startsWith('arrow')) { if (!ARROWS_TURN) return; e.stopImmediatePropagation(); e.preventDefault(); }
+  S.turnKeys.add(k);
+}, true);
+addEventListener('keyup', (e) => {
+  const k = String(e.key || '').toLowerCase();
+  S.turnKeys.delete(k);
+  if (ARROWS_TURN && (k === 'arrowleft' || k === 'arrowright')) e.stopImmediatePropagation();
+}, true);
+addEventListener('blur', () => S.turnKeys.clear());
 
 /* Esc:在别墅里 = 回小镇;在小镇里 = 把桌面还给你(宿主把窗口放回去)。
    输入框里的 Esc 归输入框(关聊天、关面板),town-scene 自己处理。 */
@@ -227,7 +261,7 @@ async function enterTown(at) {
   const zh = S.lang === 'zh';
   const act = (pr) => pr && pr.then && pr.then(() => {}, () => {});
   const tn = await wp.enterTown(housesOf(S.projects), {
-    host, input: host, budget: S.budget, joystick: false,
+    host, input: host, budget: S.budget, joystick: false, pixelRatio: S.pr,
     words: zh ? WORDS_ZH : null, noteWords: zh ? NOTES_ZH : null, lang: zh ? 'zh' : 'en',
     onNpcHello: (id, ctx) => Town.npcHello(id, ctx, S.lang),
     onNpcSay: (id, text, ctx) => Town.npcSay(id, text, ctx, S.lang),
@@ -270,7 +304,7 @@ async function enterVilla(p) {
     }
     if (!h) throw new Error('no building');
     const room = await wp.enterRoom(h.dir, {
-      style: h.style, host, input: host, budget: S.budget,
+      style: h.style, host, input: host, budget: S.budget, pixelRatio: S.pr,
       onHere: (x) => { $('villa').textContent = tx('villa', { t: cap.title || '—' }) + (x && x.path ? ' · ' + x.path : ''); },
       onPick: (_, d) => showCard(d),
     });
@@ -316,13 +350,32 @@ function showCard(d) {
   $('card').hidden = false;
 }
 
-/* ── 当壁纸时:镜头自己极慢地转,镇上的人和天照常过日子 ── */
-let lastT = performance.now();
+/* ── 转头 ─────────────────────────────────────────────────────────────────
+   当壁纸时:镜头自己极慢地转,镇上的人和天照常过日子。
+   逛的时候:Q/R(或 ← →)转,光标推到屏幕左右边上也转,推到上下边抬头低头。
+   所有转向都先过一道缓动(角速度往目标值追),起停都是软的 —— 这就是"丝滑"的来源:
+   直接按帧加角度,手一松画面就是一顿。 */
+let lastT = performance.now(), turnV = 0, pitchV = 0;
+const EDGE = 0.55;                          // 光标离中心多远才开始转(屏幕半宽的比例)
+const edge = (v) => (Math.abs(v) <= EDGE ? 0 : Math.sign(v) * Math.pow((Math.abs(v) - EDGE) / (1 - EDGE), 1.6));
 function drift(now) {
-  const dt = Math.min(0.1, (now - lastT) / 1000);
+  const dt = Math.min(0.05, (now - lastT) / 1000);
   lastT = now;
-  if (!S.walking && S.town && !S.inVilla) {
-    try { const w = S.town.where(); S.town.at(w.x, w.z, w.yaw + dt * 0.035); } catch (e) {}
+  const T = S.town;
+  if (T && !S.inVilla && T.turn) {
+    let want = 0, wantP = 0;
+    if (!S.walking) want = 0.035;
+    else if (!embedded || S.focused) {
+      for (const k of S.turnKeys) want += TURN[k] * 1.7;
+      if (embedded && S.cursor) {
+        want += -edge(S.cursor.nx) * 1.9;         // 光标在右边 → 向右转(yaw 减小)
+        wantP = -edge(S.cursor.ny) * 0.7;         // 光标在下边 → 低头
+      }
+    }
+    const k = Math.min(1, dt * 7);
+    turnV += (want - turnV) * k;
+    pitchV += (wantP - pitchV) * k;
+    if (Math.abs(turnV) > 1e-4 || Math.abs(pitchV) > 1e-4) T.turn(turnV * dt, pitchV * dt);
   }
   requestAnimationFrame(drift);
 }
@@ -348,6 +401,7 @@ async function start() {
     const m = await import('/app-assets/mineradio-wallpaper.js' + (window.__TERSE_BUILD ? '?v=' + encodeURIComponent(window.__TERSE_BUILD) : ''));
     Engine = m.default;
     S.wp = new Engine(cv, { theme: 'neon', quality: 56, angle: 42, intensity: 1, style: 'cinematic', pro: false, stagePace: 60000, photo: bed() });
+    S.wp.roomFps = S.walking ? 0 : 30;
     S.wp.start();
     try { S.wp.resize && S.wp.resize(); } catch (e) {}
   } catch (e) {

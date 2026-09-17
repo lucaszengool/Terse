@@ -1170,6 +1170,8 @@ export function createTown(renderer, projects, opts = {}) {
     env: () => env,
     setTime(mode) { timeMode = mode === 'day' || mode === 'night' ? mode : 'auto'; env = envNow(); applyEnv(); atmos.setEnv(env, sunDir); },
     at(x, z, y, p) { px = x; pz = z; if (y != null) yaw = y; if (p != null) pitch = p; },
+    /** 转头(弧度):不碰位置 —— 宿主拿它做按键转向、光标靠边转向(桌面壁纸上收不到拖动)。 */
+    turn(dy, dp) { yaw += +dy || 0; if (dp) pitch = Math.max(-1.45, Math.min(1.45, pitch + dp)); },
     where() { return { x: +px.toFixed(2), z: +pz.toFixed(2), yaw: +yaw.toFixed(2), speed: +speed.toFixed(2) }; },
     near: () => (nearDoor ? nearDoor.project : null),
     particles: () => group.userData.points + (landGroup ? landGroup.userData.points : 0) + NG,

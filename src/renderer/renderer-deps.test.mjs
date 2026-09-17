@@ -153,8 +153,7 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ["sd-state", "session dock (\u4f1a\u8bdd\u680f) \u2014 macOS AX/window APIs, frontend untracked"],
     ["terse-approval", "approvals \u2014 macOS Accessibility"],
     ["terse-approval-cleared", "approvals \u2014 macOS Accessibility"],
-    ["town-key", "town_keys.rs"],
-    ["town-mouse", "town_keys.rs"],
+    ["town-need-ax", "Code Town Accessibility guide \u2014 macOS only"],
   ]);
 
   if (macCmd.size && winCmd.size) {

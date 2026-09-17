@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="dark">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Terse Code Town</title>
+  <style>
+    /* 「操控小镇」—— 灵动岛左边的一颗胶囊开关。
+       小镇是壁纸;这颗开关决定键盘鼠标归谁:
+         开 = WASD / 方向键 / 点击 / 拖动全归小镇(不管前台是哪个 app)
+         关 = 全部还给 Mac,桌面和平时一模一样
+       状态必须一眼看得出来:开着的时候整颗是亮绿色,还有一圈呼吸光。 */
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:100%;height:100%;background:transparent;overflow:hidden;
+      -webkit-user-select:none;user-select:none;cursor:pointer;
+      font:700 11.5px -apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC',system-ui,sans-serif}
+    /* 在别墅里:右边多一颗「出去」(小镇里的按钮点不到,点击到不了壁纸) */
+    #exit{position:absolute;top:2px;bottom:2px;right:2px;width:80px;border-radius:9999px;display:none;
+      align-items:center;justify-content:center;gap:4px;color:#fff;
+      background:rgba(224,86,74,.92);border:1px solid rgba(255,255,255,.2);
+      box-shadow:0 6px 20px rgba(0,0,0,.45);transition:transform .16s cubic-bezier(.2,.9,.25,1)}
+    #exit:hover{transform:scale(1.04)}
+    #exit:active{transform:scale(.96)}
+    body.villa #exit{display:flex}
+    body.villa #pill{right:86px}
+    body.villa #ring{right:84px}
+    #pill{position:absolute;inset:2px;border-radius:9999px;display:flex;align-items:center;gap:7px;
+      padding:0 6px 0 10px;color:#E8ECF5;
+      background:rgba(16,18,28,.84);border:1px solid rgba(255,255,255,.16);
+      backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);
+      box-shadow:0 6px 20px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.14);
+      transition:transform .16s cubic-bezier(.2,.9,.25,1),background .2s,color .2s,border-color .2s}
+    #pill:hover{transform:scale(1.03)}
+    #pill:active{transform:scale(.97)}
+    #ic{font-size:14px;line-height:1}
+    #lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* 开关本体 */
+    #sw{position:relative;width:30px;height:18px;border-radius:9999px;flex:none;
+      background:rgba(255,255,255,.18);transition:background .2s}
+    #sw i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+      background:#fff;transition:left .18s cubic-bezier(.2,.9,.25,1)}
+    body.on #pill{background:#C9F03D;color:#0B0B0D;border-color:transparent}
+    body.on #sw{background:rgba(11,11,13,.85)}
+    body.on #sw i{left:14px;background:#C9F03D}
+    body.on #ring{opacity:1;animation:pulse 1.8s ease-in-out infinite}
+    #ring{position:absolute;inset:0;border-radius:9999px;opacity:0;border:2px solid #C9F03D;pointer-events:none}
+    @keyframes pulse{0%,100%{opacity:.85}50%{opacity:.2}}
+    /* 缺辅助功能授权:键盘接管不了 —— 整颗变琥珀色,点它去系统设置 */
+    body.noax #pill{background:#E8B54A;color:#0B0B0D;border-color:transparent}
+  </style>
+</head>
+<body>
+  <div id="ring"></div>
+  <div id="pill" title="">
+    <span id="ic">🏘️</span>
+    <span id="lbl">Control town</span>
+    <span id="sw"><i></i></span>
+  </div>
+  <div id="exit"><span>🚪</span><span id="exitLbl">Leave</span></div>
+  <script src="tauri-bridge.js"></script>
+  <script>
+    (function () {
+      var core = window.__TAURI__ && window.__TAURI__.core;
+      var ev = window.__TAURI__ && window.__TAURI__.event;
+      var st = { on: false, keys: false, trusted: true };
+      var busy = false;
+
+      function T(k, f) {
+        var v = (window.i18n && window.i18n.t) ? window.i18n.t(k) : null;
+        return (v && v !== k) ? v : f;
+      }
+      function paint() {
+        var noax = st.on && !st.keys && !st.trusted;
+        document.body.classList.toggle('on', st.on && !noax);
+        document.body.classList.toggle('noax', noax);
+        document.getElementById('lbl').textContent = noax
+          ? T('tp_need_ax', 'Allow Accessibility')
+          : st.on ? T('tp_on', 'Controlling town') : T('tp_off', 'Control town');
+        document.getElementById('pill').title = noax
+          ? T('tp_need_ax_tip', 'The keyboard needs Accessibility permission for Terse. Click to open System Settings, allow Terse, then switch this on again.')
+          : st.on ? T('tp_on_tip', 'Keyboard (WASD, arrows, Q/R, E, space) and mouse go to the town. Click to give them back to your Mac.')
+                  : T('tp_off_tip', 'Click to walk the town on your wallpaper with the keyboard and mouse.');
+      }
+      function set(on) {
+        if (!core || busy) return;
+        busy = true;
+        core.invoke('wallpaper_town_walk', { on: on }).then(function (r) {
+          if (r) { st.on = !!r.on; st.keys = !!r.keys; st.trusted = r.trusted !== false; }
+          paint();
+        }).catch(function () {}).then(function () { busy = false; });
+      }
+
+      function paintVilla(inside) {
+        document.body.classList.toggle('villa', !!inside);
+        document.getElementById('exitLbl').textContent = T('tp_exit', 'Leave');
+        document.getElementById('exit').title = T('tp_exit_tip', 'Leave the villa and go back to the street (Esc works too)');
+      }
+      document.getElementById('exit').addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (ev) ev.emit('town-exit-villa', {}).catch(function () {});
+      });
+      document.getElementById('pill').addEventListener('click', function () {
+        if (st.on && !st.keys && !st.trusted) {
+          // 还缺授权:再请一次 —— Terse 会打开「代码小镇」页的授权引导,授权一到自动接上
+          set(true);
+          return;
+        }
+        set(!st.on);
+      });
+
+      if (ev) {
+        // Esc、看门狗、「代码小镇」页面、⌘⇧W 也会开关它:按钮跟着
+        ev.listen('town-control', function (e) {
+          var p = e.payload || {};
+          st.on = !!p.on; st.keys = !!p.keys; st.trusted = p.trusted !== false;
+          paint();
+        });
+        ev.listen('wallpaper-town-walk', function (e) { st.on = !!e.payload; if (!st.on) st.keys = false; paint(); });
+        ev.listen('town-villa', function (e) { paintVilla(!!e.payload); });
+      }
+      if (core) core.invoke('town_control_state').then(function (r) {
+        if (r) { st.on = !!r.on; st.keys = !!r.keys; st.trusted = r.trusted !== false; }
+        paint();
+      }).catch(paint);
+      paint();
+      // 语言包晚到时刷一次
+      setTimeout(paint, 400);
+    })();
+  </script>
+  <script src="i18n.js"></script>
+</body>
+</html>

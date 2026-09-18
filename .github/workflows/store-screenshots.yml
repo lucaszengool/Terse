@@ -1,0 +1,133 @@
+name: Store screenshots (Windows)
+
+# Microsoft Store policy 10.1.1.3 (cert report 09-18): listing screenshots must
+# be direct captures of the product running on Windows. This takes the exact
+# Terse.msix built by "Build Windows Store package (MSIX)", unpacks it on a fresh
+# Windows runner, runs it with the live particle wallpaper switched on — the way
+# a user's machine has it after turning the wallpaper on — and photographs the
+# desktop. Nothing is composited or staged beyond clearing the runner's own
+# console and desktop icons off the screen.
+#
+# Runs on its own (not inside the build) so retaking photos never costs a
+# 25-minute rebuild of a package that is already verified.
+on:
+  push:
+    branches: [store/submission-2]
+    paths: ['.github/workflows/store-screenshots.yml']
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  # The build run whose Terse.msix goes to the Store (1.3.4.0, 147fd98c).
+  MSIX_RUN_ID: '35336138438'
+
+jobs:
+  shots:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Fetch the submitted MSIX
+        uses: actions/download-artifact@v4
+        with:
+          name: Terse-MSIX
+          run-id: ${{ env.MSIX_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: msix
+
+      - name: Unpack it (an MSIX is a zip)
+        run: |
+          Copy-Item msix\Terse.msix msix\Terse.zip
+          Expand-Archive msix\Terse.zip -DestinationPath app -Force
+          Select-String -Path app\AppxManifest.xml -Pattern 'Version="[^"]+"' | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Value }
+
+      - name: Capture
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference = 'Continue'
+          try { Set-DisplayResolution -Width 1920 -Height 1080 -Force -ErrorAction Stop }
+          catch { Write-Host "::warning::Set-DisplayResolution failed: $_" }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type @"
+          using System; using System.Runtime.InteropServices;
+          public static class W {
+            [DllImport("user32.dll")] public static extern IntPtr FindWindow(string c, string t);
+            [DllImport("user32.dll")] public static extern IntPtr FindWindowEx(IntPtr p, IntPtr a, string c, string t);
+            [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
+            [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+            [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, uint d, IntPtr e);
+          }
+          "@
+
+          $out = "$env:RUNNER_TEMP\shots"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          function Snap([string]$name) {
+            [W]::SetCursorPos(1910, 1070) | Out-Null
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("$out\$name.png", [System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose(); $bmp.Dispose()
+            Write-Host "$name.png  $($b.Width)x$($b.Height)"
+          }
+          function Click([int]$x, [int]$y) {
+            [W]::SetCursorPos($x, $y) | Out-Null
+            [W]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 90
+            [W]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero)
+          }
+          function Keys([string]$k) { [System.Windows.Forms.SendKeys]::SendWait($k) }
+
+          # The wallpaper exactly as a user who switched it on has it: the
+          # shipped defaults (wallpaper_default_config) with enabled = true.
+          $cfg = @{
+            enabled = $true; engine = 'mineradio'; style = 'cinematic'
+            view3d = @{ on = $false; az = 0.0; el = 0.0; dist = 1.0; dim = $false }
+            theme = 'neon'; quality = 56; angle = 55; intensity = 1.0
+          }
+          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.terse" | Out-Null
+          $cfg | ConvertTo-Json -Depth 4 | Set-Content "$env:USERPROFILE\.terse\wallpaper.json" -Encoding UTF8
+
+          # Clear the runner's own clutter: its console and the desktop icons.
+          (New-Object -ComObject Shell.Application).MinimizeAll()
+          $def = [W]::FindWindowEx([W]::FindWindow("Progman", $null), [IntPtr]::Zero, "SHELLDLL_DefView", $null)
+          $icons = [W]::FindWindowEx($def, [IntPtr]::Zero, "SysListView32", $null)
+          if ($icons -ne [IntPtr]::Zero) { [W]::ShowWindow($icons, 0) | Out-Null }
+          Start-Sleep -Seconds 3
+
+          $app = (Resolve-Path app).Path
+          $p = Start-Process -FilePath "$app\Terse.exe" -WorkingDirectory $app -PassThru
+          Start-Sleep -Seconds 45                 # software WebGL on a GPU-less runner is slow to settle
+          Snap "01-first-run-doctor"
+          Click 654 769                           # Doctor checkup: Continue
+          Start-Sleep -Seconds 10
+          Snap "02-after-continue"
+          foreach ($i in 1..3) { Start-Sleep -Seconds 6; Snap "03-wallpaper-$i" }
+          Keys "^+t"; Start-Sleep -Seconds 10     # main window over the wallpaper
+          Snap "04-main-window"
+          Keys "^+k"; Start-Sleep -Seconds 8      # prompt library
+          Snap "05-prompt-library"
+          Keys "^+t"; Start-Sleep -Seconds 4
+          Keys "^+d"; Start-Sleep -Seconds 10     # Doctor on demand
+          Snap "06-doctor"
+          Keys "^+d"; Start-Sleep -Seconds 6
+          Snap "07-wallpaper-end"
+
+          Get-Process | Where-Object { $_.MainWindowTitle } |
+            Select-Object ProcessName, Id, MainWindowTitle | Format-Table -AutoSize | Out-String | Write-Host
+          Get-ChildItem "$env:USERPROFILE\.terse" -Filter *.log -ErrorAction SilentlyContinue |
+            Copy-Item -Destination $out
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Get-Process terse-uia -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Terse-Store-Screenshots-v2
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: warn
+          retention-days: 30

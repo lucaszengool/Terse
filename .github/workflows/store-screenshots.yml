@@ -153,6 +153,59 @@ jobs:
             Start-Sleep -Seconds 4
           }
 
+          # ── A sample agent session (captioned "sample session" in the listing) ──
+          # The runner runs no real agent, so the wallpaper's agent text never
+          # forms. This writes a Claude Code-format transcript, keeps appending a
+          # step every few seconds (so tok/min is live), and runs a placeholder
+          # process named "claude" so the monitor sees a running agent. Terse's
+          # real parser and renderer do the rest.
+          function DemoSession {
+            $proj = "$env:USERPROFILE\.claude\projects\C--Users-runneradmin-web-app"
+            New-Item -ItemType Directory -Force -Path $proj | Out-Null
+            $f = "$proj\sample-session.jsonl"
+            Remove-Item $f -ErrorAction SilentlyContinue
+            Copy-Item "$env:WINDIR\System32\timeout.exe" "$env:RUNNER_TEMP\claude.exe" -Force
+            $script:claudeProc = Start-Process "$env:RUNNER_TEMP\claude.exe" -ArgumentList '/t','3000','/nobreak' -WindowStyle Hidden -PassThru
+            $script:demoJob = Start-Job -ArgumentList $f -ScriptBlock {
+              param($f)
+              $cwd = 'C:\Users\runneradmin\web-app'
+              $steps = @(
+                @{ t='text'; v='Add a dark-mode toggle to the settings page' ; role='user' },
+                @{ t='tool'; n='Read';  i=@{ file_path='src/pages/Settings.tsx' } },
+                @{ t='tool'; n='Grep';  i=@{ pattern='theme'; path='src' } },
+                @{ t='text'; v='The theme lives in ThemeContext. I will add a toggle bound to it.' },
+                @{ t='tool'; n='Edit';  i=@{ file_path='src/pages/Settings.tsx' } },
+                @{ t='tool'; n='Edit';  i=@{ file_path='src/theme/ThemeContext.tsx' } },
+                @{ t='tool'; n='Bash';  i=@{ command='npm test -- settings' } },
+                @{ t='text'; v='Tests pass. The toggle persists the choice in localStorage.' },
+                @{ t='tool'; n='Read';  i=@{ file_path='src/components/Header.tsx' } },
+                @{ t='tool'; n='Edit';  i=@{ file_path='src/components/Header.tsx' } },
+                @{ t='tool'; n='Bash';  i=@{ command='npm run build' } },
+                @{ t='text'; v='Build is green. Dark mode now follows the system setting by default.' }
+              )
+              $k = 0
+              while ($true) {
+                $s = $steps[$k % $steps.Count]; $k++
+                $ts = (Get-Date).ToUniversalTime().ToString('o')
+                if ($s.role -eq 'user') {
+                  $o = @{ type='user'; cwd=$cwd; timestamp=$ts; message=@{ role='user'; content=@(@{ type='text'; text=$s.v }) } }
+                } else {
+                  $block = if ($s.t -eq 'tool') { @{ type='tool_use'; id="toolu_$k"; name=$s.n; input=$s.i } } else { @{ type='text'; text=$s.v } }
+                  $o = @{ type='assistant'; cwd=$cwd; timestamp=$ts; message=@{ role='assistant'; model='claude-sonnet-4-5'
+                         usage=@{ input_tokens=900 + ($k*37 % 400); cache_read_input_tokens=14000 + $k*120; cache_creation_input_tokens=0; output_tokens=180 + ($k*53 % 300) }
+                         content=@($block) } }
+                }
+                Add-Content -Path $f -Value ($o | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8
+                Start-Sleep -Seconds 4
+              }
+            }
+            Start-Sleep -Seconds 12
+          }
+          function StopDemo {
+            if ($script:demoJob) { Stop-Job $script:demoJob -ErrorAction SilentlyContinue; Remove-Job $script:demoJob -Force -ErrorAction SilentlyContinue }
+            if ($script:claudeProc) { Stop-Process -Id $script:claudeProc.Id -Force -ErrorAction SilentlyContinue }
+          }
+
           # ── Clear the stage ────────────────────────────────────────────────
           @{ baselined = $true; auto_add = $false; sources = @{}; baselined_kinds = @('notif','system','window','media') } |
             ConvertTo-Json -Depth 4 | Set-Content "$home2\feeds.json" -Encoding UTF8
@@ -162,37 +215,22 @@ jobs:
           (New-Object -ComObject Shell.Application).MinimizeAll()
           Start-Sleep -Seconds 3
 
-          # ── Free: exactly what a free user sees ────────────────────────────
-          License $false
-          Wallpaper 'mineradio' 'cinematic' $false
-          Launch 40
-          Snap "00-first-run"
-          Onboard 60
-          Start-Sleep -Seconds 5
-          ClearWindows; Start-Sleep -Seconds 6
-          Snap "10-free-wallpaper-1"; Start-Sleep -Seconds 6; Snap "10-free-wallpaper-2"
-          Keys "^+t"; Start-Sleep -Seconds 10
-          Snap "11-free-main-window"
-          ClearWindows; Start-Sleep -Seconds 3
-          Keys "^+d"; Start-Sleep -Seconds 15
-          Snap "12-free-doctor"
-          ClearWindows; Start-Sleep -Seconds 3
-          Quit
-
-          # ── Pro wallpaper styles (local test license) ───────────────────────
+          # ── Agent text on the wallpaper, sample session running ────────────
+          DemoSession
           License $true
-          $n = 20
-          foreach ($s in @(@('vortex',$false), @('vortex',$true), @('aurora',$false), @('starfall',$false),
-                           @('bloom',$true), @('neon',$false), @('ink',$false), @('zen',$true))) {
-            Wallpaper 'cinematic' $s[0] $s[1]
+          $n = 30
+          foreach ($sc in @(@('cinematic','vortex',$true), @('cinematic','neon',$false), @('cinematic','starfall',$false), @('mineradio','cinematic',$false))) {
+            Wallpaper $sc[0] $sc[1] $sc[2]
+            if ($sc[0] -eq 'mineradio') { License $false }
             Launch 35
             Onboard 30
-            ClearWindows; Start-Sleep -Seconds 6
-            $tag = if ($s[1]) { "$($s[0])-3d" } else { $s[0] }
-            foreach ($i in 1..2) { Snap ("{0}-pro-{1}-{2}" -f $n, $tag, $i); Start-Sleep -Seconds 7 }
+            ClearWindows; Start-Sleep -Seconds 5
+            $tag = "$($sc[0])-$($sc[1])" + $(if ($sc[2]) { '-3d' } else { '' })
+            foreach ($i in 1..8) { Snap ("{0}-agent-{1}-{2:d2}" -f $n, $tag, $i); Start-Sleep -Seconds 5 }
             Quit
             $n++
           }
+          StopDemo
 
           Get-ChildItem $home2 -Filter *.log -ErrorAction SilentlyContinue | Copy-Item -Destination $out
 
@@ -200,7 +238,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v4
+          name: Terse-Store-Screenshots-v5
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

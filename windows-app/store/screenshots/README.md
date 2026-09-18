@@ -16,3 +16,10 @@ a CI box runs no agents, so it reads 0 tokens/min.
 | 02-wallpaper-neon.png | Pro style: Neon |
 | 03-wallpaper-zen-3d.png | Pro style: Zen, 3D view |
 | 04-doctor.png | Terse Doctor: a read-only health check of your AI agent setup |
+| 05-agent-steps-on-wallpaper.png | Your agent's steps drawn on the wallpaper as it works (sample session) |
+| 06-doctor-live-tokens.png | Terse Doctor with live token activity on a Pro wallpaper (sample session) |
+
+05–06 come from run 35354594829: a Claude Code-format sample transcript is
+replayed step by step so Terse's own agent monitor and renderer draw the text.
+The token counts come from that sample, not a real workload, so the captions say
+"sample session".

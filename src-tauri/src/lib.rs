@@ -664,6 +664,13 @@ fn close_window(app: AppHandle) {
     }
 }
 
+/// Quit for real. The main window has no OS title bar and its ✕ only hides,
+/// so on Windows this (titlebar ⏻ / Ctrl+Q) is the way out besides the tray.
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 #[tauri::command]
 fn minimize_window(app: AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
@@ -5717,6 +5724,15 @@ pub fn run() {
         // not what pressing the red button means for a window that reopens with
         // the next room you enter.
         .on_window_event(|window, event| {
+            // Windows: "Close window" on the taskbar button, or Alt+F4, is how
+            // people quit an app there. Left alone it would destroy just the
+            // main window and leave Terse running with nothing to reopen.
+            #[cfg(target_os = "windows")]
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    window.app_handle().exit(0);
+                }
+            }
             if window.label() == "room" || window.label() == "petchat" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
@@ -6359,7 +6375,7 @@ pub fn run() {
             let mode_aggressive = MenuItemBuilder::with_id("mode_aggressive", "Mode: Aggressive").build(app)?;
             let tray_doctor = MenuItemBuilder::with_id("tray_doctor", "Open Doctor · 体检").build(app)?;
             let tray_stats = MenuItemBuilder::with_id("tray_stats", "Open Stats").build(app)?;
-            let tray_quit = MenuItemBuilder::with_id("tray_quit", "Quit Terse").build(app)?;
+            let tray_quit = MenuItemBuilder::with_id("tray_quit", "Quit Terse · 退出").build(app)?;
             let sep = PredefinedMenuItem::separator(app)?;
             let tray_menu = MenuBuilder::new(app)
                 .items(&[
@@ -6395,8 +6411,15 @@ pub fn run() {
                re-tints for light bars, dark bars and the highlighted state.
                `icon_as_template` is what tells macOS it may do that; a coloured
                icon with the flag off is left exactly as drawn. */
+            // Windows has no template tinting: the black glyph vanishes on a
+            // dark taskbar, so there the tray gets the colour app icon.
+            #[cfg(not(target_os = "windows"))]
             let tray_icon = tauri::image::Image::from_bytes(
                 include_bytes!("../icons/tray-Template@2x.png")
+            ).ok();
+            #[cfg(target_os = "windows")]
+            let tray_icon = tauri::image::Image::from_bytes(
+                include_bytes!("../icons/32x32.png")
             ).ok();
 
             let mut tray_builder = TrayIconBuilder::new();
@@ -6839,6 +6862,7 @@ pub fn run() {
             set_auto_mode,
             close_window,
             minimize_window,
+            quit_app,
             set_popup_minimized,
             move_popup_by,
             resize_popup,

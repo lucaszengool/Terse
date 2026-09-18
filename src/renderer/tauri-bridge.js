@@ -98,6 +98,7 @@ if (window.__TAURI__) {
     updateSettings: (s) => invoke('update_settings', { s }),
     closeWindow: () => invoke('close_window'),
     minimizeWindow: () => invoke('minimize_window'),
+    quitApp: () => invoke('quit_app'),
     setAutoMode: (mode) => invoke('set_auto_mode', { mode }),
     requestAccessibility: () => invoke('request_accessibility'),
     checkAxPermission: () => invoke('check_ax_permission'),

@@ -43,6 +43,18 @@ const cleanName = (s) => String(s || '').replace(INVISIBLE, '').replace(/\s+/g, 
 
 /** 镇上的人:id → { name, x, z, yaw, v, at, ip } */
 const people = new Map();
+/* agent 小伙伴头顶光点的颜色:只收这几种字面值(别人屏幕上显示的是它,不能让人塞任意字符串) */
+const AGENTS = new Set(['claude-code', 'codex', 'cursor', 'openclaw', 'gemini', 'ollama']);
+/* 点对点的那几条(狗和狗的邀请):id → 这个人开着的几条流。⚠ 不走 bus —— bus 发给镇上所有人,
+   而邀请里带着两人房间的加入码,只能到收件人一个人那儿。 */
+const streams = new Map();
+function sendTo(id, msg) {
+  const set = streams.get(id);
+  if (!set || !set.size) return false;
+  const line = `data: ${JSON.stringify(msg)}\n\n`;
+  for (const r of set) { try { r.write(line); } catch (e) {} }
+  return true;
+}
 /** 限频:id → { n, until } */
 const buckets = new Map();
 let dirty = false, timer = null;
@@ -67,7 +79,7 @@ function roster() {
   const now = Date.now(), out = [];
   for (const [id, p] of people) {
     if (now - p.at > STALE_MS) { people.delete(id); dirty = true; continue; }
-    out.push({ id, name: p.name, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(2), v: +p.v.toFixed(1), e: p.e || 0 });
+    out.push({ id, name: p.name, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(2), v: +p.v.toFixed(1), e: p.e || 0, a: p.a || '' });
   }
   return out;
 }
@@ -127,6 +139,7 @@ router.post('/move', express.json({ limit: '1kb' }), (req, res) => {
   if (r > MAX_R) { p.x = (p.x / r) * MAX_R; p.z = (p.z / r) * MAX_R; }
   p.yaw = yaw; p.v = Math.max(0, Math.min(MAX_SPEED, v || 0)); p.at = now;
   p.e = Math.max(0, Math.min(7, parseInt(b.e, 10) || 0));   // 表情:0 没有,1–7 各是一个动作
+  p.a = AGENTS.has(b.a) ? b.a : '';                           // 小伙伴接的 agent 种类(没接 = 空)
   dirty = true;
   res.json({ ok: true });
 });
@@ -196,14 +209,55 @@ router.get('/stream', (req, res) => {
   res.flushHeaders && res.flushHeaders();
   res.write(`data: ${JSON.stringify({ type: 'hello', you: id || null, peers: roster() })}\n\n`);
   const off = bus.subscribe(CH, res);
+  if (id) { if (!streams.has(id)) streams.set(id, new Set()); streams.get(id).add(res); }
   const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
   if (ping.unref) ping.unref();
-  req.on('close', () => { clearInterval(ping); off(); });
+  req.on('close', () => {
+    clearInterval(ping); off();
+    const set = id && streams.get(id);
+    if (set) { set.delete(res); if (!set.size) streams.delete(id); }
+  });
   start();
 });
 
+/* ── 狗和狗:让两个人的 agent 认识 ──
+   A 走到 B 的小伙伴跟前按 T → A 的电脑开一个两人的私密房间 → 这里把加入码**只**转给 B。
+   B 点了接受,B 的电脑用码进房间、把自己的 agent 接进去;两只 agent 在房间里聊,两个人都看得见、插得上话。
+   闸门:两个人此刻都得在镇上(邀请是"当面"的,不是隔空骚扰);每人每分钟 5 次;码的格式写死。 */
+const PET_CODE = /^[A-Z0-9]{4,16}$/;
+function petAllow(id) {
+  const k = 'pet:' + id, now = Date.now();
+  let b = buckets.get(k);
+  if (!b || now > b.until) { b = { n: 0, until: now + 60000 }; buckets.set(k, b); }
+  b.n += 1;
+  return b.n <= 5;
+}
+router.post('/pet/invite', express.json({ limit: '1kb' }), (req, res) => {
+  const id = idOf(req);
+  if (!id) return res.status(401).json({ error: 'Sign in to walk' });
+  const b = req.body || {};
+  const to = String(b.to || ''), code = String(b.code || '').toUpperCase();
+  if (to === id || !/^[0-9a-f]{32}$/.test(to)) return res.status(400).json({ error: 'Bad recipient' });
+  if (!PET_CODE.test(code)) return res.status(400).json({ error: 'Bad code' });
+  const me = people.get(id), them = people.get(to);
+  if (!me || !them) return res.status(409).json({ error: 'Both of you need to be in town' });
+  if (!petAllow(id)) return res.status(429).json({ error: 'Slow down' });
+  const sent = sendTo(to, { type: 'petInvite', from: id, fromName: me.name, pet: cleanName(b.pet), code });
+  res.json({ ok: true, delivered: sent });
+});
+router.post('/pet/reply', express.json({ limit: '1kb' }), (req, res) => {
+  const id = idOf(req);
+  if (!id) return res.status(401).json({ error: 'Sign in to walk' });
+  const to = String((req.body || {}).to || '');
+  if (to === id || !/^[0-9a-f]{32}$/.test(to)) return res.status(400).json({ error: 'Bad recipient' });
+  if (!petAllow(id)) return res.status(429).json({ error: 'Slow down' });
+  const me = people.get(id);
+  const sent = sendTo(to, { type: 'petReply', from: id, fromName: me ? me.name : '', ok: !!(req.body || {}).ok });
+  res.json({ ok: true, delivered: sent });
+});
+
 /** 测试用:把镇子清空。 */
-router.reset = () => { people.clear(); buckets.clear(); dirty = false; };
+router.reset = () => { people.clear(); buckets.clear(); streams.clear(); dirty = false; };
 router.people = people;
 router.NOTES = NOTES;
 

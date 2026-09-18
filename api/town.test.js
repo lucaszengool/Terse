@@ -147,6 +147,46 @@ function listen(ms, id) {
   await call('/move', { method: 'POST', body: { x: 1, z: 1, yaw: 0, v: 0, e: 3 }, id: ME });
   ok('an emote rides along with the position', (await call('/count')).status === 200 && [...town.people.values()][0].e === 3);
 
+  /* ── agent 小伙伴:光点颜色(只收白名单)、狗和狗的邀请(只到收件人) ── */
+  {
+    town.reset();
+    const crypto = require('crypto');
+    const hid = (v) => crypto.createHash('sha256').update(v).digest('hex').slice(0, 32);
+    const THIRD = 'third-identity-0123456789abcdef';
+    await call('/join', { method: 'POST', body: { name: 'me' }, id: ME });
+    await call('/join', { method: 'POST', body: { name: 'you' }, id: YOU });
+    await call('/join', { method: 'POST', body: { name: 'third' }, id: THIRD });
+    await call('/move', { method: 'POST', body: { x: 0, z: 0, yaw: 0, v: 0, a: 'claude-code' }, id: ME });
+    ok('agent kind rides along with the position', town.people.get(hid(ME)).a === 'claude-code');
+    await pause(1100);
+    await call('/move', { method: 'POST', body: { x: 0.1, z: 0, yaw: 0, v: 0, a: '<img onerror=x>' }, id: ME });
+    ok('an agent kind outside the list is dropped', town.people.get(hid(ME)).a === '');
+
+    const youHear = listen(700, YOU), thirdHears = listen(700, THIRD);
+    await pause(150);
+    const r = await call('/pet/invite', { method: 'POST', body: { to: hid(YOU), code: 'AB12CD', pet: 'Fig' }, id: ME });
+    ok('an invite to someone in town is delivered', r.status === 200 && r.body && r.body.delivered === true);
+    const got = (await youHear).filter((f) => f.type === 'petInvite');
+    ok('the recipient gets the code, who it is from, and the pet', got.length === 1 && got[0].code === 'AB12CD' && got[0].from === hid(ME) && got[0].pet === 'Fig');
+    ok('nobody else in town sees the code', (await thirdHears).every((f) => f.type !== 'petInvite' && !JSON.stringify(f).includes('AB12CD')));
+
+    ok('a bad code is refused', (await call('/pet/invite', { method: 'POST', body: { to: hid(YOU), code: 'ab 12', pet: 'x' }, id: ME })).status === 400);
+    ok('you cannot invite yourself', (await call('/pet/invite', { method: 'POST', body: { to: hid(ME), code: 'AB12CD' }, id: ME })).status === 400);
+    await call('/leave', { method: 'POST', id: THIRD });
+    ok('both of you have to be in town', (await call('/pet/invite', { method: 'POST', body: { to: hid(THIRD), code: 'AB12CD' }, id: ME })).status === 409);
+    ok('signed-out visitors cannot invite', (await call('/pet/invite', { method: 'POST', body: { to: hid(YOU), code: 'AB12CD' } })).status === 401);
+
+    const back = listen(500, ME);
+    await pause(120);
+    await call('/pet/reply', { method: 'POST', body: { to: hid(ME), ok: true }, id: YOU });
+    const rep = (await back).filter((f) => f.type === 'petReply');
+    ok('the answer goes back to the one who asked', rep.length === 1 && rep[0].ok === true && rep[0].from === hid(YOU));
+
+    let last = 0;
+    for (let i = 0; i < 6; i++) last = (await call('/pet/invite', { method: 'POST', body: { to: hid(YOU), code: 'AB12CD' }, id: ME })).status;
+    ok('invites are rate-limited', last === 429);
+  }
+
   town.reset();
   server.close();
   console.log(`\n${pass} passed, ${fails.length} failed\n`);

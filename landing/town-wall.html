@@ -16,7 +16,17 @@
                  {target:'terse-town', cmd:'key', type, key, code, shift}  (焦点在宿主时转过来的键)
                  {target:'terse-town', cmd:'mouse', t:'down'|'drag'|'up', dx, dy}  (宿主转来的拖动)
                  {target:'terse-town', cmd:'exitVilla'}   (宿主的「出去」按钮)
+                 agent 小伙伴(⚠ 只有种类、位置、id、加入码 —— agent 说了什么**从不**进这一页,
+                 对话窗和气泡都是宿主本地画的;这一页是远程加载的):
+                 {target:'terse-town', cmd:'pet', agent, busy, alert}   (接的是哪种 agent / 忙不忙 / 要你)
+                 {target:'terse-town', cmd:'petMeet', id}               (自己那只跑去挨着 id 那只)
+                 {target:'terse-town', cmd:'petInvite', to, code, pet}  (把两人房间的码只发给 to)
+                 {target:'terse-town', cmd:'petReply', to, ok}
+                 {target:'terse-town', cmd:'drop', phase:'over'|'drop'|'leave', x, y}  (文件拖到屏幕哪儿了)
     页面 → 宿主  {source:'terse-town', event:'ready' | 'esc' | 'villa' | 'town' | 'goto' | 'error', ...}
+                 {event:'petInfo', id, name, breed} · {event:'petTalk'} · {event:'petMeet', id, pet, owner}
+                 {event:'petScreen', x, y, on} · {event:'petInvite', from, fromName, pet, code} · {event:'petReply', from, ok}
+                 {event:'dropTarget', phase, hit:{kind, id, name, mine}|null}
   直接在浏览器里打开也能玩(?lang=zh / ?budget=0.8),只是没登录、只看不走进名单。
 -->
 <html lang="zh">
@@ -87,13 +97,15 @@ const S = {
 };
 
 const TXT = {
-  zh: { tipTown: 'WASD 走 · Q/R 或把光标移到屏幕边上转向 · 门口按 E 进别墅 · Esc 停下',
+  zh: { tipTown: 'WASD 走 · Q/R 或把光标移到屏幕边上转向 · 门口按 E 进别墅 · 小伙伴旁边按 T · Esc 停下',
+        petDesktop: '在 Terse 桌面版里,它接的是你电脑上的 agent —— 在这儿只能看看',
         tipPaused: '键盘在别的窗口上 —— 按 ⌘⇧W 回来接着逛',
         tipNeedAx: '键盘还没交给小镇:在 系统设置 → 隐私与安全性 → 辅助功能 里允许 Terse(列表里已有旧的 Terse 就先删掉再加),授权后自动生效',
         tipVilla: '拖动看四周 · WASD 走 · 点家具看文件 · Esc 回到小镇',
         villa: '{t} 的别墅 · Esc 回到小镇', loading: '小镇正在盖…', empty: '广场上还没有项目',
         noEngine: '这台电脑的显卡跑不起小镇', files: '{n} 个文件' },
-  en: { tipTown: 'WASD to walk · Q/R or push the cursor to a screen edge to turn · E at a door to go in · Esc to stop',
+  en: { tipTown: 'WASD to walk · Q/R or push the cursor to a screen edge to turn · E at a door to go in · T by your companion · Esc to stop',
+        petDesktop: 'In the Terse desktop app it talks to the agent on your computer — here you can only look',
         tipPaused: 'The keyboard is on another window — press ⌘⇧W to keep walking',
         tipNeedAx: 'The keyboard is not with the town yet: allow Terse in System Settings → Privacy & Security → Accessibility (remove an old Terse entry first if there is one). It starts working as soon as you do.',
         tipVilla: 'drag to look · WASD to walk · click furniture to read a file · Esc back to town',
@@ -157,6 +169,27 @@ addEventListener('message', (e) => {
   } else if (d.cmd === 'status') {
     S.needAx = !d.keys && d.trusted === false;
     setTip();
+  } else if (d.cmd === 'pet') {
+    const tn = S.town;
+    if (tn && tn.pets) {
+      tn.pets.setAgent(String(d.agent || 'none'), +d.busy || 0);
+      tn.pets.setAlert(!!d.alert);
+    }
+    try { window.Town.setAgent(d.agent && d.agent !== 'none' ? String(d.agent) : ''); } catch (err) {}
+  } else if (d.cmd === 'petMeet') {
+    if (S.town && S.town.pets) S.town.pets.meet(String(d.id || ''), 40);
+  } else if (d.cmd === 'petInvite') {
+    const to = String(d.to || '');
+    window.Town.petInvite(to, String(d.code || ''), String(d.pet || '')).then((r) => tell({ event: 'petInviteSent', to, ok: !!(r && r.ok), delivered: !!(r && r.delivered), error: (r && r.error) || '' }));
+  } else if (d.cmd === 'petReply') {
+    window.Town.petReply(String(d.to || ''), !!d.ok);
+  } else if (d.cmd === 'drop') {
+    /* 文件拖到了屏幕 (x, y):下面是谁?自己的小伙伴 / 别人的小伙伴 / 别的人。只回 id 和名字 ——
+       文件名、路径都留在宿主那边。 */
+    const tn = S.town;
+    const hit = tn && tn.pick && d.phase !== 'leave' ? tn.pick(+d.x || 0, +d.y || 0) : null;
+    if (tn && tn.pets) tn.pets.setTarget(d.phase === 'over' && hit ? hit.id : null);
+    tell({ event: 'dropTarget', phase: String(d.phase || ''), hit });
   } else if (d.cmd === 'exitVilla') {
     // 宿主(灵动岛旁胶囊上的「出去」)要人走出别墅
     exitVilla();
@@ -293,11 +326,21 @@ async function enterTown(at) {
     onEmote: (n) => Town.emote(n),
     onSay: (text) => act(Town.say(text)),
     onMark: (kind, x, z, note) => act(Town.mark(kind, x, z, note)),
+    onPetTalk: (p) => { if (embedded) tell({ event: 'petTalk', name: p.name, breed: p.breed }); else boot(tx('petDesktop')); },
+    onPetMeet: (p) => { if (embedded) tell({ event: 'petMeet', id: p.id, pet: p.pet, owner: p.owner }); else boot(tx('petDesktop')); },
+    onPetScreen: (p) => { if (embedded) tell({ event: 'petScreen', x: p.x, y: p.y, on: p.on }); },
+    // 自己那只叫什么(宿主对话窗的标题)。出生时报一次,身份换成服务器给的 id 时再报
+    onPetInfo: (p) => tell({ event: 'petInfo', id: p.id, name: p.name, breed: p.breed }),
   });
   if (!tn) return;
   S.town = tn;
   if (at) tn.at(at[0], at[1], at[2]);
   Town.join(tn);
+  // 狗和狗:别人发来的邀请 / 回复,交给宿主(接不接由人在宿主的对话窗里点)
+  Town.onPet((d) => tell(d.type === 'petInvite'
+    ? { event: 'petInvite', from: d.from, fromName: d.fromName, pet: d.pet, code: d.code }
+    : { event: 'petReply', from: d.from, fromName: d.fromName, ok: !!d.ok }));
+
   setTip();
   tell({ event: 'town', houses: S.projects.length });
 }

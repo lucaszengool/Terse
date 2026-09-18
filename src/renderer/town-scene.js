@@ -525,7 +525,7 @@ export function createTown(renderer, projects, opts = {}) {
   const people = createPeople(U, plan, built, houses, { budget: B, lang: opts.lang, resolve: (x, z, r) => (gridReady ? resolve(x, z, r) : { x, z }) });
   scene.add(people.group);
   /* agent 的小伙伴:自己一只,在场的每个人各一只(长相由身份哈希推出来,不走网络) */
-  const pets = createPets(U, { identity: opts.identity || 'me', budget: B,
+  const pets = createPets(U, { identity: opts.identity || 'me', budget: B, onMine: opts.onPetInfo,
     resolve: (x, z, r) => (gridReady ? resolve(x, z, r) : { x, z }) });
   scene.add(pets.group);
 
@@ -772,6 +772,7 @@ export function createTown(renderer, projects, opts = {}) {
     keys.add(k);
     if (k === ' ') { jumpBuf = 0.13; e.preventDefault(); }
     if (k === 'e' || k === 'enter') tryEnter();
+    if (k === 't' && !e.repeat) petTalk();
   });
   on(window, 'keyup', (e) => keys.delete(e.key.toLowerCase()));
   on(window, 'blur', () => { keys.clear(); look = null; });
@@ -811,6 +812,62 @@ export function createTown(renderer, projects, opts = {}) {
     if (nearDoor) { try { play.event({ type: 'enter', villa: String(nearDoor.project.id) }); } catch (err) {} }
     if (nearDoor && opts.onEnter) { try { opts.onEnter(nearDoor.project); } catch (err) {} }
   }
+
+  /* ── agent 小伙伴:按 T ──
+     自己那只在身边 → 跟它说话(宿主开对话窗;⚠ 对话内容不进这一页,这一页只知道"要说话了")。
+     别人的那只在身边 → 让两只认识(宿主去发邀请、开一个两人的房间)。 */
+  const PET_REACH = 3.5;
+  const PET_BODY_Y = 0.45;   // 小伙伴身子中间多高:拖文件对准的是这里,报给宿主的位置也是这里(两处不一样,丢的时候就会挑错)
+  /** 伸手够得着的那一只:看着谁、离谁近就是谁。⚠ 不能"自己那只优先" —— 它永远跟在你身后
+      1.8 米,在够得着的范围里,那样走到别人的小伙伴跟前按 T 永远只会叫到自己那只。
+      自己那只在身后(不加分),回头看它才轮到它。 */
+  function petInReach() {
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    let best = null, bs = Infinity;
+    for (const q of pets.all()) {
+      const dx = q.x - px, dz = q.z - pz, d = Math.hypot(dx, dz);
+      if (d >= PET_REACH) continue;
+      const facing = d > 0.01 ? Math.max(0, (dx * fx + dz * fz) / d) : 0;
+      const score = d - 1.6 * facing;
+      if (score < bs) { bs = score; best = q; }
+    }
+    return best;
+  }
+  function petTalk() {
+    const q = petInReach(), mine = pets.mine();
+    if (!q) return;
+    if (q === mine) {
+      if (opts.onPetTalk) { try { opts.onPetTalk({ name: mine.name, breed: mine.breed }); } catch (err) {} }
+      return;
+    }
+    if (opts.onPetMeet) {
+      const owner = peers.find((p) => p.id === q.key);
+      try { opts.onPetMeet({ id: q.key, pet: q.name, breed: q.breed, owner: owner ? owner.name : '' }); } catch (err) {}
+    }
+  }
+  /** 屏幕上这一点下面是谁(拖文件进来时用):自己的小伙伴、别人的小伙伴、别的人。
+      按屏幕距离挑最近的(70 像素内) —— 点云没有实心,射线打不中一只兔子。 */
+  function pick(sx, sy) {
+    const cand = [];
+    const mine = pets.mine();
+    for (const q of pets.all()) cand.push({ kind: 'pet', id: q.key, name: q.name, mine: q === mine, x: q.x, y: PET_BODY_Y, z: q.z });
+    for (const p of peers) cand.push({ kind: 'person', id: p.id, name: p.name || '', mine: false, x: p.x, y: 1.3, z: p.z });
+    let best = null, bd = 70;
+    for (const c of cand) {
+      if (Math.hypot(c.x - px, c.z - pz) > 40) continue;
+      const s2 = project(c.x, c.y, c.z);
+      if (s2.behind) continue;
+      const d = Math.hypot(s2.x - sx, s2.y - sy);
+      if (d < bd) { bd = d; best = c; }
+    }
+    if (!best) return null;
+    const { x, y, z, ...hit } = best;
+    return hit;
+  }
+  /* 自己那只头顶的提示:走近了告诉你按 T */
+  const petTip = el('div', 'town-pet-tip');
+  petTip.style.cssText = 'position:absolute;display:none;transform:translate(-50%,-100%);pointer-events:none;white-space:nowrap;' +
+    'font:500 12px/1.2 system-ui,-apple-system,sans-serif;color:#fff;background:rgba(20,22,30,.55);padding:3px 8px;border-radius:999px;backdrop-filter:blur(6px)';
 
   /* 房子的门牌、人的昵称:DOM,只给近处的几个 */
   const layer = el('div', '');
@@ -1171,6 +1228,24 @@ export function createTown(renderer, projects, opts = {}) {
       for (let i = n; i < noteEls.length; i++) noteEls[i].style.display = 'none';
     }
     /* 别人头顶的昵称 */
+    /* agent 小伙伴:走近了提示按 T;自己那只的头在屏幕哪儿(宿主在那儿画回复的气泡 ——
+       回复的字不进这一页,只有位置出去) */
+    {
+      const zh = opts.lang === 'zh', mine = pets.mine(), at = petInReach();
+      const tip = !at ? '' : at === mine ? (zh ? 'T  跟 ' + mine.name + ' 说话' : 'T  talk to ' + mine.name)
+        : zh ? 'T  让 ' + (mine ? mine.name : '你的') + ' 认识 ' + at.name : 'T  introduce ' + (mine ? mine.name : 'yours') + ' to ' + at.name;
+      const s0 = at ? project(at.x, 0.95, at.z) : null;
+      if (at && !s0.behind) {
+        if (petTip.textContent !== tip) petTip.textContent = tip;
+        petTip.style.display = 'block'; petTip.style.left = s0.x + 'px'; petTip.style.top = s0.y + 'px';
+      } else petTip.style.display = 'none';
+      if (opts.onPetScreen && mine && t - (update._petAt || 0) > 0.1) {
+        update._petAt = t;
+        const sh = project(mine.x, PET_BODY_Y, mine.z);
+        try { opts.onPetScreen({ x: Math.round(sh.x), y: Math.round(sh.y), on: !sh.behind && Math.hypot(mine.x - px, mine.z - pz) < 30 }); } catch (err) {}
+      }
+    }
+
     for (let i = 0; i < MAXP; i++) {
       const p = peers[i], e = nameEls[i];
       if (!p) { e.style.display = 'none'; continue; }
@@ -1242,6 +1317,9 @@ export function createTown(renderer, projects, opts = {}) {
     where() { return { x: +px.toFixed(2), z: +pz.toFixed(2), yaw: +yaw.toFixed(2), speed: +speed.toFixed(2) }; },
     near: () => (nearDoor ? nearDoor.project : null),
     pets,
+    /** 屏幕点(页面坐标)下面是哪只小伙伴 / 哪个人:{kind:'pet'|'person', id, name, mine} | null */
+    pick,
+    petTalk,
     particles: () => group.userData.points + (landGroup ? landGroup.userData.points : 0) + NG,
     renderNow() { U.uForm.value = TOWN_FORM; update(0); render(); },
     diag() {

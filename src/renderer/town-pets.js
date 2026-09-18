@@ -25,7 +25,7 @@ export const MAX_PETS = 25;
 /* 头顶那颗光点:一只一个点,亮芯柔边,离得远了淡掉。 */
 const ORB_VS = `
 attribute vec3 aCol;
-attribute float aPulse;
+attribute float aPulse, aScale;   // 忙不忙 · 放大多少(拖文件悬停在它身上时变大)
 uniform float uTime, uPx, uNight;
 varying vec3 vC; varying float vA;
 void main(){
@@ -34,7 +34,7 @@ void main(){
   if (position.y < -500.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }
   /* 呼吸:闲着慢,忙起来快 —— 不用看对话框也知道它在干活 */
   float pulse = 0.72 + 0.28 * sin(uTime * (1.2 + aPulse * 5.0));
-  gl_PointSize = clamp(0.9 * uPx / max(d, 0.3), 5.0, 40.0);   // 0.22 实测在 3 米外只剩一两个像素
+  gl_PointSize = clamp(0.9 * aScale * uPx / max(d, 0.3), 5.0, 40.0 * aScale);   // 0.22 实测在 3 米外只剩一两个像素
   vC = aCol * (0.85 + 0.5 * uNight);
   vA = pulse * (1.0 - smoothstep(40.0, 90.0, d));
   gl_Position = projectionMatrix * mv;
@@ -114,10 +114,12 @@ export function createPets(U, opts = {}) {
   const orbPos = new Float32Array(MAX_PETS * 3);
   const orbCol = new Float32Array(MAX_PETS * 3);
   const orbPulse = new Float32Array(MAX_PETS);
+  const orbScale = new Float32Array(MAX_PETS).fill(1);
   for (let i = 0; i < MAX_PETS; i++) orbPos[i * 3 + 1] = -1000;
   orbG.setAttribute('position', new THREE.BufferAttribute(orbPos, 3).setUsage(THREE.DynamicDrawUsage));
   orbG.setAttribute('aCol', new THREE.BufferAttribute(orbCol, 3).setUsage(THREE.DynamicDrawUsage));
   orbG.setAttribute('aPulse', new THREE.BufferAttribute(orbPulse, 1).setUsage(THREE.DynamicDrawUsage));
+  orbG.setAttribute('aScale', new THREE.BufferAttribute(orbScale, 1).setUsage(THREE.DynamicDrawUsage));
   const orbU = { uTime: U.uTime, uPx: U.uPx, uNight: U.uNight };
   const orbM = new THREE.ShaderMaterial({ uniforms: orbU, vertexShader: ORB_VS, fragmentShader: ORB_FS,
     transparent: true, depthWrite: false });
@@ -129,6 +131,13 @@ export function createPets(U, opts = {}) {
   /* ── 每只的状态 ── */
   const pets = new Map();          // key(身份) → pet
   let selfKey = opts.identity || 'me';
+  let targetKey = null;            // 拖着的文件正悬在谁身上
+
+  const tellMine = () => {
+    if (!opts.onMine) return;
+    const look = petLook(selfKey);
+    try { opts.onMine({ id: selfKey, name: look.name, breed: look.breed }); } catch (e) {}
+  };
 
   function makePet(key, owner) {
     const look = petLook(key);
@@ -154,10 +163,17 @@ export function createPets(U, opts = {}) {
 
   /* 跟人:站到主人身后 1.8 米。离远了跑,到了就坐下。 */
   function stepPet(p, dt, t) {
+    p.lastT = t;
     const o = p.owner;
     const [hx, hz] = ownerHeading(o, p);
     p.ox = o.x; p.oz = o.z;
-    const bx = o.x - hx * 1.8, bz = o.z - hz * 1.8;
+    let bx = o.x - hx * 1.8, bz = o.z - hz * 1.8;
+    /* 要你(agent 在等你批准 / 回答):跑到你**面前**、冲你叫 —— 不用看屏幕角落的通知 */
+    if (p.alert) { bx = o.x + hx * 1.6; bz = o.z + hz * 1.6; }
+    /* 认识别的小伙伴:跑过去,挨着它站着(两个 agent 在房间里聊的时候) */
+    const friend = p.meetKey && t < p.meetUntil ? pets.get(p.meetKey) : null;
+    if (friend) { const a = Math.atan2(p.x - friend.x, p.z - friend.z); bx = friend.x + Math.sin(a) * 0.8; bz = friend.z + Math.cos(a) * 0.8; }
+    else if (p.meetKey && t >= p.meetUntil) p.meetKey = null;
     const d = Math.hypot(bx - p.x, bz - p.z);
     const S = SPECIES[p.breed] || SPECIES.dog;
     const walk = S.walk, run = S.run;
@@ -171,9 +187,11 @@ export function createPets(U, opts = {}) {
       p.st = ST_FOLLOW; p.pitch = 0; p.sitAt = t + 1.5;
     } else {
       // 到了:面朝主人,站一会儿就坐下
-      p.st = t > p.sitAt ? ST_SIT : ST_IDLE;
-      p.pitch = -0.12;
-      const fx = o.x - p.x, fz = o.z - p.z, fd = Math.hypot(fx, fz);
+      p.st = p.alert || friend ? ST_IDLE : t > p.sitAt ? ST_SIT : ST_IDLE;
+      // 叫:头一点一点;平时微微低头
+      p.pitch = p.alert ? -0.35 + 0.3 * Math.max(0, Math.sin(t * 11)) : -0.12;
+      const look = friend || o;
+      const fx = look.x - p.x, fz = look.z - p.z, fd = Math.hypot(fx, fz);
       if (fd > 0.2) p.faceYaw = Math.atan2(fx, fz);
     }
     const k = Math.min(1, dt * 6);                       // 加速/刹车都软一点,不然是瞬移
@@ -215,7 +233,7 @@ export function createPets(U, opts = {}) {
       if (!p) p = makePet(q.id, { x: q.x, z: q.z, yaw: q.yaw });
       p.owner.x = q.x; p.owner.z = q.z; p.owner.yaw = q.yaw;
       p.seen = now;
-      if (q.agent) p.agent = q.agent;
+      p.agent = q.agent || q.a || 'none';
     }
     for (const [key, p] of pets) if (key !== selfKey && p.seen !== now) pets.delete(key);
   }
@@ -231,7 +249,7 @@ export function createPets(U, opts = {}) {
   function update(dt, t, self, env) {
     if (!(dt >= 0)) dt = 0;
     let me = pets.get(selfKey);
-    if (!me) me = makePet(selfKey, { x: self.x, z: self.z, yaw: self.yaw });
+    if (!me) { me = makePet(selfKey, { x: self.x, z: self.z, yaw: self.yaw }); tellMine(); }
     me.owner.x = self.x; me.owner.z = self.z; me.owner.yaw = self.yaw;
 
     for (const B of Object.values(breeds)) B.used = 0;
@@ -250,7 +268,8 @@ export function createPets(U, opts = {}) {
       const c = AGENT_COLOURS[p.agent] || AGENT_COLOURS.none;
       orbPos[n * 3] = p.x; orbPos[n * 3 + 1] = far ? -1000 : p.y + 0.62; orbPos[n * 3 + 2] = p.z;
       orbCol[n * 3] = c[0]; orbCol[n * 3 + 1] = c[1]; orbCol[n * 3 + 2] = c[2];
-      orbPulse[n] = p.busy;
+      orbPulse[n] = p.alert ? 1 : p.busy;
+      orbScale[n] = p.key === targetKey ? 2.2 : p.alert ? 1.5 : 1;
       n++;
     }
     // 没用到的位子推到天外
@@ -262,7 +281,20 @@ export function createPets(U, opts = {}) {
     orbG.attributes.position.needsUpdate = true;
     orbG.attributes.aCol.needsUpdate = true;
     orbG.attributes.aPulse.needsUpdate = true;
+    orbG.attributes.aScale.needsUpdate = true;
   }
+
+  /** agent 要你了(提问 / 等批准):true 跑到面前叫,false 回到身后 */
+  function setAlert(on) { const p = pets.get(selfKey); if (p) p.alert = !!on; }
+  /** 让自己那只去挨着 key 那只待一会儿(秒) */
+  function meet(key, secs = 20) {
+    const p = pets.get(selfKey);
+    if (!p || !pets.has(key)) return false;
+    p.meetKey = key; p.meetUntil = (p.lastT || 0) + secs;
+    return true;
+  }
+  /** 拖文件悬停:它的光点放大(null = 谁都不是) */
+  function setTarget(key) { targetKey = key || null; }
 
   /** 离这儿最近的一只(给"跟它说话"用) */
   function nearest(x, z, r = 3) {
@@ -282,9 +314,16 @@ export function createPets(U, opts = {}) {
   }
 
   return {
-    group, update, setPeers, setAgent, nearest, dispose,
+    group, update, setPeers, setAgent, setAlert, meet, setTarget, nearest, dispose,
     mine: () => pets.get(selfKey) || null,
     all: () => Array.from(pets.values()),
-    setIdentity: (id) => { if (id && id !== selfKey) { const me = pets.get(selfKey); pets.delete(selfKey); selfKey = id; if (me) { me.key = id; me.look = petLook(id); me.breed = me.look.breed; me.name = me.look.name; pets.set(id, me); } } },
+    /** 换身份(服务器给的哈希 id 到了):自己那只换成那个 id 长的样子,并告诉外面(宿主的对话窗标题要跟着变) */
+    setIdentity: (id) => {
+      if (!id || id === selfKey) return;
+      const me = pets.get(selfKey);
+      pets.delete(selfKey); selfKey = id;
+      if (me) { me.key = id; me.look = petLook(id); me.breed = me.look.breed; me.name = me.look.name; pets.set(id, me); }
+      tellMine();
+    },
   };
 }

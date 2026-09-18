@@ -5,7 +5,8 @@
 //! 开着的时候,在**系统这一层**(CGEventTap)把小镇用的那几个键拦下来,直接交给壁纸;
 //! 按钮一关,拦截就停,键盘完全回到 Mac 的默认行为。
 //!
-//! 只拦这些:WASD、方向键、Q / R(转向)、E(进门)、空格(跳)、Esc(停下)。
+//! 只拦这些:WASD、方向键、Q / R(转向)、E(进门)、T(跟小伙伴说话)、空格(跳)、Esc(停下)。
+//! 单独按住 ⌥ 不拦,只借它的状态:按着的时候壁纸抬起来接 Finder 拖来的文件(lib.rs town_drop_set)。
 //! 带 ⌘ / ⌃ / ⌥ 的组合一律放行(⌘⇧W、⌘Tab、⌘Space 照常用)。Shift 不拦,只顺带
 //! 告诉小镇(按住跑)。自动连发的键不转发 —— 小镇自己记着"按住了哪些"。
 //!
@@ -67,6 +68,8 @@ const FLAG_CMD: u64 = 1 << 20;
 /// 按钮开着 = 拦截生效。
 static ON: AtomicBool = AtomicBool::new(false);
 static SHIFT: AtomicBool = AtomicBool::new(false);
+/// 单独按住 ⌥:小镇「接文件」(壁纸抬到图标上面,Finder 的拖放才落得到它身上)。见 lib.rs town_drop_set。
+static ALT: AtomicBool = AtomicBool::new(false);
 static TAP: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
 static APP: OnceLock<AppHandle> = OnceLock::new();
 /// 正在建 / 已经建好:避免同时起两条线程。建失败了会放回 false,下次再试。
@@ -174,7 +177,7 @@ fn send_mouse(kind: &str, dx: f64, dy: f64) {
 fn key_name(code: i64) -> Option<&'static str> {
     Some(match code {
         13 => "w", 0 => "a", 1 => "s", 2 => "d",
-        12 => "q", 15 => "r", 14 => "e",
+        12 => "q", 15 => "r", 14 => "e", 17 => "t",   // T:跟身边的小伙伴说话 / 让两只认识
         49 => " ", 53 => "Escape",
         123 => "ArrowLeft", 124 => "ArrowRight", 125 => "ArrowDown", 126 => "ArrowUp",
         _ => return None,
@@ -202,7 +205,23 @@ extern "C" fn on_event(_proxy: *mut c_void, etype: u32, ev: CGEventRef, _user: *
             if SHIFT.swap(shift, Ordering::SeqCst) != shift {
                 send(if shift { "keydown" } else { "keyup" }, "Shift");
             }
-            return ev;                                  // Shift 本身不吞
+            // ⌥ 单独按住 = 要往小镇里丢文件了(⌘⌥、⌃⌥ 是快捷键,不算)。拖着文件时按也行 ——
+            // Finder 里 ⌥ 拖动只是"拷贝"的意思,我们不吞它。
+            let alt = flags & FLAG_ALT != 0 && flags & (FLAG_CMD | FLAG_CTRL) == 0;
+            if ALT.swap(alt, Ordering::SeqCst) != alt {
+                if let Some(app) = APP.get() {
+                    if alt { crate::town_drop_set(app, true); }
+                    else {
+                        // 松开 ⌥ 后留 0.8 秒:有人先松键、再松鼠标,落点要还在
+                        let app = app.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_millis(800));
+                            if !ALT.load(Ordering::SeqCst) { crate::town_drop_set(&app, false); }
+                        });
+                    }
+                }
+            }
+            return ev;                                  // Shift / ⌥ 本身不吞
         }
         match etype {
             EV_MOUSE_DOWN => {
@@ -275,6 +294,8 @@ pub fn set_capture(app: &AppHandle, on: bool) -> bool {
     let _ = APP.set(app.clone());
     ON.store(on, Ordering::SeqCst);
     if !on {
+        // 关掉操控:接文件的那一层也得落回去
+        if ALT.swap(false, Ordering::SeqCst) { crate::town_drop_set(app, false); }
         let tap = TAP.load(Ordering::SeqCst);
         if !tap.is_null() { unsafe { CGEventTapEnable(tap, false) }; }
         // 松手时告诉小镇 Shift 已经抬起,免得一直在跑

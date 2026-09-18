@@ -812,6 +812,21 @@ fn stage_dir() -> PathBuf {
     home().join(".terse").join("room-outbox")
 }
 fn tool_share(args: &Value) -> Result<String, String> {
+    let (_, name, size) = stage_share(args)?;
+    Ok(format!("「{name}」({})已经交给你的用户审批,批准后才会上传到房间。不用重试,也不用追问。", human_size(size)))
+}
+
+/// 小镇里把桌面上的文件丢到别人(或别人的小伙伴)身上:人亲手丢的,不再问"批不批准",
+/// 但关卡一道不少(和 macOS 同一个 stage_share)。
+#[tauri::command(async)]
+pub fn rl_share_path(path: String) -> Result<Value, String> {
+    let (id, name, size) = stage_share(&json!({ "path": path, "note": "" }))?;
+    let r = rl_file_decide(id, true)?;
+    Ok(json!({ "ok": true, "name": name, "size": size, "result": r }))
+}
+
+/// 查一遍、复制一份、挂到待审批里。返回 (待审批 id, 文件名, 字节数)。
+fn stage_share(args: &Value) -> Result<(String, String, u64), String> {
     let link = need_link()?;
     if link.public {
         return Err("公开房间不能传文件。".into());
@@ -854,7 +869,7 @@ fn tool_share(args: &Value) -> Result<String, String> {
     lock().pending.insert(id.clone(), Pending { path: staged, name: name.clone(), size, sha256: sha.clone(), note: note.clone() });
     emit("room-file-pending", json!({ "id": id, "name": name, "size": size, "sha256": sha, "note": note,
         "from": real.to_string_lossy(), "room_id": link.room_id }));
-    Ok(format!("「{name}」({})已经交给你的用户审批,批准后才会上传到房间。不用重试,也不用追问。", human_size(size)))
+    Ok((id, name, size))
 }
 
 fn tool_files() -> Result<String, String> {

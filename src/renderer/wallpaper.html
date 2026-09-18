@@ -1440,6 +1440,8 @@
         window.__terseTownReady = true;
         townInit().then(function () {
           if (townGoto) { townPost({ cmd: 'goto', id: townGoto }); townGoto = null; }
+          if (petState) townPost({ cmd: 'pet', agent: String(petState.agent || 'none'), busy: +petState.busy || 0, alert: !!petState.alert });
+          else petEmit('pet-want-state', {});
         });
       }
       else if (d.event === 'esc') core_invoke('wallpaper_town_walk', { on: false });
@@ -1447,7 +1449,80 @@
       else if (d.event === 'villa') core_invoke('townpad_villa', { inside: true });
       else if (d.event === 'town') core_invoke('townpad_villa', { inside: false });
       else if (d.event === 'error') console.warn('[town] page error', d.message);
+      /* ── agent 小伙伴:小镇那一页(远程)只报位置、id、种类;说的话在 petchat 窗口和这里的本地气泡里 ── */
+      else if (d.event === 'petInfo') petEmit('pet-info', { id: d.id, name: d.name, breed: d.breed });
+      else if (d.event === 'petTalk') { core_invoke('pet_chat_show', { focus: true }); petEmit('pet-chat-open', {}); }
+      else if (d.event === 'petMeet') { core_invoke('pet_chat_show', { focus: true }); petEmit('pet-meet-request', { id: d.id, pet: d.pet, owner: d.owner }); }
+      else if (d.event === 'petScreen') { petAt = { x: +d.x || 0, y: +d.y || 0, on: !!d.on }; placeBubble(); }
+      else if (d.event === 'petInvite') petEmit('pet-invite', { from: d.from, fromName: d.fromName, pet: d.pet, code: d.code });
+      else if (d.event === 'petReply') petEmit('pet-reply', { from: d.from, fromName: d.fromName, ok: !!d.ok });
+      else if (d.event === 'petInviteSent') petEmit('pet-invite-sent', { ok: !!d.ok, delivered: !!d.delivered, error: d.error || '' });
+      else if (d.event === 'dropTarget') onDropTarget(d.phase, d.hit || null);
     });
+
+    /* ── 小伙伴的气泡(本地画,字不进小镇那一页)和拖文件 ── */
+    function petEmit(name, payload) { try { window.__TAURI__.event.emitTo('petchat', name, payload); } catch (e) {} }
+    let petAt = null, petState = null, bubbleTimer = 0;
+    const petBubble = document.createElement('div');
+    petBubble.id = 'petBubble';
+    petBubble.style.cssText = 'position:fixed;z-index:46;display:none;max-width:320px;padding:7px 11px;border-radius:12px;pointer-events:none;' +
+      'transform:translate(-50%,-100%);font:500 13px/1.4 -apple-system,system-ui,sans-serif;color:#1d1a17;background:rgba(255,250,240,.94);' +
+      'box-shadow:0 6px 24px rgba(0,0,0,.28);transition:opacity .35s';
+    document.body.appendChild(petBubble);
+    function placeBubble() {
+      if (petBubble.style.display === 'none') return;
+      const at = petAt && petAt.on ? petAt : { x: window.innerWidth / 2, y: window.innerHeight - 140 };
+      petBubble.style.left = at.x + 'px';
+      petBubble.style.top = (at.y - 44) + 'px';     // 报来的是身子中间,气泡飘在头顶上方
+    }
+    function showBubble(text, alert, secs) {
+      if (!townFrame || !text) return;
+      petBubble.textContent = text;
+      petBubble.style.background = alert ? 'rgba(255,196,120,.96)' : 'rgba(255,250,240,.94)';
+      petBubble.style.display = 'block'; petBubble.style.opacity = '1';
+      placeBubble();
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(function () {
+        petBubble.style.opacity = '0';
+        setTimeout(function () { petBubble.style.display = 'none'; }, 380);
+      }, (secs || 9) * 1000);
+    }
+    /* 按住 ⌥ 的那一段:顶上一行提示,文件拖到谁身上谁就亮 */
+    const dropHint = document.createElement('div');
+    dropHint.style.cssText = 'position:fixed;z-index:46;left:50%;top:18px;transform:translateX(-50%);display:none;pointer-events:none;' +
+      'padding:8px 14px;border-radius:999px;font:500 13px/1.3 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(20,22,30,.72);backdrop-filter:blur(8px)';
+    document.body.appendChild(dropHint);
+    const dropTag = document.createElement('div');
+    dropTag.style.cssText = 'position:fixed;z-index:47;display:none;pointer-events:none;transform:translate(14px,14px);padding:4px 9px;border-radius:8px;' +
+      'font:600 12px/1.3 -apple-system,system-ui,sans-serif;color:#1a1208;background:#ffb45c';
+    document.body.appendChild(dropTag);
+    const zhUI = String(townLang()).toLowerCase().startsWith('zh');
+    let dropPaths = [], dropXY = null;
+    function onDropTarget(phase, hit) {
+      if (phase === 'over') {
+        if (hit && dropXY) {
+          dropTag.textContent = hit.kind === 'pet' && hit.mine ? (zhUI ? '交给 ' + hit.name + '(你的 agent)' : 'Give to ' + hit.name + ' (your agent)')
+            : (zhUI ? '发给 ' + (hit.name || '对方') : 'Send to ' + (hit.name || 'them'));
+          dropTag.style.left = dropXY.x + 'px'; dropTag.style.top = dropXY.y + 'px'; dropTag.style.display = 'block';
+        } else dropTag.style.display = 'none';
+        return;
+      }
+      if (phase !== 'drop') return;
+      dropTag.style.display = 'none';
+      const paths = dropPaths.slice();
+      dropPaths = [];
+      core_invoke('town_drop_mode', { on: false });
+      if (!paths.length) return;
+      if (!hit) { showBubble(zhUI ? '没丢到谁身上 —— 丢在小伙伴或别人身上' : 'That landed on nobody — drop it on a companion or a person', false, 4); return; }
+      if (hit.kind === 'pet' && hit.mine) {
+        core_invoke('pet_chat_show', { focus: false });
+        petEmit('pet-give-files', { paths });
+        showBubble(zhUI ? '收到 ' + paths.length + ' 个文件' : 'Got ' + paths.length + ' file' + (paths.length > 1 ? 's' : ''), false, 4);
+      } else {
+        core_invoke('pet_chat_show', { focus: false });
+        petEmit('pet-send-files', { to: hit.id, name: hit.name, paths });
+      }
+    }
     if (window.__TAURI__ && window.__TAURI__.event) {
       window.__TAURI__.event.listen('wallpaper-town-walk', function (ev) {
         if (ev.payload && !townFrame && cfg.town && cfg.town.on) setTown(true);
@@ -1477,6 +1552,32 @@
         const k = ev.payload || {};
         if (!townWalking || !k.key) return;
         townPost({ cmd: 'key', type: k.t === 'keyup' ? 'keyup' : 'keydown', key: k.key, code: '' });
+      });
+      // petchat → 小镇:接的是哪种 agent、忙不忙、要不要你(只有这三样进小镇那一页)
+      window.__TAURI__.event.listen('pet-state', function (ev) {
+        petState = ev.payload || {};
+        townPost({ cmd: 'pet', agent: String(petState.agent || 'none'), busy: +petState.busy || 0, alert: !!petState.alert });
+      });
+      window.__TAURI__.event.listen('pet-bubble', function (ev) { const p = ev.payload || {}; showBubble(String(p.text || ''), !!p.alert); });
+      window.__TAURI__.event.listen('pet-invite-send', function (ev) { const p = ev.payload || {}; townPost({ cmd: 'petInvite', to: p.to, code: p.code, pet: p.pet }); });
+      window.__TAURI__.event.listen('pet-reply-send', function (ev) { const p = ev.payload || {}; townPost({ cmd: 'petReply', to: p.to, ok: !!p.ok }); });
+      window.__TAURI__.event.listen('pet-meet', function (ev) { const p = ev.payload || {}; townPost({ cmd: 'petMeet', id: p.id }); });
+      // 按住 ⌥:壁纸抬起来接文件(Rust town_drop_set)
+      window.__TAURI__.event.listen('town-drop-mode', function (ev) {
+        const on = !!ev.payload && !!townFrame;
+        dropHint.textContent = zhUI ? '松开文件:丢在你的小伙伴身上 = 交给你的 agent · 丢在别人身上 = 发给他' : 'Drop on your companion to hand it to your agent · on someone else to send it to them';
+        dropHint.style.display = on ? 'block' : 'none';
+        if (!on) dropTag.style.display = 'none';
+      });
+      // Finder 拖来的文件(Rust 的 DragDrop):路径留在这一页,只把坐标交给小镇去看"下面是谁"
+      window.__TAURI__.event.listen('town-drop', function (ev) {
+        const d = ev.payload || {};
+        if (!townFrame) return;
+        const k = window.devicePixelRatio || 1;
+        if (d.paths && d.paths.length) dropPaths = d.paths.slice(0, 20);
+        if (d.phase === 'leave') { dropTag.style.display = 'none'; dropXY = null; townPost({ cmd: 'drop', phase: 'leave' }); return; }
+        dropXY = { x: (+d.x || 0) / k, y: (+d.y || 0) / k };
+        townPost({ cmd: 'drop', phase: d.phase === 'drop' ? 'drop' : 'over', x: dropXY.x, y: dropXY.y });
       });
       window.__TAURI__.event.listen('town-goto', function (ev) {
         const id = ev.payload && ev.payload.id;

@@ -2412,6 +2412,88 @@ fn hide_room_window(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// 小伙伴的对话窗(和 macOS 同名)。focus=false:它自己冒出来时不抢键盘。
+#[tauri::command]
+fn pet_chat_show(app: AppHandle, focus: Option<bool>) -> Result<(), String> {
+    if let Some(w) = ensure_window(&app, "petchat") {
+        w.show().map_err(|e| e.to_string())?;
+        if focus.unwrap_or(true) { w.set_focus().map_err(|e| e.to_string())?; }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn pet_chat_hide(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("petchat") { w.hide().map_err(|e| e.to_string())?; }
+    Ok(())
+}
+
+/// 代码小镇:文件拖到壁纸上。和 macOS 一样只把事件交给壁纸这一页(本地),位置是 webview 物理像素。
+/// ⚠ 挂在 WorkerW 下面的时候收不到任何拖放(桌面自己的投放目标盖满整屏、OLE 按光标命中找目标),
+///   所以只有按住 Ctrl、town_drop_set 把它抬出 WorkerW 的那一段才有事件。
+fn attach_town_drop(win: &tauri::WebviewWindow) {
+    let w2 = win.clone();
+    win.on_window_event(move |ev| {
+        if let tauri::WindowEvent::DragDrop(d) = ev {
+            let payload = match d {
+                tauri::DragDropEvent::Enter { paths, position } => serde_json::json!({ "phase": "enter",
+                    "x": position.x, "y": position.y, "paths": paths.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>() }),
+                tauri::DragDropEvent::Over { position } => serde_json::json!({ "phase": "over", "x": position.x, "y": position.y }),
+                tauri::DragDropEvent::Drop { paths, position } => serde_json::json!({ "phase": "drop",
+                    "x": position.x, "y": position.y, "paths": paths.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>() }),
+                tauri::DragDropEvent::Leave => serde_json::json!({ "phase": "leave" }),
+                _ => serde_json::Value::Null,
+            };
+            if !payload.is_null() { let _ = w2.emit_to("wallpaper", "town-drop", payload); }
+        }
+    });
+}
+
+/// 按住 Ctrl(town_keys)时把壁纸抬出 WorkerW、放到图标上面一格、不再穿透;松开放回去。
+/// 看门狗 DROP_MAX_SECS:抬着的壁纸盖住所有桌面图标,不能让它一直抬着。
+const DROP_MAX_SECS: u64 = 25;
+static DROP_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static DROP_ON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[tauri::command]
+fn town_drop_mode(app: AppHandle, on: bool) -> bool {
+    town_drop_set(&app, on);
+    on
+}
+
+pub(crate) fn town_drop_set(app: &AppHandle, on: bool) {
+    use std::sync::atomic::Ordering;
+    if DROP_ON.swap(on, Ordering::SeqCst) == on { return; }
+    let generation = DROP_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    if let Some(win) = app.get_webview_window("wallpaper") {
+        let placement = wallpaper_placement(overlay_allowed(&get_wallpaper_config()), WP_ADJUST.load(Ordering::SeqCst));
+        let win2 = win.clone();
+        let _ = app.run_on_main_thread(move || {
+            if on {
+                if !matches!(placement, WpPlacement::LeaveTopmost) { lift_wallpaper_above_icons(&win2); }
+            } else {
+                match placement {
+                    WpPlacement::LeaveTopmost => {}
+                    WpPlacement::AboveIcons => lift_wallpaper_above_icons(&win2),
+                    WpPlacement::Desktop => pin_wallpaper_window(&win2),
+                }
+            }
+            // ⚠ 不 set_focus:拖拽途中抢焦点会把 Explorer 的 DoDragDrop 取消
+            set_wallpaper_click_through(&win2, !on);
+        });
+    }
+    let _ = app.emit_to("wallpaper", "town-drop-mode", on);
+    diag_log("town", &format!("drop mode on={on}"));
+    if on {
+        let app2 = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(DROP_MAX_SECS));
+            if DROP_GEN.load(Ordering::SeqCst) != generation { return; }
+            town_drop_set(&app2, false);
+        });
+    }
+}
+
 #[tauri::command]
 fn hide_doctor_window(app: AppHandle) {
     if let Some(w) = app.get_webview_window("doctor") {
@@ -2703,6 +2785,24 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .build()?,
             16.0,
         ),
+        "petchat" => (
+            // 代码小镇里跟自己的 agent 小伙伴说话(Mac 的 petchat 窗口)。壁纸打不了字,对话在这里。
+            WebviewWindowBuilder::new(app, "petchat", WebviewUrl::App("petchat.html".into()))
+                .title("Terse Companion")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
+                .inner_size(440.0, 600.0)
+                .min_inner_size(360.0, 420.0)
+                .position((screen_width - 480.0).max(40.0) as f64, 120.0)
+                .always_on_top(true)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .visible(false)
+                .build()?,
+            16.0,
+        ),
         "doctor" => (
             WebviewWindowBuilder::new(app, "doctor", WebviewUrl::App("doctor.html".into()))
                 .title("Terse Doctor")
@@ -2899,6 +2999,7 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .focused(false)
                 .visible(false)
                 .build()?;
+            attach_town_drop(&_wall);
             // Early return like the dashboards: the shared tail below rounds
             // corners and strips the frame, and a full-screen wallpaper wants
             // neither.
@@ -3854,6 +3955,7 @@ pub fn run() {
                     .focused(false)
                     .visible(false)
                     .build()?;
+                attach_town_drop(&_wall);
             }
 
             // ── Dynamic Island window (灵动岛 — agent monitor pill) ──
@@ -4668,6 +4770,10 @@ pub fn run() {
             session_dock::sd_active,
             session_dock::sd_sessions,
             room_link::rl_status,
+            town_drop_mode,
+            pet_chat_show,
+            pet_chat_hide,
+            room_link::rl_share_path,
             room_link::rl_link,
             room_link::rl_unlink,
             room_link::rl_inbound,

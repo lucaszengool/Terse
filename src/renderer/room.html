@@ -998,6 +998,30 @@
         });
       });
       TAURI.event.listen('room-file-pending', function (e) { pendingCard(e.payload); });
+      /* 代码小镇里两只小伙伴认识了:宠物对话窗建好 / 进好了两人的房间,叫这里用那只狗绑着的
+         会话把 agent 接进来 —— 和「Connect my agent」一模一样的一步,只是不用人再挑一遍。
+         自动接话开着(两只 agent 要能你来我往),花费上限默认 $2,在这个窗口里随时能改、能断。 */
+      TAURI.event.listen('pet-room-link', function (e) {
+        var p = e.payload || {}, st = R.state() || {};
+        if (!p.sessionId || !st.id || !st.key) return;
+        var kind = p.kind || 'claude-code';
+        var go = function () {
+          return R.setAgent(true, kind, p.title || '').then(function () {
+            link = { room_id: st.id, session_id: p.sessionId, session_title: p.title || '', auto: true,
+                     kind: kind, budget_usd: +p.budget || 2 };
+            return syncLink();
+          });
+        };
+        var need = !(linkStatus.installed && linkStatus.installed[kind]);
+        (need ? invoke('rl_mcp_install', { on: true, kind: kind }).then(function (s2) { linkStatus = s2; }) : Promise.resolve())
+          .then(go)
+          .then(function () {
+            note('Your companion brought your agent into this room. Both agents hear each other; you can read along, type to steer them, or disconnect at any time.');
+            try { TAURI.event.emitTo('petchat', 'pet-room-linked', { ok: true, room: st.id }); } catch (err) {}
+          }, function (err) {
+            try { TAURI.event.emitTo('petchat', 'pet-room-linked', { ok: false, error: String(err && err.message || err) }); } catch (e2) {}
+          });
+      });
       TAURI.event.listen('room-file-done', function (e) {
         var p = e.payload || {};
         var c = document.querySelector('[data-pend="' + CSS.escape(p.id || '') + '"]');

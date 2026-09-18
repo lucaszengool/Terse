@@ -49,6 +49,9 @@ static THREAD: AtomicU32 = AtomicU32::new(0);
 static STARTING: Mutex<bool> = Mutex::new(false);
 static APP: OnceLock<AppHandle> = OnceLock::new();
 static SHIFT: AtomicBool = AtomicBool::new(false);
+/// 单独按住 Ctrl:小镇「接文件」。
+#[cfg(not(feature = "msstore"))]
+static CTRL: AtomicBool = AtomicBool::new(false);
 /// Town keys currently held (bit per virtual-key code < 256, split in four
 /// words). A key-down for a bit already set is auto-repeat.
 static HELD: [AtomicU64; 4] = [AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0)];
@@ -80,7 +83,7 @@ const LLKHF_ALTDOWN: u32 = 0x20;
 pub(crate) fn key_name(vk: u32) -> Option<&'static str> {
     Some(match vk {
         0x57 => "w", 0x41 => "a", 0x53 => "s", 0x44 => "d",
-        0x51 => "q", 0x52 => "r", 0x45 => "e",
+        0x51 => "q", 0x52 => "r", 0x45 => "e", 0x54 => "t",   // T:跟身边的小伙伴说话 / 让两只认识
         0x20 => " ", 0x1B => "Escape",
         0x25 => "ArrowLeft", 0x27 => "ArrowRight", 0x28 => "ArrowDown", 0x26 => "ArrowUp",
         _ => return None,
@@ -226,6 +229,23 @@ unsafe extern "system" fn on_key(code: i32, wp: WPARAM, lp: LPARAM) -> LRESULT {
         }
         return CallNextHookEx(HHOOK::default(), code, wp, lp);
     }
+    /* 单独按住 Ctrl = 要往小镇里丢文件了(壁纸抬出 WorkerW 才接得到 Explorer 的拖放,见 lib.rs
+       town_drop_set)。不吞:Explorer 里 Ctrl 拖动本来就是"复制",照常。Mac 上是 ⌥ —— Windows 的
+       Alt 拖动是"建快捷方式",换成 Ctrl。钩子里不能耽搁,抬层交给别的线程。 */
+    if vk == 0xA2 || vk == 0xA3 || vk == VK_CONTROL as u32 {
+        if (down || up) && CTRL.swap(down, Ordering::SeqCst) != down {
+            if let Some(app) = APP.get() {
+                let app = app.clone();
+                std::thread::spawn(move || {
+                    if down { crate::town_drop_set(&app, true); return; }
+                    // 松开后留 0.8 秒:有人先松键、再松鼠标,落点要还在
+                    std::thread::sleep(std::time::Duration::from_millis(800));
+                    if !CTRL.load(Ordering::SeqCst) { crate::town_drop_set(&app, false); }
+                });
+            }
+        }
+        return CallNextHookEx(HHOOK::default(), code, wp, lp);
+    }
     let Some(name) = key_name(vk) else { return CallNextHookEx(HHOOK::default(), code, wp, lp) };
     if down {
         if k.flags.0 & LLKHF_ALTDOWN != 0 || modifier_down() {
@@ -355,6 +375,9 @@ pub fn set_capture(app: &AppHandle, on: bool) -> bool {
             }
         }
         if DRAGGING.swap(false, Ordering::SeqCst) { send_mouse("up", 0.0, 0.0); }
+        // 关掉操控:接文件的那一层也得落回去
+        #[cfg(not(feature = "msstore"))]
+        if CTRL.swap(false, Ordering::SeqCst) { crate::town_drop_set(app, false); }
         return false;
     }
     if let Some(sf) = app.get_webview_window("wallpaper").and_then(|w| w.scale_factor().ok()) {

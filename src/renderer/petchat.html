@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<!--
+  petchat.html — 代码小镇里跟自己的 agent 小伙伴说话。
+
+  在小镇里走到自己那只旁边按 T,这个窗口就出来。它接的是**你电脑上正在跑的那一段 agent 会话**
+  (Claude Desktop 里的一段、或者 Codex 的一段),你在这儿说的话就是在那段会话里说的话:
+    · 会话在干活、钩子来过 → 排进钩子队列(sd_queue),下一次调用工具时它就读到,不抢焦点;
+    · 会话停着 → 用辅助功能在 Claude 侧栏里按标题找到它、替你打字发出去(sd_send);
+    · Codex 只能排队(Codex 从外面叫不醒,下次你跟它说话时它会读到)。
+  回复从那段会话自己的记录里读回来(sd_transcript)。它在问你问题 / 等你看计划(dock-ask)时,
+  小伙伴会跑到你面前叫,这里直接答(sd_answer)。
+
+  ⚠ 小镇那一页是从 terseai.org 远程加载的。agent 说的话**只**出现在这里和壁纸本地画的气泡里,
+    发给小镇的只有:接的是哪种 agent、忙不忙、要不要你。
+
+  狗和狗:在别人的小伙伴旁边按 T → 这里问你要不要让它们认识 → 开一个两人的私密房间(端到端加密),
+  把加入码只发给对方 → 对方接受后,两边的 agent 都接进这个房间(房间窗口做连接,和「Connect my
+  agent」同一步)。两只 agent 在房间里聊,你们俩在房间窗口里都看得见、能插话、能随时断开。
+
+  文件:按住 ⌥ 把桌面上的文件拖到小镇里 ——
+    · 丢在自己的小伙伴身上 → 交给你的 agent(把路径告诉它,先看、等你吩咐再动手);
+    · 丢在别人 / 别人的小伙伴身上 → 发进你们俩的房间(rl_share_path:密钥扫描、20 MB、敏感路径一道不少)。
+-->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Companion</title>
+<style>
+  :root {
+    --bg: rgba(20, 22, 30, 0.86); --line: rgba(255, 255, 255, 0.09); --fg: #eef0f6; --dim: rgba(238, 240, 246, 0.55);
+    --me: rgba(120, 150, 255, 0.22); --it: rgba(255, 255, 255, 0.06); --warn: #ffb45c; --ok: #7be0a6; --accent: #ff9a5a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); overflow: hidden; border-radius: 12px; }
+  header { padding: 30px 16px 10px; border-bottom: 1px solid var(--line); -webkit-app-region: drag; }
+  header * { -webkit-app-region: no-drag; }
+  .who { display: flex; align-items: center; gap: 10px; }
+  .orb { width: 12px; height: 12px; border-radius: 50%; background: #8a8f9c; box-shadow: 0 0 10px currentColor; flex: none; }
+  .orb.busy { animation: breathe 0.7s ease-in-out infinite alternate; }
+  @keyframes breathe { from { transform: scale(0.8); opacity: 0.6; } to { transform: scale(1.15); opacity: 1; } }
+  .name { font-weight: 650; font-size: 15px; }
+  .sub { color: var(--dim); font-size: 12px; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  select, input, textarea, button { font: inherit; color: inherit; }
+  select { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; min-width: 0; }
+  button { background: rgba(255,255,255,0.08); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+  button:hover { background: rgba(255,255,255,0.14); }
+  button.primary { background: var(--accent); border-color: transparent; color: #1a1208; font-weight: 600; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  #log { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 88%; padding: 7px 10px; border-radius: 10px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: var(--me); }
+  .msg.assistant { align-self: flex-start; background: var(--it); }
+  .msg.tool { align-self: flex-start; color: var(--dim); font-size: 11.5px; padding: 0 4px; background: none; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,0.04); }
+  .card.ask { border-color: rgba(255, 180, 92, 0.6); }
+  .card h4 { margin: 0 0 6px; font-size: 13px; }
+  .card .opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .empty { color: var(--dim); text-align: center; margin: auto 12px; }
+  .note { color: var(--dim); font-size: 12px; align-self: center; text-align: center; }
+  .note.bad { color: var(--warn); }
+  footer { border-top: 1px solid var(--line); padding: 10px 12px; display: flex; gap: 8px; align-items: flex-end; }
+  textarea { flex: 1; resize: none; background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 38px; max-height: 140px; outline: none; }
+  .how { color: var(--dim); font-size: 11px; padding: 0 14px 8px; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="who">
+      <span class="orb" id="orb"></span>
+      <div style="min-width:0;flex:1">
+        <div class="name" id="petName">—</div>
+        <div class="sub" id="petSub"></div>
+      </div>
+      <button id="btnRoom" hidden></button>
+      <button id="btnStop" hidden></button>
+    </div>
+    <div class="row">
+      <select id="agentSel"></select>
+      <button id="btnRefresh" title="">↻</button>
+    </div>
+  </header>
+  <div id="log"></div>
+  <div class="how" id="how"></div>
+  <footer>
+    <textarea id="input" rows="1"></textarea>
+    <button class="primary" id="btnSend"></button>
+  </footer>
+
+  <script src="i18n.js"></script>
+  <script src="tauri-bridge.js"></script>
+  <script src="rooms.js"></script>
+  <script>
+  (function () {
+    var TAURI = window.__TAURI__ || null;
+    var invoke = TAURI && TAURI.core ? TAURI.core.invoke : function () { return Promise.reject(new Error('no tauri')); };
+    var listen = TAURI && TAURI.event ? TAURI.event.listen : function () {};
+    var emitTo = function (label, name, payload) { try { return TAURI.event.emitTo(label, name, payload); } catch (e) {} };
+    var R = window.TerseRooms;
+    var $ = function (id) { return document.getElementById(id); };
+    var zh = (function () { try { return String(localStorage.getItem('terse-lang') || navigator.language || '').toLowerCase().startsWith('zh'); } catch (e) { return true; } }());
+    var L = function (a, b) { return zh ? a : b; };
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var store = {
+      get: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+      set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+    };
+
+    /* 头顶光点的颜色 —— 和小镇里 town-pet-look.mjs 的 AGENT_COLOURS 同一套 */
+    var COLOURS = { 'claude-code': '#ff8c47', codex: '#b8d1c7', cursor: '#6badff', openclaw: '#d980f2', none: '#8a8f9c' };
+    var KIND_LABEL = { 'claude-code': 'Claude', codex: 'Codex', openclaw: 'OpenClaw' };
+    var BUSY = { tool: 1, think: 1, work: 1 };
+
+    var pet = store.get('terse-pet-info', null);          // {id, name, breed} —— 小镇报来的
+    var bound = store.get('terse-pet-agent', null);       // {id, title, kind, cwd}
+    var sessions = [], transcript = [], cur = null;
+    var asks = new Map();                                 // dock-ask:id → payload
+    var cards = [];                                       // 邀请、文件这些一次性的卡片
+    var lastSaid = store.get('terse-pet-last', '');       // 上一句 agent 说的(气泡只冒新的)
+    var lastState = '';
+
+    /* ── 文案 ── */
+    $('btnSend').textContent = L('发送', 'Send');
+    $('btnRefresh').title = L('重新找一遍本地 agent', 'Look for local agents again');
+    $('btnStop').textContent = L('停下', 'Stop');
+    $('btnRoom').textContent = L('看它们聊', 'Watch them');
+    $('input').placeholder = L('跟它说点什么…(Enter 发送,Shift+Enter 换行)', 'Say something… (Enter to send, Shift+Enter for a new line)');
+
+    function paintHead() {
+      var kind = bound ? bound.kind : 'none';
+      $('petName').textContent = pet ? pet.name : L('你的小伙伴', 'Your companion');
+      $('orb').style.background = COLOURS[kind] || COLOURS.none;
+      $('orb').style.color = COLOURS[kind] || COLOURS.none;
+      $('orb').classList.toggle('busy', !!(cur && BUSY[cur.state]));
+      var st = !bound ? L('还没接上 agent —— 在下面选一个正在跑的会话', 'Not linked yet — pick a running session below')
+        : !cur ? L('接的会话没在跑了', 'Its session is not running')
+        : cur.state === 'ask' ? L('在等你回答', 'Waiting for you')
+        : BUSY[cur.state] ? L('在干活', 'Working') + (cur.tool ? ' · ' + cur.tool : '')
+        : cur.state === 'done' ? L('刚做完', 'Just finished') : L('闲着', 'Idle');
+      $('petSub').textContent = (bound ? (KIND_LABEL[bound.kind] || bound.kind) + ' · ' + (bound.title || '') + ' · ' : '') + st;
+      $('btnStop').hidden = !(cur && BUSY[cur.state]);
+      $('btnRoom').hidden = !(R && R.inRoom && R.inRoom());
+      var mod = /Win/.test(navigator.platform || navigator.userAgent) ? 'Ctrl' : '⌥';
+      var dropHow = L('按住 ' + mod + ' 把桌面上的文件拖到它身上 = 交给你的 agent;拖到别人身上 = 发给他。', 'Hold ' + mod + ' and drag a file from the desktop onto it to hand it to your agent, or onto someone else to send it to them.');
+      $('how').textContent = !bound ? dropHow : dropHow + ' ' + (bound.kind === 'codex' ? L('Codex 从外面叫不醒:话会排着,下次它调用工具或你跟它说话时读到。', 'Codex cannot be woken from outside: your words wait until it next uses a tool or you talk to it.')
+        : L('它在干活时,话从钩子送进去(不打扰你);停着时会在 Claude 里替你打字发出去。', 'While it works your words go in through its hook (no window switching); when it is idle Terse types them into Claude for you.'));
+    }
+
+    /* ── 选 agent:正在跑的会话(Claude Desktop 里的、Codex 的)── */
+    function kindOf(s) { return String(s.id || '').indexOf('codex:') === 0 ? 'codex' : (s.kind || 'claude-code'); }
+    function paintSelect() {
+      var sel = $('agentSel');
+      var opts = ['<option value="">' + esc(L('— 选一段正在跑的 agent 会话 —', '— pick a running agent session —')) + '</option>'];
+      sessions.forEach(function (s) {
+        var k = kindOf(s);
+        opts.push('<option value="' + esc(s.id) + '"' + (bound && bound.id === s.id ? ' selected' : '') + '>' +
+          esc((KIND_LABEL[k] || k) + ' · ' + (s.title || s.project || s.id).slice(0, 60)) + '</option>');
+      });
+      if (bound && !sessions.some(function (s) { return s.id === bound.id; })) {
+        opts.push('<option value="' + esc(bound.id) + '" selected>' + esc(L('(没在跑)', '(not running) ') + (bound.title || '')) + '</option>');
+      }
+      sel.innerHTML = opts.join('');
+    }
+    $('agentSel').addEventListener('change', function () {
+      var id = this.value;
+      var s = sessions.find(function (x) { return x.id === id; });
+      bound = s ? { id: s.id, title: s.title || s.project || '', kind: kindOf(s), cwd: s.cwd || '' } : null;
+      store.set('terse-pet-agent', bound);
+      transcript = []; lastSaid = ''; store.set('terse-pet-last', '');
+      tick(true);
+    });
+    $('btnRefresh').addEventListener('click', function () { tick(true); });
+
+    /* ── 每一拍:会话状态 → 小镇(光点、跑来叫你);有新回复 → 壁纸本地画气泡 ── */
+    var busyTick = false;
+    function tick(force) {
+      if (busyTick && !force) return;
+      busyTick = true;
+      return invoke('sd_active').then(function (list) {
+        sessions = Array.isArray(list) ? list : [];
+        cur = bound ? sessions.find(function (s) { return s.id === bound.id; }) || null : null;
+        if (bound && cur && cur.title && cur.title !== bound.title) { bound.title = cur.title; store.set('terse-pet-agent', bound); }
+        paintSelect();
+        var state = cur ? cur.state : 'off';
+        var alert = state === 'ask' || Array.from(asks.values()).some(function (a) { return bound && a.sessionId === bound.id; });
+        var key = (bound ? bound.kind : 'none') + '|' + (BUSY[state] ? 1 : 0) + '|' + (alert ? 1 : 0);
+        if (key !== lastState) {
+          lastState = key;
+          emitTo('wallpaper', 'pet-state', { agent: bound ? bound.kind : 'none', busy: BUSY[state] ? 0.8 : 0, alert: alert });
+        }
+        if (!bound) { transcript = []; paintLog(); paintHead(); return; }
+        // 窗口开着读多一点;收着只看尾巴(够判断"有没有新的一句")
+        return invoke('sd_transcript', { id: bound.id, limit: document.hidden ? 8 : 60 }).then(function (rows) {
+          var tr = Array.isArray(rows) ? rows : [];
+          if (!document.hidden) transcript = tr;
+          var said = tr.filter(function (r) { return r.role === 'assistant' && r.kind === 'text' && String(r.text || '').trim(); }).pop();
+          var k = said ? (said.ts || '') + '|' + String(said.text).slice(0, 80) : '';
+          if (k && k !== lastSaid) {
+            var first = !lastSaid;
+            lastSaid = k; store.set('terse-pet-last', k);
+            // 刚接上时不把旧话当新话冒出来
+            if (!first) emitTo('wallpaper', 'pet-bubble', { text: bubbleText(said.text) });
+          }
+          paintLog(); paintHead();
+        });
+      }).catch(function () {}).then(function () { busyTick = false; });
+    }
+    function bubbleText(t) {
+      t = String(t || '').replace(/```[\s\S]*?```/g, '[code]').replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim();
+      return t.length > 110 ? t.slice(0, 108) + '…' : t;
+    }
+    /* 开着 1.6 秒一拍;收着 5 秒一拍 —— sd_active 每次要跑 ps、读一百多个 JSON,别在后台猛刷 */
+    var lastTick = 0;
+    setInterval(function () {
+      var gap = document.hidden ? 5000 : 1600;
+      if (Date.now() - lastTick < gap - 50) return;
+      lastTick = Date.now();
+      tick(false);
+    }, 800);
+    // 壁纸那页重载过 / 小镇刚盖好:把现在的状态再报一次(平时只在变的时候报)
+    listen('pet-want-state', function () { lastState = ''; tick(true); });
+
+    /* ── 对话 ── */
+    function paintLog() {
+      var log = $('log');
+      var atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      var html = [];
+      if (!bound) {
+        html.push('<div class="empty">' + esc(L('选一段正在跑的 agent 会话,它就住进这只小伙伴里。你在这儿说的话,就是在那段会话里说的话。',
+          'Pick a running agent session and it moves into your companion. What you say here is said in that session.')) + '</div>');
+      } else {
+        transcript.slice(-40).forEach(function (r) {
+          if (r.kind === 'text' && (r.role === 'user' || r.role === 'assistant')) {
+            html.push('<div class="msg ' + r.role + '">' + esc(String(r.text || '').slice(0, 4000)) + '</div>');
+          } else if (r.kind === 'tool') {
+            html.push('<div class="msg tool">· ' + esc(String(r.text || '').slice(0, 140)) + '</div>');
+          }
+        });
+        if (!transcript.length) html.push('<div class="empty">' + esc(L('这段会话还没有说过话。', 'Nothing said in this session yet.')) + '</div>');
+      }
+      asks.forEach(function (a) { if (bound && a.sessionId === bound.id) html.push(askCard(a)); });
+      cards.forEach(function (c) { html.push(c.html); });
+      log.innerHTML = html.join('');
+      if (atBottom) log.scrollTop = log.scrollHeight;
+    }
+    function note(text, bad) {
+      cards.push({ id: 'n' + Date.now() + Math.random(), html: '<div class="note' + (bad ? ' bad' : '') + '">' + esc(text) + '</div>' });
+      if (cards.length > 12) cards.shift();
+      paintLog();
+    }
+
+    /* ── 发话 ── */
+    function sendText(text) {
+      if (!bound) return Promise.reject(new Error(L('还没接上 agent', 'No agent linked')));
+      var busy = cur && BUSY[cur.state];
+      if (bound.kind === 'codex') return invoke('sd_queue', { sessionId: bound.id, kind: 'msg', text: text }).then(function () { return 'queued'; });
+      return invoke('sd_direct_status').then(function (st) {
+        var hooked = !!(st && st.enabled && st.seen && st.seen[bound.id]);
+        if (hooked && busy) return invoke('sd_queue', { sessionId: bound.id, kind: 'msg', text: text }).then(function () { return 'queued'; });
+        return invoke('sd_send', { title: bound.title, text: text }).then(function (r) {
+          if (!r || r.ok === false) throw new Error((r && r.error) || L('没在 Claude 侧栏里找到这段会话', 'Could not find this session in Claude'));
+          return 'typed';
+        });
+      });
+    }
+    function send() {
+      var box = $('input'), text = box.value.trim();
+      if (!text) return;
+      $('btnSend').disabled = true;
+      sendText(text).then(function (how) {
+        box.value = '';
+        if (how === 'queued') note(L('排上了:它下一步就读到。', 'Queued: it reads this at its next step.'));
+        setTimeout(function () { tick(true); }, 700);
+      }, function (e) { note(String(e && e.message || e), true); })
+        .then(function () { $('btnSend').disabled = false; box.focus(); });
+    }
+    $('btnSend').addEventListener('click', send);
+    $('input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+    });
+    $('input').addEventListener('input', function () { this.style.height = 'auto'; this.style.height = Math.min(140, this.scrollHeight) + 'px'; });
+    $('btnStop').addEventListener('click', function () {
+      if (!bound) return;
+      (bound.kind === 'codex' ? invoke('sd_queue', { sessionId: bound.id, kind: 'stop', text: '' }) : invoke('sd_stop', { title: bound.title }))
+        .then(function () { note(L('叫它停下了。', 'Asked it to stop.')); });
+    });
+
+    /* ── 它在问你(AskUserQuestion / ExitPlanMode):小伙伴跑到面前叫,这里直接答 ── */
+    function askCard(a) {
+      var inp = a.input || {};
+      if (a.tool === 'ExitPlanMode') {
+        return '<div class="card ask" data-ask="' + esc(a.id) + '"><h4>' + esc(L('它写好了计划,等你看', 'It has a plan and is waiting for you')) + '</h4>' +
+          '<div style="white-space:pre-wrap;max-height:180px;overflow:auto">' + esc(String(inp.plan || '').slice(0, 3000)) + '</div>' +
+          '<div class="opts"><button class="primary" data-act="approve">' + esc(L('就这么做', 'Go ahead')) + '</button>' +
+          '<button data-act="reject">' + esc(L('先别', 'Not yet')) + '</button>' +
+          '<button data-act="pass">' + esc(L('去 Claude 里看', 'Open in Claude')) + '</button></div></div>';
+      }
+      var qs = Array.isArray(inp.questions) ? inp.questions : [];
+      return '<div class="card ask" data-ask="' + esc(a.id) + '">' + qs.map(function (q, qi) {
+        return '<h4>' + esc(q.question || '') + '</h4><div class="opts">' + (q.options || []).map(function (o) {
+          return '<button data-act="answer" data-q="' + qi + '" data-label="' + esc(o.label || '') + '" title="' + esc(o.description || '') + '">' + esc(o.label || '') + '</button>';
+        }).join('') + '</div>';
+      }).join('') + '<div class="opts"><button data-act="pass">' + esc(L('去 Claude 里答', 'Answer in Claude')) + '</button></div></div>';
+    }
+    $('log').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      var card = b.closest('[data-ask]');
+      if (card) {
+        var a = asks.get(card.dataset.ask);
+        if (!a) return;
+        var act = b.dataset.act, reply;
+        if (act === 'approve') reply = { approve: true };
+        else if (act === 'reject') reply = { reject: L('先别动手,等我再想想。', 'Hold off for now; I want to think about it.') };
+        else if (act === 'pass') reply = { pass: true };
+        else if (act === 'answer') {
+          // 一次只有一个问题最常见;多个问题时每点一个记一个,全答完再交
+          a.picked = a.picked || {};
+          var q = (a.input.questions || [])[+b.dataset.q];
+          if (q) a.picked[q.question] = b.dataset.label;
+          b.classList.add('primary');
+          if (Object.keys(a.picked).length < (a.input.questions || []).length) return;
+          reply = { answers: a.picked };
+        }
+        invoke('sd_answer', { id: a.id, reply: reply }).then(function (ok) {
+          if (!ok) note(L('这个问题已经过期了(在 Claude 里答了,或者等太久)', 'That question has expired (answered in Claude, or it waited too long)'), true);
+        });
+        asks.delete(a.id); paintLog(); tick(true);
+        return;
+      }
+      var c = b.closest('[data-card]');
+      if (c && cardActs[c.dataset.card]) cardActs[c.dataset.card](b.dataset.act, c.dataset.card);
+    });
+    listen('dock-ask', function (e) {
+      var a = e.payload || {};
+      if (!a.id) return;
+      asks.set(a.id, a);
+      if (bound && a.sessionId === bound.id) {
+        emitTo('wallpaper', 'pet-bubble', { text: L('要你!', 'Needs you!'), alert: true });
+        invoke('pet_chat_show', { focus: false });
+      }
+      paintLog(); tick(true);
+    });
+    listen('dock-ask-done', function (e) { var p = e.payload || {}; asks.delete(p.id); paintLog(); tick(true); });
+
+    /* ── 一次性的卡片(邀请、文件)── */
+    var cardActs = {};
+    function card(id, html, onAct) {
+      cards = cards.filter(function (c) { return c.id !== id; });
+      cards.push({ id: id, html: '<div class="card" data-card="' + esc(id) + '">' + html + '</div>' });
+      cardActs[id] = function (act) { cards = cards.filter(function (c) { return c.id !== id; }); delete cardActs[id]; paintLog(); onAct(act); };
+      paintLog();
+    }
+    function myName() {
+      var n = R && R.nickname && R.nickname();
+      if (n) return Promise.resolve(n);
+      return (window.T && T.getAuth ? T.getAuth() : Promise.resolve(null)).then(function (a) { return (a && a.email && String(a.email).split('@')[0]) || 'someone'; }, function () { return 'someone'; });
+    }
+    function myEmail() { return (window.T && T.getAuth ? T.getAuth() : Promise.resolve(null)).then(function (a) { return (a && a.email) || null; }, function () { return null; }); }
+    function linkIntoRoom() {
+      if (!bound) return;
+      invoke('show_room_window', { focus: false }).catch(function () {});
+      // 房间窗口可能刚被唤醒:给它一点时间读到新房间的状态
+      setTimeout(function () { emitTo('room', 'pet-room-link', { sessionId: bound.id, kind: bound.kind, title: bound.title, budget: 2 }); }, 900);
+    }
+
+    /* 狗和狗:我这边在别人的小伙伴旁边按了 T */
+    listen('pet-meet-request', function (e) {
+      var p = e.payload || {};
+      if (!p.id) return;
+      var mine = pet ? pet.name : L('你的小伙伴', 'your companion');
+      if (!bound) { note(L('先给 ' + mine + ' 接上一个 agent,它才有话可聊。', 'Link an agent to ' + mine + ' first, so it has something to say.'), true); return; }
+      var inRoom = R.inRoom && R.inRoom(), st = (R.state && R.state()) || {};
+      card('meet-' + p.id,
+        '<h4>' + esc(L('让 ' + mine + ' 认识 ' + (p.owner || '对方') + ' 的 ' + (p.pet || ''), 'Introduce ' + mine + ' to ' + (p.owner || 'their') + "'s " + (p.pet || ''))) + '</h4>' +
+        '<div class="sub">' + esc(inRoom
+          ? L('会把对方请进你现在的房间「' + (st.name || st.code || '') + '」,两边的 agent 都接进来。', 'They will be invited into your current room "' + (st.name || st.code || '') + '", and both agents join it.')
+          : L('会开一个你们俩的私密房间(端到端加密)。两只 agent 在里面聊,你们俩都看得见、能插话、能随时断开。', 'This opens a private room for the two of you (end-to-end encrypted). The agents talk there; you both read along, can step in, and can disconnect any time.')) + '</div>' +
+        '<div class="opts"><button class="primary" data-act="go">' + esc(L('认识一下', 'Introduce them')) + '</button><button data-act="no">' + esc(L('算了', 'Not now')) + '</button></div>',
+        function (act) {
+          if (act !== 'go') return;
+          Promise.all([myName(), myEmail()]).then(function (me) {
+            if (inRoom) return st;
+            return R.create(mine + ' × ' + (p.pet || '?'), me[0], me[1], { visibility: 'private', agents: true }).then(function () { return R.state(); });
+          }).then(function (s2) {
+            if (!s2 || !s2.code) throw new Error(L('房间没开成', 'Could not open the room'));
+            emitTo('wallpaper', 'pet-invite-send', { to: p.id, code: s2.code, pet: mine });
+            emitTo('wallpaper', 'pet-meet', { id: p.id });
+            linkIntoRoom();
+            note(L('邀请发过去了,等 ' + (p.owner || '对方') + ' 点接受。', 'Invitation sent — waiting for ' + (p.owner || 'them') + ' to accept.'));
+          }).catch(function (err) { note(String(err && err.message || err), true); });
+        });
+      invoke('pet_chat_show', { focus: true });
+    });
+    /* 别人的小伙伴来邀请我的 */
+    listen('pet-invite', function (e) {
+      var p = e.payload || {};
+      if (!p.code || !p.from) return;
+      var mine = pet ? pet.name : L('你的小伙伴', 'your companion');
+      card('inv-' + p.from,
+        '<h4>' + esc(L((p.fromName || '有人') + ' 的 ' + (p.pet || '小伙伴') + ' 想认识 ' + mine, (p.fromName || 'Someone') + "'s " + (p.pet || 'companion') + ' wants to meet ' + mine)) + '</h4>' +
+        '<div class="sub">' + esc(L('接受 = 进一个你们俩的私密房间,' + (bound ? '把你接的 agent 也带进去。' : '(你还没给小伙伴接 agent,先进去看看也行。)') + '你随时能在房间窗口里断开。',
+          'Accepting joins a private room for the two of you' + (bound ? ' and brings your linked agent in.' : ' (no agent linked yet — you can still look).') + ' You can disconnect from the room window at any time.')) + '</div>' +
+        '<div class="opts"><button class="primary" data-act="yes">' + esc(L('接受', 'Accept')) + '</button><button data-act="no">' + esc(L('不了', 'No thanks')) + '</button></div>',
+        function (act) {
+          if (act !== 'yes') { emitTo('wallpaper', 'pet-reply-send', { to: p.from, ok: false }); return; }
+          Promise.all([myName(), myEmail()]).then(function (me) { return R.join(p.code, me[0], me[1]); }).then(function () {
+            emitTo('wallpaper', 'pet-reply-send', { to: p.from, ok: true });
+            emitTo('wallpaper', 'pet-meet', { id: p.from });
+            linkIntoRoom();
+            if (!bound) invoke('show_room_window', { focus: true }).catch(function () {});
+            note(L('进房间了。', 'You are in the room.'));
+          }).catch(function (err) { note(String(err && err.message || err), true); });
+        });
+      emitTo('wallpaper', 'pet-bubble', { text: L((p.pet || '有只小伙伴') + ' 来找你了', (p.pet || 'A companion') + ' came to find you'), alert: true });
+      invoke('pet_chat_show', { focus: false });
+    });
+    listen('pet-reply', function (e) {
+      var p = e.payload || {};
+      note(p.ok ? L((p.fromName || '对方') + ' 接受了,两只 agent 在房间里碰头了。', (p.fromName || 'They') + ' accepted — the agents are meeting in the room.')
+                : L((p.fromName || '对方') + ' 这次没接受。', (p.fromName || 'They') + ' declined this time.'), !p.ok);
+      paintHead();
+    });
+    listen('pet-invite-sent', function (e) {
+      var p = e.payload || {};
+      if (!p.ok) note(p.error || L('邀请没发出去', 'The invitation did not go through'), true);
+      else if (!p.delivered) note(L('对方好像刚离开小镇,没收到。', 'They seem to have just left town and did not get it.'), true);
+    });
+    listen('pet-room-linked', function (e) {
+      var p = e.payload || {};
+      note(p.ok ? L('你的 agent 进房间了。', 'Your agent is in the room.') : L('agent 没接进房间:', 'Could not bring your agent in: ') + (p.error || ''), !p.ok);
+    });
+    $('btnRoom').addEventListener('click', function () { invoke('show_room_window', { focus: true }).catch(function () {}); });
+
+    /* ── 文件:按住 ⌥ 拖进小镇 ── */
+    function names(paths) { return paths.map(function (p) { return String(p).split(/[\\/]/).pop(); }).join('、'); }
+    listen('pet-give-files', function (e) {
+      var paths = ((e.payload || {}).paths || []).slice(0, 20);
+      if (!paths.length) return;
+      invoke('pet_chat_show', { focus: false });
+      if (!bound) { note(L('小伙伴还没接 agent,文件先不交。', 'Your companion has no agent yet, so the files were not handed over.'), true); return; }
+      var text = L('我从桌面把这些文件交给你了:\n', 'I handed you these files from my desktop:\n') + paths.map(function (p) { return '- ' + p; }).join('\n') +
+        L('\n先看看它们是什么、跟我说一声;等我吩咐再动手改。', '\nTake a look and tell me what they are; wait for me before changing anything.');
+      sendText(text).then(function () { note(L('交给它了:', 'Handed over: ') + names(paths)); tick(true); },
+        function (err) { note(String(err && err.message || err), true); });
+    });
+    listen('pet-send-files', function (e) {
+      var p = e.payload || {}, paths = (p.paths || []).slice(0, 10);
+      if (!paths.length) return;
+      invoke('pet_chat_show', { focus: false });
+      if (!(R.inRoom && R.inRoom())) {
+        note(L('要先让你们的小伙伴认识(在小镇里走到 ' + (p.name || '对方') + ' 旁边按 T),文件才有地方送。', 'Introduce your companions first (walk up to ' + (p.name || 'them') + ' in town and press T) so the files have somewhere to go.'), true);
+        return;
+      }
+      var i = 0;
+      (function next() {
+        if (i >= paths.length) return;
+        var path = paths[i++];
+        invoke('rl_share_path', { path: path }).then(function (r) {
+          note(L('送过去了:', 'Sent: ') + (r && r.name || names([path])));
+        }, function (err) { note(names([path]) + ' — ' + String(err && err.message || err), true); }).then(next);
+      }());
+    });
+
+    listen('pet-info', function (e) { var p = e.payload || {}; if (p.name) { pet = p; store.set('terse-pet-info', p); paintHead(); } });
+    listen('pet-chat-open', function () { setTimeout(function () { $('input').focus(); }, 60); tick(true); });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(true); });
+    window.addEventListener('keydown', function (e) { if (e.key === 'Escape') invoke('pet_chat_hide').catch(function () {}); });
+
+    paintHead(); paintLog(); tick(true);
+  }());
+  </script>
+</body>
+</html>

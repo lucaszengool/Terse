@@ -3516,6 +3516,22 @@ fn show_room_window(app: AppHandle, focus: Option<bool>) -> Result<(), String> {
     Ok(())
 }
 
+/// 小伙伴的对话窗。focus=false:它自己冒出来(agent 在等你、别人的狗来邀请)时不抢键盘。
+#[tauri::command]
+fn pet_chat_show(app: AppHandle, focus: Option<bool>) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("petchat") {
+        w.show().map_err(|e| e.to_string())?;
+        if focus.unwrap_or(true) { w.set_focus().map_err(|e| e.to_string())?; }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn pet_chat_hide(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("petchat") { w.hide().map_err(|e| e.to_string())?; }
+    Ok(())
+}
+
 #[tauri::command]
 fn hide_room_window(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("room") {
@@ -5452,6 +5468,68 @@ const WP_LEVEL_DESKTOP: i64 = -2_147_483_623;
 const WP_LEVEL_ABOVE_ICONS: i64 = -2_147_483_602;   // kCGDesktopIconWindowLevel + 1
 const WP_LEVEL_OVERLAY: i64 = 1_000;                // 屏保层(Pro 的「始终置顶」)
 
+/// 代码小镇的「接文件」:按住 ⌥(town_keys 里判断)时把壁纸抬到图标层上面一格、不再穿透,
+/// 松开就放回去。
+///
+/// **为什么只能这样**:桌面层的窗口**永远**收不到 Finder 的拖放 —— Finder 画图标的那个
+/// 窗口铺满全屏、压在上面,拖放按光标下面是谁来找目标,轮不到我们(Plash、Lively、
+/// Wallpaper Engine 都一样,没有谁在壁纸层接文件)。而且没抬起来的窗口连"有人在拖"都
+/// 感知不到,所以不能自动抬,只能由人按住一个键说"我要往小镇里丢了"。
+///
+/// ⚠ 不抢焦点(不 set_focus、不 makeKey):拖拽途中换了焦点,Finder 的拖拽会被取消。
+/// ⚠ 自带看门狗:页面挂了、松开的事件丢了,壁纸也会在 DROP_MAX_SECS 后自己落回去 ——
+///   抬着的壁纸盖住所有桌面图标,不能让它一直抬着。
+const DROP_MAX_SECS: u64 = 25;
+static DROP_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static DROP_ON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[tauri::command]
+fn town_drop_mode(app: tauri::AppHandle, on: bool) -> bool {
+    town_drop_set(&app, on);
+    on
+}
+
+pub(crate) fn town_drop_set(app: &tauri::AppHandle, on: bool) {
+    use std::sync::atomic::Ordering;
+    if DROP_ON.swap(on, Ordering::SeqCst) == on { return; }
+    let generation = DROP_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    let app2 = app.clone();
+    let _ = app.run_on_main_thread(move || drop_level(&app2, on));
+    let _ = app.emit_to("wallpaper", "town-drop-mode", on);
+    if on {
+        let app3 = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(DROP_MAX_SECS));
+            if DROP_GEN.load(Ordering::SeqCst) != generation { return; }
+            town_drop_set(&app3, false);
+        });
+    }
+}
+
+fn drop_level(app: &tauri::AppHandle, on: bool) {
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::base::{NO, YES};
+        use objc::{msg_send, sel, sel_impl};
+        use std::sync::atomic::Ordering;
+        let Some(win) = app.get_webview_window("wallpaper") else { return };
+        let Ok(ns) = win.ns_window() else { return };
+        // 放回去的时候,别把「始终置顶」或正在调节的那一层按下去
+        let back = if overlay_allowed(&get_wallpaper_config()) { WP_LEVEL_OVERLAY }
+                   else if WP_ADJUST.load(Ordering::SeqCst) { WP_LEVEL_ABOVE_ICONS }
+                   else { WP_LEVEL_DESKTOP };
+        let level = if on { back.max(WP_LEVEL_ABOVE_ICONS) } else { back };
+        unsafe {
+            let ns = ns as cocoa::base::id;
+            let _: () = msg_send![ns, setLevel: level];
+            let _: () = msg_send![ns, setIgnoresMouseEvents: if on { NO } else { YES }];
+        }
+        eprintln!("[town] drop mode on={on} level={level}");
+    }
+    #[cfg(not(target_os = "macos"))]
+    { let _ = (app, on); }
+}
+
 #[tauri::command]
 fn wallpaper_set_interactive(app: tauri::AppHandle, on: bool) -> bool {
     #[cfg(target_os = "macos")]
@@ -5639,10 +5717,27 @@ pub fn run() {
         // not what pressing the red button means for a window that reopens with
         // the next room you enter.
         .on_window_event(|window, event| {
-            if window.label() == "room" {
+            if window.label() == "room" || window.label() == "petchat" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
+                }
+            }
+            // 代码小镇:文件拖到壁纸上(按住 ⌥ 抬层的那一段才收得到,见 town_drop_mode)。
+            // 位置是 webview 里的物理像素、左上角为原点;页面自己除 devicePixelRatio。
+            // 路径只发给壁纸这一页(本地的),小镇那一页(远程)只拿到坐标。
+            if window.label() == "wallpaper" {
+                if let tauri::WindowEvent::DragDrop(ev) = event {
+                    let payload = match ev {
+                        tauri::DragDropEvent::Enter { paths, position } => serde_json::json!({ "phase": "enter",
+                            "x": position.x, "y": position.y, "paths": paths.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>() }),
+                        tauri::DragDropEvent::Over { position } => serde_json::json!({ "phase": "over", "x": position.x, "y": position.y }),
+                        tauri::DragDropEvent::Drop { paths, position } => serde_json::json!({ "phase": "drop",
+                            "x": position.x, "y": position.y, "paths": paths.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>() }),
+                        tauri::DragDropEvent::Leave => serde_json::json!({ "phase": "leave" }),
+                        _ => serde_json::Value::Null,
+                    };
+                    if !payload.is_null() { let _ = window.emit_to("wallpaper", "town-drop", payload); }
                 }
             }
         })
@@ -6083,6 +6178,28 @@ pub fn run() {
                 .hidden_title(true)
                 .transparent(true)
                 .always_on_top(false)
+                .resizable(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .accept_first_mouse(true)
+                .visible(false)
+                .build()?;
+
+            // ── Pet chat (代码小镇里跟自己的 agent 小伙伴说话)──
+            //
+            // 和房间窗口一个道理:壁纸在桌面层,打不了字;对话、输入法、提问的按钮都在这里。
+            // 小镇那一页是远程加载的,agent 说的话**只**在这个本地窗口和壁纸本地画的气泡里,
+            // 从不进小镇那一页。
+            let pet_x = (screen_width - 440.0 - 40.0).max(40.0);
+            let _pet_chat = WebviewWindowBuilder::new(app, "petchat", WebviewUrl::App("petchat.html".into()))
+                .title("Terse · Companion")
+                .inner_size(440.0, 600.0)
+                .min_inner_size(360.0, 420.0)
+                .position(pet_x, 120.0)
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .transparent(true)
+                .always_on_top(true)
                 .resizable(true)
                 .skip_taskbar(true)
                 .focused(false)
@@ -6974,6 +7091,10 @@ pub fn run() {
             show_room_window,
             hide_room_window,
             room_link::rl_status,
+            town_drop_mode,
+            pet_chat_show,
+            pet_chat_hide,
+            room_link::rl_share_path,
             room_link::rl_link,
             room_link::rl_unlink,
             room_link::rl_inbound,

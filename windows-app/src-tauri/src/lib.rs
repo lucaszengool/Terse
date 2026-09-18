@@ -580,6 +580,20 @@ fn close_window(app: AppHandle) {
 }
 
 #[tauri::command]
+fn minimize_window(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.minimize();
+    }
+}
+
+/// Quit for real. ✕ only hides to the tray, so this (titlebar ⏻ / Ctrl+Q /
+/// tray menu) is the way out.
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
+#[tauri::command]
 fn set_popup_minimized(on: bool, state: tauri::State<'_, AppState>, app: AppHandle) -> bool {
     let mut minimized = state.popup_minimized.lock().unwrap_or_else(|e| e.into_inner());
     *minimized = on;
@@ -1669,6 +1683,16 @@ fn cleanup_proxy_configs() {
 
 pub fn run() {
     tauri::Builder::default()
+        // "Close window" on the taskbar button, or Alt+F4, is how people quit
+        // an app on Windows. Left alone it would destroy only the main window
+        // and leave Terse running with nothing to reopen.
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    window.app_handle().exit(0);
+                }
+            }
+        })
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
@@ -1702,11 +1726,43 @@ pub fn run() {
                 .visible(false)
                 .build()?;
 
-            // Tray icon
-            let _tray = TrayIconBuilder::new()
+            // Tray icon. It used to have no menu, and tauri.conf.json built a
+            // second menu-less one beside it — right-click did nothing, so
+            // there was no way to quit. One icon, with a menu that has Quit.
+            let tray_show = tauri::menu::MenuItemBuilder::with_id("tray_show", "Show / Hide Terse · 显示/隐藏").build(app)?;
+            let tray_quit = tauri::menu::MenuItemBuilder::with_id("tray_quit", "Quit Terse · 退出").build(app)?;
+            let tray_sep = tauri::menu::PredefinedMenuItem::separator(app)?;
+            let tray_menu = tauri::menu::MenuBuilder::new(app)
+                .items(&[&tray_show, &tray_sep, &tray_quit])
+                .build()?;
+            let mut tray_builder = TrayIconBuilder::new();
+            if let Some(icon) = app.default_window_icon() {
+                tray_builder = tray_builder.icon(icon.clone());
+            }
+            let _tray = tray_builder
                 .tooltip("Terse")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "tray_quit" => app.exit(0),
+                    "tray_show" => {
+                        if let Some(win) = app.get_webview_window("main") {
+                            if win.is_visible().unwrap_or(false) {
+                                let _ = win.hide();
+                            } else {
+                                let _ = win.show();
+                                let _ = win.set_focus();
+                            }
+                        }
+                    }
+                    _ => {}
+                })
                 .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        button_state: tauri::tray::MouseButtonState::Up,
+                        ..
+                    } = event {
                         let app = tray.app_handle();
                         if let Some(win) = app.get_webview_window("main") {
                             if win.is_visible().unwrap_or(false) {
@@ -1909,6 +1965,8 @@ pub fn run() {
             update_settings,
             set_auto_mode,
             close_window,
+            minimize_window,
+            quit_app,
             set_popup_minimized,
             move_popup_by,
             resize_popup,

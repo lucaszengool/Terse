@@ -1486,6 +1486,19 @@ const _CONN = {
   'pt-BR': { nav_connection:'Conexão', conn_sub:'Diagnostique por que um agente não alcança o Claude', conn_fixall:'🛠 Corrigir tudo' },
 };
 for (const _l in _CONN) if (TRANSLATIONS[_l]) Object.assign(TRANSLATIONS[_l], _CONN[_l]);
+const _QUIT = {
+  en: { quit_btn:'Quit Terse', hide_to_tray:'Hide to tray', tray_hint:'Terse is still running in the tray (bottom-right, maybe under ^). To quit: ⏻ in the title bar, Ctrl+Q, or right-click the tray icon.' },
+  'zh-Hans': { quit_btn:'退出 Terse', hide_to_tray:'隐藏到托盘', tray_hint:'Terse 仍在右下角托盘运行(可能在 ^ 里)。要退出:点标题栏 ⏻、按 Ctrl+Q,或右键托盘图标。' },
+  'zh-Hant': { quit_btn:'結束 Terse', hide_to_tray:'隱藏到系統匣', tray_hint:'Terse 仍在右下角系統匣執行(可能在 ^ 裡)。要結束:點標題列 ⏻、按 Ctrl+Q,或右鍵系統匣圖示。' },
+  ja: { quit_btn:'Terse を終了', hide_to_tray:'トレイに隠す', tray_hint:'Terse はトレイ(右下、^ の中かも)で動作中です。終了するには タイトルバーの ⏻、Ctrl+Q、またはトレイアイコンを右クリック。' },
+  ko: { quit_btn:'Terse 종료', hide_to_tray:'트레이로 숨기기', tray_hint:'Terse는 트레이(오른쪽 아래, ^ 안일 수 있음)에서 실행 중입니다. 종료: 제목 표시줄 ⏻, Ctrl+Q, 또는 트레이 아이콘 우클릭.' },
+  es: { quit_btn:'Salir de Terse', hide_to_tray:'Ocultar en la bandeja', tray_hint:'Terse sigue en la bandeja (abajo a la derecha, quizá bajo ^). Para salir: ⏻ en la barra de título, Ctrl+Q o clic derecho en el icono.' },
+  fr: { quit_btn:'Quitter Terse', hide_to_tray:'Réduire dans la barre', tray_hint:'Terse tourne toujours dans la zone de notification (en bas à droite, peut-être sous ^). Pour quitter : ⏻ dans la barre de titre, Ctrl+Q ou clic droit sur l’icône.' },
+  de: { quit_btn:'Terse beenden', hide_to_tray:'In den Infobereich', tray_hint:'Terse läuft weiter im Infobereich (unten rechts, evtl. unter ^). Beenden: ⏻ in der Titelleiste, Strg+Q oder Rechtsklick aufs Symbol.' },
+  ar: { quit_btn:'إنهاء Terse', hide_to_tray:'إخفاء في شريط النظام', tray_hint:'لا يزال Terse يعمل في شريط النظام (أسفل اليمين، ربما تحت ^). للإنهاء: ⏻ في شريط العنوان أو Ctrl+Q أو انقر بزر الماوس الأيمن على الأيقونة.' },
+  'pt-BR': { quit_btn:'Sair do Terse', hide_to_tray:'Ocultar na bandeja', tray_hint:'O Terse continua na bandeja (canto inferior direito, talvez sob ^). Para sair: ⏻ na barra de título, Ctrl+Q ou clique direito no ícone.' },
+};
+for (const _l in _QUIT) if (TRANSLATIONS[_l]) Object.assign(TRANSLATIONS[_l], _QUIT[_l]);
 
 const DASH_T = {
   en: {

@@ -763,7 +763,32 @@ $$('.toggle-btn').forEach(b => b.addEventListener('click', () => {
 $$('.setting-row input').forEach(cb => cb.addEventListener('change', () => T.updateSettings({ [cb.dataset.key]: cb.checked })));
 
 $('#btnMinimize').addEventListener('click', () => T.minimizeWindow());
-$('#btnClose').addEventListener('click', () => T.closeWindow());
+// Windows: ✕ only hides to the tray, which people there read as "quit" and
+// then can't find the way out. Give them a visible ⏻, Ctrl+Q, and say once
+// where Terse went when ✕ hides it.
+const IS_WIN = /Windows/i.test(navigator.userAgent);
+const QUIT_EN = { quit_btn: 'Quit Terse', hide_to_tray: 'Hide to tray',
+  tray_hint: 'Terse is still running in the tray (bottom-right, maybe under ^). To quit: ⏻ in the title bar, Ctrl+Q, or right-click the tray icon.' };
+const quitT = (k) => { try { const v = window.i18n.t(k); if (v && v !== k) return v; } catch {} return QUIT_EN[k]; };
+if (IS_WIN) {
+  const q = $('#btnQuit');
+  q.style.display = '';
+  q.addEventListener('mouseenter', () => { q.title = quitT('quit_btn') + ' (Ctrl+Q)'; });
+  q.title = QUIT_EN.quit_btn + ' (Ctrl+Q)';
+  q.addEventListener('click', () => T.quitApp());
+  $('#btnClose').title = QUIT_EN.hide_to_tray;
+  $('#btnClose').addEventListener('mouseenter', e => { e.currentTarget.title = quitT('hide_to_tray'); });
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'q') { e.preventDefault(); T.quitApp(); }
+  });
+}
+$('#btnClose').addEventListener('click', () => {
+  let told = true;
+  if (IS_WIN) { try { told = localStorage.getItem('terse.trayHintShown') === '1'; localStorage.setItem('terse.trayHintShown', '1'); } catch { told = true; } }
+  if (told) return T.closeWindow();
+  toast(quitT('tray_hint'));
+  setTimeout(() => T.closeWindow(), 2400);
+});
 
 // Upgrade / Start Trial / Manage button — open in system browser
 $('#btnUpgrade').addEventListener('click', async () => {

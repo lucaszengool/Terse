@@ -674,4 +674,5 @@ export function createLife(plan, U, opts = {}) {
   return { group, update, ring: () => sim.ring(), near: (x, z, r) => sim.near(x, z, r), stats, dispose, sim };
 }
 
-export { SPEC as LIFE_SPECIES, bake as bakeLifeTemplate };
+/* 着色器也放出去:agent 的小伙伴(town-pets.js)是同一套身子和步态,只是不归 sim 管。 */
+export { SPEC as LIFE_SPECIES, bake as bakeLifeTemplate, LIFE_VS, LIFE_FS };

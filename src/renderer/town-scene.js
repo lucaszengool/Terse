@@ -30,6 +30,7 @@ import { kelvin } from './room-styles.js';
 import { createNature } from './town-nature.js';
 import { createLife } from './town-life.js';
 import { createPeople } from './town-people.js';
+import { createPets } from './town-pets.js';
 import { createPlay } from './town-play-ui.js';
 
 const D2R = Math.PI / 180;
@@ -523,6 +524,10 @@ export function createTown(renderer, projects, opts = {}) {
   /* 人:每栋别墅的主人,和别的玩家 */
   const people = createPeople(U, plan, built, houses, { budget: B, lang: opts.lang, resolve: (x, z, r) => (gridReady ? resolve(x, z, r) : { x, z }) });
   scene.add(people.group);
+  /* agent 的小伙伴:自己一只,在场的每个人各一只(长相由身份哈希推出来,不走网络) */
+  const pets = createPets(U, { identity: opts.identity || 'me', budget: B,
+    resolve: (x, z, r) => (gridReady ? resolve(x, z, r) : { x, z }) });
+  scene.add(pets.group);
 
   const hazeU = { uPx: U.uPx, uTime: U.uTime, uNight: U.uNight, uCam: { value: new THREE.Vector3() },
     uFogAway: U.uFogAway, uFogSun: U.uFogSun, uSunDir: U.uSunDir };
@@ -619,6 +624,7 @@ export function createTown(renderer, projects, opts = {}) {
   function setPeers(list) {
     peers = (list || []).slice(0, MAXP);
     people.setPeers(peers);
+    pets.setPeers(peers);
     for (let i = 0; i < MAXP; i++) {
       const p = peers[i];
       if (!p) { PU.uPeer.value[i].set(0, 0, 0, -1); continue; }
@@ -1085,6 +1091,7 @@ export function createTown(renderer, projects, opts = {}) {
     atmos.update(dt, t, camera);
     life.update(dt, t, camera.position, env);
     people.update(dt, t, camera.position, env);
+    pets.update(dt, t, { x: px, z: pz, yaw }, env);
     // 整点敲钟:鸽子从塔上飞起来一圈
     const hourNow = Math.floor(env.hour + (timeMode === 'auto' && opts.hour == null ? 0 : t / 3600));
     if (update._bell !== undefined && hourNow !== update._bell) { try { life.ring(); } catch (e) {} if (opts.onBell) { try { opts.onBell(hourNow); } catch (e) {} } }
@@ -1206,7 +1213,7 @@ export function createTown(renderer, projects, opts = {}) {
     try { if (document.pointerLockElement === input) document.exitPointerLock(); } catch (e) {}
     try { closeChat(); } catch (e) {}
     try { play.dispose(); } catch (e) {}
-    try { nature.dispose(); life.dispose(); people.dispose(); } catch (e) {}
+    try { nature.dispose(); life.dispose(); people.dispose(); pets.dispose(); } catch (e) {}
     try { if (markPts) { markPts.geometry.dispose(); markPts.material.dispose(); } group.userData.dispose(); if (landGroup) landGroup.userData.dispose(); if (fine) fine.group.userData.dispose(); gGeo.dispose(); gMat.dispose(); flyGeo.dispose(); flyMat.dispose(); peerGeo.dispose(); peerMat.dispose(); ground.dispose(); } catch (e) {}
     try { atmos.dispose(); bloom.dispose(); grade.dispose(); composer.dispose(); if (haze) { haze.geometry.dispose(); haze.material.dispose(); } } catch (e) {}
     try {
@@ -1234,6 +1241,7 @@ export function createTown(renderer, projects, opts = {}) {
     turn(dy, dp) { yaw += +dy || 0; if (dp) pitch = Math.max(-1.45, Math.min(1.45, pitch + dp)); },
     where() { return { x: +px.toFixed(2), z: +pz.toFixed(2), yaw: +yaw.toFixed(2), speed: +speed.toFixed(2) }; },
     near: () => (nearDoor ? nearDoor.project : null),
+    pets,
     particles: () => group.userData.points + (landGroup ? landGroup.userData.points : 0) + NG,
     renderNow() { U.uForm.value = TOWN_FORM; update(0); render(); },
     diag() {

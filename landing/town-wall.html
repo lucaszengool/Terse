@@ -281,6 +281,8 @@ async function enterTown(at) {
     host, input: host, budget: S.budget, joystick: false, pixelRatio: S.pr,
     hour: q.get('hour') != null ? +q.get('hour') : undefined,   // 调试:?hour=22 看夜里
     words: zh ? WORDS_ZH : null, noteWords: zh ? NOTES_ZH : null, lang: zh ? 'zh' : 'en',
+    identity: window.__townIdentity || null,   // agent 小伙伴的长相就是这个哈希算出来的
+
     onNpcHello: (id, ctx) => Town.npcHello(id, ctx, S.lang),
     onNpcSay: (id, text, ctx) => Town.npcSay(id, text, ctx, S.lang),
     onNpcBye: (id) => Town.npcBye(id, S.lang),

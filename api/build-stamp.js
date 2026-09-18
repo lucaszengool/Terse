@@ -48,7 +48,7 @@ const ENGINE_ASSETS = [
   // 小镇里能玩的规则(告示、谜题、图鉴、奖励表):浏览器和 api/play.js 共用
   'town-play.mjs',
   // 小镇的外观、地标、树和烟、动物、人
-  'town-villa.js', 'town-landmarks.js', 'town-nature.js', 'town-life.js', 'town-life-sim.js', 'town-people.js', 'town-play-ui.js',
+  'town-villa.js', 'town-landmarks.js', 'town-nature.js', 'town-life.js', 'town-life-sim.js', 'town-people.js', 'town-pets.js', 'town-pet-look.mjs', 'town-play-ui.js',
   // 屋子外面的天(钟、季节、天气)、天穹和天气粒子、在楼之间换场
   'room-sky.js', 'room-atmos.js', 'room-travel.js',
 ];

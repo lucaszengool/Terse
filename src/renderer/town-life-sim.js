@@ -103,7 +103,9 @@ export function createSim(plan, opts = {}) {
   let started = false, bell = false, havePlayer = false;
   const sim = { creatures: all, herds, flocks, flags: lifeFlags({}), step, ring() { bell = true; }, near, counts,
     isWater: () => false, perches: [], anchors: { flowers: [], lamps: [], stream: [] } };
-  if (!W) return sim;
+  /* 没有图纸(镇上一个项目都没有):一只活物也不生。⚠ 不能把 step 原样交出去 —— 它读的
+     t0 / ROLES / 网格都声明在下面,提前 return 就一直停在暂时性死区,每帧都抛 ReferenceError。 */
+  if (!W) { sim.step = (dt, t, player, env) => { sim.flags = lifeFlags(env); }; return sim; }
   const count = (lo, hi) => Math.max(1, Math.round((lo + rand() * (hi - lo)) * B));
 
   /* ── 水:护城河(城门外是桥)和小河 ── */

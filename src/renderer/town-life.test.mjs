@@ -218,6 +218,17 @@ const ground = (c) => !c.air && !c.hidden && c.role !== 'path';
   ok('near() lists who is around', Array.isArray(n) && n.every((q) => q.kind && Number.isFinite(q.x)));
 }
 
+/* 镇上一个项目都没有(本地开发库、新部署):没有图纸,sim 提前 return。
+   以前交出去的 step 读的是还在暂时性死区里的 t0,每帧抛 ReferenceError,整座镇子停在第一帧。 */
+{
+  const empty = createSim({ plots: [] }, { seed: 'empty' });
+  let err = null;
+  try { for (let i = 0; i < 10; i++) empty.step(1 / 30, i / 30, { x: 0, z: 0 }, { hour: 12 }); } catch (e) { err = e; }
+  ok('empty town: step() runs without throwing', !err);
+  ok('empty town: nobody lives there', empty.creatures.length === 0);
+  ok('empty town: flags still follow the weather', empty.flags && typeof empty.flags.day === 'boolean');
+}
+
 console.log(`\n${pass} passed, ${fails.length} failed\n`);
 if (fails.length) console.error('failing:\n  ' + fails.join('\n  ') + '\n');
 process.exit(fails.length ? 1 : 0);

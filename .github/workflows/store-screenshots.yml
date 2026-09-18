@@ -32,7 +32,7 @@ env:
 jobs:
   shots:
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     defaults:
       run:
         shell: pwsh
@@ -99,10 +99,32 @@ jobs:
             }
             return $false
           }
-          function Onboard {
-            foreach ($i in 1..6) {
-              if (-not (Press '^(Continue|Done|Get started|Got it|Skip|Start|Let.s go)')) { break }
-              Start-Sleep -Seconds 4
+          # Poll: right after launch the WebView's accessibility tree isn't
+          # there yet. "Start free trial" is deliberately NOT in the pattern.
+          function Onboard([int]$waitSec = 40) {
+            $deadline = (Get-Date).AddSeconds($waitSec); $pressed = 0
+            while ((Get-Date) -lt $deadline -and $pressed -lt 6) {
+              if (Press '^(Continue|Done|Got it|Skip|Watch these agents|Let.s go)') { $pressed++; Start-Sleep -Seconds 4 }
+              elseif ($pressed -gt 0) { break }
+              else { Start-Sleep -Seconds 3 }
+            }
+            Write-Host "onboard: pressed $pressed"
+          }
+          # Leave the wallpaper as the subject: close the Doctor, minimize every
+          # other Terse window except the island. The wallpaper itself is a child
+          # of the desktop (WorkerW), not a top-level window, so it isn't touched.
+          function ClearWindows {
+            $A = [System.Windows.Automation.AutomationElement]
+            $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+              if ($procs -notcontains $w.Current.ProcessId) { continue }
+              $n = $w.Current.Name; $r = $w.Current.BoundingRectangle
+              if ($n -match 'Island') { Write-Host "keep: '$n'"; continue }
+              try {
+                $wp = $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+                if ($n -match 'Doctor') { $wp.Close(); Write-Host "closed: '$n'" }
+                else { $wp.SetWindowVisualState([System.Windows.Automation.WindowVisualState]::Minimized); Write-Host "minimized: '$n' $([int]$r.Width)x$([int]$r.Height)" }
+              } catch { Write-Host "  skip '$n': $_" }
             }
           }
 
@@ -132,7 +154,7 @@ jobs:
           }
 
           # ── Clear the stage ────────────────────────────────────────────────
-          @{ baselined = $true; auto_add = $false; sources = @{}; baselined_kinds = @() } |
+          @{ baselined = $true; auto_add = $false; sources = @{}; baselined_kinds = @('notif','system','window','media') } |
             ConvertTo-Json -Depth 4 | Set-Content "$home2\feeds.json" -Encoding UTF8
           Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name HideIcons -Value 1
           Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue   # restarts on its own with icons hidden
@@ -143,28 +165,31 @@ jobs:
           # ── Free: exactly what a free user sees ────────────────────────────
           License $false
           Wallpaper 'mineradio' 'cinematic' $false
-          Launch 45
+          Launch 40
           Snap "00-first-run"
-          Onboard
-          Start-Sleep -Seconds 6
-          Snap "10-free-wallpaper"
+          Onboard 60
+          Start-Sleep -Seconds 5
+          ClearWindows; Start-Sleep -Seconds 6
+          Snap "10-free-wallpaper-1"; Start-Sleep -Seconds 6; Snap "10-free-wallpaper-2"
           Keys "^+t"; Start-Sleep -Seconds 10
-          Onboard
           Snap "11-free-main-window"
-          Keys "^+t"; Start-Sleep -Seconds 4
-          Keys "^+d"; Start-Sleep -Seconds 12
+          ClearWindows; Start-Sleep -Seconds 3
+          Keys "^+d"; Start-Sleep -Seconds 15
           Snap "12-free-doctor"
-          Keys "^+d"; Start-Sleep -Seconds 4
+          ClearWindows; Start-Sleep -Seconds 3
           Quit
 
           # ── Pro wallpaper styles (local test license) ───────────────────────
           License $true
           $n = 20
-          foreach ($s in @(@('vortex',$false), @('aurora',$false), @('starfall',$false), @('bloom',$true))) {
+          foreach ($s in @(@('vortex',$false), @('vortex',$true), @('aurora',$false), @('starfall',$false),
+                           @('bloom',$true), @('neon',$false), @('ink',$false), @('zen',$true))) {
             Wallpaper 'cinematic' $s[0] $s[1]
-            Launch 40
-            Onboard
-            foreach ($i in 1..2) { Start-Sleep -Seconds 5; Snap ("{0}-pro-{1}-{2}" -f $n, $s[0], $i) }
+            Launch 35
+            Onboard 30
+            ClearWindows; Start-Sleep -Seconds 6
+            $tag = if ($s[1]) { "$($s[0])-3d" } else { $s[0] }
+            foreach ($i in 1..2) { Snap ("{0}-pro-{1}-{2}" -f $n, $tag, $i); Start-Sleep -Seconds 7 }
             Quit
             $n++
           }
@@ -175,7 +200,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v3
+          name: Terse-Store-Screenshots-v4
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

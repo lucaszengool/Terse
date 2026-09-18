@@ -2618,7 +2618,7 @@ fn read_codex_session_file(path: &std::path::Path) -> Option<String> {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     if name.ends_with(".jsonl.zst") {
         // Try to decompress with the system zstd binary
-        let out = std::process::Command::new("zstd")
+        let out = crate::hidden_command("zstd")
             .args(["-d", "--stdout", "-q"])
             .arg(path)
             .output()

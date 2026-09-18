@@ -368,7 +368,7 @@ fn scan_langs(root: &Path) -> (u32, Vec<(String, f32)>) {
 fn project_facts(root: &Path) -> Vec<String> {
     let mut out = Vec::new();
     let git = |args: &[&str]| -> Option<String> {
-        let o = std::process::Command::new("git")
+        let o = crate::hidden_command("git")
             .arg("-C").arg(root).args(args).output().ok()?;
         if !o.status.success() { return None; }
         let s = String::from_utf8_lossy(&o.stdout).trim().to_string();

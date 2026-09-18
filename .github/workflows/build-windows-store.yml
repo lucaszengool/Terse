@@ -1,0 +1,209 @@
+name: Build Windows Store package (MSIX)
+
+# Produces the .msix that the Microsoft Store submission takes.
+#
+# It runs WITHOUT any Partner Center secrets. That is deliberate: the identity
+# values only exist after the app name is reserved, and packaging is exactly the
+# step you want proven before you start filling in a submission. With no
+# secrets it packs with placeholder identity and labels the artifact a dry run —
+# installable nowhere, but proof the layout and MakeAppx are right.
+on:
+  push:
+    branches: [store/submission-2]      # the resubmission after cert report 09-18
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Four-part version, last part 0 (the Store reserves it)'
+        required: true
+        default: '1.3.4.0'
+
+jobs:
+  msix:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: windows-app/src-tauri
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # DefineConstants=TERSE_MSSTORE strips the global keyboard hook from the
+      # Store binary (see SUBMISSION-NOTES.md). Verified: SetWindowsHookEx is
+      # present in the normal build and absent under this define.
+      - name: Build terse-uia.exe (Store variant — no keyboard hook)
+        run: |
+          dotnet publish windows-app\helpers\terse-uia\terse-uia.csproj `
+            -c Release -r win-x64 --self-contained true `
+            /p:PublishSingleFile=true /p:DefineConstants=TERSE_MSSTORE `
+            -o windows-app\helpers\ -v normal
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      # icon.ico is not committed — tauri-build needs it to make the Windows
+      # resource file, and without it the whole build fails at the last moment
+      # with "`icons/icon.ico` not found". build-windows.yml generates it the
+      # same way; ImageMagick is preinstalled on windows-latest.
+      - name: Convert icon to .ico
+        run: |
+          $dst = "windows-app/src-tauri/icons/icon.ico"
+          if (-not (Test-Path $dst)) {
+            magick "windows-app/src-tauri/icons/icon.png" `
+              -define icon:auto-resize=256,128,64,48,32,16 `
+              $dst
+            Write-Host "icon.ico created via ImageMagick"
+          } else {
+            Write-Host "icon.ico already exists"
+          }
+
+      - name: Build the app (no installer — the MSIX carries its own payload)
+        run: |
+          cd windows-app\src-tauri
+          # --features msstore compiles out the code-town keyboard/mouse hooks
+          # (town_keys.rs). Without it the Store binary would carry WH_KEYBOARD_LL.
+          cargo tauri build --target x86_64-pc-windows-msvc --no-bundle --features msstore
+
+      # Cert report 09-18 was about functionality and screenshots, but the one
+      # thing that must never reach Microsoft is a keyboard hook in the Store
+      # binary. Prove it from the bytes rather than trusting the build flags.
+      - name: Prove the Store binaries carry no keyboard hook
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $uia = [IO.File]::ReadAllBytes("windows-app\helpers\terse-uia.exe")
+          $hit = [Text.Encoding]::ASCII.GetString($uia).Contains('HandleKeyMonitor') -or
+                 [Text.Encoding]::Unicode.GetString($uia).Contains('HandleKeyMonitor')
+          if ($hit) { throw "terse-uia.exe still contains HandleKeyMonitor — TERSE_MSSTORE did not take" }
+          Write-Host "terse-uia.exe: no HandleKeyMonitor"
+          $exe = "windows-app\src-tauri\target\x86_64-pc-windows-msvc\release\Terse.exe"
+          if ([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe)).Contains('SetWindowsHookExW')) {
+            throw "Terse.exe imports SetWindowsHookExW — was it built without --features msstore?"
+          }
+          Write-Host "Terse.exe: no SetWindowsHookExW import"
+
+      # An MSIX is a layout directory sealed by MakeAppx: the exe, the resources
+      # tauri.conf.json would have installed, the tiles, and the manifest.
+      - name: Stage the MSIX layout
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $layout = "$env:RUNNER_TEMP\msix"
+          New-Item -ItemType Directory -Force -Path $layout | Out-Null
+          $rel = "windows-app\src-tauri\target\x86_64-pc-windows-msvc\release"
+          Copy-Item "$rel\Terse.exe" $layout
+          Copy-Item -Recurse "windows-app\store\Assets" $layout
+          New-Item -ItemType Directory -Force -Path "$layout\hooks","$layout\ml" | Out-Null
+          Copy-Item "ml\model\complexity-vocab.json"              "$layout\ml\complexity-vocab.json"
+          Copy-Item "src\helpers\terse-compress.js"               $layout
+          Copy-Item "windows-app\helpers\terse-rewrite.ps1"       $layout
+          Copy-Item "windows-app\helpers\terse-optimize-tools.ps1" $layout
+          Copy-Item "windows-app\helpers\terse-uia.exe"           $layout
+          Copy-Item "windows-app\helpers\hooks\*"                 "$layout\hooks\"
+
+      - name: Fill in the identity (real if the secrets are set, placeholder if not)
+        id: identity
+        env:
+          IDENTITY_NAME: ${{ secrets.MSSTORE_IDENTITY_NAME }}
+          IDENTITY_PUBLISHER: ${{ secrets.MSSTORE_IDENTITY_PUBLISHER }}
+          PUBLISHER_DISPLAY: ${{ secrets.MSSTORE_PUBLISHER_DISPLAY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '${{ github.event.inputs.version }}'
+          if (-not $version) { $version = '1.3.4.0' }
+          if ($version -notmatch '^\d+\.\d+\.\d+\.0$') {
+            throw "Version must be four parts ending in 0. Got: $version"
+          }
+          $dry = -not ($env:IDENTITY_NAME -and $env:IDENTITY_PUBLISHER -and $env:PUBLISHER_DISPLAY)
+          if ($dry) {
+            Write-Host "::warning::No Partner Center secrets — DRY RUN. This MSIX proves packaging works but cannot be submitted."
+            $name = 'Placeholder.Terse'
+            $pub  = 'CN=00000000-0000-0000-0000-000000000000'
+            $disp = 'Placeholder'
+          } else {
+            $name = $env:IDENTITY_NAME; $pub = $env:IDENTITY_PUBLISHER; $disp = $env:PUBLISHER_DISPLAY
+          }
+          "dry=$dry" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $m = Get-Content windows-app\store\AppxManifest.xml -Raw
+          $m = $m.Replace('__IDENTITY_NAME__', $name).Replace('__IDENTITY_PUBLISHER__', $pub)
+          $m = $m.Replace('__PUBLISHER_DISPLAY__', $disp).Replace('__VERSION__', $version)
+          Set-Content "$env:RUNNER_TEMP\msix\AppxManifest.xml" $m -Encoding UTF8
+
+      - name: Pack the MSIX
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sdk = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+                 Where-Object { $_.Name -match '^10\.' } |
+                 Sort-Object Name -Descending | Select-Object -First 1
+          $makeappx = Join-Path $sdk.FullName "x64\makeappx.exe"
+          if (-not (Test-Path $makeappx)) { throw "makeappx.exe not found under $($sdk.FullName)" }
+          & $makeappx pack /d "$env:RUNNER_TEMP\msix" /p "$env:RUNNER_TEMP\Terse.msix" /o
+          if ($LASTEXITCODE -ne 0) { throw "makeappx failed with $LASTEXITCODE" }
+          "MSIX size: $((Get-Item "$env:RUNNER_TEMP\Terse.msix").Length) bytes"
+
+      # Deliberately UNSIGNED: the Store signs it after upload. Signing here
+      # would only make it sideloadable and would need a .pfx as a secret.
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.identity.outputs.dry == 'True' && 'Terse-MSIX-DRYRUN-not-submittable' || 'Terse-MSIX' }}
+          path: ${{ runner.temp }}/Terse.msix
+          if-no-files-found: error
+          retention-days: 30
+
+      # Store policy 10.1.1.3 (cert report 09-18): screenshots must be direct
+      # captures of the product running on Windows. So the runner launches the
+      # exact binaries staged into the MSIX and photographs its own screen.
+      - name: Capture Store screenshots on Windows
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference = 'Continue'
+          try { Set-DisplayResolution -Width 1920 -Height 1080 -Force -ErrorAction Stop }
+          catch { Write-Host "::warning::Set-DisplayResolution failed: $_" }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $out = "$env:RUNNER_TEMP\shots"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          function Snap([string]$name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("$out\$name.png", [System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose(); $bmp.Dispose()
+            Write-Host "$name.png  $($b.Width)x$($b.Height)"
+          }
+          $layout = "$env:RUNNER_TEMP\msix"
+          $p = Start-Process -FilePath "$layout\Terse.exe" -WorkingDirectory $layout -PassThru
+          Start-Sleep -Seconds 25
+          Snap "01-launch"
+          [System.Windows.Forms.SendKeys]::SendWait("^+t")   # Ctrl+Shift+T toggles the main window
+          Start-Sleep -Seconds 10
+          Snap "02-main-window"
+          Start-Sleep -Seconds 25
+          Snap "03-settled"
+          # So a run that shows nothing at least says what was on screen.
+          Get-Process | Where-Object { $_.MainWindowTitle } |
+            Select-Object ProcessName, Id, MainWindowTitle | Format-Table -AutoSize | Out-String | Write-Host
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Get-Process terse-uia -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Terse-Store-Screenshots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,82 @@
+name: Publish to Microsoft Store
+
+# ⚠ THIS IS FOR UPDATES, NOT FOR THE FIRST SUBMISSION.
+#
+# The Store submission API drives an existing product's draft. It cannot create
+# the listing, answer the age-rating questionnaire, or justify a restricted
+# capability — and Terse declares runFullTrust, which a human has to justify in
+# the submission form. So submission #1 is done by hand in Partner Center with
+# the MSIX from build-windows-store.yml; this workflow takes over from #2.
+#
+# SECRETS (set them yourself; never paste a key into a chat or a commit):
+#   MSSTORE_SELLER_ID / MSSTORE_PRODUCT_ID
+#   MSSTORE_TENANT_ID / MSSTORE_CLIENT_ID / MSSTORE_CLIENT_SECRET
+# from Partner Center → Account settings → User management → Azure AD applications.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run id of build-windows-store.yml whose MSIX to publish'
+        required: true
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to run without the secrets
+        env:
+          S: ${{ secrets.MSSTORE_SELLER_ID }}
+          P: ${{ secrets.MSSTORE_PRODUCT_ID }}
+          T: ${{ secrets.MSSTORE_TENANT_ID }}
+          C: ${{ secrets.MSSTORE_CLIENT_ID }}
+          K: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+        run: |
+          foreach ($v in 'S','P','T','C','K') {
+            if (-not (Get-Item "env:$v").Value) {
+              throw "A Partner Center secret is missing. See docs/RELEASE-WINDOWS-STORE.md."
+            }
+          }
+
+      - name: Fetch the MSIX from that build
+        uses: actions/download-artifact@v4
+        with:
+          name: Terse-MSIX
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: msix
+
+      - name: Refuse to publish a dry-run package
+        run: |
+          $pkg = Get-ChildItem msix -Filter *.msix | Select-Object -First 1
+          if (-not $pkg) { throw "No .msix in that artifact." }
+          # A dry-run build is packed with placeholder identity and the Store
+          # would reject it with a generic error; catch it here instead.
+          if ((Get-Content $pkg.FullName -Raw -Encoding Byte -TotalCount 400000 |
+               ForEach-Object { [char]$_ }) -join '' -match 'Placeholder\.Terse') {
+            throw "This MSIX was built without the identity secrets. Re-run build-windows-store.yml once they are set."
+          }
+
+      # node16 action: GitHub warns about the runtime. It still executes; if it
+      # ever stops, fall back to the msstore CLI (github.com/microsoft/msstore-cli).
+      - name: Configure the Store credentials
+        uses: microsoft/store-submission@v1
+        with:
+          command: configure
+          type: packaged
+          seller-id: ${{ secrets.MSSTORE_SELLER_ID }}
+          product-id: ${{ secrets.MSSTORE_PRODUCT_ID }}
+          tenant-id: ${{ secrets.MSSTORE_TENANT_ID }}
+          client-id: ${{ secrets.MSSTORE_CLIENT_ID }}
+          client-secret: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+
+      - name: Commit the draft submission
+        uses: microsoft/store-submission@v1
+        with:
+          command: publish
+          type: packaged
+          product-id: ${{ secrets.MSSTORE_PRODUCT_ID }}

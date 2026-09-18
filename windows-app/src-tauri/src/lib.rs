@@ -720,6 +720,15 @@ fn close_window(app: AppHandle) {
     }
 }
 
+/// Quit for real — the title bar's ⏻ and Ctrl+Q. ✕ only hides to the tray, and
+/// without this the renderer's quit button called a command that didn't exist,
+/// which is how Store certification ended up closing Terse from Task Manager.
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    shutdown_children(&app);
+    app.exit(0);
+}
+
 #[tauri::command]
 fn set_popup_minimized(on: bool, state: tauri::State<'_, AppState>, app: AppHandle) -> bool {
     let mut minimized = state.popup_minimized.lock().unwrap_or_else(|e| e.into_inner());
@@ -4605,7 +4614,19 @@ pub fn run() {
 
             Ok(())
         })
+        // Alt+F4, or "Close window" on the taskbar button, is how people quit an
+        // app on Windows. Left alone it would destroy just the main window and
+        // leave Terse running with nothing to reopen. (✕ goes through
+        // close_window and only hides; RunEvent::Exit reaps the helpers.)
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    window.app_handle().exit(0);
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            quit_app,
             get_sessions,
             remove_session,
             enter_pick_mode,

@@ -3310,6 +3310,14 @@ fn minimize_window(app: AppHandle) {
     }
 }
 
+/// Quit for real. ✕ only hides to the tray, so this (titlebar ⏻ / Ctrl+Q)
+/// is the way out that doesn't depend on finding the tray icon.
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    shutdown_children(&app);
+    app.exit(0);
+}
+
 #[tauri::command]
 fn navigate_to_cowork(app: AppHandle) {
     navigate_main(&app, "cowork.html");
@@ -3816,6 +3824,17 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        // "Close window" on the taskbar button, or Alt+F4, is how people quit
+        // an app on Windows. Left alone it would destroy only the main window
+        // and leave Terse running with nothing to reopen.
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    shutdown_children(window.app_handle());
+                    window.app_handle().exit(0);
+                }
+            }
+        })
         // single-instance MUST be registered first; with the deep-link feature it
         // also forwards a `terse://` URL from a second launch to the running app —
         // on Windows that second launch is how the browser hands the sign-in token
@@ -4217,7 +4236,7 @@ pub fn run() {
             let mode_aggressive = MenuItemBuilder::with_id("mode_aggressive", "Mode: Aggressive").build(app)?;
             let tray_doctor = MenuItemBuilder::with_id("tray_doctor", "Open Doctor · 体检").build(app)?;
             let tray_stats = MenuItemBuilder::with_id("tray_stats", "Open Stats").build(app)?;
-            let tray_quit = MenuItemBuilder::with_id("tray_quit", "Quit Terse").build(app)?;
+            let tray_quit = MenuItemBuilder::with_id("tray_quit", "Quit Terse · 退出").build(app)?;
             let sep = PredefinedMenuItem::separator(app)?;
             let tray_menu = MenuBuilder::new(app)
                 .items(&[
@@ -4239,7 +4258,14 @@ pub fn run() {
                 }
             };
 
-            let _tray = TrayIconBuilder::new()
+            // The icon has to be set here. Without one this tray entry was
+            // blank, and the only visible Terse icon was the menu-less one
+            // tauri.conf.json used to add — so right-click offered no Quit.
+            let mut tray_builder = TrayIconBuilder::new();
+            if let Some(icon) = app.default_window_icon() {
+                tray_builder = tray_builder.icon(icon.clone());
+            }
+            let _tray = tray_builder
                 .tooltip("Terse")
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
@@ -4660,6 +4686,7 @@ pub fn run() {
             sign_out,
             // ── Parity commands ported from macOS ──
             minimize_window,
+            quit_app,
             open_url,
             check_ax_permission,
             trial_grace_status,

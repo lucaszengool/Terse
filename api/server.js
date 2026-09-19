@@ -1152,6 +1152,26 @@ function addDaysIso(fromIso, days) {
   return new Date(start + days * 86400000).toISOString();
 }
 
+// Timed gift codes (gift_codes.kind). Months/years are calendar periods, so a
+// month code redeemed on the 19th runs to the 19th of next month.
+const GIFT_PERIODS = {
+  week:  { days: 7,   label: '1 week' },
+  month: { months: 1, label: '1 month' },
+  year:  { months: 12, label: '1 year' },
+};
+function addPeriodIso(fromIso, period) {
+  const base = fromIso ? new Date(fromIso).getTime() : 0;
+  const d = new Date(Math.max(Date.now(), base || 0));
+  if (period.days) return new Date(d.getTime() + period.days * 86400000).toISOString();
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + period.months);
+  // Clamp Jan 31 + 1 month to Feb 28/29 instead of rolling into March.
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, last));
+  return d.toISOString();
+}
+
 // Dashboard: the caller's code, share URL, and counts.
 app.get('/api/referral/:clerkUserId', (req, res) => {
   const id = req.params.clerkUserId;
@@ -1199,11 +1219,33 @@ app.post('/api/referral/redeem', express.json(), (req, res) => {
     if (norm.startsWith('TERSE-')) {
       const gift = db.getGiftCode.get(norm);
       if (!gift) return res.json({ granted: false, message: 'That gift code is not valid.' });
+      const kind = gift.kind || 'lifetime';
+      const timed = GIFT_PERIODS[kind];
+      if (!timed && kind !== 'lifetime') {
+        return res.json({ granted: false, message: 'That gift code is not valid.' });
+      }
+      // A lifetime user gains nothing from a week/month/year code — refuse
+      // BEFORE the claim so the code stays unspent and can be passed on.
+      const me = db.getUser.get(clerkUserId);
+      if (timed && me && me.lifetime_at) {
+        return res.json({ granted: false, message: 'You already have lifetime Pro — this code is still unused, pass it to a friend!' });
+      }
       // Atomic claim — the SELECT above is only for a nicer message; this is the
       // check that actually enforces single use.
       const claimed = db.claimGiftCode.run(clerkUserId, norm);
       if (claimed.changes !== 1) {
         return res.json({ granted: false, message: 'That gift code has already been used.' });
+      }
+      if (timed) {
+        // Stacks on top of any Pro time the user already has (referral days or
+        // an earlier gift code), same field the referral bonus uses.
+        const until = addPeriodIso(me && me.bonus_pro_until, timed);
+        db.setBonusProUntil.run(until, clerkUserId);
+        licenseCache.delete(clerkUserId);
+        return res.json({
+          granted: true, lifetime: false, kind, proUntil: until,
+          message: `Pro unlocked (${timed.label}) — active until ${until.slice(0, 10)}. 🎉`,
+        });
       }
       db.setLifetime.run(new Date().toISOString(), `gift:${norm}`, clerkUserId);
       licenseCache.delete(clerkUserId);

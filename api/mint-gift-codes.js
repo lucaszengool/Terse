@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 /**
- * mint-gift-codes.js — pre-mint single-use lifetime (买断) gift codes.
+ * mint-gift-codes.js — pre-mint single-use gift codes.
  *
- *   node api/mint-gift-codes.js [count] [batch]
- *   node api/mint-gift-codes.js 500 launch-2026
+ *   node api/mint-gift-codes.js [count] [batch] [kind]
+ *   node api/mint-gift-codes.js 500 launch-2026            # lifetime (default)
+ *   node api/mint-gift-codes.js 1000 week-2026 week         # 1 week of Pro
+ *
+ * kind: lifetime | week | month | year. Timed kinds extend users.bonus_pro_until
+ * (stacking on any Pro time already there); see GIFT_PERIODS in server.js.
  *
  * Writes the codes into the gift_codes table AND to a plain-text file you can
  * hand out from. Redeeming one (in the app's invite box, or POST
@@ -27,6 +31,13 @@ const db = require('./db');
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const GROUPS = 3;
 const GROUP_LEN = 4;
+const KINDS = ['lifetime', 'week', 'month', 'year'];
+const KIND_TEXT = {
+  lifetime: ['lifetime (买断)', 'Each code unlocks Terse permanently: every feature, every future update.'],
+  week:     ['1-week Pro (周卡)', 'Each code gives 1 week of Terse Pro from the moment it is redeemed.'],
+  month:    ['1-month Pro (月卡)', 'Each code gives 1 month of Terse Pro from the moment it is redeemed.'],
+  year:     ['1-year Pro (年卡)', 'Each code gives 1 year of Terse Pro from the moment it is redeemed.'],
+};
 
 function mintCode() {
   const bytes = crypto.randomBytes(GROUPS * GROUP_LEN);
@@ -54,19 +65,29 @@ if (process.argv[2] === '--import') {
   const lines = fs.readFileSync(file, 'utf8').split('\n')
     .map((l) => l.trim()).filter((l) => l.startsWith('TERSE-'));
   const b = process.argv[4] || path.basename(file).replace(/^gift-codes-|\.txt$/g, '');
+  // Kind comes from the file's own "kind:" header line (files minted before
+  // timed codes existed have none and are lifetime).
+  const hdr = fs.readFileSync(file, 'utf8').match(/^kind:\s*(\w+)/m);
+  const k = process.argv[5] || (hdr ? hdr[1] : 'lifetime');
+  if (!KINDS.includes(k)) { console.error(`unknown kind "${k}"`); process.exit(1); }
   let added = 0;
   for (const c of lines) {
     // INSERT OR IGNORE: re-importing never resets an already-redeemed code.
-    if (db.addGiftCode.run(c, b, 'lifetime').changes === 1) added++;
+    if (db.addGiftCode.run(c, b, k).changes === 1) added++;
   }
   const s = db.countGiftCodes.get(b);
-  console.log(`imported ${added} new code(s) from ${file} into batch "${b}"`);
+  console.log(`imported ${added} new ${k} code(s) from ${file} into batch "${b}"`);
   console.log(`batch now: ${s.total} total, ${s.used || 0} used`);
   process.exit(0);
 }
 
 const count = parseInt(process.argv[2] || '500', 10);
 const batch = process.argv[3] || 'gift-' + new Date().toISOString().slice(0, 10);
+const kind = process.argv[4] || 'lifetime';
+if (!KINDS.includes(kind)) {
+  console.error(`kind must be one of: ${KINDS.join(', ')}`);
+  process.exit(1);
+}
 
 if (!Number.isFinite(count) || count < 1 || count > 100000) {
   console.error('count must be between 1 and 100000');
@@ -80,7 +101,7 @@ while (codes.length < count) {
   if (seen.has(c)) continue;          // in-run duplicate
   if (db.getGiftCode.get(c)) continue; // already minted in an earlier batch
   seen.add(c);
-  const r = db.addGiftCode.run(c, batch, 'lifetime');
+  const r = db.addGiftCode.run(c, batch, kind);
   if (r.changes === 1) codes.push(c);
 }
 
@@ -89,12 +110,13 @@ fs.mkdirSync(outDir, { recursive: true });
 const outFile = path.join(outDir, `gift-codes-${batch}.txt`);
 
 const header = [
-  `Terse — lifetime (买断) gift codes`,
+  `Terse — ${KIND_TEXT[kind][0]} gift codes`,
   `batch: ${batch}`,
+  `kind: ${kind}`,
   `count: ${codes.length}`,
   `minted: ${new Date().toISOString()}`,
   ``,
-  `Each code unlocks Terse permanently: every feature, every future update.`,
+  KIND_TEXT[kind][1],
   `Redeem in the app: 邀请 / Invite panel → "Have a friend's code?" → paste → Redeem.`,
   ``,
   `EACH CODE WORKS ONCE. Treat this file like cash — anyone holding a code can`,
@@ -107,6 +129,6 @@ const header = [
 fs.writeFileSync(outFile, header + codes.join('\n') + '\n', 'utf8');
 
 const stat = db.countGiftCodes.get(batch);
-console.log(`minted ${codes.length} codes into batch "${batch}"`);
+console.log(`minted ${codes.length} ${kind} codes into batch "${batch}"`);
 console.log(`batch now: ${stat.total} total, ${stat.used || 0} used`);
 console.log(`file: ${outFile}`);

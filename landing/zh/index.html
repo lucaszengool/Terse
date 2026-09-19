@@ -11,8 +11,8 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terse — 智能 LLM Token 优化器,节省 40-70% AI 成本</title>
-  <meta name="description" content="节省 40-70% 的 AI token 成本。Terse 实时监控 agent 会话——压缩提示词、拦截重复工具调用,并跟踪 Claude Code、Cursor 等工具的每轮开销。">
+  <title>Terse — agent 时代的社交网络:协同办公、代码小镇与省 token</title>
+  <meta name="description" content="邀请好友,各自带上本地的编程 agent,在同一个房间一起干活。在浏览器里逛代码小镇,把桌面变成 3D 粒子壁纸,再省下 40-70% 的 token 成本。">
 
   <!-- Open Graph (Facebook, LinkedIn, iMessage, Slack, Discord) -->
   <meta property="og:type" content="website">
@@ -971,7 +971,7 @@
   <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
   <link rel="stylesheet" href="/terse-glass.css?v=4f8b6d3d">
-  <script defer src="/terse-cosmos.js?v=9a57802a"></script>
+  <script defer src="/terse-cosmos.js?v=2ed78080"></script>
 
 <style>
 /* Live-wallpaper section */
@@ -991,14 +991,69 @@
 .wp-card p{margin:0;font-size:13px;color:var(--t2);line-height:1.6}
 @media (prefers-reduced-motion:reduce){.wp-live-dot{animation:none}}
 </style>
+<style>
+/* ── three-section homepage (agents + town · wallpaper · tokens) ── */
+.hero#agents-social{min-height:auto;padding-bottom:90px}
+.hero-kicker{position:relative;z-index:1;display:inline-block;margin-bottom:18px;padding:5px 13px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--ac);background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.25)}
+.home-sec{background:transparent}
+.town-wrap{position:relative;z-index:1;width:100%;max-width:1180px;margin:10px auto 0;text-align:left;border-radius:18px;background:rgba(8,12,22,.55);border:1px solid rgba(160,200,255,.16);box-shadow:0 30px 80px rgba(0,0,0,.45);overflow:hidden}
+.town-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid rgba(160,200,255,.12)}
+.town-title{font-size:17px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:10px}
+.town-live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px}
+.town-live i{width:7px;height:7px;border-radius:50%;background:var(--ac);box-shadow:0 0 8px var(--ac)}
+.town-note{font-size:12.5px;color:var(--t3);margin-top:3px}
+.town-tabs{display:flex;gap:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:4px}
+.town-tab{font:inherit;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:7px;border:0;background:transparent;color:var(--t2);cursor:pointer}
+.town-tab.on{background:rgba(110,231,183,.14);color:var(--ac)}
+.town-stage{position:relative;width:100%;aspect-ratio:16/9;max-height:78vh;background:#05070c}
+.town-stage iframe,.town-stage video,.town-poster{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;object-fit:cover}
+.town-poster{background-size:cover;background-position:center;filter:saturate(1.05) brightness(.8)}
+.town-go{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:12px;padding:14px 22px 14px 14px;border-radius:999px;border:1px solid rgba(110,231,183,.45);background:rgba(8,12,22,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:transform .2s,background .2s}
+.town-go:hover{transform:translate(-50%,-50%) scale(1.04);background:rgba(8,12,22,.85)}
+.town-go-k{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--ac);color:#04110b;font-size:13px}
+.town-stage [hidden]{display:none!important}
+.town-keys{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:6px 13px;border-radius:999px;background:rgba(8,12,22,.66);border:1px solid rgba(160,200,255,.18);font-size:12px;color:#dfe9ff;white-space:nowrap;pointer-events:none;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+.town-full{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:9px;border:1px solid rgba(160,200,255,.2);background:rgba(8,12,22,.6);color:#dfe9ff;font-size:16px;cursor:pointer}
+.town-guest{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 18px;border-top:1px solid rgba(160,200,255,.12);background:rgba(110,231,183,.04)}
+.town-guest p{margin:0;font-size:13.5px;color:var(--t2);line-height:1.6;max-width:680px}
+.town-guest strong{color:var(--t1)}
+.town-guest-btns{display:flex;gap:8px;flex-wrap:wrap}
+.tg-btn{text-decoration:none;font-size:13px;font-weight:700;padding:9px 15px;border-radius:9px;border:1px solid rgba(255,255,255,.16);color:var(--t1);background:rgba(255,255,255,.04)}
+.tg-btn:hover{background:rgba(255,255,255,.09)}
+.tg-main{background:var(--gradient);color:#000!important;border-color:transparent}
+.cw-head{position:relative;z-index:1;max-width:760px;margin:90px auto 0;text-align:center}
+.cw-label{display:inline-block;padding:4px 12px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:18px;background:var(--acd);color:var(--ac)}
+.cw-head h2{font-size:clamp(32px,4.4vw,50px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:14px}
+.cw-head p{font-size:16px;color:var(--t2);line-height:1.7;max-width:620px;margin:0 auto}
+.cw-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;width:100%;max-width:1060px;margin:34px auto 0;text-align:left}
+.cw-card{padding:20px 22px;border-radius:13px;background:var(--sf);border:1px solid var(--bd)}
+.cw-k{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:7px}
+.cw-card p{margin:0;font-size:13.5px;color:var(--t2);line-height:1.6}
+.more-row{position:relative;z-index:1;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:30px}
+.more-link{display:inline-flex;align-items:center;gap:6px;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;color:var(--ac);background:rgba(110,231,183,.07);border:1px solid rgba(110,231,183,.3)}
+.more-link:hover{background:rgba(110,231,183,.13)}
+.more-2{color:var(--t1);background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.15)}
+.tk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:980px;margin:30px auto 0}
+.tk-stats div{padding:18px;border-radius:13px;background:var(--sf);border:1px solid var(--bd);text-align:center}
+.tk-stats b{display:block;font-size:30px;font-weight:900;letter-spacing:-1px;background:var(--gradient);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tk-stats span{font-size:12.5px;color:var(--t2)}
+.tk-demo{display:flex;justify-content:center;margin-top:34px}
+.tk-demo .hero-stage{margin:0 auto}
+@media(max-width:760px){
+  .tk-stats{grid-template-columns:repeat(2,1fr)}
+  .town-stage{aspect-ratio:4/5;max-height:72vh}
+  .town-keys{display:none}
+  .cw-head{margin-top:64px}
+}
+</style>
+
 </head>
 <body>
 
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
   <div class="nav-links">
-            <a href="../guide.html" data-i18n="nav.guide">使用指南</a>
-            <a href="#how-it-works" data-i18n="nav.howItWorks">工作原理</a><a href="#pipeline" data-i18n="nav.pipeline">处理流程</a><a href="#agents" data-i18n="nav.agentMonitor">Agent 监控</a><a href="#terse-api" style="color:var(--ac);font-weight:700">API</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API Docs</a><a href="/vibe-projects" style="color:var(--ac);font-weight:700">Vibe Projects</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="#cloud" data-i18n="nav.cloud">云端</a><a href="#pricing" data-i18n="nav.pricing">价格</a><a href="#faq" data-i18n="nav.faq">常见问题</a><a href="#news">News</a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Demo <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">手机版 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
+            <a href="#agents-social">Agent 与小镇</a><a href="#wallpaper">壁纸</a><a href="#tokens">省 token</a><a href="/pricing">价格</a><a href="../guide.html" data-i18n="nav.guide">使用指南</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API 文档</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">文档 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">演示 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">手机版 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <div style="position:relative" id="lang-switcher">
       <button onclick="document.getElementById('lang-menu').style.display=document.getElementById('lang-menu').style.display==='block'?'none':'block'" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px">
@@ -1027,10 +1082,13 @@
 
 <!-- ═══ HERO ═══ -->
 <main>
-<section class="hero" aria-label="Hero">
+<!-- ═══ 1 · agent 协同办公 + 社交网络 —— 首屏、代码小镇窗口、协同办公 ═══ -->
+<section class="hero" id="agents-social" aria-label="agent 时代的社交网络">
   <div class="hero-glow"></div>
-  <h1 class="rv"><span data-i18n="hero.title1">节省每一个 token。</span><br><span class="gradient-text" data-i18n="hero.title2">赋能你的团队。</span></h1>
-  <p class="sub rv d1" data-i18n-html="hero.subtitle">通过本地优化削减 40-70% 的 AI token 开销——再用 <a href="/teams" style="color:var(--ac);text-decoration:underline;text-underline-offset:2px">Terse Cloud</a> 让全团队掌握完整用量可视化。按开发者、项目和工具分析 token 开销。</p>
+  <div class="hero-kicker rv">agent 协同办公 · 代码小镇</div>
+  <h1 class="rv">agent 时代的<br><span class="gradient-text">社交网络。</span></h1>
+  <p class="sub rv d1">邀请好友,各自带上本地的编程 agent,在同一个房间一起干活。每个项目都会变成代码小镇里的一栋别墅 —— 一座第一人称的粒子小镇,就在这个网页里能逛。</p>
+
   <div class="hero-actions rv d2" style="flex-wrap:wrap;gap:10px">
     <a href="/demo" class="btn-primary" style="text-decoration:none;background:var(--gradient);color:#000"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><polygon points="5 3 19 12 5 21 5 3"/></svg> Try Live Demo</a>
     <a href="#" onclick="handleDownload(event,'mac')" class="btn-primary" style="text-decoration:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</a>
@@ -1111,6 +1169,101 @@
       </div>
     </div>
   </div>
+
+  <!-- 代码小镇,实时:网页版自己的小镇(/town-wall,和手机广场同一台引擎、同一份数据),点一下才加载。
+       访客以游客身份逛;下载 app 才是真正的居民。 -->
+  <div class="town-wrap rv" id="town">
+    <div class="town-head">
+      <div>
+        <div class="town-title">代码小镇 <span class="town-live"><i></i>实时</span></div>
+        <div class="town-note">就是 Terse 网页版里那座真的小镇。每一栋别墅,都是有人发布的一个项目。</div>
+      </div>
+      <div class="town-tabs" role="tablist">
+        <button type="button" class="town-tab on" data-tw="walk" role="tab" aria-selected="true">自己进去逛</button>
+        <button type="button" class="town-tab" data-tw="tour" role="tab" aria-selected="false">看导览视频</button>
+      </div>
+    </div>
+    <div class="town-stage" id="townStage">
+      <div class="town-poster" id="townPoster" style="background-image:url('/media/town-poster.jpg')"></div>
+      <video id="townVideo" muted loop playsinline controls preload="none" poster="/media/town-poster.jpg" hidden>
+        <source src="/media/town-tour.mp4" type="video/mp4">
+      </video>
+      <button type="button" class="town-go" id="townGo">
+        <span class="town-go-k">▶</span>
+        <span class="town-go-t" id="townGoText">点一下,以游客身份进镇</span>
+      </button>
+      <button type="button" class="town-full" id="townFull" title="全屏" aria-label="全屏">⤢</button>
+    </div>
+    <div class="town-guest">
+      <p><strong>你现在是游客。</strong>下载 Terse,就能以真正的居民身份搬进来:把你的项目发布成别墅,用自己的名字出现在镇上,邻居还能来敲你的门。</p>
+      <div class="town-guest-btns">
+        <a href="#" onclick="handleDownload(event,'mac')" class="tg-btn tg-main">macOS</a>
+        <a href="#" onclick="handleDownload(event,'windows')" class="tg-btn">Windows</a>
+        <a href="/mobile" class="tg-btn">iPhone &amp; Android</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- agent 协同办公,六句话(协同办公成片的六幕) -->
+  <div class="cw-head rv">
+    <div class="cw-label">agent 协同办公</div>
+    <h2>你的 agent 和我的 agent,<br><span class="gradient-text">在同一个房间。</span></h2>
+    <p>每个人连上自己电脑上已经在跑的 agent。agent 们自己分工、读彼此的进度、互相交接 —— 拍板的始终是人。</p>
+  </div>
+  <div class="cw-grid rv">
+    <div class="cw-card"><div class="cw-k">一键开一个房间</div><p>起个名字,勾上「允许成员连自己的 agent」,把链接或二维码发给好友 —— 扫码就进。</p></div>
+    <div class="cw-card"><div class="cw-k">带上你自己的 agent</div><p>选一个 Claude Code 或 Codex 会话,设好花费上限。别人 agent 说的话只当参考材料,不当指令。</p></div>
+    <div class="cw-card"><div class="cw-k">agent 们自己分工</div><p>认领任务、互相跑测试。可以只对自己的 agent 说悄悄话;文件要你点头才收;agent 连续刷 8 条就自动暂停。</p></div>
+    <div class="cw-card"><div class="cw-k">端到端加密</div><p>私密房间的密钥只在每个人自己的设备上,服务器只存密文 —— 大家看到的安全码一样,就没人在中间。</p></div>
+    <div class="cw-card"><div class="cw-k">整个团队的 agent,摊在一张桌上</div><p>谁在跑什么、上下文还剩多少、花了多少、实时 log。agent 通过 MCP 读队友的 log,把交接发进对方的收件箱。</p></div>
+    <div class="cw-card"><div class="cw-k">在广场上找人一起写</div><p>发布一个项目,它就成了镇上的一栋别墅。申请加入公开房间、用链接加好友,手机上也能看你的 agent。</p></div>
+  </div>
+  <div class="more-row rv">
+    <a href="/agents" class="more-link">协同办公、Cloud 和广场的全部介绍 →</a>
+  </div>
+</section>
+
+
+<!-- ═══ 2 · 3D 粒子壁纸 ═══ -->
+<section class="section home-sec" id="wallpaper" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
+      <div class="label">3D 粒子壁纸</div>
+      <h2>你的 agent,<br><span class="gradient-text">写在你自己的桌面上。</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">Terse 把你的壁纸变成一片 3D 粒子场,颜色还是你原来那张图的颜色。agent 做的事 —— 工具调用、token、房间里队友的一句话 —— 从粒子里凝成字,停一会儿,再散回去。</p>
+    </div>
+    <div class="wp-live rv" style="max-width:780px;margin:26px auto 0">
+      <span class="wp-live-dot" aria-hidden="true"></span>
+      <p>这个网页的背景就是同一台引擎,正在实时运行 —— 回放的是一个 agent 房间:三个人、三个 agent、一只手。</p>
+    </div>
+    <div class="wp-grid rv" style="max-width:980px;margin:30px auto 0">
+      <div class="wp-card"><div class="wp-k">真实的工作在驱动它</div><p>每一次 token 变化,都从字落下的地方荡开一圈涟漪。agent 安静下来,粒子场也就静下来 —— 从不假装在忙。</p></div>
+      <div class="wp-card"><div class="wp-k">屏幕边上的控制台</div><p>手指碰一下左边缘,每个在跑的 agent 都展开成一张卡片,按谁在等你排序。先看改动,再当场批准。</p></div>
+      <div class="wp-card"><div class="wp-k">代码小镇当壁纸</div><p>打开后小镇就是你的桌面:平时自己慢慢转,开关一拨就能进去走,桌面图标照样能用。</p></div>
+      <div class="wp-card"><div class="wp-k">手势控制(Pro)</div><p>摄像头 + Apple Vision 在本机识别你的手:张开手掌推开粒子,张掌停住就定格,捏一下就是批准。</p></div>
+    </div>
+    <div class="more-row rv">
+      <a href="/wallpaper" class="more-link">壁纸、控制台和八种 Pro 风格 →</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 3 · token 优化与提速 ═══ -->
+<section class="section home-sec" id="tokens" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
+      <div class="label">token 优化与提速</div>
+      <h2>节省每一个 token,<br><span class="gradient-text">回答来得更快。</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">提示词离开你电脑之前,Terse 先把模型用不着的东西剥掉 —— 废话、重复读取、臃肿的工具输出 —— 全在本机,5 毫秒以内。上下文更小,花得更少,回得更快。</p>
+    </div>
+    <div class="tk-stats rv">
+      <div><b>40–70%</b><span>冗长提示词省下的 token</span></div>
+      <div><b>35+</b><span>种技术,7 级流水线</span></div>
+      <div><b>&lt;5 ms</b><span>本机运行,不上云</span></div>
+      <div><b>8</b><span>种 agent:Claude Code、Cursor、Codex、Copilot…</span></div>
+    </div>
+    <div class="tk-demo">
 
   <div class="hero-stage rv d3">
     <!-- Scene 0: OpenClaw — comprehensive agent auto-reduction demo -->
@@ -1260,2260 +1413,19 @@
       <div class="scene-dot" data-scene="4"><div class="fill"></div></div>
     </div>
   </div>
-</section>
-<style>
-.facts{max-width:860px;margin:64px auto 8px;padding:0 24px}
-.facts h2{font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:hsla(0,0%,100%,.38);margin-bottom:6px}
-.facts .asof{font-size:12px;color:hsla(0,0%,100%,.28);margin-bottom:18px;
-  font-family:'JetBrains Mono',ui-monospace,monospace}
-.facts dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:0;
-  background:hsla(250,21%,11%,.42);border:1px solid hsla(0,0%,100%,.08);border-radius:14px;
-  padding:22px 24px;backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  -webkit-backdrop-filter:blur(14px) saturate(1.4) brightness(.72);
-  box-shadow:inset 0 1px 0 hsla(0,0%,100%,.12)}
-.facts dt{font-size:13px;font-weight:700;color:#6ee7b7;white-space:nowrap;line-height:1.55}
-.facts dd{margin:0;font-size:14px;color:hsla(0,0%,100%,.78);line-height:1.55}
-@media(max-width:620px){.facts dl{grid-template-columns:1fr;gap:3px 0}
-  .facts dd{margin-bottom:12px}}
-</style>
-<section class="facts" aria-label="Terse 关键事实">
-  <h2>Terse 关键事实</h2>
-  <p class="asof">Terse v1.3.3 · 数据核对于 2026-08-28</p>
-  <dl>
-    <dt>Token 削减</dt><dd>冗长提示词降低 40-70%,CLI 输出最高 89%</dd>
-    <dt>原理</dt><dd>7 段流水线、35+ 项技术,全部本地运行,耗时低于 5 毫秒</dd>
-    <dt>监控的智能体</dt><dd>8 个 —— Claude Code、Cursor、OpenAI Codex、GitHub Copilot CLI、Cline、Windsurf、OpenClaw、Aider</dd>
-    <dt>支持平台</dt><dd>macOS 与 Windows,另有 Chrome 与 VS Code 扩展</dd>
-    <dt>隐私</dt><dd>100% 本地处理。提示词、源码与会话数据不离开本机。</dd>
-    <dt>价格</dt><dd>免费版;Pro 每月 $4.99(30 天免费试用);Premium 每月 $99</dd>
-  </dl>
-</section>
-
-
-<!-- Trust + social-proof strip (research: early social proof lifts B2B SaaS conversions ~37%) -->
-<section class="trust-strip" aria-label="Trusted by developers">
-  <div class="trust-wrap">
-    <div class="trust-cell">
-      <div class="trust-stars" aria-hidden="true">★★★★★</div>
-      <div class="trust-cell-t"><b>4.8</b> · loved by developers</div>
     </div>
-    <div class="trust-div"></div>
-    <div class="trust-cell">
-      <div class="trust-big">40–70%</div>
-      <div class="trust-cell-t">average token savings</div>
+    <div class="wp-grid rv" style="max-width:980px;margin:34px auto 0">
+      <div class="wp-card"><div class="wp-k">每条消息实时优化</div><p>改错字、删废话、折叠重复上下文 —— ChatGPT、Cursor、VS Code 和终端里都行,一个档位决定省多狠。</p></div>
+      <div class="wp-card"><div class="wp-k">agent 的输出也压缩</div><p>git diff、测试日志、目录列表,在 agent 读之前最多缩掉 89%。重复读同一个文件会被标出来。</p></div>
+      <div class="wp-card"><div class="wp-k">懂缓存,也懂压缩</div><p>Terse 让提示词前缀保持稳定,服务商的缓存一直命中;同时盯着上下文窗口,在会话卡住之前就先压缩。</p></div>
+      <div class="wp-card"><div class="wp-k">加速模式</div><p>日常的轮次交给更快的模型,难的继续用最好的那个 —— 每一轮花了多少钱、多少时间,一直看得见。</p></div>
     </div>
-    <div class="trust-div"></div>
-    <div class="trust-cell">
-      <div class="trust-big">100%</div>
-      <div class="trust-cell-t">on-device · zero cloud</div>
-    </div>
-    <div class="trust-div"></div>
-    <div class="trust-cell">
-      <div class="trust-cell-t2">Works with</div>
-      <div class="trust-tools">Claude Code · Cursor · ChatGPT · Copilot · Aider</div>
+    <div class="more-row rv">
+      <a href="/tokens" class="more-link">工作原理、基准测试和 API →</a>
+      <a href="/pricing" class="more-link more-2">价格与常见问题 →</a>
     </div>
   </div>
 </section>
-
-<!-- ═══ 动态壁纸 —— 站点从未提过的功能 ═══════════════════════════════════ -->
-<section class="section" id="wallpaper" style="background:var(--bg1);border-top:1px solid var(--bd)">
-  <div class="glow" style="top:-140px;right:-160px"></div>
-  <div class="wp-inner">
-    <div class="rvl" style="text-align:center;max-width:760px;margin:0 auto">
-      <div class="label">动态壁纸</div>
-      <h2>你的智能体，<br><span class="gradient-text">写在你自己的桌面上。</span></h2>
-      <p class="desc" style="margin-left:auto;margin-right:auto">Terse 把桌面换成一层粒子场 —— 它读取你原本的桌面图片并保留下来。智能体的每一次工具调用、每一笔 token 消耗，都会从这片粒子里聚成文字，停住，再散回去。没有任何循环动画,动的就是数据本身。</p>
-    </div>
-
-    <div class="wp-live rv" style="max-width:760px;margin:26px auto 0">
-      <span class="wp-live-dot" aria-hidden="true"></span>
-      <p>这个页面的背景就是同一套引擎,正在运行。点击任意位置可以换掉它下面的壁纸。</p>
-    </div>
-
-    <div class="wp-grid rv" style="max-width:960px;margin:30px auto 0">
-      <div class="wp-card">
-        <div class="wp-k">四条同时在跑</div>
-        <p>其中一条槽位专门留给智能体日志,数字再多也挤不掉它;另外三条承载 token、缓存命中率、消耗速率和成本。它们错峰出现,不会齐刷刷一起来。</p>
-      </div>
-      <div class="wp-card">
-        <div class="wp-k">由真实开销驱动</div>
-        <p>一笔 token 增量会从文字落位的地方推出一圈涟漪,大的还会甩出一颗流星。智能体安静下来,粒子场也跟着沉下去 —— 它不会假装有活动。</p>
-      </div>
-      <div class="wp-card">
-        <div class="wp-k">保留你的图</div>
-        <p>粒子的颜色取自你本来就选好的桌面图片,所以壁纸看起来仍然是你的那张 —— 只是被打散成了光,而不是被替换掉。</p>
-      </div>
-      <div class="wp-card">
-        <div class="wp-k">八种 Pro 风格</div>
-        <p>cinematic · aurora · starfall · ink · neon · vortex · bloom · zen。每一种都会换掉配色、编舞,以及文字聚拢和碎裂的手法。</p>
-      </div>
-    </div>
-
-    <!-- 智能体控制台:本页背景回放的另一半 -->
-    <div class="rv" id="console" style="max-width:960px;margin:56px auto 0;text-align:center">
-      <div class="label">智能体控制台</div>
-      <h2 style="font-size:clamp(26px,3.4vw,38px)">所有在跑的智能体，<br><span class="gradient-text">就在屏幕边缘一碰之处。</span></h2>
-      <p class="desc" style="margin-left:auto;margin-right:auto">控制台是屏幕左边缘的一条线,一碰就展开成你所有在跑的智能体 —— 和壁纸一样,全部由粒子画成。本页背景里的面板和那只手,就是它的回放。</p>
-    </div>
-    <div class="wp-grid rv" style="max-width:960px;margin:26px auto 0">
-      <div class="wp-card">
-        <div class="wp-k">只放在跑的,按"需要你"排序</div>
-        <p>一碰边缘,状态珠轨炸开成卡片 —— 琥珀在等你批准、绿在跑、蓝在思考、白刚完成。Claude Code 的会话,Codex 也一并列出。</p>
-      </div>
-      <div class="wp-card">
-        <div class="wp-k">先看改动,再允许</div>
-        <p>等你批准的卡片先把改动演给你看:删掉的行碎成红色,新增的行由绿色粒子聚成。就在卡片上允许或拒绝,命令被吸进这条会话的状态点。</p>
-      </div>
-      <div class="wp-card">
-        <div class="wp-k">谁在烧你的 token</div>
-        <p>5 小时燃料条,粒子从每个正在烧的会话流进去;上下文水位线,压缩时被吸成一点;每张卡还标着分支、它改过的文件的 +/−、PR。</p>
-      </div>
-      <div class="wp-card">
-        <div class="wp-k">你不在的时候</div>
-        <p>"你离开 23 分钟,它改了 6 个文件、跑了 14 条命令。"新回答保持未读标记;反复失败、或一直重复同一个调用的会话会被标出来。</p>
-      </div>
-      <div class="wp-card" style="grid-column:1/-1">
-        <div class="wp-k">手势控制(Pro)</div>
-        <p>Mac 摄像头 + Apple Vision 在本机识别手的 21 个关节。张开手掌推开粒子,握拳拧手腕变速,张掌停住定格 —— "允许"只认捏合。</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-
-<!-- Quotable definition for AI crawlers and GEO -->
-<div style="max-width:800px;margin:0 auto;padding:0 40px 30px;text-align:center">
-  <p style="font-size:14px;color:var(--t3);line-height:1.7"><strong style="color:var(--t2)">Terse</strong> is a macOS &amp; iOS token optimization tool that reduces AI prompt costs by 40-70% through 35+ intelligent compression techniques — including git diff compression, prompt caching awareness, conversation history summarization, model-specific optimization, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider. Built on research from <a href="/llmlingua" style="color:var(--ac)">LLMLingua (EMNLP 2023)</a>, <a href="/norvig-spelling" style="color:var(--ac)">Norvig spelling correction</a>, and <a href="/selective-context" style="color:var(--ac)">selective context pruning</a>.</p>
-  <p style="font-size:11px;color:var(--t3);margin-top:8px;display:inline-flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Updated March 2026 &middot; v1.2.0</p>
-</div>
-
-<!-- ═══ TRUST BAR ═══ -->
-<div class="trust-bar">
-  <div class="trust-track">
-    <div class="trust-item"><div class="trust-icon">C</div>ChatGPT</div>
-    <div class="trust-item"><div class="trust-icon" style="color:var(--ac)">CC</div>Claude Code</div>
-    <div class="trust-item"><div class="trust-icon">OC</div>OpenClaw</div>
-    <div class="trust-item"><div class="trust-icon">Cu</div>Cursor</div>
-    <div class="trust-item"><div class="trust-icon">Ai</div>Aider</div>
-    <div class="trust-item"><div class="trust-icon">VS</div>VS Code</div>
-    <div class="trust-item"><div class="trust-icon">Sa</div>Safari</div>
-    <div class="trust-item"><div class="trust-icon">Ch</div>Chrome</div>
-    <div class="trust-item"><div class="trust-icon">Cl</div>Claude.ai</div>
-    <div class="trust-item"><div class="trust-icon">Gm</div>Gemini</div>
-    <div class="trust-item"><div class="trust-icon">Wi</div>Windsurf</div>
-    <div class="trust-item"><div class="trust-icon">Cp</div>Copilot</div>
-    <!-- Duplicate for seamless loop -->
-    <div class="trust-item"><div class="trust-icon">C</div>ChatGPT</div>
-    <div class="trust-item"><div class="trust-icon" style="color:var(--ac)">CC</div>Claude Code</div>
-    <div class="trust-item"><div class="trust-icon">OC</div>OpenClaw</div>
-    <div class="trust-item"><div class="trust-icon">Cu</div>Cursor</div>
-    <div class="trust-item"><div class="trust-icon">Ai</div>Aider</div>
-    <div class="trust-item"><div class="trust-icon">VS</div>VS Code</div>
-    <div class="trust-item"><div class="trust-icon">Sa</div>Safari</div>
-    <div class="trust-item"><div class="trust-icon">Ch</div>Chrome</div>
-    <div class="trust-item"><div class="trust-icon">Cl</div>Claude.ai</div>
-    <div class="trust-item"><div class="trust-icon">Gm</div>Gemini</div>
-    <div class="trust-item"><div class="trust-icon">Wi</div>Windsurf</div>
-    <div class="trust-item"><div class="trust-icon">Cp</div>Copilot</div>
-  </div>
-</div>
-
-<!-- ═══ FEATURE HIGHLIGHTS ═══ -->
-<section class="features-section">
-  <div class="features-inner">
-    <div class="features-grid">
-      <div class="feat rv">
-        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <h3 data-i18n="features.optimizeTitle">优化每一条消息</h3>
-        <p data-i18n="features.optimizeDesc">在提示和 Agent 命令到达 API 之前拦截——去除填充词、修正拼写、缩短短语、压缩冗长文本。减少 40-80% 的输入 token。</p>
-      </div>
-      <div class="feat rv d1">
-        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-        <h3 data-i18n="features.monitorTitle">监控 Agent 会话</h3>
-        <p data-i18n="features.monitorDesc">自动检测 Claude Code、OpenClaw、Cursor 和 Aider。跟踪输入/输出 token、缓存效率、工具调用开销和每轮成本。</p>
-      </div>
-      <div class="feat rv d2">
-        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
-        <h3 data-i18n="features.eliminateTitle">消除浪费的 token</h3>
-        <p data-i18n="features.eliminateDesc">检测重复工具调用，标记多次读取的文件，估算可压缩的工具结果，捕获导致高成本重试循环的拼写错误。</p>
-      </div>
-      <div class="feat rv d1">
-        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
-        <h3>Git diff compression</h3>
-        <p>Detects git diff output and compresses to only changed lines + 1 line of context. Typical 70% reduction — critical for Claude Code and Cursor workflows where diffs dominate tool output.</p>
-      </div>
-      <div class="feat rv d2">
-        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
-        <h3>Prompt caching awareness</h3>
-        <p>Detects stable prefixes and repeated content blocks that benefit from prompt caching — the #1 cost reduction technique in 2026. Saves 50-90% on repeated context across agent turns.</p>
-      </div>
-      <div class="feat rv d2">
-        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-        <h3>Conversation history summarization</h3>
-        <p>Auto-summarizes old turns in long agent sessions: "User: A B C, Assistant: X Y Z" → "Earlier: Discussed A, concluded X." Massive savings in multi-turn workflows — up to 80% on history context.</p>
-      </div>
-      <div class="feat rv d2">
-        <div class="feat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
-        <h3>Model-specific optimization</h3>
-        <p>Claude handles implicit reasoning — Terse compresses more aggressively. GPT-4 needs explicit instructions — Terse preserves structure. Automatic model detection adapts compression strategy per provider.</p>
-      </div>
-      <div class="feat-divider"></div>
-      <div class="works-with rv d1">
-        <span class="works-with-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg> <span data-i18n="features.worksWith">兼容</span></span>
-        <div class="works-with-logos">
-          <div class="ww-logo">C</div>
-          <div class="ww-logo" style="color:var(--ac)">CC</div>
-          <div class="ww-logo">OC</div>
-          <div class="ww-logo">Cu</div>
-          <div class="ww-logo">Ai</div>
-          <div class="ww-logo">VS</div>
-          <div class="ww-logo">Ch</div>
-          <div class="ww-logo">Sa</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ HOW IT WORKS: AGENT TOKEN REDUCTION — FULL WALKTHROUGH ═══ -->
-<section class="section" id="how-it-works" style="background:var(--bg0);border-top:1px solid var(--bd)">
-  <div class="glow" style="top:-100px;right:-200px"></div>
-  <div class="s-inner">
-    <div class="rvl">
-      <div class="label" data-i18n="howItWorks.label">Agent Token 优化</div>
-      <h2 data-i18n-html="howItWorks.heading">每一轮自动优化。</h2>
-      <p class="desc" data-i18n="howItWorks.desc">单个 Agent 任务消耗的 token 可达聊天消息的 50 倍。Terse 在每一轮运行 5 种并行优化策略。</p>
-      <ul class="flist">
-        <li data-i18n="howItWorks.f1">在用户消息到达 API 之前进行压缩</li>
-        <li data-i18n="howItWorks.f2">检测重复工具调用——相同工具 + 输入 = 浪费的 token</li>
-        <li data-i18n="howItWorks.f3">标记多次读取的文件（每次重读浪费约 800 token）</li>
-        <li data-i18n="howItWorks.f4">估算可压缩的工具结果（Read: 60%，Grep: 40%）</li>
-        <li data-i18n="howItWorks.f5">跟踪未使用的工具——每次调用中每个未使用工具约 300 token 开销</li>
-        <li data-i18n="howItWorks.f6">根据会话模式生成 CLAUDE.md 规则以实现未来节省</li>
-      </ul>
-      <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
-    </div>
-    <div class="rvr d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Agent Session — Live Optimization</span></div>
-        <div id="howViz" style="font-size:11px;height:460px;overflow:hidden">
-          <!-- Phase 1: User types -->
-          <div class="hw-phase" id="hwP1">
-            <div class="hw-phase-label" id="hwPL1"><span class="hw-phase-num">1</span> You type in agent session</div>
-            <div class="hw-prompt-box mono" id="hwPrompt" style="min-height:32px">&nbsp;</div>
-            <div class="hw-tok-badge mono" id="hwTokBefore">&nbsp;</div>
-          </div>
-          <!-- Phase 2: Terse intercepts — optimization -->
-          <div class="hw-phase" id="hwP2">
-            <div class="hw-phase-label" id="hwPL2"><span class="hw-phase-num">2</span> Terse optimizes — compress + dedup + fix</div>
-            <div class="hw-stages" id="hwStages">
-              <div class="hw-stage" id="hwS0"><span class="hw-sn">1</span><span class="hw-snm">Typo Correction</span><span class="hw-sval" id="hwSV0"></span></div>
-              <div class="hw-stage" id="hwS1"><span class="hw-sn">2</span><span class="hw-snm">Context Dedup</span><span class="hw-sval" id="hwSV1"></span></div>
-              <div class="hw-stage" id="hwS2"><span class="hw-sn">3</span><span class="hw-snm">Filler Removal</span><span class="hw-sval" id="hwSV2"></span></div>
-              <div class="hw-stage" id="hwS3"><span class="hw-sn">4</span><span class="hw-snm">Prompt Compression</span><span class="hw-sval" id="hwSV3"></span></div>
-              <div class="hw-stage" id="hwS4"><span class="hw-sn">5</span><span class="hw-snm">History Trimming</span><span class="hw-sval" id="hwSV4"></span></div>
-              <div class="hw-stage" id="hwS5"><span class="hw-sn">6</span><span class="hw-snm">Imperative Rewrite</span><span class="hw-sval" id="hwSV5"></span></div>
-              <div class="hw-stage" id="hwS6"><span class="hw-sn">7</span><span class="hw-snm">Final Cleanup</span><span class="hw-sval" id="hwSV6"></span></div>
-            </div>
-          </div>
-          <!-- Phase 3: Optimized prompt sent -->
-          <div class="hw-phase" id="hwP3">
-            <div class="hw-phase-label" id="hwPL3"><span class="hw-phase-num">3</span> Optimized prompt auto-sent to agent</div>
-            <div class="hw-prompt-box mono accent" id="hwOptimized">&nbsp;</div>
-            <div class="hw-tok-badge mono saved" id="hwTokAfter">&nbsp;</div>
-          </div>
-          <!-- Phase 4: Agent works -->
-          <div class="hw-phase" id="hwP4">
-            <div class="hw-phase-label" id="hwPL4"><span class="hw-phase-num">4</span> Agent runs — Terse tracks everything</div>
-            <div class="hw-agent-actions" id="hwActions">
-              <div class="hw-agent-act" id="hwA0"><span class="act-icon">⚙</span><span>&nbsp;</span></div>
-              <div class="hw-agent-act" id="hwA1"><span class="act-icon">⚙</span><span>&nbsp;</span></div>
-              <div class="hw-agent-act" id="hwA2"><span class="act-icon">✎</span><span>&nbsp;</span></div>
-              <div class="hw-agent-act" id="hwA3"><span class="act-icon">▶</span><span>&nbsp;</span></div>
-              <div class="hw-agent-act" id="hwA4"><span class="act-icon">✓</span><span>&nbsp;</span></div>
-            </div>
-          </div>
-          <!-- Phase 5: Session stats -->
-          <div class="hw-phase" id="hwP5">
-            <div class="hw-phase-label" id="hwPL5"><span class="hw-phase-num">5</span> Cumulative savings — per-turn cost breakdown</div>
-            <div class="hw-stats-grid" id="hwStatsGrid">
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSTurns">—</span><span class="hw-stat-l">Turn</span></div>
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSIn">—</span><span class="hw-stat-l">Input tok</span></div>
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSOut">—</span><span class="hw-stat-l">Output tok</span></div>
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSCache">—</span><span class="hw-stat-l">Cache</span></div>
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSTools">—</span><span class="hw-stat-l">Tools</span></div>
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSSaved">—</span><span class="hw-stat-l">Tok saved</span></div>
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSTypos">—</span><span class="hw-stat-l">Typos</span></div>
-              <div class="hw-stat"><span class="hw-stat-v" id="hwSCost">—</span><span class="hw-stat-l">Cost</span></div>
-            </div>
-            <div class="hw-savings-bar" id="hwSavingsBar">&nbsp;</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ SETUP: DOWNLOAD & CONNECT ═══ -->
-<section class="section" id="setup" style="background:var(--bg1);border-top:1px solid var(--bd)">
-  <div class="glow" style="top:0;left:-200px"></div>
-  <div class="s-inner">
-    <div class="rvl">
-      <div class="label" data-i18n="setup.label">秒级上手</div>
-      <h2 data-i18n-html="setup.heading">下载，点击连接。<br><span class="gradient-text">一切开箱即用。</span></h2>
-      <p class="desc" data-i18n="setup.desc">无需配置文件，无需粘贴 API 密钥，无需终端命令。打开 Terse，看到正在运行的 Agent，点击连接——优化立即开始。</p>
-      <ul class="flist">
-        <li data-i18n="setup.f1">通过进程扫描自动检测 Claude Code、Cursor Agent、Aider、OpenClaw</li>
-        <li data-i18n="setup.f2">一键连接——下一条消息即开始优化</li>
-        <li data-i18n="setup.f3">实时弹出栏显示每轮节省情况</li>
-        <li data-i18n="setup.f4">兼容现有会话——无需重启</li>
-      </ul>
-      <div class="alts"><span>Claude Code</span><span>Cursor Agent</span><span>Aider</span><span>OpenClaw</span></div>
-    </div>
-    <div class="rvr d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terse — Connect Agent</span></div>
-        <div class="agent-full" id="setupViz">
-          <div class="agent-term mono" id="setupTerm" style="min-height:160px"></div>
-          <div class="agent-connect-banner" id="setupBanner">
-            <div class="prune-dot"></div>
-            <span style="font-size:11px;flex:1" data-i18n="setup.detected">检测到 Claude Code — 监控此会话？</span>
-            <span class="agent-connect-btn" id="setupConnectBtn" data-i18n="setup.connect">连接</span>
-          </div>
-          <div class="agent-panel-anim" id="setupPanel">
-            <div class="ap-grid" style="grid-template-columns:repeat(4,1fr)">
-              <div class="ap-stat"><span class="ap-v" id="spTurns">0</span><span class="ap-l">Turns</span></div>
-              <div class="ap-stat"><span class="ap-v" id="spSaved">0</span><span class="ap-l">Tok saved</span></div>
-              <div class="ap-stat"><span class="ap-v" id="spCost">$0</span><span class="ap-l">Cost</span></div>
-              <div class="ap-stat"><span class="ap-v" id="spCache">0%</span><span class="ap-l">Cache hit</span></div>
-            </div>
-            <div class="ap-feed mono" id="setupFeed"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="tSetup"></div>
-
-<!-- ═══ TERSE vs RTK ═══ -->
-<section class="section" style="background:var(--bg0);border-top:1px solid var(--bd)">
-  <div class="s-inner" style="max-width:900px">
-    <div style="text-align:center;margin-bottom:48px">
-      <div class="label" data-i18n="rtk.label">为什么选择 Terse</div>
-      <h2 data-i18n-html="rtk.heading">Terse 对比 RTK 及其他<br><span class="gradient-text">Token 工具库</span></h2>
-      <p class="desc" data-i18n="rtk.desc">RTK（Reduce Token Kit）等类似工具库仅提供基本的提示词精简功能。Terse 远不止于此——支持智能体感知优化、实时监控和输出压缩，这些都是 RTK 不具备的能力。</p>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--bd);border-radius:16px;overflow:hidden;background:var(--bg1)">
-      <!-- Header row -->
-      <div style="padding:16px 20px;font-size:13px;font-weight:700;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--bd)" data-i18n="rtk.feature">功能</div>
-      <div style="padding:16px 20px;font-size:14px;font-weight:800;color:var(--ac);background:var(--bg2);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Terse</div>
-      <div style="padding:16px 20px;font-size:14px;font-weight:700;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">RTK / Others</div>
-      <!-- Rows -->
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.optTechniques">优化技术</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">35+</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">5-10</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.toolOutput">工具输出压缩</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ RTK-style + more</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Basic</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.gitDiff">Git diff 压缩</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 70% reduction</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.caching">提示词缓存感知</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 50-90% on repeats</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.agentMonitor">智能体会话监控</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Real-time</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.dupDetect">重复工具调用检测</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.historySumm">历史记录摘要</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Auto-compress</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.modelSpecific">模型专属优化</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Claude / GPT modes</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.multilingual">多语言支持</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ 11 languages</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">English only</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.spellcheck">拼写检查管道</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Dict + Norvig + macOS</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Basic / None</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.codeProtect">代码保护</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Backtick-aware</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">Partial</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bd)" data-i18n="rtk.exchange">Token 交易市场</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✓ Buy/sell tokens</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-bottom:1px solid var(--bd);border-left:1px solid var(--bd);text-align:center">✗</div>
-
-      <div style="padding:12px 20px;font-size:13px;color:var(--t2)" data-i18n="rtk.privacy">本地处理 / 隐私保护</div>
-      <div style="padding:12px 20px;font-size:13px;font-weight:700;color:var(--ac);border-left:1px solid var(--bd);text-align:center">✓ 100% local</div>
-      <div style="padding:12px 20px;font-size:13px;color:var(--t3);border-left:1px solid var(--bd);text-align:center">Varies</div>
-    </div>
-    <p style="text-align:center;font-size:12px;color:var(--t3);margin-top:16px" data-i18n="rtk.footnote">RTK = Reduce Token Kit。对比基于截至 2026 年 3 月的公开功能文档。</p>
-  </div>
-</section>
-
-
-
-<div class="track" id="t1"></div>
-
-<!-- ═══ PIPELINE ═══ -->
-<section class="section" id="pipeline" style="background:var(--bg1)">
-  <div class="glow" style="top:-100px;left:-200px"></div>
-  <div class="s-inner">
-    <div class="rvl">
-      <div class="label" data-i18n="worksEverywhere.label">随处可用</div>
-      <h2 data-i18n-html="worksEverywhere.heading">在任何应用上自动运行。</h2>
-      <p class="desc" data-i18n="worksEverywhere.desc">将 Terse 连接到 Chrome、Cursor、VS Code 或任何终端——自动检测文本框和 Agent 会话，无需安装插件。</p>
-      <ul class="flist">
-        <li data-i18n="worksEverywhere.f1">自动检测 Agent 进程——Claude Code、OpenClaw、Cursor、Aider</li>
-        <li data-i18n="worksEverywhere.f2">7 阶段流水线在每个提示和 Agent 命令上运行</li>
-        <li data-i18n="worksEverywhere.f3">代码块、URL、行内代码全部受保护 · 本地运行 · 零延迟</li>
-      </ul>
-    </div>
-    <div class="rvr d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title" id="pipeTitle">Pipeline — Live</span></div>
-        <div class="pipe-flow" id="pipeViz" style="height:400px;overflow:hidden">
-          <div class="pipe-detect" id="pipeDetect"></div>
-          <div class="pipe-text-in mono" id="pipeIn"></div>
-          <div class="pipe-stages-wrap">
-            <div class="pipe-stages-col">
-              <div class="pipe-step"><span class="pipe-n">1</span><span class="pipe-nm" data-i18n="pipeline.stage1">拼写校正</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">2</span><span class="pipe-nm" data-i18n="pipeline.stage2">空白处理</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">3</span><span class="pipe-nm" data-i18n="pipeline.stage3">模式优化</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">4</span><span class="pipe-nm" data-i18n="pipeline.stage4">冗余消除</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">5</span><span class="pipe-nm" data-i18n="pipeline.stage5">NLP 分析</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">6</span><span class="pipe-nm" data-i18n="pipeline.stage6">激进压缩</span><span class="pipe-tok"></span></div>
-              <div class="pipe-step"><span class="pipe-n">7</span><span class="pipe-nm" data-i18n="pipeline.stage7">最终清理</span><span class="pipe-tok"></span></div>
-            </div>
-            <div class="pipe-live-text mono" id="pipeLive"></div>
-          </div>
-          <div class="pipe-text-out mono" id="pipeOut"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t2"></div>
-
-<!-- ═══ SPELLCHECK ═══ -->
-<section class="section" style="background:var(--bg2)">
-  <div class="glow" style="top:50px;right:-200px"></div>
-  <div class="s-inner rev">
-    <div class="rvr">
-      <div class="label" data-i18n="spell.label">实时 Token 优化</div>
-      <h2 data-i18n-html="spell.heading">每条消息实时优化。</h2>
-      <p class="desc" data-i18n="spell.desc">在你输入时，Terse 实时重写你的提示——修正拼写、去除填充词、压缩冗长表达。</p>
-      <ul class="flist">
-        <li data-i18n="spell.f1">在发送前重写提示和 Agent 命令</li>
-        <li data-i18n="spell.f2">上下文感知的拼写校正</li>
-        <li data-i18n="spell.f3">优化 Agent 工具调用、文件读取和上下文传递</li>
-        <li data-i18n="spell.f4">安全：跳过全大写、首字母大写和代码 token</li>
-      </ul>
-    </div>
-    <div class="rvl d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Token Optimization — Live</span></div>
-        <div class="spell-flow" id="spellViz" style="height:220px;overflow:hidden">
-          <div class="spell-detect" id="spellDetect"></div>
-          <div class="spell-sentence mono" id="spellSentence"></div>
-          <div class="spell-stages-mini">
-            <div class="spell-stage-pill" id="sp1">TYPOS Dict</div>
-            <div class="spell-stage-pill" id="sp2">Norvig</div>
-            <div class="spell-stage-pill" id="sp3">Context</div>
-            <div class="spell-stage-pill" id="sp4">macOS Spellcheck</div>
-          </div>
-          <div class="spell-result" id="spellResult"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t3"></div>
-
-<!-- ═══ TECHNIQUES ═══ -->
-<section class="section" id="techniques" style="background:var(--bg1)">
-  <div class="glow" style="bottom:-100px;left:-150px"></div>
-  <div class="s-inner">
-    <div class="rvl">
-      <div class="label" data-i18n="techniques.label">20+ 种技术</div>
-      <h2 data-i18n-html="techniques.heading">找到每一个浪费的 token。</h2>
-      <p class="desc" data-i18n="techniques.desc">填充词去除、疑问句转祈使句、去重、电报式压缩——每种技术针对不同的浪费来源。</p>
-      <ul class="flist">
-        <li data-i18n="techniques.f1">130+ 条短语缩减规则，适用于提示和 Agent 消息</li>
-        <li data-i18n="techniques.f2">语义去重——捕获 Agent 轮次间重复的上下文</li>
-        <li data-i18n="techniques.f3">工具结果压缩——标记大型 Read/Grep 结果以供裁剪</li>
-      </ul>
-    </div>
-    <div class="rvr d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Techniques — Live</span></div>
-        <div class="tech-cards" id="techViz">
-          <div class="tc" id="tc0"><h3 data-i18n="techniques.card1">冗余读取检测</h3><div class="tc-demo mono" id="td0"></div></div>
-          <div class="tc" id="tc1"><h3 data-i18n="techniques.card2">疑问句 → 祈使句</h3><div class="tc-demo mono" id="td1"></div></div>
-          <div class="tc" id="tc2"><h3 data-i18n="techniques.card3">重复工具调用</h3><div class="tc-demo mono" id="td2"></div></div>
-          <div class="tc" id="tc3"><h3 data-i18n="techniques.card4">语义去重</h3><div class="tc-demo mono" id="td3"></div></div>
-          <div class="tc" id="tc4"><h3 data-i18n="techniques.card5">填充词去除</h3><div class="tc-demo mono" id="td4"></div></div>
-          <div class="tc" id="tc5"><h3 data-i18n="techniques.card6">未使用工具开销</h3><div class="tc-demo mono" id="td5"></div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t4"></div>
-
-
-<!-- ═══ MODES ═══ -->
-<section class="section" style="background:var(--bg2)">
-  <div class="s-inner rev">
-    <div class="rvr">
-      <div class="label" data-i18n="modes.label">三种模式</div>
-      <h2 data-i18n-html="modes.heading">你控制节省多少。</h2>
-      <p class="desc" data-i18n="modes.desc">不同场景需要不同级别。Soft 适合谨慎提示，Normal 适合日常聊天，Aggressive 适合 Agent 会话。</p>
-      <ul class="flist">
-        <li data-i18n-html="modes.f1">Soft：仅拼写修正 + 空白处理。适合关键提示。</li>
-        <li data-i18n-html="modes.f2">Normal：去除填充词、犹豫和元语言。最适合聊天。</li>
-        <li data-i18n-html="modes.f3">Aggressive：最大压缩 + 电报风格。专为 Agent 会话设计。</li>
-      </ul>
-    </div>
-    <div class="rvl d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Mode Comparison</span></div>
-        <div class="mode-viz" id="modeViz">
-          <div class="mode-slider"><div class="mode-opt active" id="mo0" data-i18n="modes.soft">轻柔</div><div class="mode-opt" id="mo1" data-i18n="modes.normal">标准</div><div class="mode-opt" id="mo2" data-i18n="modes.aggr">激进</div></div>
-          <div class="mode-input-box mono" style="font-size:11px">"I was just wondering if you could perhaps help me understand how to implement a binary search tree in Python please?"</div>
-          <div class="mode-output-box mono" id="modeOut" style="font-size:11px"></div>
-          <div class="mode-stats-row"><span style="color:var(--t3);font-size:11px" id="modeTok">22 tok</span><div class="mode-bar"><div class="mode-bar-fill" id="modeBar"></div></div><span style="font-size:13px;font-weight:800;color:var(--ac)" id="modePct">0%</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t5"></div>
-
-<!-- ═══ AGENT MONITOR ═══ -->
-<section class="section" id="agents" style="background:var(--bg1)">
-  <div class="glow" style="top:0;right:-200px"></div>
-  <div class="s-inner">
-    <div class="rvl">
-      <div class="label" data-i18n="agentMonitor.label">Agent 监控</div>
-      <h2 data-i18n-html="agentMonitor.heading">查看 Agent 的一切操作。</h2>
-      <p class="desc" data-i18n="agentMonitor.desc">Terse 通过进程扫描自动检测 Claude Code、OpenClaw、Aider 和 Cursor Agent。实时追踪会话日志，内置模型感知定价。</p>
-      <ul class="flist">
-        <li data-i18n="agentMonitor.f1">实时 token 跟踪：输入、输出、缓存读取、上下文填充百分比</li>
-        <li data-i18n="agentMonitor.f2">模型感知成本估算——内置 Opus/Sonnet/Haiku 定价</li>
-        <li data-i18n="agentMonitor.f3">重复工具调用检测 + 冗余文件读取告警</li>
-        <li data-i18n="agentMonitor.f4">未使用工具开销跟踪（每次调用中每个未使用工具约 300 token）</li>
-        <li data-i18n="agentMonitor.f5">上下文填充度指示器——60% 时警告，85% 时告警</li>
-        <li data-i18n="agentMonitor.f6">根据会话模式自动生成 CLAUDE.md 优化规则</li>
-      </ul>
-      <div class="alts"><span>Claude Code</span><span>OpenClaw</span><span>Aider</span><span>Cursor Agent</span></div>
-    </div>
-    <div class="rvr d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Agent Monitor — Live</span></div>
-        <div class="agent-full" id="agentViz">
-          <div class="agent-term mono" id="agTerm"></div>
-          <div class="agent-connect-banner" id="agBanner"><div class="prune-dot"></div><span style="font-size:11px;flex:1" data-i18n="agentMonitor.detected">检测到 Claude Code——监控会话？</span><span class="agent-connect-btn" data-i18n="agentMonitor.connect">连接</span></div>
-          <div class="agent-panel-anim" id="agPanel">
-            <div class="ap-grid">
-              <div class="ap-stat"><span class="ap-v" id="agTurns">0</span><span class="ap-l">Turns</span></div>
-              <div class="ap-stat"><span class="ap-v" id="agInput">0</span><span class="ap-l">Input</span></div>
-              <div class="ap-stat"><span class="ap-v" id="agOutput">0</span><span class="ap-l">Output</span></div>
-              <div class="ap-stat"><span class="ap-v" id="agCost">$0</span><span class="ap-l">Cost</span></div>
-              <div class="ap-stat"><span class="ap-v" id="agCache">0</span><span class="ap-l">Cache</span></div>
-              <div class="ap-stat"><span class="ap-v" id="agTools">0</span><span class="ap-l">Tools</span></div>
-              <div class="ap-stat"><span class="ap-v" id="agTypos">0</span><span class="ap-l">Typos</span></div>
-              <div class="ap-stat"><span class="ap-v" id="agDur">0s</span><span class="ap-l">Duration</span></div>
-            </div>
-            <div class="ap-savings-bar"><span class="ap-sv-label">Prompt savings</span><span class="ap-sv-val" id="agSav">—</span></div>
-            <div class="ap-model-row" id="agModelRow"><span class="ap-model-label">Model:</span><span class="ap-model-val">claude-opus-4-6</span><span class="ap-model-dot"></span><span class="ap-model-status">Streaming</span></div>
-            <div class="ap-feed mono" id="agFeed"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t6"></div>
-
-<!-- ═══ MODEL ROUTING ═══ -->
-<section class="section" id="routing" style="background:var(--bg2)">
-  <div class="glow" style="top:0;left:-200px"></div>
-  <div class="s-inner rev">
-    <div class="rvl">
-      <div class="label" data-i18n="routing.label">自动模型路由</div>
-      <h2 data-i18n-html="routing.heading">Opus 计费。<br><span class="gradient-text">Sonnet 响应。</span></h2>
-      <p class="desc" data-i18n="routing.desc">Terse 在 7860 端口运行本地代理，拦截每个 API 请求。简单任务——短提示词、查询、编辑——自动从 Opus（$15/MTok）路由到 Sonnet（$3/MTok）。复杂任务保留 Opus。无需修改任何代码，费用减少 80%。</p>
-      <ul class="flist">
-        <li data-i18n="routing.f1">复杂度评分——短提示词、查询、编辑 → Sonnet</li>
-        <li data-i18n="routing.f2">架构设计、安全审查、深度重构 → 保留 Opus</li>
-        <li data-i18n="routing.f3">透明无感——Claude Code、Cursor、Codex 无需任何改动</li>
-
-      </ul>
-      <div class="alts"><span>Claude Code</span><span>Cursor</span><span>Codex</span><span>Any OpenAI-compat client</span></div>
-    </div>
-    <div class="rvr d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terse Proxy — Live Routing</span><span class="win-badge">port 7860</span></div>
-        <div class="agent-full" id="routingViz">
-          <div class="agent-term mono" id="rtTerm" style="min-height:180px"></div>
-          <div class="agent-panel-anim" id="rtPanel" style="border-top:1px solid var(--bd)">
-            <div class="ap-grid" style="grid-template-columns:repeat(4,1fr)">
-              <div class="ap-stat"><span class="ap-v" id="rtTotal">0</span><span class="ap-l">Requests</span></div>
-              <div class="ap-stat"><span class="ap-v" id="rtRouted">0</span><span class="ap-l">Routed</span></div>
-              <div class="ap-stat"><span class="ap-v" id="rtSaved">$0</span><span class="ap-l">Saved</span></div>
-              <div class="ap-stat"><span class="ap-v" id="rtPct">0%</span><span class="ap-l">Route rate</span></div>
-            </div>
-            <div class="ap-feed mono" id="rtFeed"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t6b"></div>
-
-<!-- ═══ BENCHMARKS ═══ -->
-<section class="section" id="benchmarks" style="background:var(--bg2)">
-  <div class="s-inner rev">
-    <div class="rvr">
-      <div class="label" data-i18n="benchmarks.sectionTitle">性能测试</div>
-      <h2 data-i18n-html="benchmarks.heading">基于真实会话测试。</h2>
-      <p class="desc" data-i18n="features.description">在真实的 ChatGPT 提示、Claude Code Agent 会话和多轮 Agent 工作流上测试。简洁的技术提示原样通过，冗长的提示和 Agent 消息可减少 40-70%。</p>
-      <ul class="flist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench1">覆盖手动提示、Agent 对话轮次及工具调用的基准测试</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench2">简洁提示正确返回 0%——不会产生误改</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="features.bench3">节省可累积：5 轮 Agent 会话可节省 200-400+ token</span></li>
-      </ul>
-    </div>
-    <div class="rvl d1">
-      <div class="win">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Benchmarks — Aggressive Mode</span></div>
-        <div class="bench-bars" id="benchViz">
-          <div class="bb" data-pct="64"><span class="bb-label">Agent: mixed typos + filler</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-64%</span></div>
-          <div class="bb" data-pct="60"><span class="bb-label">Agent: verbose debug prompt</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-60%</span></div>
-          <div class="bb" data-pct="51"><span class="bb-label">Claude Code: typo-heavy</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-51%</span></div>
-          <div class="bb" data-pct="46"><span class="bb-label">OpenClaw: chatty request</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-46%</span></div>
-          <div class="bb" data-pct="35"><span class="bb-label">Tool overhead (unused)</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-35%</span></div>
-          <div class="bb" data-pct="28"><span class="bb-label">Repeated context (dedup)</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">-28%</span></div>
-          <div class="bb" data-pct="0"><span class="bb-label">Clean technical</span><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-pct">0%</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t7"></div>
-
-<!-- ═══ SEE THE DIFFERENCE ═══ -->
-<section class="demo-section" id="demo">
-  <div class="demo-inner">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="pipeline.sectionTitle">看看效果</div>
-    <h2 class="rv" data-i18n-html="pipeline.subtitle">真实输出，真实节省。</h2>
-    <p class="demo-sub rv d1" data-i18n="pipeline.description">在实际提示和 Agent 命令上的逐行对比。</p>
-
-    <div class="demo-tabs rv d1">
-      <div class="demo-tab active" data-demo="0">find . -name "*.rs"</div>
-      <div class="demo-tab" data-demo="1">cargo test</div>
-      <div class="demo-tab" data-demo="2">git diff</div>
-      <div class="demo-tab" data-demo="3">git log</div>
-      <div class="demo-tab" data-demo="4">verbose prompt</div>
-      <div class="demo-tab" data-demo="5">agent debug</div>
-    </div>
-
-    <!-- Slide 0: find -->
-    <div class="demo-slide active rv d2" data-demo-slide="0">
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-card-header">
-            <div class="demo-dot red"></div>
-            <span class="demo-label">find . -name "*.rs"</span>
-            <span class="demo-tokens">~276 tokens</span>
-          </div>
-          <pre>./target/debug/build/serde_core-.../out/private.rs
-./target/debug/build/libsqlite3-sys-.../out/bindgen.rs
-./target/debug/build/serde-.../out/private.rs
-./src/ls.rs
-./src/local_llm.rs
-./src/learn/detector.rs
-./src/learn/report.rs
-./src/learn/mod.rs
-./src/discover/registry.rs
-./src/discover/provider.rs
-./src/discover/report.rs
-./src/discover/mod.rs
-./src/wget_cmd.rs
-./src/npm_cmd.rs
-./src/cargo_cmd.rs
-./src/ccusage.rs
-./src/config.rs
-./src/lint_cmd.rs
-./src/curl_cmd.rs
-./src/prisma_cmd.rs
-./src/cc_economics.rs
-./src/find_cmd.rs
-./src/gain.rs
-./src/git.rs
-... 49 files total</pre>
-        </div>
-        <div class="demo-card after">
-          <div class="demo-card-header">
-            <div class="demo-dot green"></div>
-            <span class="demo-label">Terse optimized</span>
-            <span class="demo-tokens">~149 tokens</span>
-            <span class="demo-savings">-46%</span>
-          </div>
-          <pre>49F 4D:
-
-src/ cargo_cmd.rs cc_economics.rs
-  ccusage.rs config.rs container.rs
-  curl_cmd.rs deps.rs diff_cmd.rs
-  display_helpers.rs env_cmd.rs
-  filter.rs find_cmd.rs gain.rs
-  gh_cmd.rs git.rs grep_cmd.rs
-  init.rs json_cmd.rs lint_cmd.rs
-  local_llm.rs log_cmd.rs ls.rs
-  main.rs ...
-src/discover/ mod.rs provider.rs
-  registry.rs report.rs
-src/learn/ detector.rs mod.rs report.rs
-src/parser/ error.rs formatter.rs
-  mod.rs types.rs</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 1: cargo test -->
-    <div class="demo-slide" data-demo-slide="1">
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-card-header">
-            <div class="demo-dot red"></div>
-            <span class="demo-label">cargo test</span>
-            <span class="demo-tokens">~4,823 tokens</span>
-          </div>
-          <pre>   Compiling serde v1.0.210
-   Compiling serde_json v1.0.128
-   Compiling tokio v1.40.0
-   Compiling reqwest v0.12.7
-   Compiling my-project v0.1.0 (/Users/dev/project)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 45.23s
-     Running unittests src/main.rs (target/debug/deps/my_project-a1b2c3d4)
-
-running 262 tests
-test config::tests::test_default_config ... ok
-test config::tests::test_parse_env ... ok
-test config::tests::test_merge_configs ... ok
-test git::tests::test_parse_diff ... ok
-test git::tests::test_status_parse ... ok
-... 257 more tests
-test result: ok. 262 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.41s</pre>
-        </div>
-        <div class="demo-card after">
-          <div class="demo-card-header">
-            <div class="demo-dot green"></div>
-            <span class="demo-label">Terse optimized</span>
-            <span class="demo-tokens">~38 tokens</span>
-            <span class="demo-savings">-99%</span>
-          </div>
-          <pre>cargo test: 262 passed, 0 failed
-Built 5 crates in 45.23s
-All tests green.</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 2: git diff -->
-    <div class="demo-slide" data-demo-slide="2">
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-card-header">
-            <div class="demo-dot red"></div>
-            <span class="demo-label">git diff</span>
-            <span class="demo-tokens">~1,240 tokens</span>
-          </div>
-          <pre>diff --git a/src/optimizer.js b/src/optimizer.js
-index 3a4b5c6..7d8e9f0 100644
---- a/src/optimizer.js
-+++ b/src/optimizer.js
-@@ -142,8 +142,12 @@ class PromptOptimizer {
-     // Remove filler words from text
--    const fillers = ['just', 'really', 'very', 'actually'];
-+    const fillers = ['just', 'really', 'very', 'actually',
-+      'basically', 'literally', 'honestly', 'perhaps',
-+      'maybe', 'probably', 'simply'];
-     for (const f of fillers) {
--      text = text.replace(new RegExp(`\\b${f}\\b`, 'gi'), '');
-+      text = text.replace(
-+        new RegExp(`\\b${f}\\b\\s*`, 'gi'), ''
-+      );
-     }
-@@ -165,3 +169,8 @@ class PromptOptimizer {
-+  telegraphCompress(text) {
-+    return text.replace(/\b(the|a|an)\b/gi, '')
-+               .replace(/\s{2,}/g, ' ')
-+               .trim();
-+  }</pre>
-        </div>
-        <div class="demo-card after">
-          <div class="demo-card-header">
-            <div class="demo-dot green"></div>
-            <span class="demo-label">Terse optimized</span>
-            <span class="demo-tokens">~310 tokens</span>
-            <span class="demo-savings">-75%</span>
-          </div>
-          <pre>src/optimizer.js: 2 hunks, +13 -3
-
-L142: expanded fillers list
-  (7 new: basically, literally, honestly,
-   perhaps, maybe, probably, simply)
-  + regex now strips trailing whitespace
-
-L169: added telegraphCompress()
-  strips articles (the/a/an), collapses spaces</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 3: git log -->
-    <div class="demo-slide" data-demo-slide="3">
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-card-header">
-            <div class="demo-dot red"></div>
-            <span class="demo-label">git log --oneline -20</span>
-            <span class="demo-tokens">~520 tokens</span>
-          </div>
-          <pre>a1b2c3d Fix authentication module token refresh handling
-e4f5g6h Update README with new API documentation
-i7j8k9l Refactor optimizer pipeline for better performance
-m0n1o2p Add spellcheck integration with macOS NSSpellChecker
-q3r4s5t Fix duplicate tool call detection edge case
-u6v7w8x Update dependencies: electron 40, node 22
-y9z0a1b Add aggressive mode telegraph compression
-c2d3e4f Fix session manager reconnection bug
-g5h6i7j Implement CLAUDE.md rule generation from patterns
-k8l9m0n Add context fill meter warning at 60% and 85%
-o1p2q3r Fix AX read fallback for Electron editors
-s4t5u6v Add Jaccard similarity dedup for agent turns
-w7x8y9z Refactor capture module for multi-window support
-a0b1c2d Fix popup window focus stealing on macOS
-e3f4g5h Add model-aware pricing for Opus/Sonnet/Haiku
-i6j7k8l Update landing page hero animation
-m9n0o1p Fix shell hook installation path resolution
-q2r3s4t Add RTK-style output compression techniques
-u5v6w7x Fix cache efficiency tracking in agent monitor
-y8z9a0b Initial commit</pre>
-        </div>
-        <div class="demo-card after">
-          <div class="demo-card-header">
-            <div class="demo-dot green"></div>
-            <span class="demo-label">Terse optimized</span>
-            <span class="demo-tokens">~185 tokens</span>
-            <span class="demo-savings">-64%</span>
-          </div>
-          <pre>20 commits, 3 authors
-
-Recent: auth token fix, README update,
-optimizer refactor, spellcheck integration,
-dedup edge case fix
-
-Themes: optimizer (4), agent monitor (3),
-bug fixes (6), features (5), docs (2)</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 4: verbose prompt -->
-    <div class="demo-slide" data-demo-slide="4">
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-card-header">
-            <div class="demo-dot red"></div>
-            <span class="demo-label">User prompt</span>
-            <span class="demo-tokens">~52 tokens</span>
-          </div>
-          <pre>I was just wondering if you could perhaps maybe help me understand how to implement a binary search tree in Python? I'm not really sure about the best approach to take here and I would really appreciate any guidance you could provide please.</pre>
-        </div>
-        <div class="demo-card after">
-          <div class="demo-card-header">
-            <div class="demo-dot green"></div>
-            <span class="demo-label">Terse optimized</span>
-            <span class="demo-tokens">~11 tokens</span>
-            <span class="demo-savings">-79%</span>
-          </div>
-          <pre>Implement binary search tree in Python. Show best approach.</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 5: agent debug -->
-    <div class="demo-slide" data-demo-slide="5">
-      <div class="demo-grid">
-        <div class="demo-card">
-          <div class="demo-card-header">
-            <div class="demo-dot red"></div>
-            <span class="demo-label">Agent debug prompt</span>
-            <span class="demo-tokens">~68 tokens</span>
-          </div>
-          <pre>I don't know if this makes sense but the authetication module is broken again. Could you maybe look into it and try to figure out why the tokne refresh isn't working properly? Like I mentioned earlier, the refresh endpoint keeps returning 401 errors and I really need this fixed as soon as possible please.</pre>
-        </div>
-        <div class="demo-card after">
-          <div class="demo-card-header">
-            <div class="demo-dot green"></div>
-            <span class="demo-label">Terse optimized</span>
-            <span class="demo-tokens">~18 tokens</span>
-            <span class="demo-savings">-74%</span>
-          </div>
-          <pre>Fix authentication module: token refresh returns 401. Debug refresh endpoint. Priority: high.</pre>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="track" id="t7b"></div>
-
-<!-- ═══ TOKEN USAGE — NO AI TOOL IS UNLIMITED ═══ -->
-<section class="usage-section" id="usage">
-  <div class="usage-inner">
-    <h2 class="rv" data-i18n-html="usage.heading">没有任何 AI 工具提供无限使用。</h2>
-    <p class="usage-sub rv d1" data-i18n-html="usage.subtitle">即使每月 200 美元的方案也有上限。Terse 压缩提示让额度用得更久——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 让你的团队清晰掌握每个 token 的去向。</p>
-
-    <div class="usage-callout rv d2">
-      <div class="usage-headline" data-i18n="usage.calloutTitle">一次典型的 2 小时 AI Agent 编程会话：</div>
-      <div class="usage-stats-row">
-        <div class="usage-stat">
-          <div class="usage-num" data-ut="60" data-us="~">0</div>
-          <div class="usage-label" data-i18n="usage.stat1">条 CLI 命令执行</div>
-        </div>
-        <div class="usage-stat">
-          <div class="usage-num" data-ut="210" data-us="~" data-ue="K">0</div>
-          <div class="usage-label" data-i18n="usage.stat2">个 token 的提示 + CLI 噪声</div>
-        </div>
-        <div class="usage-stat">
-          <div class="usage-num accent" data-ut="23" data-us="~" data-ue="K">0</div>
-          <div class="usage-label" data-i18n="usage.stat3">使用 Terse 后（减少 89%）</div>
-        </div>
-      </div>
-      <p class="usage-note" data-i18n="usage.note">没有 Terse，CLI 输出和冗长提示就能撑爆 200K 上下文窗口。</p>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ TOOL COMPARISON CARDS ═══ -->
-<section class="tools-section" id="tool-comparison">
-  <div class="tools-inner" style="text-align:center">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="tools.sectionTitle">每款工具都有限制</div>
-    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:10px" data-i18n-html="tools.heading">Terse 让每个方案都更耐用。</h2>
-    <p class="rv d1" style="color:var(--t2);max-width:580px;margin:0 auto 0;font-size:15px;line-height:1.7" data-i18n-html="tools.description">无论团队使用哪款 AI 工具，token 成本都会快速累积。Terse 压缩输入内容——<a href="/teams" style="color:var(--ac)">Terse Cloud</a> 提供团队级分析，按开发者、项目和工具追踪开销。</p>
-
-    <div class="tools-grid rv d2">
-      <!-- Claude Code -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">Claude Code</span>
-          <span class="tool-card-type">Terminal</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">~45 msgs/5h (Pro), 5-20x on Max</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">200K tokens</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.claudeCode.impact">会话时长约 3 倍</span>
-        </div>
-        <div class="tool-card-detail">Even Max $200/mo (20x Pro) has weekly caps (240-480h). Quota resets every 5h. Terse compresses prompts and CLI outputs by avg 89%, so each message carries less noise and your quota stretches ~3x.</div>
-      </div>
-
-      <!-- Cursor -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">Cursor</span>
-          <span class="tool-card-type">IDE</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$20 &mdash; $200/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">$20 credits/mo (Pro), ~225 Claude reqs</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Up to 200K (Max mode)</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.cursor.impact">额度使用效率约 2 倍</span>
-        </div>
-        <div class="tool-card-detail">Even Ultra $200/mo (20x credits) is capped. Each request consumes credits based on model &mdash; Claude burns 2.4x faster than Gemini. Terse compresses prompts and CLI outputs so each request starts cleaner.</div>
-      </div>
-
-      <!-- OpenAI Codex -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">OpenAI Codex</span>
-          <span class="tool-card-type">Agent</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$20/mo (Plus) &mdash; $200/mo (Pro)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">30-1,500 msgs/5h by plan</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">192K tokens</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.codex.impact">更多迭代次数</span>
-        </div>
-        <div class="tool-card-detail">Included with ChatGPT plans. Pro $200/mo caps at 1,500 msgs/5h. The agent runs commands autonomously &mdash; each output eats your cap. Terse compresses them for more iterations per window.</div>
-      </div>
-
-      <!-- Windsurf -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">Windsurf</span>
-          <span class="tool-card-type">IDE</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">$15 &mdash; $60/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">500 credits/mo (Pro)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">200K tokens</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.windsurf.impact">额度持续约 2 倍</span>
-        </div>
-        <div class="tool-card-detail">Enterprise $60/user gets 1,000 credits/mo &mdash; still capped. Cascade consumes credits per prompt. Terse compresses prompts and CLI outputs so each interaction uses fewer tokens, stretching your credits.</div>
-      </div>
-
-      <!-- Gemini CLI -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">Gemini CLI</span>
-          <span class="tool-card-type">Terminal</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free &mdash; pay-per-token</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">1,000 req/day, 60 req/min (free)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">1M tokens</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.gemini.impact">token 账单减少约 70%</span>
-        </div>
-        <div class="tool-card-detail">Free tier is generous (1,000 req/day) but still rate-limited. Beyond that, you pay per token. Terse compresses prompts and CLI outputs by avg 89%, cutting your bill or freeing rate limit headroom.</div>
-      </div>
-
-      <!-- Aider -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">Aider</span>
-          <span class="tool-card-type">Terminal</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free + API costs ($5-300+/mo)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">Per API provider</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Per model (up to 200K)</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.aider.impact">API 成本减少约 70%</span>
-        </div>
-        <div class="tool-card-detail">BYO API key &mdash; you pay per token to OpenAI, Anthropic, etc. Terse compresses every prompt and command output before it reaches the model, directly cutting your API bill by ~70% on verbose workflows.</div>
-      </div>
-
-      <!-- GitHub Copilot -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">GitHub Copilot</span>
-          <span class="tool-card-type">IDE</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free &mdash; $39/mo (Pro+)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">50-1,500 premium req/mo</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Per model (up to 200K)</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.copilot.impact">更好的上下文质量</span>
-        </div>
-        <div class="tool-card-detail">Enterprise $39/user: 1,000 premium req/mo. Base completions are unlimited, but Chat and the coding agent have caps. Terse keeps terminal output lean so premium requests carry more useful context.</div>
-      </div>
-
-      <!-- Cline / Roo -->
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <span class="tool-card-name">Cline / Roo</span>
-          <span class="tool-card-type">VS Code</span>
-        </div>
-        <div class="tool-card-specs">
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.price">价格</span><span class="tc-value">Free + API costs ($0-500+/mo)</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.limits">限制</span><span class="tc-value">Per API provider</span></div>
-          <div class="tool-card-row"><span class="tc-label" data-i18n="tools.context">上下文</span><span class="tc-value">Per model (up to 200K)</span></div>
-        </div>
-        <div class="tool-card-impact">
-          <span class="impact-badge" data-i18n="tools.cline.impact">API 成本减少约 70%</span>
-        </div>
-        <div class="tool-card-detail">No tool-side limit, but your API provider caps apply. Heavy users report $200-500+/mo. Terse compresses every output by avg 89%, directly cutting your bill and reducing context overflow.</div>
-      </div>
-    </div>
-
-    <p class="rv d3" style="margin-top:24px;font-size:11px;color:var(--t3)" data-i18n="tools.footnote">价格信息已于 2026 年 2 月核实。限制因使用量和方案而异。</p>
-  </div>
-</section>
-
-<div class="track" id="t7c"></div>
-
-<!-- ═══ TERSE PALS ═══ -->
-<style>
-  /* ── Pet body keyframes ─────────────────────────────────── */
-  @keyframes k-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.025,.97)}}
-  @keyframes k-bob{0%,100%{transform:translateY(0) rotate(-1deg)}25%{transform:translateY(-3px) rotate(0)}50%{transform:translateY(0) rotate(1deg)}75%{transform:translateY(-3px) rotate(0)}}
-  @keyframes k-walk{0%,100%{transform:translateX(0) translateY(0)}25%{transform:translateX(2px) translateY(-2px)}50%{transform:translateX(0) translateY(0)}75%{transform:translateX(-2px) translateY(-2px)}}
-  @keyframes k-hop{0%,84%,100%{transform:translateY(0) scaleY(1) scaleX(1)}10%{transform:translateY(2px) scaleY(.86) scaleX(1.10)}30%{transform:translateY(-22px) scaleY(1.10) scaleX(.92) rotate(-3deg)}50%{transform:translateY(-26px) scaleY(1.08) scaleX(.94) rotate(3deg)}70%{transform:translateY(-6px) scaleY(.96) scaleX(1.04)}}
-  @keyframes k-run{0%,100%{transform:translateX(0) rotate(-2deg) scaleY(1)}20%{transform:translateX(3px) translateY(-4px) rotate(0) scaleY(1.04)}40%{transform:translateX(0) rotate(2deg) scaleY(.96)}60%{transform:translateX(-3px) translateY(-4px) rotate(0) scaleY(1.04)}80%{transform:translateX(0) rotate(-1deg) scaleY(.98)}}
-  @keyframes k-jiggle{0%,100%{transform:translateX(0) rotate(0)}10%{transform:translateX(-2px) rotate(-3deg)}30%{transform:translateX(2px) rotate(3deg)}50%{transform:translateX(-2px) rotate(-2deg)}70%{transform:translateX(2px) rotate(2deg)}}
-  @keyframes k-paddle{0%,100%{transform:translateX(0) rotate(-2deg)}33%{transform:translateX(-2px) rotate(0)}66%{transform:translateX(2px) rotate(2deg)}}
-  @keyframes k-peek{0%,55%,100%{transform:translateY(0) scaleY(1)}25%{transform:translateY(-3px) scaleY(1.03)}}
-  @keyframes k-leg-A{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
-  @keyframes k-leg-B{0%,100%{transform:rotate(7deg)}50%{transform:rotate(-7deg)}}
-  @keyframes k-tail-wag{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
-  @keyframes k-ear-twitch{0%,80%,100%{transform:rotate(0)}90%{transform:rotate(-12deg)}95%{transform:rotate(8deg)}}
-  @keyframes k-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.10)}}
-  @keyframes k-tongue-loll{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(.5px) rotate(2deg)}}
-  @keyframes pal-poke-hop{0%,100%{transform:translateY(0) scaleY(1) scaleX(1)}18%{transform:translateY(-20px) scaleY(1.07) scaleX(.93)}40%{transform:translateY(4px) scaleY(.87) scaleX(1.10)}62%{transform:translateY(-10px) scaleY(1.04) scaleX(.96)}80%{transform:translateY(2px) scaleY(.95) scaleX(1.03)}}
-  @keyframes pal-bubble-in{0%{opacity:0;transform:translateX(-50%) scale(.7) translateY(6px)}100%{opacity:1;transform:translateX(-50%) scale(1) translateY(0)}}
-  @keyframes pal-bubble-out{0%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(.8) translateY(-4px)}}
-
-  /* ── Part-level continuous anims (scoped to pals section) ── */
-  #pals .leg-A{animation:k-leg-A .55s ease-in-out infinite}
-  #pals .leg-B{animation:k-leg-B .55s ease-in-out infinite}
-  #pals .tail{transform-box:fill-box;transform-origin:left center;animation:k-tail-wag 1.6s ease-in-out infinite}
-  #pals .ear-L{transform-box:fill-box;transform-origin:50% 100%;animation:k-ear-twitch 4.6s ease-in-out infinite}
-  #pals .ear-R{transform-box:fill-box;transform-origin:50% 100%;animation:k-ear-twitch 5.3s ease-in-out .8s infinite}
-  #pals .eyeshut{transform-box:fill-box;transform-origin:center;animation:k-blink 5.4s linear infinite}
-  #pals .tongue{transform-box:fill-box;transform-origin:50% 0%;animation:k-tongue-loll 1.2s ease-in-out infinite}
-
-  /* ── Card layout ─────────────────────────────────────────── */
-  .pals-grid{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
-  .pal-card{
-    background:var(--bg2);border:1px solid var(--bd);border-radius:16px;
-    padding:22px 16px 14px;width:148px;text-align:center;cursor:pointer;
-    transition:border-color .25s,background .25s,transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s;
-    position:relative;overflow:visible;user-select:none;-webkit-user-select:none;
-  }
-  .pal-card:hover{border-color:var(--bdl);background:var(--bg3);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.35)}
-  .pal-card.poking{border-color:var(--acm);background:var(--acd)}
-  .pal-inner{
-    width:96px;height:96px;margin:0 auto 12px;
-    display:flex;align-items:flex-end;justify-content:center;
-    transform-origin:center bottom;
-  }
-  .pal-inner.hop{animation:pal-poke-hop .6s cubic-bezier(.34,1.56,.64,1)}
-  .pal-name{font-size:14px;font-weight:700;color:var(--t1);line-height:1.2;margin-bottom:3px}
-  .pal-sub{font-size:11px;color:var(--t3)}
-  .pal-bubble{
-    position:absolute;bottom:calc(100% + 10px);left:50%;
-    transform:translateX(-50%) scale(1);
-    background:var(--bg1);border:1px solid var(--bdl);border-radius:10px;
-    padding:5px 10px;font-size:12px;color:var(--t1);white-space:nowrap;
-    pointer-events:none;z-index:20;
-    box-shadow:0 4px 20px rgba(0,0,0,.4);
-    animation:pal-bubble-in .18s ease-out both;
-  }
-  .pal-bubble::after{
-    content:'';position:absolute;top:100%;left:50%;margin-left:-5px;
-    border:5px solid transparent;border-top-color:var(--bdl);
-  }
-  .pal-bubble::before{
-    content:'';position:absolute;top:100%;left:50%;margin-left:-4px;margin-top:-1px;
-    border:4px solid transparent;border-top-color:var(--bg1);z-index:1;
-  }
-  @media(max-width:600px){.pals-grid{gap:10px}.pal-card{width:120px;padding:16px 10px 12px}.pal-inner{width:78px;height:78px}}
-
-@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
-.logo-icon{font-size:calc(14px + var(--fs-up))}
-.nav-links a{font-size:calc(14px + var(--fs-up))}
-.nav-cta{font-size:calc(13px + var(--fs-up))}
-.btn-primary{font-size:calc(15px + var(--fs-up))}
-.btn-ghost{font-size:calc(15px + var(--fs-up))}
-.win-title{font-size:calc(11px + var(--fs-up))}
-.win-badge{font-size:calc(9px + var(--fs-up))}
-.chatgpt-input-text{font-size:calc(13px + var(--fs-up))}
-.prune-label{font-size:calc(10px + var(--fs-up))}
-.prune-savings{font-size:calc(12px + var(--fs-up))}
-.vscode-sidebar{font-size:calc(11px + var(--fs-up))}
-.vscode-chat-label{font-size:calc(9px + var(--fs-up))}
-.vscode-chat-input{font-size:calc(12px + var(--fs-up))}
-.term-line{font-size:calc(12px + var(--fs-up))}
-.ams-v{font-size:calc(14px + var(--fs-up))}
-.ams-l{font-size:calc(8px + var(--fs-up))}
-.oc-model{font-size:calc(10px + var(--fs-up))}
-.oc-status{font-size:calc(9px + var(--fs-up))}
-.oc-msg{font-size:calc(12px + var(--fs-up))}
-.oc-input-text{font-size:calc(12px + var(--fs-up))}
-.oc-msg .msg-original{font-size:calc(10px + var(--fs-up))}
-.oc-msg .msg-sent{font-size:calc(12px + var(--fs-up))}
-.oc-msg .msg-badge{font-size:calc(9px + var(--fs-up))}
-.oc-prune-line{font-size:calc(10px + var(--fs-up))}
-.oc-stat{font-size:calc(8px + var(--fs-up))}
-.oc-tool-line{font-size:calc(10px + var(--fs-up))}
-.oc-tool-line .tool-icon{font-size:calc(9px + var(--fs-up))}
-.tp-stage{font-size:calc(9px + var(--fs-up))}
-.tp-tok-counter{font-size:calc(11px + var(--fs-up))}
-.tp-result-text{font-size:calc(11px + var(--fs-up))}
-.tp-result-pct{font-size:calc(14px + var(--fs-up))}
-.tp-before-after{font-size:calc(10px + var(--fs-up))}
-.tp-extra-icon{font-size:calc(9px + var(--fs-up))}
-.tp-extra-val{font-size:calc(13px + var(--fs-up))}
-.tp-extra-lbl{font-size:calc(8px + var(--fs-up))}
-.sess-name{font-size:calc(12px + var(--fs-up))}
-.sess-sub{font-size:calc(10px + var(--fs-up))}
-.sess-badge{font-size:calc(9px + var(--fs-up))}
-.sess-add{font-size:calc(12px + var(--fs-up))}
-.section .label{font-size:calc(10px + var(--fs-up))}
-.flist li{font-size:calc(14px + var(--fs-up))}
-.alts span{font-size:calc(11px + var(--fs-up))}
-.pipe-text-in{font-size:calc(11px + var(--fs-up))}
-.pipe-n{font-size:calc(9px + var(--fs-up))}
-.pipe-nm{font-size:calc(12px + var(--fs-up))}
-.pipe-live-text{font-size:calc(10px + var(--fs-up))}
-.pipe-text-out{font-size:calc(11px + var(--fs-up))}
-.spell-sentence{font-size:calc(13px + var(--fs-up))}
-.spell-stage-pill{font-size:calc(10px + var(--fs-up))}
-.spell-detect{font-size:calc(9px + var(--fs-up))}
-.spell-result{font-size:calc(10px + var(--fs-up))}
-.tc h4, .tc h3{font-size:calc(11px + var(--fs-up))}
-.tc-demo{font-size:calc(10px + var(--fs-up))}
-.mode-opt{font-size:calc(11px + var(--fs-up))}
-.mode-input-box{font-size:calc(12px + var(--fs-up))}
-.mode-output-box{font-size:calc(12px + var(--fs-up))}
-.mode-stats-row{font-size:calc(12px + var(--fs-up))}
-.at-line{font-size:calc(11px + var(--fs-up))}
-.agent-connect-btn{font-size:calc(10px + var(--fs-up))}
-.ap-l{font-size:calc(8px + var(--fs-up))}
-.ap-sv-label{font-size:calc(11px + var(--fs-up))}
-.ap-sv-val{font-size:calc(14px + var(--fs-up))}
-.ap-feed{font-size:calc(10px + var(--fs-up))}
-.ap-model-row{font-size:calc(10px + var(--fs-up))}
-.ap-model-status{font-size:calc(9px + var(--fs-up))}
-.bb-label{font-size:calc(11px + var(--fs-up))}
-.bb-pct{font-size:calc(12px + var(--fs-up))}
-.prune-stage-text{font-size:calc(9px + var(--fs-up))}
-.pipe-detect{font-size:calc(10px + var(--fs-up))}
-.pipe-tok{font-size:calc(9px + var(--fs-up))}
-.pipe-tok-badge{font-size:calc(9px + var(--fs-up))}
-.hw-phase-label{font-size:calc(10px + var(--fs-up))}
-.hw-phase-num{font-size:calc(8px + var(--fs-up))}
-.hw-prompt-box{font-size:calc(10px + var(--fs-up))}
-.hw-tok-badge{font-size:calc(9px + var(--fs-up))}
-.hw-sn{font-size:calc(8px + var(--fs-up))}
-.hw-snm{font-size:calc(9px + var(--fs-up))}
-.hw-sval{font-size:calc(9px + var(--fs-up))}
-.hw-agent-act{font-size:calc(9px + var(--fs-up))}
-.hw-agent-act .act-icon{font-size:calc(8px + var(--fs-up))}
-.hw-stat-v{font-size:calc(11px + var(--fs-up))}
-.hw-stat-l{font-size:calc(7px + var(--fs-up))}
-.hw-savings-bar{font-size:calc(10px + var(--fs-up))}
-.trust-item{font-size:calc(14px + var(--fs-up))}
-.trust-icon{font-size:calc(10px + var(--fs-up))}
-.feat h3{font-size:calc(15px + var(--fs-up))}
-.feat p{font-size:calc(13px + var(--fs-up))}
-.works-with-label{font-size:calc(12px + var(--fs-up))}
-.ww-logo{font-size:calc(10px + var(--fs-up))}
-.testimonials-sub{font-size:calc(14px + var(--fs-up))}
-.testi-avatar{font-size:calc(14px + var(--fs-up))}
-.testi-name{font-size:calc(13px + var(--fs-up))}
-.testi-handle{font-size:calc(11px + var(--fs-up))}
-.testi-body{font-size:calc(13px + var(--fs-up))}
-.testi-tag{font-size:calc(9px + var(--fs-up))}
-.stat-lbl{font-size:calc(13px + var(--fs-up))}
-.footer-brand p{font-size:calc(12px + var(--fs-up))}
-.footer-col h4{font-size:calc(11px + var(--fs-up))}
-.footer-col a{font-size:calc(12px + var(--fs-up))}
-.footer-bottom{font-size:calc(11px + var(--fs-up))}
-.price-tier{font-size:calc(13px + var(--fs-up))}
-.price-desc{font-size:calc(14px + var(--fs-up))}
-.price-features li{font-size:calc(13px + var(--fs-up))}
-.price-btn{font-size:calc(14px + var(--fs-up))}
-.demo-sub{font-size:calc(15px + var(--fs-up))}
-.demo-tab{font-size:calc(12px + var(--fs-up))}
-.demo-card-header{font-size:calc(12px + var(--fs-up))}
-.demo-tokens{font-size:calc(11px + var(--fs-up))}
-.demo-savings{font-size:calc(11px + var(--fs-up))}
-.demo-card pre{font-size:calc(11px + var(--fs-up))}
-.usage-sub{font-size:calc(15px + var(--fs-up))}
-.usage-label{font-size:calc(12px + var(--fs-up))}
-.usage-note{font-size:calc(12px + var(--fs-up))}
-.tool-card-name{font-size:calc(15px + var(--fs-up))}
-.tool-card-type{font-size:calc(10px + var(--fs-up))}
-.tool-card-row{font-size:calc(12px + var(--fs-up))}
-.impact-badge{font-size:calc(11px + var(--fs-up))}
-.tool-card-detail{font-size:calc(12px + var(--fs-up))}
-.faq-q{font-size:calc(14px + var(--fs-up))}
-.faq-a{font-size:calc(13px + var(--fs-up))}
-.news-tag{font-size:calc(10px + var(--fs-up))}
-.news-meta{font-size:calc(11px + var(--fs-up))}
-.news-card h3{font-size:calc(15px + var(--fs-up))}
-.news-card p{font-size:calc(13px + var(--fs-up))}
-.news-read-more{font-size:calc(12px + var(--fs-up))}
-.news-read-time{font-size:calc(11px + var(--fs-up))}
-.trust-stars{font-size:calc(15px + var(--fs-up))}
-.trust-cell-t{font-size:calc(12px + var(--fs-up))}
-.trust-cell-t2{font-size:calc(10px + var(--fs-up))}
-.trust-tools{font-size:calc(12px + var(--fs-up))}
-.wp-live p{font-size:calc(14px + var(--fs-up))}
-.wp-k{font-size:calc(14.5px + var(--fs-up))}
-.wp-card p{font-size:calc(13px + var(--fs-up))}
-.facts h2{font-size:calc(14px + var(--fs-up))}
-.facts .asof{font-size:calc(12px + var(--fs-up))}
-.facts dt{font-size:calc(13px + var(--fs-up))}
-.facts dd{font-size:calc(14px + var(--fs-up))}
-.pal-name{font-size:calc(14px + var(--fs-up))}
-.pal-sub{font-size:calc(11px + var(--fs-up))}
-.pal-bubble{font-size:calc(12px + var(--fs-up))}
-}
-</style>
-
-<section id="pals" style="padding:100px 40px;background:var(--bg1);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);overflow:visible;position:relative">
-  <div class="glow" style="top:50%;left:30%;opacity:.06"></div>
-  <div class="glow" style="top:40%;right:10%;opacity:.04;background:#a78bfa"></div>
-  <div style="max-width:1100px;margin:0 auto;text-align:center">
-    <div class="label rv">Terse Pals</div>
-    <h2 class="rv d1" style="font-size:clamp(34px,4.5vw,52px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:14px">Your <span class="gradient-text">companion</span> through every session</h2>
-    <p class="rv d2" style="font-size:16px;color:var(--t2);line-height:1.7;margin:0 auto 48px;max-width:520px">Pick a pal that celebrates every token you save — it reacts to each tool call, eats your savings, and keeps you company through long coding sessions.</p>
-
-    <div id="pals-grid" class="pals-grid rv d3"></div>
-
-    <p class="rv" style="margin-top:28px;font-size:13px;color:var(--t3)">20 pals available &nbsp;&middot;&nbsp; Click to poke &nbsp;&middot;&nbsp; Unlock new ones as you save tokens</p>
-  </div>
-</section>
-
-<script src="/pals.js"></script>
-<script>
-(function(){
-  const TP = window.TERSE_PALS;
-  if (!TP) return;
-
-  const FEATURED = ['shiro','momo','toro','fafa','nene','maru'];
-  const POKE_MSGS = {
-    shiro: ['*sniff sniff*','Salmon? 🐟','RAWRR~','That tickles!','*flops*'],
-    momo:  ['Meow!','How dare you','purrr~','...','*flops*'],
-    toro:  ['Yip! 🦊','Sneaky!','*tail wag*','Gotcha!','*nips*'],
-    fafa:  ['Ribbit! 🐸','*boing*','Splash!','*croak*','Hey!'],
-    nene:  ['Brr! 🐧','*waddle*','*flap flap*','Hey!','Penguins don\'t poke!'],
-    maru:  ['*puff*','Squeak! 🐹','!?','Stop that!','*vibrates*'],
-  };
-
-  const grid = document.getElementById('pals-grid');
-  if (!grid) return;
-
-  FEATURED.forEach(palId => {
-    const pal = TP.KEKE.find(p => p.id === palId);
-    if (!pal) return;
-
-    const card = document.createElement('div');
-    card.className = 'pal-card';
-
-    const inner = document.createElement('div');
-    inner.className = 'pal-inner';
-    inner.style.animation = `${pal.anim} ${pal.spd}s ease-in-out infinite`;
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('width','96');
-    svg.setAttribute('height','96');
-    svg.setAttribute('viewBox','-24 -24 248 248');
-    svg.style.display = 'block';
-    svg.style.overflow = 'visible';
-    svg.innerHTML = TP.kekeSVG(pal, 200);
-    inner.appendChild(svg);
-
-    const name = document.createElement('div');
-    name.className = 'pal-name';
-    name.textContent = pal.name;
-
-    const sub = document.createElement('div');
-    sub.className = 'pal-sub';
-    sub.textContent = pal.sub;
-
-    card.appendChild(inner);
-    card.appendChild(name);
-    card.appendChild(sub);
-    grid.appendChild(card);
-
-    let bubbleTimer = null;
-    let pokeIdx = 0;
-
-    card.addEventListener('click', () => {
-      const msgs = POKE_MSGS[palId] || ['!'];
-      const msg = msgs[pokeIdx % msgs.length];
-      pokeIdx++;
-
-      // Hop animation
-      inner.classList.remove('hop');
-      void inner.offsetWidth;
-      inner.classList.add('hop');
-      inner.addEventListener('animationend', () => inner.classList.remove('hop'), {once:true});
-
-      card.classList.add('poking');
-      setTimeout(() => card.classList.remove('poking'), 600);
-
-      // Bubble
-      if (bubbleTimer) { clearTimeout(bubbleTimer); document.querySelectorAll('#pals .pal-bubble').forEach(b=>b.remove()); }
-      const bubble = document.createElement('div');
-      bubble.className = 'pal-bubble';
-      bubble.textContent = msg;
-      card.appendChild(bubble);
-      bubbleTimer = setTimeout(() => { bubble.remove(); bubbleTimer = null; }, 2200);
-    });
-  });
-})();
-</script>
-
-<!-- ═══ TESTIMONIALS ═══ -->
-<section class="testimonials-section">
-  <div class="testimonials-inner">
-    <h2 class="rv" data-i18n-html="testimonials.heading">……深受开发者喜爱</h2>
-    <p class="testimonials-sub rv d1" data-i18n="testimonials.subtitle">工程师和 AI 重度用户正在降低成本，同时全面掌控 token 使用情况。</p>
-    <div class="testimonials-track">
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">M</div>
-          <div><div class="testi-name">Marcus Chen</div><div class="testi-handle">@marcuschen_dev</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.1.body">用 @Terse_App 配合 Claude Code 一周了。Agent 会话的 token 用量下降了约 40%。仅拼写检查就帮我避免了高成本的纠错循环。</div>
-        <div class="testi-tag">Claude Code</div>
-      </div>
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">S</div>
-          <div><div class="testi-name">Sarah Kim</div><div class="testi-handle">@sarahk_ai</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.2.body">我习惯性地输入冗长的 ChatGPT 提示。Terse 实时捕获我所有的填充词和犹豫表达。平均减少 60% 的 token。</div>
-        <div class="testi-tag">ChatGPT</div>
-      </div>
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">J</div>
-          <div><div class="testi-name">Jake Ortiz</div><div class="testi-handle">@jakeortiz</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.3.body">仅 Agent 监控就物超所值。我可以看到每轮的输入/输出/缓存、工具调用成本，以及哪些会话消耗最多 token。</div>
-        <div class="testi-tag">Cursor Agent</div>
-      </div>
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">A</div>
-          <div><div class="testi-name">Amara Patel</div><div class="testi-handle">@amara_codes</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.4.body">100% 本地运行。无 API 调用，无云端。作为处理敏感代码库的人，这是我唯一信任的 token 优化器。</div>
-        <div class="testi-tag">Privacy</div>
-      </div>
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">R</div>
-          <div><div class="testi-name">Ravi Nguyen</div><div class="testi-handle">@ravi_ng</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.5.body">配置了 OpenClaw + Terse，API 账单立刻降低。自动模式在发送前重写提示，监控器跟踪每轮成本。</div>
-        <div class="testi-tag">OpenClaw</div>
-      </div>
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">E</div>
-          <div><div class="testi-name">Elena Vasquez</div><div class="testi-handle">@elena_v</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.6.body">三种模式非常完美。Soft 用于重要提示，Aggressive 用于快速随手问题。Terse 适应我的工作方式。</div>
-        <div class="testi-tag">3 Modes</div>
-      </div>
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">D</div>
-          <div><div class="testi-name">Daniel Park</div><div class="testi-handle">@dpark_dev</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.7.body">我每月有 $40 的 Claude API 额度闲置。在 Token 交易所上架了我的密钥——现在每月从其他开发者那里赚约 $25。</div>
-        <div class="testi-tag">Token Exchange</div>
-      </div>
-      <div class="testi-card">
-        <div class="testi-header">
-          <div class="testi-avatar">L</div>
-          <div><div class="testi-name">Lisa Chen</div><div class="testi-handle">@lisachen_ai</div></div>
-        </div>
-        <div class="testi-body" data-i18n-html="testimonials.8.body">作为学生，全价购买 Claude API 很心痛。Token 交易所让我以 6 折获得 Sonnet。</div>
-        <div class="testi-tag">Token Exchange</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ STATS ═══ -->
-<section class="stats-section">
-  <div class="stats-inner">
-    <h2 class="rv" data-i18n-html="stats.heading">基于学术研究。</h2>
-    <p class="rv d1" style="color:var(--t3);font-size:15px;max-width:480px;margin:-40px auto 50px" data-i18n="stats.subtitle">基于 LLMLingua、Norvig 拼写校正、选择性上下文剪枝以及真实 Agent 会话分析。</p>
-    <div class="stats-grid">
-      <div class="stat-card rv d1"><div class="stat-num" data-t="5" data-s="">0</div><div class="stat-lbl" data-i18n="stats.strategies">种优化策略</div></div>
-      <div class="stat-card rv d1"><div class="stat-num" data-t="20" data-s="+">0</div><div class="stat-lbl" data-i18n="stats.techniques">项 token 压缩技术</div></div>
-      <div class="stat-card rv d2"><div class="stat-num" data-t="3" data-s="">0</div><div class="stat-lbl" data-i18n="stats.providers">家 API 服务商支持</div></div>
-      <div class="stat-card rv d3"><div class="stat-num" data-t="50" data-s="">0</div><div class="stat-lbl" data-i18n="stats.discount">% 交易所最高折扣</div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ TERSE API ═══ -->
-<section class="section" id="terse-api" style="background:var(--bg0);border-top:1px solid var(--bd)">
-  <div style="max-width:1100px;margin:0 auto;padding:0 32px">
-    <div style="text-align:center;margin-bottom:52px">
-      <div class="label rv" style="margin:0 auto 18px">Developer API</div>
-      <h2 class="rv" style="font-size:clamp(28px,4vw,50px);font-weight:900;letter-spacing:-2px;margin-bottom:14px">Terse <span class="gradient-text">API</span></h2>
-      <p class="rv d1" style="color:var(--t2);font-size:16px;max-width:580px;margin:0 auto;line-height:1.7">Integrate token optimization directly into your vibe coding project. One API call — 30–60% fewer tokens, same meaning, same results.</p>
-      <div style="display:flex;gap:12px;justify-content:center;margin-top:28px;flex-wrap:wrap">
-        <a href="/api-docs" class="btn" style="font-size:14px;padding:11px 26px;background:var(--gradient);color:var(--bg0);text-decoration:none;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;gap:7px">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Read the docs
-        </a>
-        <a href="https://github.com/Terse-AI/terseai" class="btn-ghost" style="font-size:14px;padding:11px 24px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:10px;font-weight:600;display:inline-flex;align-items:center;gap:7px;text-decoration:none" onmouseover="this.style.borderColor='var(--acm)';this.style.color='var(--ac)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--t2)'">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          GitHub examples
-        </a>
-      </div>
-    </div>
-
-    <!-- How it works cards -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:48px">
-      <div class="rv d1" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:38px;height:38px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:18px">🔑</div>
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:8px">1. Get your API key</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">Sign in and generate a <code class="mono" style="font-size:11px;color:var(--ac);background:var(--acd);padding:1px 5px;border-radius:4px">tsk_...</code> developer key from your dashboard. Free tier included.</p>
-      </div>
-      <div class="rv d2" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:38px;height:38px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:18px">⚡</div>
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:8px">2. Optimize before sending</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">POST your prompt to <code class="mono" style="font-size:11px;color:var(--ac);background:var(--acd);padding:1px 5px;border-radius:4px">/api/v1/optimize</code> — get back a trimmed version with token count saved.</p>
-      </div>
-      <div class="rv d3" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:38px;height:38px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:18px">📡</div>
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:8px">3. Scan your codebase</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">Use <code class="mono" style="font-size:11px;color:var(--ac);background:var(--acd);padding:1px 5px;border-radius:4px">/api/v1/scan</code> to find every LLM call site in your project and see where tokens are wasted.</p>
-      </div>
-    </div>
-
-    <!-- Code snippet tabs -->
-    <div class="rv d2" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;overflow:hidden">
-      <div style="display:flex;border-bottom:1px solid var(--bd);background:var(--bg3)">
-        <button onclick="apiTabSwitch('node')" id="api-tab-node" style="padding:10px 20px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;background:var(--acd);color:var(--ac);border:none;border-bottom:2px solid var(--ac);cursor:pointer;transition:all .2s">Node.js</button>
-        <button onclick="apiTabSwitch('python')" id="api-tab-python" style="padding:10px 20px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;background:transparent;color:var(--t3);border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s">Python</button>
-        <button onclick="apiTabSwitch('curl')" id="api-tab-curl" style="padding:10px 20px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;background:transparent;color:var(--t3);border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s">cURL</button>
-        <button onclick="apiTabSwitch('scan')" id="api-tab-scan" style="padding:10px 20px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;background:transparent;color:var(--t3);border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s">Scan</button>
-        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;padding-right:14px;gap:6px">
-          <span style="width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block"></span>
-          <span style="width:10px;height:10px;border-radius:50%;background:#ffbd2e;display:inline-block"></span>
-          <span style="width:10px;height:10px;border-radius:50%;background:#28c840;display:inline-block"></span>
-        </div>
-      </div>
-      <div style="padding:24px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.8;overflow-x:auto">
-        <div id="api-snippet-node">
-<pre style="margin:0;color:var(--t2)"><span style="color:var(--t3)">// Install: (no package needed — just HTTP)</span>
-<span style="color:#60a5fa">const</span> response = <span style="color:#60a5fa">await</span> fetch(<span style="color:#a3e635">'https://www.terseai.org/api/v1/optimize'</span>, {
-  method: <span style="color:#a3e635">'POST'</span>,
-  headers: {
-    <span style="color:#a3e635">'Authorization'</span>: <span style="color:#a3e635">`Bearer ${process.env.TERSE_API_KEY}`</span>,
-    <span style="color:#a3e635">'Content-Type'</span>: <span style="color:#a3e635">'application/json'</span>,
-  },
-  body: JSON.stringify({
-    text: userPrompt,   <span style="color:var(--t3)">// your prompt string</span>
-    mode: <span style="color:#a3e635">'normal'</span>,     <span style="color:var(--t3)">// 'soft' | 'normal' | 'aggressive'</span>
-  }),
-});
-<span style="color:#60a5fa">const</span> { optimized, tokens_saved, reduction_pct } = <span style="color:#60a5fa">await</span> response.json();
-<span style="color:var(--t3)">// → use `optimized` as the prompt for your LLM call</span></pre>
-        </div>
-        <div id="api-snippet-python" style="display:none">
-<pre style="margin:0;color:var(--t2)"><span style="color:var(--t3)"># pip install requests (or use httpx)</span>
-<span style="color:#60a5fa">import</span> requests, os
-
-resp = requests.post(
-    <span style="color:#a3e635">"https://www.terseai.org/api/v1/optimize"</span>,
-    headers={<span style="color:#a3e635">"Authorization"</span>: <span style="color:#a3e635">f"Bearer {os.environ['TERSE_API_KEY']}"</span>},
-    json={
-        <span style="color:#a3e635">"text"</span>: user_prompt,
-        <span style="color:#a3e635">"mode"</span>: <span style="color:#a3e635">"normal"</span>,  <span style="color:var(--t3)"># "soft" | "normal" | "aggressive"</span>
-    },
-)
-data = resp.json()
-optimized = data[<span style="color:#a3e635">"optimized"</span>]
-tokens_saved = data[<span style="color:#a3e635">"tokens_saved"</span>]
-<span style="color:var(--t3)"># → pass `optimized` to your Anthropic/OpenAI call</span></pre>
-        </div>
-        <div id="api-snippet-curl" style="display:none">
-<pre style="margin:0;color:var(--t2)">curl -X POST https://www.terseai.org/api/v1/optimize \
-  -H <span style="color:#a3e635">"Authorization: Bearer $TERSE_API_KEY"</span> \
-  -H <span style="color:#a3e635">"Content-Type: application/json"</span> \
-  -d <span style="color:#a3e635">'{
-    "text": "Can you please help me understand how the authentication flow works in this application?",
-    "mode": "normal"
-  }'</span>
-
-<span style="color:var(--t3)"># Response:</span>
-<span style="color:#a3e635">{
-  "optimized": "Explain the authentication flow.",
-  "tokens_original": 22,
-  "tokens_optimized": 7,
-  "tokens_saved": 15,
-  "reduction_pct": 68,
-  "mode": "normal"
-}</span></pre>
-        </div>
-        <div id="api-snippet-scan" style="display:none">
-<pre style="margin:0;color:var(--t2)"><span style="color:var(--t3)">// Scan your project code for LLM call sites</span>
-<span style="color:#60a5fa">const</span> fs = require(<span style="color:#a3e635">'fs'</span>);
-<span style="color:#60a5fa">const</span> code = fs.readFileSync(<span style="color:#a3e635">'./src/agent.js'</span>, <span style="color:#a3e635">'utf8'</span>);
-
-<span style="color:#60a5fa">const</span> result = <span style="color:#60a5fa">await</span> fetch(<span style="color:#a3e635">'https://www.terseai.org/api/v1/scan'</span>, {
-  method: <span style="color:#a3e635">'POST'</span>,
-  headers: {
-    <span style="color:#a3e635">'Authorization'</span>: <span style="color:#a3e635">`Bearer ${process.env.TERSE_API_KEY}`</span>,
-    <span style="color:#a3e635">'Content-Type'</span>: <span style="color:#a3e635">'application/json'</span>,
-  },
-  body: JSON.stringify({ code, language: <span style="color:#a3e635">'javascript'</span> }),
-}).then(r => r.json());
-
-<span style="color:var(--t3)">// → result.findings: [{line, type, preview, recommendation}]</span>
-console.log(<span style="color:#a3e635">`Found ${result.total_findings} LLM calls to optimize`</span>);</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── API Pricing ── -->
-    <div style="margin-top:52px" id="api-pricing">
-      <h3 class="rv" style="text-align:center;font-size:clamp(20px,2.5vw,28px);font-weight:900;letter-spacing:-1px;margin-bottom:10px">API Pricing</h3>
-      <p class="rv d1" style="text-align:center;color:var(--t2);font-size:14px;max-width:500px;margin:0 auto 36px;line-height:1.6">Free tier included with every account. No credit card for free. Upgrade for higher limits and batch access.</p>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:860px;margin:0 auto">
-
-        <!-- Free -->
-        <div class="rv d1" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px;display:flex;flex-direction:column">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t3);margin-bottom:12px">Free</div>
-          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">$0<span style="font-size:15px;font-weight:400;color:var(--t3)">/mo</span></div>
-          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">No credit card needed.</p>
-          <ul style="list-style:none;padding:0;margin:0 0 auto;display:flex;flex-direction:column;gap:9px">
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>500K tokens / month</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>60 requests / minute</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>All 3 compression modes</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Community support</li>
-          </ul>
-          <button onclick="handleApiKeySignup()" style="margin-top:20px;padding:10px 0;width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:9px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.background='rgba(255,255,255,.13)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">Get free API key →</button>
-        </div>
-
-        <!-- API Pro -->
-        <div class="rv d2" style="background:rgba(110,231,183,.05);border:1px solid var(--acm);border-radius:16px;padding:24px;display:flex;flex-direction:column;position:relative">
-          <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ac);color:#000;font-size:9px;font-weight:800;padding:3px 13px;border-radius:20px;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap">Most Popular</div>
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--ac);margin-bottom:12px">Pro</div>
-          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">$29<span style="font-size:15px;font-weight:400;color:var(--t3)">/mo</span></div>
-          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">Cancel anytime. No trial.</p>
-          <ul style="list-style:none;padding:0;margin:0 0 auto;display:flex;flex-direction:column;gap:9px">
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><strong style="color:var(--ac)">50M</strong>&nbsp;tokens / month</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>600 requests / minute</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Batch compression</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Usage analytics dashboard</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Email support</li>
-          </ul>
-          <button onclick="handleApiCheckout('api_pro')" style="margin-top:20px;padding:10px 0;width:100%;background:var(--gradient);border:none;border-radius:9px;color:#000;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.boxShadow='0 0 24px rgba(110,231,183,.3)'" onmouseout="this.style.boxShadow='none'">Subscribe — $29/mo</button>
-        </div>
-
-        <!-- Enterprise -->
-        <div class="rv d3" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px;display:flex;flex-direction:column">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t3);margin-bottom:12px">Enterprise</div>
-          <div style="font-size:30px;font-weight:900;letter-spacing:-1.5px;margin-bottom:4px">Custom</div>
-          <p style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:18px">Teams &amp; high-volume use.</p>
-          <ul style="list-style:none;padding:0;margin:0 0 auto;display:flex;flex-direction:column;gap:9px">
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong>&nbsp;tokens</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Custom rate limits</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Dedicated endpoints</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>SLA + priority support</li>
-            <li style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Team management + audit logs</li>
-          </ul>
-          <a href="mailto:hello@terseai.org" style="display:block;margin-top:20px;padding:10px 0;width:100%;background:transparent;border:1px solid rgba(255,255,255,.14);border-radius:9px;color:rgba(255,255,255,.65);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center;text-decoration:none;font-family:inherit" onmouseover="this.style.borderColor='rgba(255,255,255,.35)';this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,.14)';this.style.color='rgba(255,255,255,.65)'">Contact us →</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Response example + savings highlight -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px">
-      <div class="rv d3" style="background:rgba(110,231,183,0.06);border:1px solid var(--acm);border-radius:14px;padding:20px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ac);margin-bottom:10px">Modes</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);background:var(--acd);padding:2px 8px;border-radius:5px;white-space:nowrap;margin-top:1px">soft</span>
-            <span style="font-size:12px;color:var(--t2);line-height:1.5">Typo fix + whitespace + safe phrase shortening. Meaning 100% preserved.</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);background:var(--acd);padding:2px 8px;border-radius:5px;white-space:nowrap;margin-top:1px">normal</span>
-            <span style="font-size:12px;color:var(--t2);line-height:1.5">+ filler removal, hedging, politeness, question→imperative conversion.</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);background:var(--acd);padding:2px 8px;border-radius:5px;white-space:nowrap;margin-top:1px">aggressive</span>
-            <span style="font-size:12px;color:var(--t2);line-height:1.5">+ abbreviations, markdown strip, article removal, telegraph compression.</span>
-          </div>
-        </div>
-      </div>
-      <div class="rv d3" style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:20px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:10px">Endpoints</div>
-        <div style="display:flex;flex-direction:column;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px">
-          <div><span style="color:#60a5fa">POST</span> <span style="color:var(--ac)">/api/v1/optimize</span> <span style="color:var(--t3)">— optimize a prompt</span></div>
-          <div><span style="color:#60a5fa">POST</span> <span style="color:var(--ac)">/api/v1/scan</span> <span style="color:var(--t3)">— scan code for LLM calls</span></div>
-          <div><span style="color:#60a5fa">POST</span> <span style="color:var(--ac)">/api/v1/keys</span> <span style="color:var(--t3)">— create API key</span></div>
-          <div><span style="color:#60a5fa">GET</span> <span style="color:var(--ac)">&nbsp;/api/v1/keys</span> <span style="color:var(--t3)">— list your keys</span></div>
-          <div><span style="color:#60a5fa">POST</span> <span style="color:var(--ac)">/api/v1/projects</span> <span style="color:var(--t3)">— publish your project</span></div>
-          <div><span style="color:#60a5fa">GET</span> <span style="color:var(--ac)">&nbsp;/api/v1/projects</span> <span style="color:var(--t3)">— browse showcase</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ VIBE CODING PROJECTS PLATFORM ═══ -->
-<section class="section" id="vibe-platform" style="background:var(--bg1);border-top:1px solid var(--bd)">
-  <div style="max-width:1100px;margin:0 auto;padding:0 32px">
-    <div style="text-align:center;margin-bottom:52px">
-      <div class="label rv" style="margin:0 auto 18px">Platform</div>
-      <h2 class="rv" style="font-size:clamp(28px,4vw,50px);font-weight:900;letter-spacing:-2px;margin-bottom:14px">Vibe Coding <span class="gradient-text">Projects</span></h2>
-      <p class="rv d1" style="color:var(--t2);font-size:16px;max-width:580px;margin:0 auto;line-height:1.7">Built with Terse API? Publish your project to get traffic, users, and visibility in the vibe coding developer community.</p>
-      <div style="display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap">
-        <button onclick="openSubmitProject()" class="btn" style="font-size:14px;padding:11px 26px;background:var(--gradient);color:var(--bg0);border:none;border-radius:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Submit your project
-        </button>
-        <a href="/vibe-projects" style="font-size:14px;padding:11px 22px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:10px;font-weight:600;display:inline-flex;align-items:center;gap:7px;text-decoration:none" onmouseover="this.style.borderColor='var(--acm)';this.style.color='var(--ac)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--t2)'">
-          Browse all projects →
-        </a>
-      </div>
-    </div>
-
-    <!-- Featured projects grid -->
-    <div id="vibe-projects-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:36px">
-      <!-- Seeded example projects shown until real ones load -->
-      <div class="vibe-proj-card rv d1" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;background:linear-gradient(135deg,#6ee7b7,#3b82f6);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🤖</div>
-          <div>
-            <div style="font-size:14px;font-weight:700">ClaudeFlow</div>
-            <div style="font-size:11px;color:var(--t3)">Multi-agent workflow builder</div>
-          </div>
-          <div style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ac)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--ac)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            <span id="vp-upvotes-0">247</span>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--t2);line-height:1.6;margin:0">Orchestrates Claude agents for complex tasks. Terse API cuts context window usage by 41% per turn, enabling longer sessions without hitting limits.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <span style="font-size:10px;font-weight:600;padding:2px 8px;background:var(--acd);color:var(--ac);border-radius:5px">Node.js</span>
-          <span style="font-size:10px;font-weight:600;padding:2px 8px;background:var(--bg3);color:var(--t3);border-radius:5px">Agents</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-          <div style="font-size:11px;color:var(--t3)"><span style="color:var(--ac);font-weight:700">~38K</span> tokens saved/mo</div>
-          <div style="display:flex;gap:8px">
-            <a href="#" style="font-size:11px;color:var(--ac);text-decoration:none">GitHub ↗</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="vibe-proj-card rv d2" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#ef4444);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">💬</div>
-          <div>
-            <div style="font-size:14px;font-weight:700">PromptKit</div>
-            <div style="font-size:11px;color:var(--t3)">Open-source prompt library</div>
-          </div>
-          <div style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ac)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--ac)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            <span id="vp-upvotes-1">189</span>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--t2);line-height:1.6;margin:0">A library of 200+ production-ready prompts. Uses Terse API to auto-compress each prompt at runtime, reducing developer API bills by $80/mo on average.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <span style="font-size:10px;font-weight:600;padding:2px 8px;background:var(--acd);color:var(--ac);border-radius:5px">TypeScript</span>
-          <span style="font-size:10px;font-weight:600;padding:2px 8px;background:var(--bg3);color:var(--t3);border-radius:5px">Prompts</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-          <div style="font-size:11px;color:var(--t3)"><span style="color:var(--ac);font-weight:700">~21K</span> tokens saved/mo</div>
-          <a href="#" style="font-size:11px;color:var(--ac);text-decoration:none">GitHub ↗</a>
-        </div>
-      </div>
-
-      <div class="vibe-proj-card rv d3" style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;background:linear-gradient(135deg,#8b5cf6,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🐍</div>
-          <div>
-            <div style="font-size:14px;font-weight:700">PyAgentKit</div>
-            <div style="font-size:11px;color:var(--t3)">Python agent scaffolding</div>
-          </div>
-          <div style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ac)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--ac)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            <span id="vp-upvotes-2">134</span>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--t2);line-height:1.6;margin:0">Batteries-included Python scaffold for building LLM agents. Terse integration is built-in — every outbound message is auto-optimized before the API call.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <span style="font-size:10px;font-weight:600;padding:2px 8px;background:var(--acd);color:var(--ac);border-radius:5px">Python</span>
-          <span style="font-size:10px;font-weight:600;padding:2px 8px;background:var(--bg3);color:var(--t3);border-radius:5px">Scaffold</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-          <div style="font-size:11px;color:var(--t3)"><span style="color:var(--ac);font-weight:700">~29K</span> tokens saved/mo</div>
-          <a href="#" style="font-size:11px;color:var(--ac);text-decoration:none">GitHub ↗</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Load real projects from API -->
-    <div id="vibe-real-projects" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:36px"></div>
-
-    <div style="text-align:center;margin-top:8px">
-      <p style="font-size:13px;color:var(--t3)">Have a project using Terse API? <button onclick="openSubmitProject()" style="background:none;border:none;color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px">Submit it to be featured →</button></p>
-    </div>
-  </div>
-</section>
-
-<!-- Submit project modal -->
-<div id="submit-project-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--bg1);border:1px solid var(--bd);border-radius:20px;padding:32px;max-width:520px;width:100%;position:relative;max-height:90vh;overflow-y:auto">
-    <button onclick="closeSubmitProject()" style="position:absolute;top:16px;right:16px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--t2);font-size:18px;display:flex;align-items:center;justify-content:center">×</button>
-    <h3 style="font-size:20px;font-weight:800;margin-bottom:6px">Submit your project</h3>
-    <p style="font-size:13px;color:var(--t3);margin-bottom:24px">Projects using Terse API are featured in the showcase and get traffic from the community.</p>
-    <form id="submit-project-form" onsubmit="submitVibeProject(event)">
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Project name *</label>
-          <input name="name" required maxlength="100" placeholder="e.g. ClaudeFlow" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:14px;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--acm)'" onblur="this.style.borderColor='var(--bd)'">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Description * <span style="color:var(--t3);font-weight:400">(max 500 chars)</span></label>
-          <textarea name="description" required maxlength="500" rows="3" placeholder="What does it do, and how does Terse help?" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:14px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit" onfocus="this.style.borderColor='var(--acm)'" onblur="this.style.borderColor='var(--bd)'"></textarea>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">GitHub URL</label>
-            <input name="github_url" type="url" placeholder="https://github.com/..." style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:13px;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--acm)'" onblur="this.style.borderColor='var(--bd)'">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Website URL</label>
-            <input name="website_url" type="url" placeholder="https://..." style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:13px;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--acm)'" onblur="this.style.borderColor='var(--bd)'">
-          </div>
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Tags <span style="color:var(--t3);font-weight:400">(comma-separated, e.g. Python, Agents, RAG)</span></label>
-          <input name="tags" placeholder="Python, Agents, OpenAI" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:14px;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--acm)'" onblur="this.style.borderColor='var(--bd)'">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Estimated tokens saved per month</label>
-          <input name="tokens_saved_monthly" type="number" min="0" placeholder="e.g. 25000" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);font-size:14px;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='var(--acm)'" onblur="this.style.borderColor='var(--bd)'">
-        </div>
-        <button type="submit" id="submit-proj-btn" style="padding:12px 24px;background:var(--gradient);color:var(--bg0);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;width:100%">Submit project</button>
-        <p id="submit-proj-msg" style="display:none;text-align:center;font-size:13px;color:var(--ac)"></p>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- ═══ TERSE CLOUD ═══ -->
-<section class="section" id="cloud" style="background:var(--bg1)">
-  <div style="max-width:1100px;margin:0 auto;padding:0 32px">
-    <div style="text-align:center;margin-bottom:52px">
-      <div class="label rv" style="margin:0 auto 18px">Teams</div>
-      <h2 style="font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-1.5px;margin-bottom:14px">Terse <span class="gradient-text">Cloud</span></h2>
-      <p class="desc" style="max-width:520px;margin:0 auto">Visibility and control over your team's AI coding costs. See who's using what, how much is saved, and where tokens are wasted — across every tool.</p>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-bottom:44px">
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">📊</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Token analytics</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">Dashboard by developer, project, and tool — Mac, Windows, Chrome, VS Code, iOS.</p>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">💰</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Team savings report</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">"Your team saved $4,200 this month" — with per-developer and per-project breakdowns.</p>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">🔔</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Rate-limit alerts</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">Smart notifications when a developer is approaching heavy usage thresholds.</p>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">🔑</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Team token control</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">Distribute API tokens, add or remove developers, and audit all activity in one place.</p>
-      </div>
-    </div>
-
-    <div style="text-align:center">
-      <a href="/teams" class="btn" style="font-size:15px;padding:13px 32px;background:var(--gradient);color:var(--bg0);text-decoration:none;border-radius:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px">
-        Open team dashboard →
-      </a>
-      <p style="margin-top:14px;font-size:13px;color:var(--t3)">Free for open source. Teams from $15 / developer / month.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ TERSE COWORK ═══ -->
-<section class="section" id="cowork" style="background:var(--bg0);border-top:1px solid var(--bd)">
-  <div style="max-width:1100px;margin:0 auto;padding:0 32px">
-    <div style="text-align:center;margin-bottom:52px">
-      <div class="label rv" style="margin:0 auto 18px">Cowork</div>
-      <h2 style="font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-1.5px;margin-bottom:14px">把团队里<span class="gradient-text">所有 agent 放进同一间办公室</span></h2>
-      <p class="desc" style="max-width:560px;margin:0 auto">队友的 agent 不再各跑各的。谁在跑什么、日志、交接都汇到一处——团队里的人看得到，他们的 agent 也读得到。</p>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-bottom:44px">
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">👥</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">谁在跑什么，一眼看到</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">哪个 agent、哪个项目、哪个模型、上下文窗口用了多少，以及此刻正在做什么。</p>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">📜</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">日志实时可见</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">对话、工具调用和结果实时推送，两个人不会各改各的，把同一个文件重写两遍。</p>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">🔌</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">agent 之间互相读</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">任意 MCP 客户端接上 Terse，你的 agent 就能列出队友、读他们的日志、接手工作——不用离开自己的会话。</p>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:24px">
-        <div style="width:40px;height:40px;background:var(--acd);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">🤝</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">把活交出去</h3>
-        <p style="font-size:13px;color:var(--t3);line-height:1.6">给全队或某个人发消息、提问或交接任务，还没人应的事留在收件箱里。</p>
-      </div>
-    </div>
-
-    <div style="text-align:center">
-      <a href="/teams" class="btn" style="font-size:15px;padding:13px 32px;background:var(--gradient);color:var(--bg0);text-decoration:none;border-radius:12px;font-weight:700;display:inline-flex;align-items:center;gap:8px">
-        开始使用协同办公 &rarr;
-      </a>
-      <p style="margin-top:14px;font-size:13px;color:var(--t3)">支持 Claude Code、Cursor、Codex、Aider、Cline、Copilot 和 Windsurf。同一团队的人都看得到彼此的 agent，共享与否在 Mac 应用里随时可以关掉。</p>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ PRICING ═══ -->
-<section class="section" id="pricing" style="background:var(--bg0)">
-  <div style="max-width:1200px;margin:0 auto;text-align:center">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="pricing.sectionTitle">价格</div>
-    <h2 class="rv" style="margin-bottom:12px;text-align:center" data-i18n="pricing.heading">简单透明的方案</h2>
-    <p class="rv" style="color:var(--t2);max-width:520px;margin:0 auto 48px;text-align:center;font-size:15px;line-height:1.7" data-i18n-html="pricing.trialNote">按月方案含 <strong>30 天免费试用</strong> — 今天 $0。也可选择按周或按季付费。</p>
-
-    <div class="pricing-grid rv d1">
-      <!-- PRO -->
-      <div class="price-card recommended">
-        <div class="price-tier" style="color:var(--ac)" data-i18n="pricing.pro">Pro</div>
-        <div class="price-amount"><span class="curr">$</span>4<span style="font-size:32px">.99</span><span class="period">/mo</span></div>
-        <div style="text-align:center;font-size:12.5px;color:var(--t3);margin:-4px 0 12px" data-i18n-html="pricing.proIntervals">或 <strong>$1.99</strong>/周 · <strong>$12</strong>/季（约 $4/月 — 省 20%）</div>
-        <p class="price-desc" data-i18n="pricing.proDesc">面向每日使用 Agent 的开发者。无限提示优化，多会话监控。</p>
-        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30 天免费试用——随时取消</div>
-        <ul class="price-features">
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1">无限次优化</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF2">3 个连接会话</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF3">2 台设备</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">全部 3 种优化模式</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF5">Agent 监控 + 重复检测</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">自动替换和发送模式</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF7">CLAUDE.md 规则生成</span></li>
-        </ul>
-        <button class="price-btn accent" onclick="handlePricing('pro')" data-i18n="pricing.startTrial">开始免费试用</button>
-      </div>
-
-      <!-- PREMIUM -->
-      <div class="price-card">
-        <div class="price-tier" style="color:var(--ac)" data-i18n="pricing.premium">Premium</div>
-        <div class="price-amount"><span class="curr">$</span>99<span class="period">/mo</span></div>
-        <p class="price-desc" data-i18n="pricing.premiumDesc">面向团队和重度用户。全部功能无限制，优先支持。</p>
-        <div style="text-align:center;margin-bottom:16px;padding:8px;background:rgba(110,231,183,0.08);border-radius:8px;font-size:12px;font-weight:700;color:var(--ac)" data-i18n="pricing.proTrial">30 天免费试用——随时取消</div>
-        <ul class="price-features">
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.proF1">无限次优化</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF2">无限连接会话</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n-html="pricing.premiumF3">无限设备</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF4">全部 3 种优化模式</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF5">完整 Agent 分析 + 规则生成</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.proF6">自动替换和发送模式</span></li>
-          <li><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span data-i18n="pricing.premiumF7">优先支持</span></li>
-        </ul>
-        <button class="price-btn primary" onclick="handlePricing('premium')" data-i18n="pricing.startTrial">开始免费试用</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ FAQ ═══ -->
-<section class="faq-section" id="faq">
-  <div class="faq-inner" style="text-align:center">
-    <div class="label rv" style="margin:0 auto 18px" data-i18n="faq.sectionTitle">常见问题</div>
-    <h2 class="rv" style="font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:6px" data-i18n-html="faq.heading">常见问题解答</h2>
-    <p class="rv d1" style="color:var(--t2);font-size:15px;max-width:520px;margin:0 auto" data-i18n="faq.subtitle">关于 token 优化以及 Terse 如何帮你省钱，你需要了解的一切。</p>
-
-    <div class="faq-grid rv d2" style="text-align:left">
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q1">什么是 token 优化？</div>
-        <div class="faq-a" data-i18n-html="faq.a1">Token 优化在不丢失语义的前提下减少 AI 提示中的 token 数量。Terse 使用 20 多种技术将用量降低 40-70%，直接降低 AI API 成本。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q2">Terse 能节省多少？</div>
-        <div class="faq-a" data-i18n="faq.a2">冗长提示节省 40-70%，CLI 输出最高节省 89%。典型的 2 小时会话从约 21 万 token 降至约 2.3 万。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q3">哪些 AI 工具可以配合 Terse 使用？</div>
-        <div class="faq-a" data-i18n="faq.a3">Claude Code、Cursor、OpenClaw、Aider 及所有终端 AI Agent。也支持通过 macOS 辅助功能 API 使用的浏览器工具。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q4">提示压缩是怎么实现的？</div>
-        <div class="faq-a" data-i18n="faq.a4">7 阶段流水线：拼写校正、空白规范化、模式优化、冗余消除、NLP 分析、电报式压缩和清理。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q5">会降低输出质量吗？</div>
-        <div class="faq-a" data-i18n="faq.a5">不会。它只去除噪声——填充词、犹豫表达、拼写错误——不改变意图。研究表明压缩后的提示能保持甚至提升质量。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q6">和提示工程有什么区别？</div>
-        <div class="faq-a" data-i18n="faq.a6">提示工程是编写更好的指令，token 优化是通过去除冗余来降低成本。Terse 自动完成优化工作。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q7">Terse 免费吗？</div>
-        <div class="faq-a" data-i18n="faq.a7">两种方案均包含 30 天免费试用。Pro 版 $4.99/月，Premium 版 $99/月，随时可取消。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q8">Token 如何影响成本？</div>
-        <div class="faq-a" data-i18n="faq.a8">AI 模型按 token 计费（约 4 个字符为 1 个 token）。单次 Agent 会话可消耗 20 万以上 token，费用 $3-$15。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q9">什么是 Token 交易所？</div>
-        <div class="faq-a" data-i18n="faq.a9">一个交易闲置 AI API token 的市场。卖家折价出售密钥，买家获得更便宜的访问。</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q" data-i18n="faq.q10">如何买卖 token？</div>
-        <div class="faq-a" data-i18n="faq.a10">在 terseai.org/marketplace 登录。卖出：粘贴密钥，设定折扣。买入：充值，生成 API 密钥。</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ TOKEN EXCHANGE — ANIMATED DEMO ═══ -->
-<section class="section" id="exchange" style="display:none;background:var(--bg0);padding:80px 40px;border-top:1px solid var(--bd)">
-  <div style="max-width:1100px;margin:0 auto">
-    <div style="text-align:center;margin-bottom:48px">
-      <div class="label rv" style="margin:0 auto 18px" data-i18n="exchange.label">Token 交易所</div>
-      <h2 class="rv" style="font-size:clamp(28px,5vw,44px);font-weight:900;letter-spacing:-2px;margin-bottom:14px" data-i18n-html="exchange.heading">3 次点击交易 token，节省 50% 以上。</h2>
-      <p class="rv d1" style="color:var(--t2);max-width:560px;margin:0 auto;font-size:15px;line-height:1.7" data-i18n="exchange.desc">无论是出售闲置额度还是折扣购买，整个流程不到 2 分钟。</p>
-    </div>
-    <!-- Animated flow — Seller side -->
-    <div class="rv d2" style="margin-bottom:48px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ac);margin-bottom:16px;padding-left:4px" data-i18n="exchange.sellerLabel">卖家流程——从闲置额度中获利</div>
-      <div class="win" style="max-width:900px">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">terseai.org/marketplace — Sell Tokens</span><span class="win-badge">Exchange</span></div>
-        <div style="padding:20px;background:var(--bg1)">
-          <div id="ex-seller-flow" style="display:flex;flex-direction:column;gap:12px">
-            <div class="ex-step" id="exs1" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step1">选择你的服务商</span></div>
-              <div style="display:flex;gap:8px;padding-left:36px"><div style="padding:10px 20px;background:var(--acd);border:1px solid var(--ac);border-radius:8px;font-size:13px;font-weight:700;color:var(--ac)">Anthropic</div><div style="padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--t3)">OpenAI</div><div style="padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--t3)">Google</div></div>
-            </div>
-            <div class="ex-step" id="exs2" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step2">粘贴你的 API 密钥</span></div>
-              <div style="padding-left:36px"><div style="padding:10px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);display:flex;align-items:center;gap:8px"><span id="exKeyType" style="color:var(--ac)"></span><span style="display:flex;align-items:center;gap:4px;margin-left:auto;font-size:10px;color:var(--ac)"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect width="10" height="10" rx="2" fill="rgba(110,231,183,0.2)"/><path d="M3 5L4.5 6.5L7 3.5" stroke="#6ee7b7" stroke-width="1.2" stroke-linecap="round"/></svg> <span data-i18n="exchange.encrypted">AES-256 加密</span></span></div></div>
-            </div>
-            <div class="ex-step" id="exs3" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:var(--acd);color:var(--ac);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.seller.step3">拖动设置你的折扣</span></div>
-              <div style="padding-left:36px;display:flex;align-items:center;gap:16px"><div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;position:relative"><div id="exSliderFill" style="height:100%;width:0%;background:var(--ac);border-radius:3px;transition:width 1.5s ease"></div><div id="exSliderThumb" style="position:absolute;top:-8px;left:0%;width:22px;height:22px;border-radius:50%;background:var(--ac);border:2px solid var(--bg0);box-shadow:0 2px 8px rgba(110,231,183,0.3);transition:left 1.5s ease"></div></div><div style="text-align:center;min-width:60px"><div id="exDiscountPct" style="font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac);line-height:1">0%</div><div style="font-size:9px;color:var(--t3)" data-i18n="exchange.offRetail">低于官方价</div></div></div>
-            </div>
-            <div class="ex-step" id="exs4" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="padding:14px 16px;background:rgba(110,231,183,0.06);border:1px solid var(--acm);border-radius:10px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span style="font-size:13px;font-weight:700;color:var(--ac)">Key verified &amp; listed! You'll earn $<span id="exEarnRate">0</span>/mo at current volume.</span></div><div style="font-size:11px;color:var(--t3)">Took 45 seconds</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Animated flow — Buyer side -->
-    <div class="rv d3" style="margin-bottom:48px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#60a5fa;margin-bottom:16px;padding-left:4px" data-i18n="exchange.buyerLabel">买家流程——最高节省 50%</div>
-      <div class="win" style="max-width:900px">
-        <div class="win-bar"><div class="wd r"></div><div class="wd y"></div><div class="wd g"></div><span class="win-title">Terminal — Setup</span><span class="win-badge" style="background:rgba(96,165,250,0.1);color:#60a5fa">1 command</span></div>
-        <div style="padding:20px;background:var(--bg1)">
-          <div id="ex-buyer-flow" style="display:flex;flex-direction:column;gap:12px">
-            <div class="ex-step" id="exb1" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step1">生成你的 Terse 密钥（在市场上一键完成）</span></div>
-              <div style="padding-left:36px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;color:#60a5fa" id="exBuyerKey"></div>
-            </div>
-            <div class="ex-step" id="exb2" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step2">粘贴到终端——一劳永逸</span></div>
-              <div style="padding-left:36px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;line-height:1.8"><span style="color:var(--t3)">$</span> <span style="color:#60a5fa">export</span> ANTHROPIC_API_KEY=<span style="color:#fbbf24" id="exCmdKey"></span><br><span style="color:var(--t3)">$</span> <span style="color:#60a5fa">export</span> ANTHROPIC_BASE_URL=<span style="color:#fbbf24">https://www.terseai.org/api/proxy</span></div>
-            </div>
-            <div class="ex-step" id="exb3" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.1);color:#60a5fa;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div><span style="font-size:13px;font-weight:600;color:var(--t2)" data-i18n="exchange.buyer.step3">运行 claude、cursor、python——一切自动运行</span></div>
-              <div style="padding-left:36px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;line-height:1.8"><span style="color:var(--t3)">$</span> <span style="color:#60a5fa">claude</span> <span style="color:var(--t2)">"fix the auth bug"</span><br><span style="color:var(--ac)">Claude Code v1.2.0</span> &mdash; <span style="color:var(--t3)">routed via Terse proxy</span><br><span style="color:var(--t3)"># optimized + 35% cheaper than retail</span></div>
-            </div>
-            <div class="ex-step" id="exb4" style="opacity:0;transform:translateY(10px);transition:all .5s">
-              <div style="padding:14px 16px;background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.2);border-radius:10px"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center"><div><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--t3);text-decoration:line-through">$100</div><div style="font-size:9px;color:var(--t3)">Retail</div></div><div><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#60a5fa">$70</div><div style="font-size:9px;color:var(--t3)">Exchange (30% off)</div></div><div><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--ac)">$42</div><div style="font-size:9px;color:var(--t3)">+ Terse optimize</div></div><div><div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:#fbbf24">$58</div><div style="font-size:9px;color:#fbbf24">saved/mo</div></div></div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Exchange CTA -->
-    <div class="rv d3" style="text-align:center">
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
-        <a href="/marketplace" class="btn-primary" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaSell">开始出售 Token</a>
-        <a href="/marketplace" class="btn-ghost" style="text-decoration:none;font-size:16px;padding:14px 36px" data-i18n="exchange.ctaBuy">折扣购买 Token</a>
-      </div>
-      <p style="font-size:12px;color:var(--t3)" data-i18n="exchange.footnote">15% 佣金 &middot; AES-256 加密 &middot; Stripe 打款 &middot; 支持 Anthropic、OpenAI、Google</p>
-    </div>
-  </div>
-</section>
-
-
-<!-- ═══ NEWS & INSIGHTS ═══ -->
-<section class="news-section" id="news" aria-label="News and Insights">
-  <div class="news-inner">
-    <div style="text-align:center">
-      <div class="label rv" style="margin:0 auto 18px">News &amp; Insights</div>
-      <h2 class="rv" style="font-size:clamp(28px,4vw,46px);font-weight:900;letter-spacing:-1.5px;margin-bottom:10px">Stay ahead on <span class="gradient-text">AI cost optimization.</span></h2>
-      <p class="rv d1" style="color:var(--t2);font-size:15px;max-width:560px;margin:0 auto">Research, guides, and analysis on reducing LLM token costs — from prompt caching to model routing to agent session efficiency.</p>
-    </div>
-    <div class="news-grid">
-
-      <article class="news-card rv d1" itemscope itemtype="https://schema.org/Article">
-        <div class="news-card-top">
-          <span class="news-tag">Cost Optimization</span>
-          <span class="news-meta"><time datetime="2026-05-01" itemprop="datePublished">May 1, 2026</time></span>
-        </div>
-        <h3 itemprop="headline">Prompt Caching in 2026: How to Cut Claude Code Costs by 73%</h3>
-        <p itemprop="description">Prompt caching is now the single highest-ROI technique for reducing AI agent costs. Cached tokens cost 10&times; less than standard input tokens — here's how to structure every session for maximum cache hit rate.</p>
-        <div class="news-footer">
-          <a href="/prompt-caching-guide" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-          <span class="news-read-time">8 min read</span>
-        </div>
-      </article>
-
-      <article class="news-card rv d2" itemscope itemtype="https://schema.org/Article">
-        <div class="news-card-top">
-          <span class="news-tag">Agent Optimization</span>
-          <span class="news-meta"><time datetime="2026-05-07" itemprop="datePublished">May 7, 2026</time></span>
-        </div>
-        <h3 itemprop="headline">Git Diff Compression: Reclaim 70% of Your Agent Context Window</h3>
-        <p itemprop="description">When Claude Code runs <code class="mono" style="font-size:12px;color:var(--ac)">git diff</code>, the output can consume 30–60K tokens per turn. Compressing to changed lines + 1 line of context is the fastest context win in any agent workflow.</p>
-        <div class="news-footer">
-          <a href="/git-diff-compression" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-          <span class="news-read-time">6 min read</span>
-        </div>
-      </article>
-
-      <article class="news-card rv d3" itemscope itemtype="https://schema.org/Article">
-        <div class="news-card-top">
-          <span class="news-tag">Research</span>
-          <span class="news-meta"><time datetime="2026-04-22" itemprop="datePublished">Apr 22, 2026</time></span>
-        </div>
-        <h3 itemprop="headline">The Real Cost of Duplicate Tool Calls in AI Agent Sessions</h3>
-        <p itemprop="description">Analysis of 500 real Claude Code sessions found 34% of Read tool calls were redundant. At $15/MTok for Opus, each repeated file read wastes ~$0.006 — small per turn, painful at scale.</p>
-        <div class="news-footer">
-          <a href="/how-to-stop-ai-agents-re-reading-files" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-          <span class="news-read-time">5 min read</span>
-        </div>
-      </article>
-
-      <article class="news-card rv d1" itemscope itemtype="https://schema.org/Article">
-        <div class="news-card-top">
-          <span class="news-tag">Model Selection</span>
-          <span class="news-meta"><time datetime="2026-04-15" itemprop="datePublished">Apr 15, 2026</time></span>
-        </div>
-        <h3 itemprop="headline">Model Routing in 2026: When Sonnet Outperforms Opus at 1/5th the Cost</h3>
-        <p itemprop="description">Not every agent task needs Claude Opus. Single-file edits, test generation, and short lookups perform identically on Sonnet — saving teams $200+/month with zero quality loss on routine tasks.</p>
-        <div class="news-footer">
-          <a href="/ai-token-pricing-comparison" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-          <span class="news-read-time">7 min read</span>
-        </div>
-      </article>
-
-      <article class="news-card rv d2" itemscope itemtype="https://schema.org/Article">
-        <div class="news-card-top">
-          <span class="news-tag">Technique Comparison</span>
-          <span class="news-meta"><time datetime="2026-03-20" itemprop="datePublished">Mar 20, 2026</time></span>
-        </div>
-        <h3 itemprop="headline">LLMLingua vs. Rule-Based Compression: A Developer's Benchmark</h3>
-        <p itemprop="description">LLMLingua uses perplexity scoring to drop tokens at inference time. Deterministic rule pipelines work at the prompt layer before the API call. We tested both on 1,000 real developer prompts.</p>
-        <div class="news-footer">
-          <a href="/llmlingua-vs-rule-compression" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-          <span class="news-read-time">9 min read</span>
-        </div>
-      </article>
-
-      <article class="news-card rv d3" itemscope itemtype="https://schema.org/Article">
-        <div class="news-card-top">
-          <span class="news-tag">Research</span>
-          <span class="news-meta"><time datetime="2026-03-10" itemprop="datePublished">Mar 10, 2026</time></span>
-        </div>
-        <h3 itemprop="headline">Why Typos in Agent Prompts Cost More Than You Think</h3>
-        <p itemprop="description">A single typo in an agent prompt can trigger a clarification turn, adding 200–500 tokens of overhead. Typo-caused retries account for 8–15% of total token spend across a typical week of Claude Code usage.</p>
-        <div class="news-footer">
-          <a href="/typos-ai-agent-cost" class="news-read-more" itemprop="url">Read more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-          <span class="news-read-time">4 min read</span>
-        </div>
-      </article>
-
-    </div>
-  </div>
-</section>
-
-<!-- ═══ NEWSLETTER ═══ -->
-<section style="padding:80px 24px;background:linear-gradient(180deg,var(--bg1,#0f1120) 0%,var(--bg0,#0b0d17) 100%)" id="newsletter" aria-label="Newsletter signup">
-  <div style="max-width:560px;margin:0 auto;text-align:center">
-    <div class="label rv" style="margin:0 auto 18px">Weekly Newsletter</div>
-    <h2 class="rv" style="font-size:clamp(24px,3.5vw,40px);font-weight:900;letter-spacing:-1.2px;margin-bottom:12px">Get the <span class="gradient-text">token savings playbook</span><br>in your inbox.</h2>
-    <p class="rv d1" style="color:var(--t2);font-size:15px;margin:0 auto 32px;max-width:440px">Practical techniques — prompt caching, model routing, context compression — delivered weekly. No fluff.</p>
-    <form class="rv d2" id="nl-form" onsubmit="handleNewsletterSubmit(event)" style="display:flex;gap:10px;max-width:420px;margin:0 auto">
-      <input type="email" id="nl-email" placeholder="your@email.com" required
-        style="flex:1;padding:13px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;outline:none;font-family:inherit;transition:border-color .2s"
-        onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
-      <button type="submit" id="nl-btn"
-        style="padding:13px 22px;background:var(--ac,#6ee7b7);color:#0b0d17;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;transition:opacity .2s"
-        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Subscribe</button>
-    </form>
-    <p class="rv d3" style="color:var(--t3);font-size:12px;margin-top:14px">Join developers cutting AI costs every week. Unsubscribe anytime.</p>
-  </div>
-</section>
-<script>
-async function handleNewsletterSubmit(e) {
-  e.preventDefault();
-  const email = document.getElementById('nl-email').value;
-  const btn = document.getElementById('nl-btn');
-  const form = document.getElementById('nl-form');
-  btn.textContent = '...';
-  btn.disabled = true;
-  gtag && gtag('event', 'newsletter_subscribe_started', { email_provided: true });
-  try {
-    const r = await fetch('/api/newsletter/subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    if (r.ok) {
-      gtag && gtag('event', 'newsletter_subscribe_success');
-      form.innerHTML = '<p style="color:var(--ac);font-weight:700;font-size:15px;margin:0;padding:13px 0">You\'re in. Check your inbox to confirm.</p>';
-    } else {
-      throw new Error(r.status);
-    }
-  } catch {
-    btn.textContent = 'Subscribe';
-    btn.disabled = false;
-    window.open('https://buttondown.com/terseai?email=' + encodeURIComponent(email), '_blank');
-  }
-}
-</script>
 
 <!-- ═══ CTA ═══ -->
 <section class="cta" id="dl">
@@ -3585,7 +1497,7 @@ async function handleNewsletterSubmit(e) {
 <footer>
   <div class="footer-inner">
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token 优化器 + 团队分析。压缩提示、监控 Agent、检测重复——用 Terse Cloud 追踪团队 AI 开销。</p></div>
-    <div class="footer-col"><h4 data-i18n="footer.product">产品</h4><a href="#pipeline" data-i18n="nav.pipeline">处理流程</a><a href="#techniques" data-i18n="footer.techniques">技术</a><a href="#agents" data-i18n="nav.agentMonitor">Agent 监控</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token 交易所</a><a href="#pricing" data-i18n="nav.pricing">价格</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">下载</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.product">产品</h4><a href="/tokens#pipeline" data-i18n="nav.pipeline">处理流程</a><a href="/tokens#techniques" data-i18n="footer.techniques">技术</a><a href="/tokens#agents" data-i18n="nav.agentMonitor">Agent 监控</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token 交易所</a><a href="/pricing#pricing" data-i18n="nav.pricing">价格</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">下载</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
     <div class="footer-col"><h4 data-i18n="footer.techniques">技术</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">拼写校正</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">模式优化</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP 分析</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">电报式压缩</a></div>
     <div class="footer-col"><h4 data-i18n="footer.learn">了解更多</h4><a href="/blog">Blog</a><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/for-cline">Terse for Cline</a><a href="/for-windsurf">Terse for Windsurf</a><a href="/for-codex">Terse for Codex</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/claude-code-cost-tracker">Claude Code Cost Trackers Compared</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">如何降低 AI API 成本</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">退款政策</a></div>
     <div class="footer-col"><h4 data-i18n="footer.support">支持</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a></div>
@@ -3785,7 +1697,7 @@ const SCENE_DUR=14000;
 let curScene=0,sceneTimer=null;
 const scenes=['sc0','sc1','sc2','sc3','sc4'];
 const dots=document.querySelectorAll('.scene-dot');
-function showScene(i){
+function showScene(i){if(!document.getElementById('sc0'))return;
   curScene=i;
   scenes.forEach((id,j)=>{document.getElementById(id).classList.toggle('active',j===i)});
   dots.forEach((d,j)=>{d.classList.toggle('active',j===i);d.querySelector('.fill').style.width='0';d.querySelector('.fill').style.transition='none'});
@@ -4175,7 +2087,7 @@ function runPipe(){
   },600);
 }
 const pObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runPipe();pObs.unobserve(x.target)}}),{threshold:.3});
-pObs.observe(document.getElementById('pipeViz'));
+pObs.observe(document.getElementById('pipeViz')||document.createElement('i'));
 
 // ═══ SPELL ANIM — live detection + correction + result summary ═══
 const spellData=[
@@ -4222,7 +2134,7 @@ function runSpell(){
   },500);
 }
 const sObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runSpell();sObs.unobserve(x.target)}}),{threshold:.3});
-sObs.observe(document.getElementById('spellViz'));
+sObs.observe(document.getElementById('spellViz')||document.createElement('i'));
 
 // ═══ TECHNIQUE ANIM — type out before, then transform ═══
 const techDemos=[
@@ -4261,7 +2173,7 @@ function runTech(){
   });
 }
 const tObs2=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runTech();tObs2.unobserve(x.target)}}),{threshold:.3});
-tObs2.observe(document.getElementById('techViz'));
+tObs2.observe(document.getElementById('techViz')||document.createElement('i'));
 
 // ═══ MODE ANIM — word-level morph showing which words get cut ═══
 const modeWords='I was just wondering if you could perhaps help me understand how to implement a binary search tree in Python please?'.split(' ');
@@ -4293,7 +2205,7 @@ function runMode(){
   setTimeout(runMode,2500);
 }
 const mObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runMode();mObs.unobserve(x.target)}}),{threshold:.3});
-mObs.observe(document.getElementById('modeViz'));
+mObs.observe(document.getElementById('modeViz')||document.createElement('i'));
 
 // ═══ AGENT SECTION ANIM — multi-perspective ═══
 function runAgent(){
@@ -4364,7 +2276,7 @@ function runAgent(){
   },3200);
 }
 const aObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){runAgent();aObs.unobserve(x.target)}}),{threshold:.3});
-aObs.observe(document.getElementById('agentViz'));
+aObs.observe(document.getElementById('agentViz')||document.createElement('i'));
 
 // ═══ MODEL ROUTING ANIM ═══
 function runRouting(){
@@ -4444,7 +2356,7 @@ const bObs=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return
   x.target.querySelectorAll('.bb').forEach((b,i)=>{
     setTimeout(()=>{b.classList.add('show');const fill=b.querySelector('.bb-fill');fill.style.width=b.dataset.pct+'%'},i*120);
   });bObs.unobserve(x.target)}),{threshold:.3});
-bObs.observe(document.getElementById('benchViz'));
+bObs.observe(document.getElementById('benchViz')||document.createElement('i'));
 
 // ═══ TOKEN EXCHANGE DEMO ANIMATION ═══
 const exObs = new IntersectionObserver(entries => {
@@ -4958,7 +2870,7 @@ function showPricingToast(msg) {
 })();
 </script>
 <script>try{localStorage.setItem('terse-lang','zh-Hans')}catch(e){}</script>
-<script src="/i18n.js?v=167c680b"></script>
+<script src="/i18n.js?v=97dfd08d"></script>
 <script>
 // Language switcher
 function initLangSwitcher(){
@@ -5118,5 +3030,80 @@ if (document.readyState === 'loading') {
 </script>
   <!-- Support / QA widget -->
   <script src="/support-widget.js" defer></script>
+<script>
+/* Code Town window: the web app's own town (/town-wall), same engine and data as the
+   phone plaza. Nothing heavy loads until the visitor clicks — then it boots in an
+   iframe, the page says hello (anonymous: no identity) and hands it the keyboard.
+   Protocol: town-wall.html header (init / walk → ready / esc / error). */
+(function () {
+  var stage = document.getElementById('townStage');
+  if (!stage) return;
+  var go = document.getElementById('townGo'), goText = document.getElementById('townGoText');
+  var keys = { hidden: true }, poster = document.getElementById('townPoster');
+  var video = document.getElementById('townVideo'), full = document.getElementById('townFull');
+  var tabs = document.querySelectorAll('.town-tab');
+  var frame = null, ready = false, walking = false, mode = 'walk';
+  var zh = function () { return /^zh/i.test(document.documentElement.lang || ''); };
+  function send(msg) {
+    if (!frame || !frame.contentWindow) return;
+    msg.target = 'terse-town';
+    try { frame.contentWindow.postMessage(msg, location.origin); } catch (e) {}
+  }
+  function setWalk(on) {
+    walking = on;
+    send({ cmd: 'walk', on: on });
+    go.hidden = on;
+    keys.hidden = !on;
+    if (on) { try { frame.focus(); } catch (e) {} }
+  }
+  function boot() {
+    goText.textContent = zh() ? '小镇正在盖…' : 'Building the town…';
+    frame = document.createElement('iframe');
+    frame.title = 'Code Town';
+    frame.setAttribute('allow', 'fullscreen');
+    frame.src = '/town-wall?lang=' + (zh() ? 'zh' : 'en') + '&budget=0.7';
+    frame.addEventListener('load', function () { send({ cmd: 'init', identity: '', name: '', lang: zh() ? 'zh' : 'en' }); });
+    stage.insertBefore(frame, go);
+  }
+  addEventListener('message', function (e) {
+    if (!frame || e.source !== frame.contentWindow) return;
+    var d = e.data || {};
+    if (d.source !== 'terse-town') return;
+    if (d.event === 'ready') {
+      ready = true; poster.hidden = true;
+      if (mode === 'walk') setWalk(true);
+    } else if (d.event === 'esc') {
+      setWalk(false);
+      goText.textContent = zh() ? '点一下,接着逛' : 'Click to keep walking';
+    } else if (d.event === 'error') {
+      goText.textContent = zh() ? '这台设备的显卡跑不起小镇 —— 看看导览视频吧' : 'This device cannot run the town — watch the tour instead';
+      go.hidden = false;
+    }
+  });
+  go.addEventListener('click', function () {
+    if (mode !== 'walk') return;
+    if (!frame) boot();
+    else if (ready) setWalk(true);
+  });
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      mode = t.dataset.tw;
+      tabs.forEach(function (x) { var on = x === t; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false'); });
+      var tour = mode === 'tour';
+      video.hidden = !tour;
+      if (frame) frame.hidden = tour;
+      poster.hidden = tour || ready;
+      if (tour) { if (walking) setWalk(false); go.hidden = true; keys.hidden = true; try { video.play(); } catch (e) {} }
+      else { try { video.pause(); } catch (e) {} go.hidden = false; }
+    });
+  });
+  full.addEventListener('click', function () {
+    var el = stage;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (el.requestFullscreen) el.requestFullscreen().then(function () { if (frame && walking) frame.focus(); }).catch(function () {});
+  });
+})();
+</script>
+
 </body>
 </html>

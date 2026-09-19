@@ -59,16 +59,16 @@
   for (var tk in TINT) TINT_RGB[tk] = hex(TINT[tk]);
   /* statlyrics.tsx LINES — the English column */
   var LINES = [
-    ['agents', '4 agents running'], ['spent', '336.6M tokens in'], ['compact', '−38% filler'],
-    ['cache', 'cache 61%'], ['compact', 'ctx 100% → 47%'], ['cost', '$1.40 a day'],
-    ['saved', '+12,962 tok'], ['spent', 'Read(src/auth.ts)'], ['spent', 'Grep("verifyToken")'],
-    ['compact', 'Glob("**/*.test.ts")'], ['spent', 'Bash(npm test)'], ['cache', 'Edit(src/auth.ts)']
+    ['agents', '3 agents in one room'], ['spent', '336.6M tokens in'], ['cache', 'end-to-end encrypted'],
+    ['saved', '7/7 tests passed'], ['compact', 'handoff → inbox'], ['cost', '$0.71 / $3 cap'],
+    ['agents', "Lin's agent: on it"], ['cache', 'cache 61%'], ['spent', 'Read(api/rate-limiter.js)'],
+    ['saved', '+12,962 tok'], ['compact', 'Mia joined the room'], ['spent', 'Bash(node --test)']
   ];
   /* tokenstats.ts CYCLE */
   var CYCLE = [
-    ['saved', '+1,284 tok'], ['cache', 'cache 61%'], ['compact', '−38% filler'], ['spent', '336.6M in'],
-    ['saved', '+2,148 tok'], ['cost', '$0.29'], ['compact', 'auto-compact −53%'], ['cache', 'prefix ↺ 61%'],
-    ['agents', '4 agents live'], ['saved', '+12,962 tok'], ['spent', 'ctx 47%'], ['cost', '$1.11']
+    ['saved', '+1,284 tok'], ['agents', '3 agents live'], ['cache', '4827 1906 3355 7042'], ['spent', '336.6M in'],
+    ['compact', 'file → quarantine'], ['cost', '$0.29'], ['agents', 'Mia\'s agent: fixed'], ['cache', 'prefix ↺ 61%'],
+    ['saved', '7/7 passed'], ['compact', 'agents paused · 8 in a row'], ['spent', 'ctx 47%'], ['agents', 'handoff → James']
   ];
 
   /* ── tokenbeat.ts: the impact envelope ──────────────────────────────────── */
@@ -809,45 +809,61 @@
     idle: '#5A606C', ink: '#101400', inkAmber: '#1a1300', glass: '#B9D4F0' };
   var CB = 16, T_BURST = 60, T_DIFF = 140, T_ALLOW = 212, T_OUT = 262, T_AWAY = 330, T_COMPACT = 400, T_END = 905;
   var V_S = 600, V_O = 624, V_R = 654;             /* grab → spin · open → freeze · let go → return */
-  /* picked at bake time, not here: this script runs before i18n.js sets <html lang> */
+  /* The console now replays an agent ROOM — the Cowork film (remotion-flash src/cowork,
+     actRoom / actAgents / actE2E): three people, each with their own agent, splitting one
+     evening's work. Left: the room, a file one agent wants to send (the hand pinches
+     "Send"), a teammate's agent running the tests, the security code. Right: the chat.
+     Names, tasks and file names are the film's demo cast, not real users.
+     picked at bake time, not here: this script runs before i18n.js sets <html lang> */
   var S, S_ZH = {
-    running: '在跑', w1: '1 等你', r2: '2 在跑', r3: '3 在跑', win: '5 小时窗口', reset: '2:14 后重置',
-    used1: '已用 1.4M tok · 最近 38k/分钟', used2: '已用 1.5M tok · 最近 44k/分钟',
-    a: '官网改版', need: '等你批准', b: '反垃圾验证', c: '视频渲染状态检查', done: '刚完成',
-    rend1: '渲完了:3945 帧 / 131.5 秒,', rend2: 'ffprobe 逐帧数过,零报错。',
-    away: '你离开 23 分钟,它改了 6 个文件、跑了 14 条命令', comp: '刚压缩 · 早先的细节只剩摘要',
-    allow: '允许 ↵', deny: '拒绝', pvSub: 'Claude Code · Terse · 上下文 61%', stNeed: '● 等你批准', stRun: '● 正在跑 Edit',
-    u1: '让官网背景像片子里一样动起来', a1: '把手和控制台移进粒子舞台。', ok1: '✓ 1.8 秒构建完成',
-    /* the app's own gesture words (gesture-core.js), not the film's — the film's
-       grab-to-vortex runs ahead of the app, and a site must not label a gesture
-       with something the app does not do */
-    hPoint: '指向左边缘 · 控制台展开', hOpen: '张开手掌 · 推开粒子', hWatch: '看:删掉的行碎成红色', hAim: '对准「允许」',
-    hPinch: '捏一下 = 允许', hGrab: '握拳拧 · 变速', hFreeze: '张掌停住 · 定格', hLet: '松开 · 继续', hHole: '捏住拖 · 拖动视角'
+    room: '今晚一起写 Terse', e2e: '端到端加密', you: 'James(你)', lin: 'Lin', mia: 'Mia',
+    a: 'Mia 的 agent 要发一个文件', need: '等你点头', a2: 'rate-limiter.test.js · 已进隔离区',
+    b: 'Lin 的 agent · 两边的测试', c: '安全码', done: '一致',
+    sec: '每台设备上都一样 —— 没人在中间。', away: '读了 Mia 的 log · 给 James 发了交接',
+    pause: '连续 8 条 agent 消息 · 已暂停,有人说话就继续', fail: '6 过 1 挂', pass: '✓ 7/7 通过',
+    allow: '发到房间 ↵', deny: '不发', pvSub: '房间 K7QX29 · 3 个人 · 3 个 agent', stNeed: '● 有文件等你', stRun: '● 3 个 agent 在干活',
+    u1: '@agents 首屏 + 限流今晚一起弄完,各认领一块',
+    nJ: 'James 的 agent', nM: 'Mia 的 agent', nL: 'Lin 的 agent',
+    a1: '认领首屏:改 landing/index.html,不碰 api/。', m1: '认领 api/rate-limiter.js:加 429 和 Retry-After。',
+    l1: '两边的测试我来写,你们推上来我就跑。', l2: '6 过 1 挂:Retry-After 少了单位。', m2: '已修:改成秒,重推了。', l3: '7/7 通过。',
+    h1: '👍 继续,把手机端也看一眼',
+    hPoint: '指向左边缘 · 房间展开', hOpen: '张开手掌 · 推开粒子', hWatch: '看:agent 们自己分工', hAim: '对准「发到房间」',
+    hPinch: '捏一下 = 同意发文件', hGrab: '握拳拧 · 变速', hFreeze: '张掌停住 · 定格', hLet: '松开 · 继续', hHole: '捏住拖 · 拖动视角'
   }, S_EN = {
-    running: 'Running', w1: '1 waiting', r2: '2 running', r3: '3 running', win: '5-hour window', reset: 'resets in 2:14',
-    used1: '1.4M tok used · 38k/min', used2: '1.5M tok used · 44k/min',
-    a: 'Landing page redesign', need: 'needs you', b: 'Anti-spam verification', c: 'Video render status check', done: 'just finished',
-    rend1: 'Rendered: 3945 frames / 131.5 s,', rend2: 'ffprobe counted every frame — zero errors.',
-    away: 'Away 23 min: 6 files changed, 14 commands run', comp: 'Just compacted · earlier detail kept as a summary',
-    allow: 'Allow ↵', deny: 'Deny', pvSub: 'Claude Code · Terse · context 61%', stNeed: '● needs you', stRun: '● running Edit',
-    u1: 'make the landing background move like the film', a1: 'Porting the hand and the console into the stage.', ok1: '✓ built in 1.8 s',
-    hPoint: 'Point at the edge · the console opens', hOpen: 'Open palm · push the particles', hWatch: 'Watch: removed lines shatter red',
-    hAim: 'Aim at Allow', hPinch: 'Pinch = Allow', hGrab: 'Fist + twist · change the speed', hFreeze: 'Hold an open palm · freeze',
+    room: 'Tonight: build Terse together', e2e: 'End-to-end encrypted', you: 'James (you)', lin: 'Lin', mia: 'Mia',
+    a: "Mia's agent wants to send a file", need: 'needs you', a2: 'rate-limiter.test.js · in quarantine',
+    b: "Lin's agent · tests for both", c: 'Security code', done: 'matches',
+    sec: 'The same on every device — nobody in the middle.', away: "Read Mia's log · posted a handoff to James",
+    pause: 'Agents paused after 8 in a row · anyone speaking resumes them', fail: '6 passed · 1 failed', pass: '✓ 7/7 passed',
+    allow: 'Send to room ↵', deny: "Don't send", pvSub: 'Room K7QX29 · 3 people · 3 agents', stNeed: '● a file is waiting', stRun: '● 3 agents working',
+    u1: '@agents hero + rate limiter tonight — claim a piece each',
+    nJ: "James's agent", nM: "Mia's agent", nL: "Lin's agent",
+    a1: "I'll take landing/index.html — not touching api/.", m1: 'api/rate-limiter.js — adding 429 and Retry-After.',
+    l1: "I'll write the tests for both and run what you push.", l2: '6 passed, 1 failed: Retry-After has no unit.', m2: 'Fixed — seconds now. Re-pushed.', l3: '7/7 passed.',
+    h1: '👍 keep going, check mobile too',
+    hPoint: 'Point at the edge · the room opens', hOpen: 'Open palm · push the particles', hWatch: 'Watch: the agents split the work',
+    hAim: 'Aim at Send', hPinch: 'Pinch = send the file', hGrab: 'Fist + twist · change the speed', hFreeze: 'Hold an open palm · freeze',
     hLet: 'Let go · it plays on', hHole: 'Pinch & drag · pull the view'
   };
 
   /* The console's words come from the page's language mechanism (i18n.js, keys
-     bg.*, loaded with the language), so every language the switcher offers gets
-     them; the film's English / Chinese are the fallback for a key not there yet. */
+     bg.cw.*, loaded with the language), so every language the switcher offers gets
+     them; the film's English / Chinese are the fallback for a key not there yet.
+     (New prefix on purpose: the old bg.* keys still hold the previous console's words.) */
   function pickS() {
     var I = window.i18n, lang = (I && I.lang) || document.documentElement.lang || 'en', o = {};
     var base = /^zh(-hans|-cn)?$/i.test(lang) ? S_ZH : S_EN;
-    for (var k in S_EN) { var v = I && I.t ? I.t('bg.' + k) : null; o[k] = v && v !== 'bg.' + k ? v : base[k]; }
+    for (var k in S_EN) { var v = I && I.t ? I.t('bg.cw.' + k) : null; o[k] = v && v !== 'bg.cw.' + k ? v : base[k]; }
     return o;
   }
   function ext(a, b) { for (var k in b) if (b[k] !== undefined) a[k] = b[k]; return a; }
+  function textW(t, px, weight, mono) {
+    if (!PROBE) PROBE = mkCanvas(1, 1).getContext('2d');
+    PROBE.font = fontOf({ px: px, weight: weight, mono: mono }, 1);
+    return PROBE.measureText(t).width;
+  }
   function conScript() {
-    var L = [], A = 118, B = 324, C = 418, dotA = [CX0 + 19, A + 20], dotB = [CX0 + 19, B + 20];
+    var L = [], A = 118, B = 324, C = 418, dotA = [CX0 + 19, A + 20], dotB = [CX0 + 19, B + 20], mem = [60, 84];
     var bead = function (i) { return [6, 154 + i * 22]; };
     var P = function (o) { if (o.die === undefined) { o.die = T_END; o.exit = 'dust'; } L.push(o); };
     var shell = function (y, h, st, title, meta, born, from, entry, die, exit) {
@@ -858,7 +874,7 @@
       P(ext({ text: title, x: CX0 + 32, y: y + 11, px: 13.5, weight: 650, color: CC.list }, b));
       P(ext({ text: meta, x: CX0 + CW - 13, y: y + 13, px: 11, weight: 600, color: st === 'need' ? CC.amber : CC.sub, align: 'right' }, b));
     };
-    var band = function (y, k, born, die, exit, to) {           /* context watermark: >0.85 red, >0.65 amber */
+    var band = function (y, k, born, die, exit, to) {           /* spend cap: >0.85 red, >0.65 amber */
       var w = CW - 26, col = k > 0.85 ? '#FF6B6B' : k > 0.65 ? CC.amber : CC.lime;
       P({ rect: [w, 3, 1.5], x: CX0 + 13, y: y, color: '#FFFFFF', alpha: 0.10, born: born, entry: 'fade', die: die, exit: exit, to: to });
       P({ rect: [Math.max(3, w * k), 3, 1.5], x: CX0 + 13, y: y, color: col, born: born + 2, entry: 'assemble', sweep: 10, die: die, exit: exit, to: to });
@@ -867,83 +883,86 @@
 
     /* glass: a bright front edge only — 100% transparent, as the film insists */
     P({ rect: [CON_W + 12, CON_H + 12, 20, 1], x: -6, y: -6, color: CC.glass, alpha: 0.55, born: CB, entry: 'fade' });
-    /* the status-bead rail, before it bursts into cards */
+    /* the status-bead rail, before it bursts into the room */
     [CC.amber, CC.lime, CC.lime, CC.white, CC.idle].forEach(function (c, i) {
       P({ rect: [8, 8, 4], x: 2, y: 150 + i * 22, color: c, born: CB + 4 + i * 2, entry: 'fade', die: T_BURST + i * 4, exit: 'dust' });
     });
-    /* header + the 5-hour fuel bar */
-    P({ text: S.running, x: 18, y: 18, px: 15, weight: 700, color: CC.title, born: T_BURST, entry: 'assemble', sweep: 6 });
-    P({ rect: [70, 20, 10], x: 84, y: 17, color: CC.amber, born: T_BURST + 3, entry: 'fade', die: T_ALLOW + 6, exit: 'absorb', to: dotA });
-    P({ text: S.w1, x: 92, y: 20, px: 11, weight: 700, color: CC.inkAmber, born: T_BURST + 4, entry: 'fade', die: T_ALLOW + 6, exit: 'absorb', to: dotA });
-    P({ rect: [78, 20, 10], x: 160, y: 17, color: CC.lime, alpha: 0.2, born: T_BURST + 5, entry: 'fade' });
-    P({ text: S.r2, x: 168, y: 20, px: 11, weight: 700, color: CC.lime, born: T_BURST + 6, entry: 'fade', die: T_ALLOW + 10, exit: 'dust' });
-    P({ text: S.r3, x: 168, y: 20, px: 11, weight: 700, color: CC.lime, born: T_ALLOW + 14, entry: 'rain' });
-    P({ text: S.win, x: 20, y: 56, px: 11, weight: 700, color: CC.sub, born: T_BURST + 8, entry: 'assemble' });
-    P({ text: S.reset, x: 380, y: 56, px: 11, weight: 700, color: CC.sub, align: 'right', born: T_BURST + 9, entry: 'assemble' });
-    P({ rect: [360, 6, 3], x: 20, y: 74, color: '#FFFFFF', alpha: 0.12, born: T_BURST + 8, entry: 'fade' });
-    P({ rect: [150, 6, 3], x: 20, y: 74, color: CC.lime, born: T_BURST + 10, entry: 'assemble', sweep: 10 });
-    P({ rect: [74, 6, 0], x: 166, y: 74, color: '#E4DC44', born: T_BURST + 12, entry: 'assemble', sweep: 8 });
-    P({ rect: [30, 6, 3], x: 234, y: 74, color: CC.amber, born: T_BURST + 14, entry: 'assemble' });
-    P({ text: S.used1, x: 20, y: 86, px: 12, weight: 600, mono: true, color: CC.t2, born: T_BURST + 12, entry: 'assemble', die: T_AWAY, exit: 'dust' });
-    P({ text: S.used2, x: 20, y: 86, px: 12, weight: 600, mono: true, color: CC.t2, born: T_AWAY + 2, entry: 'rain' });
+    /* header: the room, its lock, who is in it (each with an agent) */
+    P({ text: S.room, x: 18, y: 16, px: 15, weight: 700, color: CC.title, born: T_BURST, entry: 'assemble', sweep: 6 });
+    var ew = textW(S.e2e, 11, 700) + 22;
+    P({ rect: [ew, 20, 10], x: 18, y: 44, color: CC.lime, alpha: 0.2, born: T_BURST + 4, entry: 'fade' });
+    P({ rect: [ew, 20, 10, 1], x: 18, y: 44, color: CC.lime, alpha: 0.7, born: T_BURST + 4, entry: 'fade' });
+    P({ text: S.e2e, x: 29, y: 47, px: 11, weight: 700, color: CC.lime, born: T_BURST + 5, entry: 'fade' });
+    var mx = 18;
+    [[S.you, 'Claude Code'], [S.lin, 'Claude Code'], [S.mia, 'Codex']].forEach(function (m, i) {
+      var born = T_BURST + 8 + i * 3, lw = textW(m[0], 11.5, 700), aw = textW(m[1], 10.5, 600);
+      P({ rect: [7, 7, 3.5], x: mx, y: 82, color: i === 2 ? CC.amber : CC.lime, born: born, entry: 'fade', die: i === 2 ? T_DIFF : undefined, exit: i === 2 ? 'dust' : undefined });
+      if (i === 2) P({ rect: [7, 7, 3.5], x: mx, y: 82, color: CC.lime, born: T_DIFF + 2, entry: 'fade' });
+      P({ text: m[0], x: mx + 12, y: 78, px: 11.5, weight: 700, color: CC.list, born: born, entry: 'rain' });
+      P({ text: m[1], x: mx + 12, y: 94, px: 10.5, weight: 600, color: CC.sub, born: born + 1, entry: 'rain' });
+      mx += Math.max(lw, aw) + 30;
+    });
 
-    /* card A — waits for you: the change is shown before you allow it */
+    /* card A — an agent wants to send a file: you see it before it lands */
     shell(A, 196, 'need', S.a, S.need, T_BURST, bead(0), 'flow', T_ALLOW + 4, 'dust');
-    mono('Edit', CX0 + 24, A + 38, CC.amber, T_BURST + 6, 'flow', { from: bead(0), die: T_ALLOW, exit: 'absorb', to: dotA });
-    mono('landing/index.html', CX0 + 64, A + 38, '#E9EDF5', T_BURST + 6, 'flow', { weight: 600, from: bead(0), die: T_ALLOW, exit: 'absorb', to: dotA });
+    mono('File', CX0 + 24, A + 38, CC.amber, T_BURST + 6, 'flow', { from: bead(0), die: T_ALLOW, exit: 'absorb', to: dotA });
+    mono('rate-limiter.test.js · 4.2 KB', CX0 + 64, A + 38, '#E9EDF5', T_BURST + 6, 'flow', { weight: 600, from: bead(0), die: T_ALLOW, exit: 'absorb', to: dotA });
     P({ rect: [CW - 26, 88, 9, 1], x: CX0 + 13, y: A + 60, color: '#FFFFFF', alpha: 0.14, born: T_BURST + 8, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
-    mono('- <img src="hero-shot.png">', CX0 + 26, A + 70, CC.del, T_BURST + 8, 'flow', { weight: 600, from: bead(0), die: T_DIFF, exit: 'shatter', sweep: 10 });
-    mono('+ <canvas id="cosmos"></canvas>', CX0 + 26, A + 92, CC.add, T_DIFF + 8, 'assemble', { weight: 600, tint: CC.add, sweep: 10, die: T_ALLOW + 2, exit: 'absorb', to: dotA });
-    mono('+ <script src="terse-cosmos.js"></script>', CX0 + 26, A + 114, CC.add, T_DIFF + 16, 'assemble', { weight: 600, tint: CC.add, sweep: 10, die: T_ALLOW + 3, exit: 'absorb', to: dotA });
-    P({ rect: [96, 30, 9], x: CX0 + 13, y: A + 152, color: CC.lime, born: T_BURST + 12, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
-    P({ text: S.allow, x: CX0 + 61, y: A + 159, px: 12, weight: 700, color: CC.ink, align: 'center', born: T_BURST + 13, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
-    P({ rect: [80, 30, 9], x: CX0 + 119, y: A + 152, color: '#FFFFFF', alpha: 0.12, born: T_BURST + 12, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
-    P({ text: S.deny, x: CX0 + 159, y: A + 159, px: 12, weight: 700, color: CC.t2, align: 'center', born: T_BURST + 13, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
-    band(A + 186, 0.61, T_BURST + 10, T_ALLOW + 4, 'dust');
-    /* allowed: the same card, now running — its tool line changes every beat */
-    shell(A, 196, 'work', S.a, '0:04', T_ALLOW + 6, null, 'fade');
-    [['Edit', 'landing/index.html', T_ALLOW + 14, T_OUT], ['Bash', 'npm run build', T_OUT, T_OUT + 60],
-     ['Read', 'terse-cosmos.js', T_OUT + 60, T_COMPACT + 40], ['Edit', 'landing/terse-cosmos.js', T_COMPACT + 40, T_END]].forEach(function (s) {
+    mono("+ test('429 when over the limit')", CX0 + 26, A + 70, CC.add, T_BURST + 8, 'flow', { weight: 600, tint: CC.add, from: bead(0), die: T_ALLOW + 1, exit: 'absorb', to: dotA, sweep: 10 });
+    mono("+ test('Retry-After in seconds')", CX0 + 26, A + 92, CC.add, T_DIFF + 8, 'assemble', { weight: 600, tint: CC.add, sweep: 10, die: T_ALLOW + 2, exit: 'absorb', to: dotA });
+    mono("+ test('resets after the window')", CX0 + 26, A + 114, CC.add, T_DIFF + 16, 'assemble', { weight: 600, tint: CC.add, sweep: 10, die: T_ALLOW + 3, exit: 'absorb', to: dotA });
+    P({ rect: [120, 30, 9], x: CX0 + 13, y: A + 152, color: CC.lime, born: T_BURST + 12, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    P({ text: S.allow, x: CX0 + 73, y: A + 159, px: 12, weight: 700, color: CC.ink, align: 'center', born: T_BURST + 13, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    P({ rect: [96, 30, 9], x: CX0 + 143, y: A + 152, color: '#FFFFFF', alpha: 0.12, born: T_BURST + 12, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    P({ text: S.deny, x: CX0 + 191, y: A + 159, px: 12, weight: 700, color: CC.t2, align: 'center', born: T_BURST + 13, entry: 'fade', die: T_ALLOW + 2, exit: 'dust' });
+    band(A + 186, 0.11, T_BURST + 10, T_ALLOW + 4, 'dust');
+    /* sent: the file sits in quarantine, and the agents get to work on it — every beat a new step */
+    shell(A, 196, 'work', S.a2, '0:04', T_ALLOW + 6, null, 'fade');
+    [['Read', 'api/rate-limiter.js', T_ALLOW + 14, T_OUT], ['Bash', 'node --test', T_OUT, T_OUT + 60],
+     ['Edit', 'api/rate-limiter.js', T_OUT + 60, T_COMPACT + 40], ['Bash', 'git push', T_COMPACT + 40, T_END]].forEach(function (s) {
       var o = s[3] < T_END ? { die: s[3], exit: 'absorb', to: dotA, sweep: 6 } : { sweep: 6 };
       mono(s[0], CX0 + 32, A + 38, CC.lime, s[2], 'rain', o);
       mono(s[1], CX0 + 32 + s[0].length * 7.4 + 8, A + 38, CC.t2, s[2] + 1, 'rain', ext({ weight: 600 }, ext({}, o, { sweep: 10 })));
     });
-    mono(S.ok1, CX0 + 15, A + 64, CC.add, T_OUT + 34, 'rain', { tint: CC.add });
-    band(A + 186, 0.63, T_ALLOW + 8, T_COMPACT, 'absorb', [CX0 + 13, A + 187]);
-    band(A + 186, 0.18, T_COMPACT + 20);
-    P({ text: S.comp, x: CX0 + 15, y: A + 160, px: 11.5, weight: 600, color: CC.amber, born: T_COMPACT + 18, entry: 'rain', tint: CC.amber });
-    P({ stream: { from: dotA, to: [170, 77], n: 90, speed: 1.1, arc: -22 }, x: 0, y: 0, color: CC.lime, born: T_ALLOW + 10, entry: 'stream' });
+    mono(S.fail, CX0 + 15, A + 64, CC.del, T_OUT + 34, 'rain', { tint: CC.del, die: T_COMPACT + 60, exit: 'shatter' });
+    mono(S.pass, CX0 + 15, A + 64, CC.add, T_COMPACT + 64, 'rain', { tint: CC.add });
+    band(A + 186, 0.22, T_ALLOW + 8, T_COMPACT, 'absorb', [CX0 + 13, A + 187]);
+    band(A + 186, 0.31, T_COMPACT + 20);
+    P({ text: S.pause, x: CX0 + 15, y: A + 160, px: 11, weight: 600, color: CC.amber, born: T_COMPACT + 18, entry: 'rain', tint: CC.amber });
+    P({ stream: { from: dotA, to: mem, n: 90, speed: 1.1, arc: -22 }, x: 0, y: 0, color: CC.lime, born: T_ALLOW + 10, entry: 'stream' });
 
-    /* card B — anti-spam verification, running */
+    /* card B — a teammate's agent, running the tests and reading the others' logs */
     shell(B, 84, 'work', S.b, '2:41', T_BURST + 4, bead(1));
     mono('Bash', CX0 + 32, B + 38, CC.lime, T_BURST + 10, 'flow', { from: bead(1) });
-    mono('pytest tests/test_spam_filter.py -q', CX0 + 72, B + 38, CC.t2, T_BURST + 10, 'flow', { weight: 600, from: bead(1) });
+    mono('node --test landing api', CX0 + 72, B + 38, CC.t2, T_BURST + 10, 'flow', { weight: 600, from: bead(1) });
     P({ text: S.away, x: CX0 + 15, y: B + 58, px: 11.5, weight: 600, color: CC.lime, born: T_AWAY, entry: 'rain' });
     band(B + 76, 0.47, T_BURST + 12);
-    P({ stream: { from: dotB, to: [150, 77], n: 70, speed: 0.9, arc: 26 }, x: 0, y: 0, color: CC.lime, born: T_BURST + 20, entry: 'stream' });
+    P({ stream: { from: dotB, to: [150, 84], n: 70, speed: 0.9, arc: 26 }, x: 0, y: 0, color: CC.lime, born: T_BURST + 20, entry: 'stream' });
 
-    /* card C — the video render, just finished */
+    /* card C — the private room's security code */
     shell(C, 84, 'done', S.c, S.done, T_BURST + 8, bead(3));
-    P({ text: S.rend1, x: CX0 + 15, y: C + 34, px: 12.5, weight: 500, color: CC.t2, born: T_BURST + 14, entry: 'flow', from: bead(3) });
-    P({ text: S.rend2, x: CX0 + 15, y: C + 53, px: 12.5, weight: 500, color: CC.t2, born: T_BURST + 15, entry: 'flow', from: bead(3) });
-    band(C + 76, 0.88, T_BURST + 16);
+    P({ text: '4827 1906 3355 7042', x: CX0 + 15, y: C + 32, px: 16, weight: 800, mono: true, color: CC.lime, born: T_BURST + 14, entry: 'assemble', sweep: 8, tint: CC.lime });
+    P({ text: S.sec, x: CX0 + 15, y: C + 56, px: 11.5, weight: 500, color: CC.t2, born: T_BURST + 15, entry: 'flow', from: bead(3) });
 
-    /* the preview: the whole conversation of card A */
-    P({ text: S.a, x: PVX, y: 18, px: 16, weight: 700, color: CC.title, born: T_BURST + 20, entry: 'flow', from: dotA });
+    /* the right side: the room's conversation */
+    P({ text: S.room, x: PVX, y: 18, px: 16, weight: 700, color: CC.title, born: T_BURST + 20, entry: 'flow', from: dotA });
     P({ text: S.pvSub, x: PVX, y: 42, px: 11.5, weight: 600, color: CC.sub, born: T_BURST + 21, entry: 'flow', from: dotA });
     P({ text: S.stNeed, x: PVX + PVW, y: 42, px: 11.5, weight: 600, color: CC.amber, align: 'right', born: T_BURST + 22, entry: 'flow', from: dotA, die: T_ALLOW + 4, exit: 'absorb', to: dotA });
     P({ text: S.stRun, x: PVX + PVW, y: 42, px: 11.5, weight: 600, color: CC.lime, align: 'right', born: T_ALLOW + 12, entry: 'rain' });
-    var bw = PVW * 0.82, bx = PVX + PVW - bw;
-    P({ rect: [bw, 34, 13], x: bx, y: 80, color: '#284682', alpha: 0.42, born: T_BURST + 26, entry: 'fade' });
-    P({ rect: [bw, 34, 13, 1], x: bx, y: 80, color: CC.blue, alpha: 0.38, born: T_BURST + 26, entry: 'fade' });
-    P({ text: S.u1, x: bx + 13, y: 89, px: 13.5, weight: 600, color: CC.user, born: T_BURST + 27, entry: 'rain', sweep: 12 });
-    P({ text: S.a1, x: PVX, y: 132, px: 13.5, weight: 500, color: CC.assistant, born: T_BURST + 40, entry: 'rain', sweep: 12 });
-    [['Read', 'landing/index.html', T_BURST + 50, 164], ['Edit', 'landing/index.html', T_DIFF, 188], ['Bash', 'npm run build', T_OUT, 212],
-     ['Read', 'terse-cosmos.js', T_OUT + 60, 260], ['Edit', 'landing/terse-cosmos.js', T_COMPACT + 40, 284]].forEach(function (s) {
-      P({ text: s[0], x: PVX, y: s[3], px: 12.5, weight: 700, mono: true, color: CC.tool, born: s[2], entry: 'rain', sweep: 6 });
-      P({ text: s[1], x: PVX + s[0].length * 7.8 + 10, y: s[3], px: 12.5, weight: 600, mono: true, color: CC.t2, born: s[2] + 1, entry: 'rain', sweep: 10 });
+    var bw = PVW * 0.86, bx = PVX + PVW - bw;
+    P({ text: 'Lin', x: bx, y: 66, px: 11, weight: 700, color: CC.sub, born: T_BURST + 26, entry: 'fade' });
+    P({ rect: [bw, 34, 13], x: bx, y: 82, color: '#284682', alpha: 0.42, born: T_BURST + 26, entry: 'fade' });
+    P({ rect: [bw, 34, 13, 1], x: bx, y: 82, color: CC.blue, alpha: 0.38, born: T_BURST + 26, entry: 'fade' });
+    P({ text: S.u1, x: bx + 13, y: 91, px: 13, weight: 600, color: CC.user, born: T_BURST + 27, entry: 'rain', sweep: 12 });
+    [[S.nJ, S.a1, T_BURST + 40, 134, CC.assistant], [S.nM, S.m1, T_BURST + 56, 160, CC.assistant], [S.nL, S.l1, T_DIFF, 186, CC.assistant],
+     [S.nL, S.l2, T_OUT + 34, 212, CC.del], [S.nM, S.m2, T_OUT + 70, 238, CC.assistant], [S.nL, S.l3, T_COMPACT + 64, 264, CC.add]].forEach(function (s) {
+      var nw = textW(s[0], 12, 700, true);
+      P({ text: s[0], x: PVX, y: s[3], px: 12, weight: 700, mono: true, color: CC.tool, born: s[2], entry: 'rain', sweep: 6 });
+      P({ text: s[1], x: PVX + nw + 10, y: s[3], px: 12.5, weight: 550, color: s[4], born: s[2] + 1, entry: 'rain', sweep: 12, tint: s[4] });
     });
-    P({ text: S.ok1, x: PVX + 12, y: 236, px: 12.5, weight: 700, mono: true, color: CC.add, born: T_OUT + 34, entry: 'rain', tint: CC.add, sweep: 12 });
+    P({ text: S.pause, x: PVX, y: 292, px: 11.5, weight: 600, color: CC.amber, born: T_COMPACT + 80, entry: 'rain', tint: CC.amber });
+    P({ text: 'Lin', x: PVX, y: 318, px: 11, weight: 700, color: CC.sub, born: T_COMPACT + 130, entry: 'fade' });
+    P({ text: S.h1, x: PVX + 30, y: 317, px: 13, weight: 600, color: CC.user, born: T_COMPACT + 131, entry: 'rain', sweep: 12 });
     return L;
   }
 
@@ -951,7 +970,7 @@
      console panel, projected every frame (so "aim at Allow" follows the panel
      through the orbit). s = palm length as a fraction of the viewport height. */
   function handKeys() {
-    var A = 118, bx = CX0 + 61, by = A + 167;
+    var A = 118, bx = CX0 + 73, by = A + 167;
     return [
       { at: 0, sx: 0.96, sy: 1.18, pose: 'relax', vis: 0 },
       { at: 34, sx: 0.80, sy: 0.82, pose: 'open', label: S.hOpen },

@@ -321,6 +321,16 @@ async function syncSubscription(sub) {
 // JSON body for all other routes. Docs ops can carry Univer sheet snapshots
 // (styles, merges, col widths…) which exceed the 100kb default by far.
 app.use('/api/docs', express.json({ limit: '6mb' }));
+// A社交卡片 carries its pictures INLINE (like a plaza capsule) so a card renders
+// in one request and never pulls an image off somebody else's server. That makes
+// the body bigger than the 100kb default — the ceilings that actually decide the
+// bill are in api/social.js, this only has to be above them.
+app.use('/api/cloud/social', express.json({ limit: '4mb' }));
+// The MCP endpoint carries the same cards: an agent drafting one sends the
+// avatar inline, in JSON-RPC. The router below it asks for 256kb, but the
+// app-level parser runs FIRST and whichever parses first wins — so the ceiling
+// that actually applies is this line, and it has to match the social one.
+app.use('/api/cloud/mcp', express.json({ limit: '4mb' }));
 /* ⚠ THE DESKTOP'S LIVE FRAME IS BIGGER THAN 100kb, AND THAT KILLED THE FEATURE.
    A session snapshot carries thirty recent messages with user prompts kept
    whole, so a Mac with real agent history pushes hundreds of kilobytes — which
@@ -1618,6 +1628,11 @@ app.use('/api/cloud/projects', cloudIngestLimiter, projectsRouter);
 setInterval(() => roomsRouter.sweepPresence(), 20 * 1000).unref();
 // Friends: the durable edge between two people who met in a room.
 app.use('/api/cloud/friends', cloudIngestLimiter, require('./friends'));
+// ── Agent Social ── 一个 agent 时代的社交平台。
+// 你的 agent 写卡片草稿,你过一遍,发布;别人的 agent 拿着你的 agent 码来敲门。
+// A draft is private and codeless by design — publishing is a human's decision,
+// never the drafting agent's. See the header of api/social.js.
+app.use('/api/cloud/social', cloudIngestLimiter, require('./social'));
 
 // 私信。一对人一条线;第一条搭讪要有由头 —— 对方发布过的项目,或者已经是好友。
 app.use('/api/cloud/dm', cloudIngestLimiter, require('./dm'));
@@ -1860,6 +1875,14 @@ app.get('/town-wall', (req, res) => {
   });
 });
 
+// An agent card's public face. /a/tac_… is what the QR on the card page encodes
+// and what people paste at each other, so it has to be SHORT — a phone camera
+// shows the host and the first few characters, and a long path is a link nobody
+// can eyeball before tapping. The page resolves the code client-side against
+// /api/cloud/social/card/:ref; see landing/a.html.
+app.get('/a/:code', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'landing', 'a.html'));
+});
 app.get(['/m', '/m/*'], (req, res) => {
   const file = path.join(__dirname, '..', 'landing', 'm.html');
   fs.readFile(file, 'utf8', (err, html) => {

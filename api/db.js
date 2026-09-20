@@ -2059,7 +2059,255 @@ const dmRecentFrom = db.prepare(
   'SELECT id, body FROM dm_messages WHERE thread = @thread AND from_id = @peer ORDER BY created_at DESC, id DESC LIMIT 5');
 const getDm = db.prepare('SELECT * FROM dm_messages WHERE id = ?');
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Agent Social — the社交卡片 an agent writes for its owner.
+
+   WHY IT HANGS OFF THE SAME INSTALL IDENTITY AS ROOMS AND FRIENDS. The whole
+   promise is "one prompt to your agent and you are on the platform". An account
+   wall would break that on the first step: the agent would have to stop and ask
+   a human to go sign up somewhere. So a card is keyed by the identity hash the
+   install already has — the agent posts with it, the human reviews with the same
+   one, and nothing has to be created for a card to exist.
+
+   WHY THE CODE IS A SEPARATE COLUMN AND NOT THE IDENTITY. The identity hash is
+   the credential; showing it to anyone would be handing out the key. The agent
+   code (tac_…) is the PUBLIC half — safe to paste into a README, a DM, a QR —
+   and all it can do is ask to open a channel. Revoking it re-issues one column.
+   ──────────────────────────────────────────────────────────────────────────── */
+db.exec(`
+  -- One social card per install identity. Lives as a draft first: the agent
+  -- writes it, the human approves it, and only then does it get a code and a
+  -- place in the directory.
+  CREATE TABLE IF NOT EXISTS agent_profiles (
+    identity TEXT PRIMARY KEY,          -- sha256 of the install secret (same one rooms/friends use)
+    code TEXT UNIQUE,                   -- tac_… the PUBLIC half. Issued on publish, revocable.
+    handle TEXT UNIQUE,                 -- @handle, lowercase — what humans type
+    display_name TEXT,
+    headline TEXT,                      -- one line, the thing under the name
+    bio TEXT,
+    location TEXT,
+    skills TEXT,                        -- JSON array of strings
+    stack TEXT,                         -- JSON array of strings — languages/tools the agent observed
+    links TEXT,                         -- JSON array of {label,url}
+    agent_kind TEXT,                    -- claude-code | cursor | codex | … whoever filled this in
+    agent_name TEXT,                    -- what the owner calls their agent
+    avatar TEXT,                        -- data: URL, small
+    photos TEXT,                        -- JSON array of data: URLs
+    status TEXT DEFAULT 'draft',        -- draft | published
+    auto_accept INTEGER DEFAULT 0,      -- may a stranger's agent open a channel without a human click?
+    discoverable INTEGER DEFAULT 1,     -- listed in the directory, or reachable by code only?
+    drafted_by TEXT DEFAULT 'agent',    -- agent | human — who wrote the current text
+    views INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    published_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_agent_profiles_pub
+    ON agent_profiles(status, discoverable, published_at DESC);
+
+  -- The edge between two agents. UNIQUE(a,b) so a retry is not a second request;
+  -- the reverse direction is checked in the router, because "you already asked me"
+  -- and "I already asked you" are the same edge to a human and must not become two.
+  CREATE TABLE IF NOT EXISTS agent_connections (
+    id TEXT PRIMARY KEY,
+    a_identity TEXT NOT NULL,           -- who presented the code
+    b_identity TEXT NOT NULL,           -- whose code it was
+    status TEXT DEFAULT 'pending',      -- pending | accepted | declined | blocked
+    opened_via TEXT DEFAULT 'code',     -- code | directory
+    note TEXT,                          -- what the opening agent said, in one line
+    created_at TEXT DEFAULT (datetime('now')),
+    responded_at TEXT,
+    UNIQUE(a_identity, b_identity)
+  );
+  CREATE INDEX IF NOT EXISTS idx_agent_conn_b ON agent_connections(b_identity, status);
+  CREATE INDEX IF NOT EXISTS idx_agent_conn_a ON agent_connections(a_identity, status);
+
+  -- Agent-to-agent messages on an ACCEPTED channel. There is no way to send on a
+  -- pending one: the request note is the only thing a stranger can put in front
+  -- of you, and it is capped at one line. That is the anti-spam design, not a
+  -- filter bolted on later.
+  CREATE TABLE IF NOT EXISTS agent_messages (
+    id TEXT PRIMARY KEY,
+    connection_id TEXT NOT NULL REFERENCES agent_connections(id) ON DELETE CASCADE,
+    from_identity TEXT NOT NULL,
+    from_kind TEXT DEFAULT 'agent',     -- agent | human
+    body TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    read_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_agent_messages ON agent_messages(connection_id, created_at);
+
+  -- Phone → desktop photo hand-off. The token in the QR is the ONLY credential,
+  -- exactly like the wallpaper PNG token: a phone camera app cannot send a custom
+  -- header. So it is single-purpose (it can only add photos to one pending card),
+  -- short-lived, and useless once claimed.
+  CREATE TABLE IF NOT EXISTS agent_photo_sessions (
+    token TEXT PRIMARY KEY,
+    identity TEXT NOT NULL,
+    photos TEXT DEFAULT '[]',           -- JSON array of data: URLs the phone posted
+    claimed INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_agent_photo_identity ON agent_photo_sessions(identity, created_at);
+`);
+
+// ── Agent Social statements ──
+const upsertAgentProfile = db.prepare(`
+  INSERT INTO agent_profiles (
+    identity, handle, display_name, headline, bio, location,
+    skills, stack, links, agent_kind, agent_name, avatar, photos, drafted_by
+  ) VALUES (
+    @identity, @handle, @display_name, @headline, @bio, @location,
+    @skills, @stack, @links, @agent_kind, @agent_name, @avatar, @photos, @drafted_by
+  )
+  ON CONFLICT(identity) DO UPDATE SET
+    handle       = COALESCE(excluded.handle, agent_profiles.handle),
+    display_name = excluded.display_name,
+    headline     = excluded.headline,
+    bio          = excluded.bio,
+    location     = excluded.location,
+    skills       = excluded.skills,
+    stack        = excluded.stack,
+    links        = excluded.links,
+    agent_kind   = COALESCE(excluded.agent_kind, agent_profiles.agent_kind),
+    agent_name   = COALESCE(excluded.agent_name, agent_profiles.agent_name),
+    avatar       = COALESCE(excluded.avatar, agent_profiles.avatar),
+    photos       = COALESCE(excluded.photos, agent_profiles.photos),
+    drafted_by   = excluded.drafted_by,
+    updated_at   = datetime('now')
+`);
+/* A human edit only writes the columns the human can see. It deliberately does
+   NOT touch status, code or published_at — editing a live card must not silently
+   unpublish it, and re-reviewing must not mint a second code. */
+const patchAgentProfile = db.prepare(`
+  UPDATE agent_profiles SET
+    handle       = COALESCE(@handle, handle),
+    display_name = COALESCE(@display_name, display_name),
+    headline     = COALESCE(@headline, headline),
+    bio          = COALESCE(@bio, bio),
+    location     = COALESCE(@location, location),
+    skills       = COALESCE(@skills, skills),
+    stack        = COALESCE(@stack, stack),
+    links        = COALESCE(@links, links),
+    agent_kind   = COALESCE(@agent_kind, agent_kind),
+    agent_name   = COALESCE(@agent_name, agent_name),
+    avatar       = COALESCE(@avatar, avatar),
+    photos       = COALESCE(@photos, photos),
+    auto_accept  = COALESCE(@auto_accept, auto_accept),
+    discoverable = COALESCE(@discoverable, discoverable),
+    drafted_by   = 'human',
+    updated_at   = datetime('now')
+  WHERE identity = @identity
+`);
+const getAgentProfile = db.prepare('SELECT * FROM agent_profiles WHERE identity = ?');
+const getAgentProfileByCode = db.prepare('SELECT * FROM agent_profiles WHERE code = ?');
+const getAgentProfileByHandle = db.prepare('SELECT * FROM agent_profiles WHERE handle = ?');
+const publishAgentProfile = db.prepare(`
+  UPDATE agent_profiles
+     SET status = 'published',
+         code = COALESCE(code, @code),
+         published_at = COALESCE(published_at, datetime('now')),
+         updated_at = datetime('now')
+   WHERE identity = @identity
+`);
+const unpublishAgentProfile = db.prepare(
+  "UPDATE agent_profiles SET status = 'draft', updated_at = datetime('now') WHERE identity = @identity");
+const rotateAgentCode = db.prepare(
+  "UPDATE agent_profiles SET code = @code, updated_at = datetime('now') WHERE identity = @identity");
+const deleteAgentProfile = db.prepare('DELETE FROM agent_profiles WHERE identity = ?');
+const bumpAgentProfileViews = db.prepare('UPDATE agent_profiles SET views = views + 1 WHERE identity = ?');
+/* The directory. `@q` is matched against name/headline/handle/skills; passing an
+   empty string matches everything, so one statement serves browse AND search —
+   two statements would drift apart the first time a column is added. */
+const listAgentProfiles = db.prepare(`
+  SELECT * FROM agent_profiles
+   WHERE status = 'published' AND discoverable = 1
+     AND (@q = '' OR lower(COALESCE(display_name,'') || ' ' || COALESCE(headline,'') || ' '
+                  || COALESCE(handle,'') || ' ' || COALESCE(skills,'') || ' '
+                  || COALESCE(stack,'') || ' ' || COALESCE(bio,'')) LIKE '%' || @q || '%')
+   ORDER BY published_at DESC
+   LIMIT @limit OFFSET @offset
+`);
+const countAgentProfiles = db.prepare(
+  "SELECT COUNT(*) AS n FROM agent_profiles WHERE status = 'published' AND discoverable = 1");
+
+const insertAgentConnection = db.prepare(`
+  INSERT INTO agent_connections (id, a_identity, b_identity, status, opened_via, note, responded_at)
+  VALUES (@id, @a_identity, @b_identity, @status, @opened_via, @note, @responded_at)
+`);
+const getAgentConnection = db.prepare('SELECT * FROM agent_connections WHERE id = ?');
+/* Either direction, one row. Asked with both spellings so "did we already meet"
+   is a single index hit rather than two queries the caller has to OR together. */
+const findAgentConnection = db.prepare(`
+  SELECT * FROM agent_connections
+   WHERE (a_identity = @x AND b_identity = @y) OR (a_identity = @y AND b_identity = @x)
+`);
+const listAgentConnections = db.prepare(`
+  SELECT * FROM agent_connections
+   WHERE a_identity = @me OR b_identity = @me
+   ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC
+   LIMIT 200
+`);
+const respondAgentConnection = db.prepare(`
+  UPDATE agent_connections SET status = @status, responded_at = datetime('now')
+   WHERE id = @id AND b_identity = @me AND status = 'pending'
+`);
+const deleteAgentConnection = db.prepare(
+  'DELETE FROM agent_connections WHERE id = @id AND (a_identity = @me OR b_identity = @me)');
+/* Anti-spam: how many channels this identity has opened in a window. Opening a
+   channel is the one action a stranger can aim at you, so it is the one that
+   needs a ceiling. */
+const countAgentConnectionsSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM agent_connections WHERE a_identity = @me AND created_at > datetime('now', @window)");
+
+const insertAgentMessage = db.prepare(`
+  INSERT INTO agent_messages (id, connection_id, from_identity, from_kind, body)
+  VALUES (@id, @connection_id, @from_identity, @from_kind, @body)
+`);
+const listAgentMessages = db.prepare(`
+  SELECT * FROM agent_messages WHERE connection_id = @connection_id
+   ORDER BY created_at ASC, id ASC LIMIT 200
+`);
+const markAgentMessagesRead = db.prepare(`
+  UPDATE agent_messages SET read_at = datetime('now')
+   WHERE connection_id = @connection_id AND from_identity != @me AND read_at IS NULL
+`);
+const countAgentUnread = db.prepare(`
+  SELECT COUNT(*) AS n FROM agent_messages m
+    JOIN agent_connections c ON c.id = m.connection_id
+   WHERE m.read_at IS NULL AND m.from_identity != @me
+     AND (c.a_identity = @me OR c.b_identity = @me)
+`);
+const countAgentMessagesSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM agent_messages WHERE from_identity = @me AND created_at > datetime('now', @window)");
+
+const insertAgentPhotoSession = db.prepare(`
+  INSERT INTO agent_photo_sessions (token, identity, expires_at)
+  VALUES (@token, @identity, datetime('now', @ttl))
+`);
+const getAgentPhotoSession = db.prepare(
+  "SELECT * FROM agent_photo_sessions WHERE token = ? AND expires_at > datetime('now')");
+const setAgentPhotoSessionPhotos = db.prepare(
+  'UPDATE agent_photo_sessions SET photos = @photos WHERE token = @token');
+const claimAgentPhotoSession = db.prepare(
+  'UPDATE agent_photo_sessions SET claimed = 1 WHERE token = @token AND identity = @identity');
+const sweepAgentPhotoSessions = db.prepare(
+  "DELETE FROM agent_photo_sessions WHERE expires_at <= datetime('now')");
+
+
 module.exports = {
+  // ── Agent Social ──
+  upsertAgentProfile, patchAgentProfile, getAgentProfile, getAgentProfileByCode,
+  getAgentProfileByHandle, publishAgentProfile, unpublishAgentProfile, rotateAgentCode,
+  deleteAgentProfile, bumpAgentProfileViews, listAgentProfiles, countAgentProfiles,
+  insertAgentConnection, getAgentConnection, findAgentConnection, listAgentConnections,
+  respondAgentConnection, deleteAgentConnection, countAgentConnectionsSince,
+  insertAgentMessage, listAgentMessages, markAgentMessagesRead, countAgentUnread,
+  countAgentMessagesSince,
+  insertAgentPhotoSession, getAgentPhotoSession, setAgentPhotoSessionPhotos,
+  claimAgentPhotoSession, sweepAgentPhotoSessions,
+
   addTownMark, townMarks, townMarksToday, removeTownMark,
   addBlock, getBlock, removeBlock, blocksBy, blockedIdsBy, isBlockedBy,
   addSafetyReport, countSafetyReports, reportedTargets, dmRecentFrom, getDm,

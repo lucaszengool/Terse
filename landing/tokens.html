@@ -4339,19 +4339,20 @@ if (document.readyState === 'loading') {
 </script>
 <script>
 /* Code Town window: the web app's own town (/town-wall), same engine and data as the
-   phone plaza. Nothing heavy loads until the visitor clicks — then it boots in an
-   iframe, the page says hello (anonymous: no identity) and hands it the keyboard.
-   Protocol: town-wall.html header (init / walk → ready / esc / error).
+   phone plaza. Nothing heavy loads until the visitor shows intent — then it boots in
+   an iframe, the page says hello (anonymous: no identity) and, on a click, hands it
+   the keyboard. Protocol: town-wall.html header (init / walk → ready / esc / error).
 
-   Keeping it cheap, because this runs under a page that is already drawing a
-   particle stage of its own:
-     · the engine's files and the (light) project list are PREFETCHED when the
-       window comes near the viewport — idle-priority, so the click mostly waits
-       on the GPU build rather than the network;
-     · while the town is on, the page's own WebGL background is STOPPED and its
+   Keeping it cheap, because this runs under a page that already draws a particle
+   stage of its own:
+     · the engine and the (light) project list are PREFETCHED at idle priority when
+       the window nears the viewport, so the click waits on the GPU, not the network;
+     · the town starts BUILDING when the pointer enters the window — by the time the
+       cursor reaches the button it is usually standing;
+     · while the town is on screen the page's own WebGL stage is STOPPED and its
        canvas hidden — two particle stages on one GPU is what makes fans spin;
-     · scrolling the window out of view stops the walk (the engine drops to its
-       idle frame rate) and hands the background back. */
+     · out of view: the walk stops, the engine drops to its idle frame rate and the
+       background comes back. */
 (function () {
   var stage = document.getElementById('townStage');
   if (!stage) return;
@@ -4359,40 +4360,38 @@ if (document.readyState === 'loading') {
   var keys = { hidden: true }, poster = document.getElementById('townPoster');
   var video = document.getElementById('townVideo'), full = document.getElementById('townFull');
   var tabs = document.querySelectorAll('.town-tab');
-  var frame = null, ready = false, walking = false, mode = 'walk', warmed = false;
+  var frame = null, ready = false, walking = false, wants = false, mode = 'walk', warmed = false, seen = false;
   var zh = function () { return /^zh/i.test(document.documentElement.lang || ''); };
   var LIMIT = 60, FPS = 45, BUDGET = 0.5;   /* villas · frame cap while walking · point budget */
   var SRC = function () { return '/town-wall?lang=' + (zh() ? 'zh' : 'en') + '&budget=' + BUDGET + '&light=1&limit=' + LIMIT + '&fps=' + FPS; };
+  var T = function (en, cn) { return zh() ? cn : en; };
 
   function send(msg) {
     if (!frame || !frame.contentWindow) return;
     msg.target = 'terse-town';
     try { frame.contentWindow.postMessage(msg, location.origin); } catch (e) {}
   }
-  /* the page's own particle stage: off while the town draws, on again after */
+  /* the page's own particle stage: off while the town is the thing on screen */
   function bg(on) {
     var c = window.TerseCosmos, cv = document.getElementById('terse-cosmos');
     try { if (c) { if (on) c.start(); else c.stop(); } } catch (e) {}
     if (cv) cv.style.visibility = on ? '' : 'hidden';
     if (c && c.lab) c.lab.style.display = on ? '' : 'none';
   }
+  function townOnScreen() { return !!frame && ready && !frame.hidden && seen; }
   function setWalk(on) {
     if (on === walking) return;
     walking = on;
     send({ cmd: 'walk', on: on });
-    bg(!on);
     go.hidden = on;
     keys.hidden = !on;
     if (on) { try { frame.focus(); } catch (e) {} }
   }
-  /* the engine is a few hundred KB across a dozen modules, and the town cannot be
-     built before the project list arrives — ask for both while the visitor is still
-     reading, at a priority that yields to everything else on the page. */
   function warm() {
     if (warmed) return;
     warmed = true;
     /* the URLs have to match what the iframe will ask for, character for character
-       (a different query string, or a different credentials mode — which is what
+       (a different query string — or a different credentials mode, which is what
        crossorigin would change — is simply a different cache entry) */
     var pre = [[SRC(), 'document'], ['/app-assets/vendor/three.module.min.js', 'script'],
       ['/api/cloud/projects/public?limit=' + LIMIT + '&light=1', 'fetch']];
@@ -4405,8 +4404,7 @@ if (document.readyState === 'loading') {
     if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2500 }); else setTimeout(run, 600);
   }
   function boot() {
-    goText.textContent = zh() ? '小镇正在盖…' : 'Building the town…';
-    go.classList.add('is-loading');
+    if (frame) return;
     frame = document.createElement('iframe');
     frame.title = 'Code Town';
     frame.setAttribute('allow', 'fullscreen');
@@ -4419,22 +4417,38 @@ if (document.readyState === 'loading') {
     var d = e.data || {};
     if (d.source !== 'terse-town') return;
     if (d.event === 'ready') {
-      ready = true; poster.hidden = true; go.classList.remove('is-loading');
-      if (mode === 'walk') setWalk(true);
+      ready = true; poster.hidden = true;
+      go.classList.remove('is-loading');
+      goText.textContent = T('Click to walk in as a guest', '点一下,以游客身份进镇');
+      if (townOnScreen()) bg(false);
+      if (wants && mode === 'walk') setWalk(true);
     } else if (d.event === 'esc') {
-      setWalk(false);
-      goText.textContent = zh() ? '点一下,接着逛' : 'Click to keep walking';
+      setWalk(false); wants = false;
+      goText.textContent = T('Click to keep walking', '点一下,接着逛');
     } else if (d.event === 'error') {
       go.classList.remove('is-loading');
-      goText.textContent = zh() ? '这台设备的显卡跑不起小镇 —— 看看导览视频吧' : 'This device cannot run the town — watch the tour instead';
+      goText.textContent = T('This device cannot run the town — watch the tour instead', '这台设备的显卡跑不起小镇 —— 看看导览视频吧');
       go.hidden = false;
     }
   });
   go.addEventListener('click', function () {
     if (mode !== 'walk') return;
-    if (!frame) boot();
-    else if (ready) setWalk(true);
+    wants = true;
+    if (ready) { setWalk(true); return; }
+    go.classList.add('is-loading');
+    goText.textContent = T('Building the town…', '小镇正在盖…');
+    boot();
   });
+  /* the mouse crossing the window is intent enough to start building; a quick sweep
+     past on the way down the page should not cost anything, hence the dwell. A touch
+     screen has no hover — there the tap starts it. */
+  var dwell = 0;
+  stage.addEventListener('pointerover', function (e) {
+    if (frame || mode !== 'walk' || e.pointerType === 'touch') return;
+    clearTimeout(dwell);
+    dwell = setTimeout(boot, 180);
+  });
+  stage.addEventListener('pointerout', function () { clearTimeout(dwell); });
   tabs.forEach(function (t) {
     t.addEventListener('click', function () {
       mode = t.dataset.tw;
@@ -4443,28 +4457,29 @@ if (document.readyState === 'loading') {
       video.hidden = !tour;
       if (frame) frame.hidden = tour;
       poster.hidden = tour || ready;
-      if (tour) { setWalk(false); go.hidden = true; keys.hidden = true; try { video.play(); } catch (e) {} }
-      else { try { video.pause(); } catch (e) {} go.hidden = ready || !frame ? false : go.hidden; }
+      if (tour) { setWalk(false); wants = false; go.hidden = true; keys.hidden = true; bg(true); try { video.play(); } catch (e) {} }
+      else { try { video.pause(); } catch (e) {} go.hidden = false; if (townOnScreen()) bg(false); }
     });
   });
   full.addEventListener('click', function () {
-    var el = stage;
     if (document.fullscreenElement) document.exitFullscreen();
-    else if (el.requestFullscreen) el.requestFullscreen().then(function () { if (frame && walking) frame.focus(); }).catch(function () {});
+    else if (stage.requestFullscreen) stage.requestFullscreen().then(function () { if (frame && walking) frame.focus(); }).catch(function () {});
   });
   /* out of sight: stop walking (the engine falls back to its idle frame rate) and
-     give the background back. Near the window: warm the engine up. */
+     hand the background back. Near the window: warm the engine up. */
   if (window.IntersectionObserver) {
     new IntersectionObserver(function (es) {
       es.forEach(function (x) {
-        if (x.isIntersecting) warm();
-        else if (walking) { setWalk(false); goText.textContent = zh() ? '点一下,接着逛' : 'Click to keep walking'; }
+        seen = x.isIntersecting;
+        if (seen) { warm(); if (townOnScreen()) bg(false); return; }
+        if (walking) { setWalk(false); wants = false; goText.textContent = T('Click to keep walking', '点一下,接着逛'); }
+        bg(true);
       });
-    }, { rootMargin: '600px 0px' }).observe(stage);
-  } else warm();
-  /* a tab switch pauses everything anyway; coming back must not restart the
-     background while the town is the thing on screen (the page's own handler does) */
-  document.addEventListener('visibilitychange', function () { if (!document.hidden && walking) bg(false); });
+    }, { rootMargin: '300px 0px' }).observe(stage);
+  } else { warm(); seen = true; }
+  /* coming back to the tab must not restart the background while the town owns the
+     screen (the page's own visibilitychange handler starts it again) */
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && townOnScreen()) bg(false); });
 })();
 </script>
 

@@ -482,6 +482,10 @@ router.get('/public', (req, res) => {
      "进去逛"的窗口每次开都要先等这一下。想播粒子的地方(广场、壁纸)别传 light。 */
   const light = req.query.light === '1' || req.query.light === 'true';
   const HEAVY = ['cover', 'shots', 'frames'];
+  /* 让浏览器能把它留两分钟:网页上那扇窗口在人还在读的时候就先 prefetch 了这份列表,
+     没有 max-age 的话那次预取白费(启发式缓存靠不住),点下去又得重新下一遍。
+     **private**:里面有"我点过赞没有",不能进共享缓存;认了身份的请求干脆不缓存。 */
+  if (light && !me) res.set('Cache-Control', 'private, max-age=120');
   res.json({
     ok: true,
     projects: rows.map((r) => {

@@ -2949,11 +2949,14 @@ if (document.readyState === 'loading') {
   function warm() {
     if (warmed) return;
     warmed = true;
-    var pre = ['/town-wall', '/app-assets/vendor/three.module.min.js',
-      '/api/cloud/projects/public?limit=' + LIMIT + '&light=1'];
-    var add = function (href) {
+    /* the URLs have to match what the iframe will ask for, character for character
+       (a different query string, or a different credentials mode — which is what
+       crossorigin would change — is simply a different cache entry) */
+    var pre = [[SRC(), 'document'], ['/app-assets/vendor/three.module.min.js', 'script'],
+      ['/api/cloud/projects/public?limit=' + LIMIT + '&light=1', 'fetch']];
+    var add = function (row) {
       var l = document.createElement('link');
-      l.rel = 'prefetch'; l.href = href; l.as = 'fetch'; l.crossOrigin = 'anonymous';
+      l.rel = 'prefetch'; l.href = row[0]; l.as = row[1];
       document.head.appendChild(l);
     };
     var run = function () { pre.forEach(add); };

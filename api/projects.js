@@ -475,11 +475,19 @@ router.get('/public', (req, res) => {
     if (arr.length < 3) arr.push({ body: c.body, likes: c.likes });
   }
 
+  /* ?light=1 —— 只要"盖房子"用得上的那部分胶囊。
+     整颗胶囊里 90% 的字节是 cover / shots / frames(base64 截图),那是**粒子播放**
+     要的;小镇盖房子只看 title / langs / dirs / style / geo / plot,别墅内部看
+     dirs / graph / hot / commits。实测 100 个项目:4.0 MB → 0.4 MB,而网页里那扇
+     "进去逛"的窗口每次开都要先等这一下。想播粒子的地方(广场、壁纸)别传 light。 */
+  const light = req.query.light === '1' || req.query.light === 'true';
+  const HEAVY = ['cover', 'shots', 'frames'];
   res.json({
     ok: true,
     projects: rows.map((r) => {
       let capsule = null;
       try { capsule = JSON.parse(r.capsule); } catch (e) {}
+      if (light && capsule) for (const k of HEAVY) delete capsule[k];
       const c = counts[r.id] || {};
       return {
         id: r.id, title: r.title, published_at: r.published_at, views: r.views, capsule,

@@ -90,6 +90,11 @@ const S = {
   wp: null, town: null, projects: [], pos: null, inVilla: false, busy: false,
   // 桌面壁纸是全屏的:按 1 倍像素画(Retina 下像素少四倍,辉光那几道后处理省得最多)
   pr: Math.max(0.5, Math.min(2, +(q.get('pr') || (embedded ? 1 : Math.min(2, devicePixelRatio || 1))))),
+  /* 网页里嵌的窗口用得上的三个省力开关(桌面壁纸不传,行为和以前一模一样):
+     light = 胶囊去掉截图 · limit = 少盖几栋 · fps = 走路时也封顶帧率(0 = 不封) */
+  light: q.get('light') === '1',
+  limit: Math.max(1, Math.min(100, +(q.get('limit') || 100))),
+  fps: Math.max(0, Math.min(60, +(q.get('fps') || 0))),
   needAx: false,          // 宿主说:键盘接管缺辅助功能授权
   focused: true,          // 键盘在不在我们这儿(宿主告诉;别的窗口拿走了就暂停转向)
   cursor: null,           // 宿主转来的光标位置 {nx, ny},-1..1,屏幕中心是 0
@@ -235,7 +240,7 @@ function setWalking(on) {
   S.walking = on;
   document.body.classList.toggle('idle', !on);
   // 没人在逛:这只是壁纸,锁 30 帧省电;逛的时候不封顶,掉帧走起来会晕
-  if (S.wp) S.wp.roomFps = on ? 0 : 30;
+  if (S.wp) S.wp.roomFps = on ? S.fps : 30;
   if (!on) S.turnKeys.clear();
   setTip();
   if (on) {
@@ -298,7 +303,9 @@ function housesOf(list) {
 }
 
 async function loadProjects() {
-  const r = await fetch('/api/cloud/projects/public?limit=100', {
+  /* ?light=1:胶囊里去掉 cover/shots/frames(4.0 MB → 0.4 MB)。盖房子和别墅内部都用不上它们,
+     只有粒子播放要;网页里嵌的那扇窗口传 light,桌面壁纸不传(它还要播项目)。 */
+  const r = await fetch('/api/cloud/projects/public?limit=' + S.limit + (S.light ? '&light=1' : ''), {
     headers: window.__townIdentity ? { 'x-terse-identity': window.__townIdentity } : {},
   });
   const j = await r.json().catch(() => ({}));
@@ -464,7 +471,7 @@ async function start() {
     const m = await import('/app-assets/mineradio-wallpaper.js' + (window.__TERSE_BUILD ? '?v=' + encodeURIComponent(window.__TERSE_BUILD) : ''));
     Engine = m.default;
     S.wp = new Engine(cv, { theme: 'neon', quality: 56, angle: 42, intensity: 1, style: 'cinematic', pro: false, stagePace: 60000, photo: bed() });
-    S.wp.roomFps = S.walking ? 0 : 30;
+    S.wp.roomFps = S.walking ? S.fps : 30;
     S.wp.start();
     try { S.wp.resize && S.wp.resize(); } catch (e) {}
   } catch (e) {

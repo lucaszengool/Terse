@@ -83,6 +83,13 @@ const capsule = (over = {}) => Object.assign({
   ok('the listing carries the whole capsule', !!(mine && mine.capsule && mine.capsule.cover));
   ok('…including the lines the particles spell out', !!(mine && mine.capsule.lines.length));
 
+  // ── ?light=1 —— 盖房子用不上截图,而截图是这份列表 90% 的字节 ──
+  r = await req('GET', '/projects/public?limit=20&light=1');
+  const lite = r.body.projects.find((p) => p.title === 'Terse');
+  ok('light drops the screenshots', !!lite && !lite.capsule.cover && !lite.capsule.shots && !lite.capsule.frames);
+  ok('…but keeps what the town builds from', !!(lite && lite.capsule.title && lite.capsule.lines));
+  ok('…and the full list still carries them', !!mine.capsule.cover);
+
   // ── 重复发布是覆盖 ──
   r = await req('POST', '/projects', { identity: ME, body: { capsule: capsule({ title: 'Terse renamed' }) } });
   eq('republishing keeps the same id', r.body.id, firstId);

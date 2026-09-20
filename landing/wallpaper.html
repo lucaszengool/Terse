@@ -1077,6 +1077,10 @@
 .town-go:hover{transform:translate(-50%,-50%) scale(1.04);background:rgba(8,12,22,.85)}
 .town-go-k{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--ac);color:#04110b;font-size:13px}
 .town-stage [hidden]{display:none!important}
+.town-go.is-loading{pointer-events:none}
+.town-go.is-loading .town-go-k{font-size:0;background:transparent;border:2px solid rgba(110,231,183,.3);border-top-color:var(--ac);animation:twspin .9s linear infinite}
+@keyframes twspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.town-go.is-loading .town-go-k{animation:none}}
 .town-keys{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:6px 13px;border-radius:999px;background:rgba(8,12,22,.66);border:1px solid rgba(160,200,255,.18);font-size:12px;color:#dfe9ff;white-space:nowrap;pointer-events:none;max-width:94%;overflow:hidden;text-overflow:ellipsis}
 .town-full{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:9px;border:1px solid rgba(160,200,255,.2);background:rgba(8,12,22,.6);color:#dfe9ff;font-size:16px;cursor:pointer}
 .town-guest{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 18px;border-top:1px solid rgba(160,200,255,.12);background:rgba(110,231,183,.04)}
@@ -2862,7 +2866,17 @@ if (document.readyState === 'loading') {
 /* Code Town window: the web app's own town (/town-wall), same engine and data as the
    phone plaza. Nothing heavy loads until the visitor clicks — then it boots in an
    iframe, the page says hello (anonymous: no identity) and hands it the keyboard.
-   Protocol: town-wall.html header (init / walk → ready / esc / error). */
+   Protocol: town-wall.html header (init / walk → ready / esc / error).
+
+   Keeping it cheap, because this runs under a page that is already drawing a
+   particle stage of its own:
+     · the engine's files and the (light) project list are PREFETCHED when the
+       window comes near the viewport — idle-priority, so the click mostly waits
+       on the GPU build rather than the network;
+     · while the town is on, the page's own WebGL background is STOPPED and its
+       canvas hidden — two particle stages on one GPU is what makes fans spin;
+     · scrolling the window out of view stops the walk (the engine drops to its
+       idle frame rate) and hands the background back. */
 (function () {
   var stage = document.getElementById('townStage');
   if (!stage) return;
@@ -2870,26 +2884,55 @@ if (document.readyState === 'loading') {
   var keys = { hidden: true }, poster = document.getElementById('townPoster');
   var video = document.getElementById('townVideo'), full = document.getElementById('townFull');
   var tabs = document.querySelectorAll('.town-tab');
-  var frame = null, ready = false, walking = false, mode = 'walk';
+  var frame = null, ready = false, walking = false, mode = 'walk', warmed = false;
   var zh = function () { return /^zh/i.test(document.documentElement.lang || ''); };
+  var LIMIT = 60, FPS = 45, BUDGET = 0.5;   /* villas · frame cap while walking · point budget */
+  var SRC = function () { return '/town-wall?lang=' + (zh() ? 'zh' : 'en') + '&budget=' + BUDGET + '&light=1&limit=' + LIMIT + '&fps=' + FPS; };
+
   function send(msg) {
     if (!frame || !frame.contentWindow) return;
     msg.target = 'terse-town';
     try { frame.contentWindow.postMessage(msg, location.origin); } catch (e) {}
   }
+  /* the page's own particle stage: off while the town draws, on again after */
+  function bg(on) {
+    var c = window.TerseCosmos, cv = document.getElementById('terse-cosmos');
+    try { if (c) { if (on) c.start(); else c.stop(); } } catch (e) {}
+    if (cv) cv.style.visibility = on ? '' : 'hidden';
+    if (c && c.lab) c.lab.style.display = on ? '' : 'none';
+  }
   function setWalk(on) {
+    if (on === walking) return;
     walking = on;
     send({ cmd: 'walk', on: on });
+    bg(!on);
     go.hidden = on;
     keys.hidden = !on;
     if (on) { try { frame.focus(); } catch (e) {} }
   }
+  /* the engine is a few hundred KB across a dozen modules, and the town cannot be
+     built before the project list arrives — ask for both while the visitor is still
+     reading, at a priority that yields to everything else on the page. */
+  function warm() {
+    if (warmed) return;
+    warmed = true;
+    var pre = ['/town-wall', '/app-assets/vendor/three.module.min.js',
+      '/api/cloud/projects/public?limit=' + LIMIT + '&light=1'];
+    var add = function (href) {
+      var l = document.createElement('link');
+      l.rel = 'prefetch'; l.href = href; l.as = 'fetch'; l.crossOrigin = 'anonymous';
+      document.head.appendChild(l);
+    };
+    var run = function () { pre.forEach(add); };
+    if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2500 }); else setTimeout(run, 600);
+  }
   function boot() {
     goText.textContent = zh() ? '小镇正在盖…' : 'Building the town…';
+    go.classList.add('is-loading');
     frame = document.createElement('iframe');
     frame.title = 'Code Town';
     frame.setAttribute('allow', 'fullscreen');
-    frame.src = '/town-wall?lang=' + (zh() ? 'zh' : 'en') + '&budget=0.7';
+    frame.src = SRC();
     frame.addEventListener('load', function () { send({ cmd: 'init', identity: '', name: '', lang: zh() ? 'zh' : 'en' }); });
     stage.insertBefore(frame, go);
   }
@@ -2898,12 +2941,13 @@ if (document.readyState === 'loading') {
     var d = e.data || {};
     if (d.source !== 'terse-town') return;
     if (d.event === 'ready') {
-      ready = true; poster.hidden = true;
+      ready = true; poster.hidden = true; go.classList.remove('is-loading');
       if (mode === 'walk') setWalk(true);
     } else if (d.event === 'esc') {
       setWalk(false);
       goText.textContent = zh() ? '点一下,接着逛' : 'Click to keep walking';
     } else if (d.event === 'error') {
+      go.classList.remove('is-loading');
       goText.textContent = zh() ? '这台设备的显卡跑不起小镇 —— 看看导览视频吧' : 'This device cannot run the town — watch the tour instead';
       go.hidden = false;
     }
@@ -2921,8 +2965,8 @@ if (document.readyState === 'loading') {
       video.hidden = !tour;
       if (frame) frame.hidden = tour;
       poster.hidden = tour || ready;
-      if (tour) { if (walking) setWalk(false); go.hidden = true; keys.hidden = true; try { video.play(); } catch (e) {} }
-      else { try { video.pause(); } catch (e) {} go.hidden = false; }
+      if (tour) { setWalk(false); go.hidden = true; keys.hidden = true; try { video.play(); } catch (e) {} }
+      else { try { video.pause(); } catch (e) {} go.hidden = ready || !frame ? false : go.hidden; }
     });
   });
   full.addEventListener('click', function () {
@@ -2930,6 +2974,19 @@ if (document.readyState === 'loading') {
     if (document.fullscreenElement) document.exitFullscreen();
     else if (el.requestFullscreen) el.requestFullscreen().then(function () { if (frame && walking) frame.focus(); }).catch(function () {});
   });
+  /* out of sight: stop walking (the engine falls back to its idle frame rate) and
+     give the background back. Near the window: warm the engine up. */
+  if (window.IntersectionObserver) {
+    new IntersectionObserver(function (es) {
+      es.forEach(function (x) {
+        if (x.isIntersecting) warm();
+        else if (walking) { setWalk(false); goText.textContent = zh() ? '点一下,接着逛' : 'Click to keep walking'; }
+      });
+    }, { rootMargin: '600px 0px' }).observe(stage);
+  } else warm();
+  /* a tab switch pauses everything anyway; coming back must not restart the
+     background while the town is the thing on screen (the page's own handler does) */
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && walking) bg(false); });
 })();
 </script>
 

@@ -2307,6 +2307,7 @@ const SB_ACTIONS = {
   history:  () => T.navigateToHistory && T.navigateToHistory(),
   wallpaper:() => T.navigateToWallpaper && T.navigateToWallpaper(),
   projects: () => T.navigateToProjects && T.navigateToProjects(),
+  social:   () => T.navigateToSocial && T.navigateToSocial(),
   team:     () => T.navigateToCowork && T.navigateToCowork(),
   farm:     () => T.navigateToFarm ? T.navigateToFarm() : (T.showFarmWindow && T.showFarmWindow()),
   graph:    () => T.navigateToGraph && T.navigateToGraph(),

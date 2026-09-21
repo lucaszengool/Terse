@@ -6462,7 +6462,7 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
     use windows::Win32::UI::WindowsAndMessaging::{
         FindWindowExW, GetSystemMetrics, GetWindowLongPtrW, SendMessageTimeoutW, SetParent,
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
-        HWND_BOTTOM, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
+        HWND_TOP, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
         SWP_SHOWWINDOW, WS_CAPTION, WS_CHILD, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
         WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
         WS_POPUP, WS_SYSMENU, WS_THICKFRAME, WS_VISIBLE,
@@ -6501,33 +6501,32 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             }
         }
 
-        // Finding the wallpaper host, in the order the shell actually arranges
-        // it. The previous version took the last top-level WorkerW *without* a
-        // SHELLDLL_DefView child, which is not the same thing: there are
-        // normally two or three WorkerWs and that picked an arbitrary one, so
-        // the window was re-parented somewhere that never draws. CI confirmed
-        // it — wallpaper.json said enabled, wallpaper-bg.jpg was generated, and
-        // the desktop still showed the stock picture.
+        // Finding the wallpaper host. THE RULE: the wallpaper must end up BELOW
+        // the icon layer (SHELLDLL_DefView) in z-order — never merely "in some
+        // WorkerW". Users reported every desktop icon vanishing the moment Terse
+        // started: with DefView on Progman, the old walk took "the first
+        // top-level WorkerW without DefView" and never checked where that WorkerW
+        // sat. When it sat above Progman, our full-screen child covered the
+        // icons. Three shell layouts, each with a host that is provably below
+        // the icons:
         //
-        // 1) If SHELLDLL_DefView is a direct child of Progman (the usual case
-        //    on Windows 11), Progman itself is the correct parent: our window
-        //    then draws over the wallpaper and under the icons.
-        // 2) Otherwise DefView lives inside a WorkerW, and the wallpaper host
-        //    is that WorkerW's NEXT sibling of the same class.
-        // Walk every top-level WorkerW ONCE, recording both candidates:
-        //   · the sibling immediately after whichever host owns SHELLDLL_DefView
-        //   · the first WorkerW that has no DefView child at all
-        //
-        // The previous version short-circuited: if DefView was a direct child of
-        // Progman it never looked at the WorkerWs and parented to Progman. That
-        // is the common Windows 11 layout, and parenting there puts us in the
-        // same child list as the icons, sunk to HWND_BOTTOM — i.e. underneath
-        // the picture Progman paints. Correct parent, invisible result.
-        let defview_owner_is_progman = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
-            .map(|h| !h.is_invalid())
-            .unwrap_or(false);
+        // A) DefView is a child of Progman (Windows 11 24H2+, where the wallpaper
+        //    WorkerW became Progman's own child; also any shell where 0x052C did
+        //    not split). Parent to Progman and insert directly AFTER DefView in
+        //    its sibling order: under the icons, above Explorer's WorkerW
+        //    picture. HWND_BOTTOM was wrong here — it sank us below that WorkerW
+        //    too, i.e. invisible.
+        // B) DefView lives inside a top-level WorkerW (classic 0x052C split). The
+        //    wallpaper host is the WorkerW that follows it in z-order, i.e. below.
+        // C) Nothing matched: Progman, below DefView if it has one.
+        let defview_on_progman = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
+            .unwrap_or_default();
+        let defview_owner_is_progman = !progman.is_invalid() && !defview_on_progman.is_invalid();
+        let progman_child_workerw = !progman.is_invalid()
+            && FindWindowExW(progman, None, w!("WorkerW"), None)
+                .map(|h| !h.is_invalid())
+                .unwrap_or(false);
         let mut after_defview = HWND::default();
-        let mut first_bare = HWND::default();
         let mut worker_count = 0usize;
         let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
         while !worker.is_invalid() {
@@ -6536,34 +6535,33 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
                 .map(|h| !h.is_invalid())
                 .unwrap_or(false);
             if has_defview && after_defview.is_invalid() {
+                // FindWindowExW(None, worker, ..) continues the top-level walk
+                // from `worker` in z-order, so this is the next WorkerW BELOW the
+                // one holding the icons.
                 after_defview = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
-            } else if !has_defview && first_bare.is_invalid() {
-                first_bare = worker;
             }
             worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
         }
-        // When DefView sits on Progman there is no "sibling after" to find, so
-        // the bare WorkerW is the wallpaper layer. When DefView sits inside a
-        // WorkerW, the sibling after it is. Prefer whichever the layout implies,
-        // then the other, then Progman as a last resort.
-        let target = if defview_owner_is_progman {
-            if !first_bare.is_invalid() { first_bare } else { after_defview }
+        // (parent, sibling to insert after — None means top of that parent)
+        let (parent, insert_after, layout) = if defview_owner_is_progman {
+            (progman, Some(defview_on_progman), if progman_child_workerw { "A:24h2" } else { "A:progman" })
         } else if !after_defview.is_invalid() {
-            after_defview
+            (after_defview, None, "B:workerw-after-defview")
         } else {
-            first_bare
+            let dv = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None).ok()
+                .filter(|h| !h.is_invalid());
+            (progman, dv, "C:progman-fallback")
         };
-        let parent = if target.is_invalid() { progman } else { target };
         // Record what the shell actually looked like. CI cannot test any of this
         // — the runner has no Progman and no WorkerW at all (the diagnostic came
         // back "Progman = 0, total top-level WorkerW: 0"), so this path has never
         // once executed there. The only machine that can answer is a real
         // desktop, and this is how it reports back.
         pin_log(&format!(
-            "progman={:?} defview_on_progman={} workerw_count={} after_defview={:?} \
-             first_bare={:?} chosen={:?}{}",
-            progman.0, defview_owner_is_progman, worker_count, after_defview.0,
-            first_bare.0, parent.0,
+            "progman={:?} defview_on_progman={} progman_child_workerw={} workerw_count={} \
+             after_defview={:?} layout={} chosen={:?} insert_after={:?}{}",
+            progman.0, defview_owner_is_progman, progman_child_workerw, worker_count,
+            after_defview.0, layout, parent.0, insert_after.map(|h| h.0),
             if parent.is_invalid() { "  << NO PARENT - pin aborted" } else { "" }
         ));
         if !parent.is_invalid() {
@@ -6612,16 +6610,13 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             let cx = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             let cy = GetSystemMetrics(SM_CYVIRTUALSCREEN);
             if cx > 0 && cy > 0 {
-                // HWND_BOTTOM, not NOZORDER. The icons live in SHELLDLL_DefView,
-                // a sibling under the same parent, so inserting at the top of
-                // the z-order painted the wallpaper OVER them — CI showed the
-                // particle field drawing correctly with every desktop icon
-                // gone. macOS's kCGDesktopWindowLevel sits below the icons;
-                // sinking to the bottom of the parent's children is the
-                // equivalent, and puts us above the static wallpaper but under
-                // the icons.
+                // Directly below the icons. With DefView in the same parent we
+                // insert right after it (SetWindowPos places hwnd BELOW the
+                // insert-after window); in layout B the host WorkerW is itself
+                // below the icons, so the top of it is fine.
+                let z = insert_after.unwrap_or(HWND_TOP);
                 let _ = SetWindowPos(
-                    hwnd, HWND_BOTTOM, 0, 0, cx, cy,
+                    hwnd, z, 0, 0, cx, cy,
                     SWP_NOACTIVATE | SWP_SHOWWINDOW,
                 );
             }

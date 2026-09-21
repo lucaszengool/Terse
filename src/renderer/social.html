@@ -28,7 +28,8 @@
 
   <script src="qr.js"></script>
   <script src="tauri-bridge.js"></script>
-  <script src="social-home.js"></script>
+  <!-- social-home.js is NOT loaded here: social.js fetches the live copy from
+       terseai.org first and falls back to the bundled one only when offline. -->
   <script src="social.js"></script>
 </body>
 </html>

@@ -38,7 +38,31 @@
     try { T.navigateBack(); } catch (e) {}
   });
 
-  loadIdentity().then(function (identity) {
+  /* The UI comes from terseai.org — the same file the website runs — so the app
+     shows today's Terse Social without waiting for a new build (a rebuilt dmg
+     used to be the only way a fix reached the app). The copy bundled with the
+     app is the fallback for when the site cannot be reached. */
+  function loadUi() {
+    return new Promise(function (resolve) {
+      var done = false;
+      function local() {
+        if (done) return; done = true;
+        var sc = document.createElement('script');
+        sc.src = 'social-home.js';
+        sc.onload = resolve;
+        document.head.appendChild(sc);
+      }
+      var remote = document.createElement('script');
+      remote.src = SITE + '/app-assets/social-home.js';
+      remote.onload = function () { if (!done && window.TerseSocialHome) { done = true; resolve(); } else local(); };
+      remote.onerror = local;
+      setTimeout(local, 4000);
+      document.head.appendChild(remote);
+    });
+  }
+
+  Promise.all([loadIdentity(), loadUi()]).then(function (r) {
+    var identity = r[0];
     window.TerseSocialHome.mount(document.getElementById('app'), {
       api: SITE,
       site: SITE,

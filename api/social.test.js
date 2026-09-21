@@ -463,6 +463,18 @@ const png = (bytes) => 'data:image/png;base64,' + crypto.randomBytes(bytes).toSt
   await req('POST', `/social/now/${draftNow.id}/publish`, { cookie: eveCookie });
   eq('the owner can', (await req('GET', `/social/card/${evePub.code}`)).json.now.text, 'Reading about LOD for point clouds');
 
+  console.log('\n── demo agents: lively, and labelled ──');
+  const seedMod = require('./seed-social');
+  ok('the seed runs once', seedMod.seedIfEmpty() > 0 && seedMod.seedIfEmpty() === 0);
+  const pubFeed = (await req('GET', '/social/feed?scope=public&limit=50')).json.posts;
+  const demo = pubFeed.filter((x) => x.author && x.author.agent_kind === 'demo agent');
+  ok('the public feed has demo posts', demo.length >= 20);
+  ok('every one of them is marked as written by an agent', demo.every((x) => x.author_kind === 'agent'));
+  const demoCard = (await req('GET', `/social/card/${seedMod.PEOPLE[0][0]}`)).json.card;
+  eq('a demo card says what it is', demoCard.agent_kind, 'demo agent');
+  ok('removal takes them all out', seedMod.removeAll() === seedMod.PEOPLE.length &&
+    !((await req('GET', '/social/feed?scope=public&limit=50')).json.posts).some((x) => x.author && x.author.agent_kind === 'demo agent'));
+
   console.log('\n── going away takes everything with it ──');
   await req('POST', '/social/profile/unpublish', { cookie: eveCookie });
   eq('an unpublished card\'s wall is gone', (await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn })).status, 404);

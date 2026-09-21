@@ -2095,4 +2095,9 @@ app.listen(PORT, () => {
       console.log(`[seed] ${totalKeys} marketplace listings already exist`);
     }
   } catch (e) { console.error('[seed] error:', e.message); }
+  // Terse Social's first visitors should not open an empty feed. Labelled demo
+  // agents, seeded once ever; `node api/seed-social.js --remove` takes them out.
+  if (process.env.TERSE_SEED_SOCIAL !== '0') {
+    try { require('./seed-social').seedIfEmpty(); } catch (e) { console.error('[seed-social] error:', e.message); }
+  }
 });

@@ -1,13 +1,12 @@
-//! A partial port of src-tauri/src/session_dock.rs — the parts the ROOM window
-//! needs: find_transcript and sd_send for room_link, and sd_active, which lists
-//! the live agent sessions a person can connect into a room. Without it the
-//! room's "connect" panel is empty and the whole agent channel is unreachable,
-//! however many rl_* commands exist. The session dock proper (17 commands, the docked window, the
-//! transcript watchers) is macOS Accessibility and window-server work and is
-//! still on the ledger in renderer-deps.test.mjs.
+//! Port of src-tauri/src/session_dock.rs — the session dock (会话栏) and what the
+//! room window needs from it. Non-platform code is copied from macOS verbatim;
+//! the OS-facing pieces (cursor, work area, showing without focus, git without a
+//! console, shell-open) are Win32 underneath.
 //!
-//! The call sites are spelled exactly as they are on macOS, so when the rest is
-//! ported this file grows rather than moving.
+//! Still macOS-only: driving Claude DESKTOP's sidebar (sd_send / sd_jump /
+//! sd_stop click rows through Accessibility). On Windows those say so honestly
+//! instead of acting on the wrong conversation; Claude Code sessions are
+//! unaffected — the dock reaches them through dock_hook's queue.
 
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -41,7 +40,9 @@ pub(crate) fn find_transcript(id: &str) -> Option<PathBuf> {
 /// comment calls worse than not sending it at all. Everything else in the room
 /// channel is unaffected: Claude Code and Codex are reached through
 /// dock_hook's queue, OpenClaw through its CLI.
-pub fn sd_send(title: String, _text: String) -> Value {
+#[tauri::command(async)]
+pub fn sd_send(title: String, text: String) -> Value {
+    let _ = text;
     crate::diag_log("room", &format!(
         "sd_send(\"{title}\") — driving the Claude Desktop window is macOS-only, not sent"));
     json!({ "ok": false, "error": "Claude Desktop is not supported on Windows yet" })
@@ -790,4 +791,700 @@ mod tests {
         assert_eq!(kinds, vec![("user".into(), "text".into()), ("assistant".into(), "tool".into()), ("assistant".into(), "tool".into()), ("assistant".into(), "text".into())]);
         assert_eq!(tr[1]["text"], "Shell  cargo build");
     }
+}
+
+// ── The session dock proper (会话栏), ported 2026-09-21 ──────────────────────
+// Everything below that is not platform code is copied from the macOS file
+// verbatim; the pieces that talk to the OS are rewritten for Win32 underneath.
+
+/// Logical-pixel scale of the primary monitor, stored as f64 bits: GetCursorPos
+/// and the work area come back in physical pixels, the dock works in logical.
+static SCALE_BITS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0x3FF0_0000_0000_0000); // 1.0
+fn scale() -> f64 {
+    let s = f64::from_bits(SCALE_BITS.load(std::sync::atomic::Ordering::Relaxed));
+    if s.is_finite() && s > 0.1 { s } else { 1.0 }
+}
+
+/// git without a console window. The dock asks every session for its diff about
+/// every 10 s; plain Command::new("git") flashed a console each time.
+fn git(dir: &str, args: &[&str]) -> Option<String> {
+    let o = crate::hidden_command("git").arg("-C").arg(dir).args(args).output().ok()?;
+    o.status.success().then(|| String::from_utf8_lossy(&o.stdout).to_string())
+}
+fn slash(p: &str) -> String { p.replace('\\', "/") }
+/// (repo root, branch, the session's paths inside it). git prints the root as
+/// `C:/x/y`; transcripts record `C:\x\y`. macOS compares with a plain
+/// starts_with, which on Windows matched nothing and every session showed +0 −0.
+/// Compared in git's spelling and case-insensitively (NTFS is).
+fn repo_paths(cwd: &str, paths: &[String]) -> Option<(String, String, Vec<String>)> {
+    if !Path::new(cwd).is_dir() {
+        return None;
+    }
+    let top = slash(git(cwd, &["rev-parse", "--show-toplevel"])?.trim());
+    let branch = git(cwd, &["rev-parse", "--abbrev-ref", "HEAD"]).map(|s| s.trim().to_string()).unwrap_or_default();
+    let pre = format!("{}/", top.to_lowercase());
+    let mut ps: Vec<String> = paths.iter().map(|p| slash(p))
+        .filter(|p| p.to_lowercase().starts_with(&pre))
+        // re-spell the root exactly as git does, so callers' trim_start_matches(top/) works
+        .map(|p| format!("{}{}", top, &p[top.len()..]))
+        .collect();
+    ps.dedup();
+    ps.truncate(200);
+    Some((top, branch, ps))
+}
+
+/// Open a URL / file through the shell, without a console.
+fn shell_open(target: &str) -> bool {
+    use windows::core::HSTRING;
+    use windows::Win32::UI::Shell::ShellExecuteW;
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let r = unsafe { ShellExecuteW(None, &HSTRING::from("open"), &HSTRING::from(target), None, None, SW_SHOWNORMAL) };
+    r.0 as isize > 32
+}
+/// Whether a URL scheme has a handler. Opening one that does not makes Windows
+/// pop "You'll need a new app to open this link" — never show that for us.
+fn scheme_registered(scheme: &str) -> bool {
+    crate::hidden_command("reg")
+        .args(["query", &format!("HKCR\\{scheme}"), "/v", "URL Protocol"])
+        .output().map(|o| o.status.success()).unwrap_or(false)
+}
+
+/// 在 Codex 里打开这一段(codex://threads/<id>)。Codex 没注册这个 scheme 就不去点它。
+#[tauri::command(async)]
+pub fn sd_codex_open(id: String) -> Value {
+    let tid = id.trim_start_matches(CODEX_PREFIX);
+    if tid.is_empty() || !tid.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
+        return json!({ "ok": false, "error": "bad_id" });
+    }
+    let ok = scheme_registered("codex") && shell_open(&format!("codex://threads/{tid}"));
+    json!({ "ok": ok })
+}
+
+/// 把 Claude Desktop 调到前台。Windows: the installer's launcher under
+/// %LOCALAPPDATA%\AnthropicClaude (a second launch focuses the running one),
+/// else the claude:// scheme (Store / MSIX installs have no fixed path).
+#[tauri::command(async)]
+pub fn sd_open_claude() -> Result<(), String> {
+    if let Some(p) = dirs::data_local_dir().map(|d| d.join("AnthropicClaude").join("claude.exe")) {
+        if p.is_file() && crate::hidden_command(&p).spawn().is_ok() {
+            return Ok(());
+        }
+    }
+    if scheme_registered("claude") && shell_open("claude://") {
+        return Ok(());
+    }
+    Err("claude_not_running".into())
+}
+
+/// 跳到 Claude Desktop 里这一段。macOS clicks the row in Claude's sidebar
+/// through Accessibility; Windows has no such driver yet, so this does what the
+/// macOS build does when the row is not found: bring Claude forward, and say so.
+#[tauri::command(async)]
+pub fn sd_jump(title: String) -> Value {
+    let opened = sd_open_claude().is_ok();
+    crate::diag_log("dock", &format!("jump \"{title}\" -> opened Claude={opened} (no sidebar driver on Windows)"));
+    json!({ "ok": false, "error": "session_not_found", "opened": opened })
+}
+
+/// 叫一段 Claude DESKTOP 会话停下。Claude Code sessions never reach here — the
+/// dock stops them through dock_hook's queue (canDirect). Pressing Esc blind in
+/// whatever conversation Claude has open could stop the wrong one, so no.
+#[tauri::command(async)]
+pub fn sd_stop(title: String) -> Value {
+    crate::diag_log("dock", &format!("stop \"{title}\" — Claude Desktop is not drivable on Windows"));
+    json!({ "ok": false, "error": "Claude Desktop 在 Windows 上还不能从这里叫停 —— 请在 Claude 里按停止" })
+}
+
+/// 会话状态变了:响一声 + 系统通知。macOS plays Glass/Basso/Hero; these are the
+/// Windows system sounds for the same three moods.
+#[tauri::command(async)]
+pub fn sd_alert(app: tauri::AppHandle, kind: String, title: String, body: String) {
+    use windows::Win32::System::Diagnostics::Debug::MessageBeep;
+    use windows::Win32::UI::WindowsAndMessaging::{MB_ICONASTERISK, MB_ICONHAND, MB_OK};
+    let sound = match kind.as_str() { "need" => MB_ICONASTERISK, "error" => MB_ICONHAND, _ => MB_OK };
+    unsafe { let _ = MessageBeep(sound); }
+    let severity = if kind == "error" { "warn" } else { "info" };
+    let head = match kind.as_str() { "need" => "需要你", "error" => "出错了", _ => "做完了" };
+    crate::notifications::notify(&app, "session", &format!("{head} · {title}"), &body, severity,
+        &format!("dock|{kind}|{title}"), None);
+}
+
+/// Primary monitor's work area (minus the taskbar), as (top, bottom) in logical px.
+fn visible_band() -> Option<(f64, f64)> {
+    use windows::Win32::Foundation::RECT;
+    use windows::Win32::UI::WindowsAndMessaging::{SystemParametersInfoW, SPI_GETWORKAREA, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS};
+    let mut r = RECT::default();
+    unsafe {
+        SystemParametersInfoW(SPI_GETWORKAREA, 0, Some(&mut r as *mut RECT as *mut _), SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0)).ok()?;
+    }
+    let s = scale();
+    (r.bottom > r.top).then(|| (r.top as f64 / s, r.bottom as f64 / s))
+}
+
+/// Global cursor, top-left origin, logical px.
+fn cursor(_sh: f64) -> (f64, f64) {
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    let mut p = POINT::default();
+    if unsafe { GetCursorPos(&mut p) }.is_err() { return (1e9, 1e9); }
+    let s = scale();
+    (p.x as f64 / s, p.y as f64 / s)
+}
+
+/// Show WITHOUT activating. tao's show() is ShowWindow(SW_SHOW), which takes
+/// keyboard focus: the dock expands whenever the cursor touches the left edge,
+/// so a straight port stole focus from your editor every time you went near it.
+fn show_no_activate(win: &tauri::WebviewWindow) {
+    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+    match win.hwnd() {
+        Ok(raw) => unsafe { let _ = ShowWindow(windows::Win32::Foundation::HWND(raw.0), SW_SHOWNOACTIVATE); },
+        Err(_) => { let _ = win.show(); }
+    }
+}
+
+fn ensure_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
+    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+    if let Some(w) = app.get_webview_window("sessions-dock") {
+        return Ok(w);
+    }
+    let (sw, sh) = match app.primary_monitor() {
+        Ok(Some(m)) => {
+            let s = m.scale_factor();
+            SCALE_BITS.store(s.to_bits(), std::sync::atomic::Ordering::Relaxed);
+            (m.size().width as f64 / s, m.size().height as f64 / s)
+        }
+        _ => (1440.0, 900.0),
+    };
+    // 高度只到可见区域为止(去掉任务栏),和 macOS 去掉菜单栏、程序坞同理
+    let (mut top, mut h) = (12.0, (sh - 24.0).max(300.0));
+    if let Some((vis_top, vis_bottom)) = visible_band() {
+        top = vis_top + 9.0;
+        h = (vis_bottom - 10.0 - top).max(300.0);
+    }
+    if let Ok(mut d) = DOCK.lock() { d.top = top; d.h = h; d.sw = sw; d.sh = sh; }
+    // Frame, border and caption are handled for every window by the frame guard
+    // in lib.rs (on_webview_ready), so nothing extra here.
+    WebviewWindowBuilder::new(app, "sessions-dock", WebviewUrl::App("session-dock.html".into()))
+        .title("Terse Sessions")
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(false)
+        .resizable(false)
+        .shadow(false)
+        .visible(false)
+        .inner_size(14.0, h)
+        .position(0.0, top)
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+/// 会话栏的状态。宽度、展开与否由 **Rust 这边**说了算,不是网页。
+///
+/// ⚠ 为什么不让网页自己管 hover:这个窗口**永远不会是焦点窗口**(它不能抢你正在用的
+/// app 的焦点),而 macOS 上非焦点窗口里的 WKWebView 收不到鼠标移动事件 —— 第一版就是
+/// 这么死的:窗口在,10px 宽,鼠标怎么碰都不展开。真机探针测出来 w 一直是 10。
+/// 所以改成原生轮询全局光标位置(NSEvent.mouseLocation,不要任何权限),边缘判断在这儿做,
+/// 光标在栏里的位置再以 `sd-mouse` 事件发给网页,网页只负责"哪一行被指着"。
+struct Dock {
+    mode: String,
+    top: f64,
+    h: f64,
+    sw: f64,
+    sh: f64,
+    /// 从粒子页"打开会话栏"时:在人第一次移进来之前不收起,免得还没够到就没了
+    pinned_until: Option<std::time::Instant>,
+    entered: bool,
+    outside_since: Option<std::time::Instant>,
+    last: (i32, i32),
+}
+
+static DOCK: std::sync::LazyLock<std::sync::Mutex<Dock>> = std::sync::LazyLock::new(|| {
+    std::sync::Mutex::new(Dock { mode: "strip".into(), top: 34.0, h: 800.0, sw: 1440.0, sh: 900.0,
+        pinned_until: None, entered: false, outside_since: None, last: (-1, -1) })
+});
+
+/// 5 小时用量窗口 —— 和 ccusage 同一种切法:窗口从第一条消息所在的**整点**开始,持续 5 小时;
+/// 超过 5 小时或中间断了 5 小时以上就开下一个窗口。按消息 id 去重(续接的会话会把历史复制
+/// 进新文件)。token 数 = 输入 + 输出 + 写缓存,**不含读缓存**(读缓存不怎么占额度)。
+///
+/// Desktop 自己有一个 5 小时的总圆环,但看不出**是哪个会话在烧** —— 这里按会话拆开,
+/// 外加最近 10 分钟的速度,会话栏用它画"每张卡往燃料条里流多少粒子"。
+#[tauri::command(async)]
+pub fn sd_usage() -> Value {
+    use std::io::{Seek, SeekFrom};
+    let now = chrono::Utc::now().timestamp_millis();
+    let horizon = now - 10 * 3600 * 1000;
+    let mut rows: Vec<(i64, String, i64)> = Vec::new(); // (时间, 会话 id, token)
+    let mut seen = HashSet::new();
+    let projects = home().join(".claude/projects");
+    for dir in std::fs::read_dir(&projects).into_iter().flatten().flatten() {
+        for f in std::fs::read_dir(dir.path()).into_iter().flatten().flatten() {
+            let p = f.path();
+            if p.extension().map(|x| x != "jsonl").unwrap_or(true) {
+                continue;
+            }
+            let Ok(meta) = f.metadata() else { continue };
+            let recent = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as i64 > horizon).unwrap_or(false);
+            if !recent {
+                continue;
+            }
+            let sid = p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+            let Ok(mut fh) = std::fs::File::open(&p) else { continue };
+            // 只读最后 8MB:10 小时内的消息都在文件尾部
+            let start = meta.len().saturating_sub(8 * 1024 * 1024);
+            let _ = fh.seek(SeekFrom::Start(start));
+            let mut buf = Vec::new();
+            let _ = fh.read_to_end(&mut buf);
+            let text = String::from_utf8_lossy(&buf);
+            for line in text.lines() {
+                if !line.contains("\"usage\"") {
+                    continue;
+                }
+                let Ok(d) = serde_json::from_str::<Value>(line) else { continue };
+                let Some(msg) = d.get("message") else { continue };
+                let id = msg.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                if !id.is_empty() && !seen.insert(id) {
+                    continue;
+                }
+                let Some(u) = msg.get("usage") else { continue };
+                let g = |k: &str| u.get(k).and_then(|v| v.as_i64()).unwrap_or(0);
+                let tok = g("input_tokens") + g("output_tokens") + g("cache_creation_input_tokens");
+                let ts = d.get("timestamp").and_then(|v| v.as_str())
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                    .map(|t| t.timestamp_millis()).unwrap_or(0);
+                if ts > horizon && tok > 0 {
+                    rows.push((ts, sid.clone(), tok));
+                }
+            }
+        }
+    }
+    rows.sort_by_key(|r| r.0);
+    const H: i64 = 3600 * 1000;
+    let mut block_start: i64 = 0;
+    let mut last_ts: i64 = 0;
+    let mut cur: Vec<&(i64, String, i64)> = Vec::new();
+    for r in &rows {
+        if block_start == 0 || r.0 >= block_start + 5 * H || r.0 - last_ts > 5 * H {
+            block_start = r.0 - r.0.rem_euclid(H);
+            cur.clear();
+        }
+        cur.push(r);
+        last_ts = r.0;
+    }
+    if block_start == 0 || now >= block_start + 5 * H {
+        return json!({ "active": false, "total": 0, "perSession": {}, "ratePerMin": 0 });
+    }
+    let mut per: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+    let mut per_recent: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+    let mut total = 0;
+    let mut recent = 0;
+    for r in &cur {
+        total += r.2;
+        *per.entry(r.1.clone()).or_default() += r.2;
+        if r.0 > now - 10 * 60 * 1000 {
+            recent += r.2;
+            *per_recent.entry(r.1.clone()).or_default() += r.2;
+        }
+    }
+    json!({
+        "active": true,
+        "start": block_start,
+        "resetAt": block_start + 5 * H,
+        "total": total,
+        "perSession": per,
+        "recentPerSession": per_recent,
+        "ratePerMin": recent / 10,
+    })
+}
+
+fn untracked(top: &str, ps: &[String]) -> HashSet<String> {
+    let mut a = vec!["ls-files", "--others", "--exclude-standard", "--full-name", "--"];
+    a.extend(ps.iter().map(|s| s.as_str()));
+    git(top, &a).map(|s| s.lines().map(|l| format!("{top}/{l}")).collect()).unwrap_or_default()
+}
+
+fn line_count(p: &str) -> i64 {
+    std::fs::metadata(p).ok().filter(|m| m.len() < 4 << 20)
+        .and_then(|_| std::fs::read(p).ok()).map(|b| b.iter().filter(|c| **c == b'\n').count() as i64).unwrap_or(0)
+}
+
+/// 分支 + 这段会话改过的文件里还没提交的 +/−。会话栏每 10 秒左右问一次每条会话,缓存 8 秒。
+#[tauri::command(async)]
+pub fn sd_git(cwd: String, paths: Vec<String>) -> Value {
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<std::collections::HashMap<String, (std::time::Instant, Value)>>> = OnceLock::new();
+    let key = format!("{cwd}\n{}", paths.join("\n"));
+    let cache = CACHE.get_or_init(|| Mutex::new(Default::default()));
+    if let Some((t, v)) = cache.lock().unwrap().get(&key) {
+        if t.elapsed().as_secs() < 8 {
+            return v.clone();
+        }
+    }
+    let Some((top, branch, ps)) = repo_paths(&cwd, &paths) else { return json!({}) };
+    let (mut add, mut del) = (0i64, 0i64);
+    let mut files: Vec<Value> = Vec::new();
+    if !ps.is_empty() {
+        let mut a = vec!["diff", "--numstat", "HEAD", "--"];
+        a.extend(ps.iter().map(|s| s.as_str()));
+        for l in git(&top, &a).unwrap_or_default().lines() {
+            let mut it = l.splitn(3, '\t');
+            let (x, y, p) = (it.next().unwrap_or("0"), it.next().unwrap_or("0"), it.next().unwrap_or(""));
+            let (x, y) = (x.parse::<i64>().unwrap_or(0), y.parse::<i64>().unwrap_or(0));
+            add += x;
+            del += y;
+            files.push(json!({ "path": p, "add": x, "del": y }));
+        }
+        for p in untracked(&top, &ps) {
+            let n = line_count(&p);
+            add += n;
+            files.push(json!({ "path": p.trim_start_matches(&format!("{top}/")), "add": n, "del": 0, "new": true }));
+        }
+    }
+    let v = json!({ "branch": branch, "add": add, "del": del, "files": files, "root": top });
+    let mut c = cache.lock().unwrap();
+    if c.len() > 64 { c.clear(); }
+    c.insert(key, (std::time::Instant::now(), v.clone()));
+    v
+}
+
+/// 预览里"改动"那一页:这段会话改过的文件的未提交 diff(每个文件最多 160 行,总共最多 700 行)
+#[tauri::command(async)]
+pub fn sd_diff(cwd: String, paths: Vec<String>) -> Value {
+    let Some((top, _, ps)) = repo_paths(&cwd, &paths) else { return json!({ "files": [] }) };
+    if ps.is_empty() {
+        return json!({ "files": [] });
+    }
+    let mut a = vec!["diff", "HEAD", "--no-color", "--no-ext-diff", "-U2", "--"];
+    a.extend(ps.iter().map(|s| s.as_str()));
+    let text = git(&top, &a).unwrap_or_default();
+    let mut files: Vec<Value> = Vec::new();
+    let mut cur: Option<(String, Vec<String>, i64, i64)> = None;
+    let mut total = 0usize;
+    let flush = |cur: &mut Option<(String, Vec<String>, i64, i64)>, files: &mut Vec<Value>| {
+        if let Some((p, ls, x, y)) = cur.take() {
+            files.push(json!({ "path": p, "add": x, "del": y, "lines": ls }));
+        }
+    };
+    for l in text.lines() {
+        if l.starts_with("diff --git ") {
+            flush(&mut cur, &mut files);
+            let p = l.rsplit(" b/").next().unwrap_or("").to_string();
+            cur = Some((p, Vec::new(), 0, 0));
+            continue;
+        }
+        let Some(c) = cur.as_mut() else { continue };
+        if l.starts_with("+++") || l.starts_with("---") || l.starts_with("index ") || l.starts_with("new file") || l.starts_with("deleted file") || l.starts_with("similarity") || l.starts_with("rename ") || l.starts_with("old mode") || l.starts_with("new mode") {
+            continue;
+        }
+        if l.starts_with('+') { c.2 += 1 } else if l.starts_with('-') { c.3 += 1 }
+        if c.1.len() < 160 && total < 700 {
+            c.1.push(clip(l, 220));
+            total += 1;
+        }
+    }
+    flush(&mut cur, &mut files);
+    for p in untracked(&top, &ps) {
+        let body = std::fs::read_to_string(&p).unwrap_or_default();
+        let ls: Vec<String> = body.lines().take(80).map(|l| format!("+{}", clip(l, 220))).collect();
+        files.push(json!({ "path": p.trim_start_matches(&format!("{top}/")), "add": body.lines().count(), "del": 0, "new": true, "lines": ls }));
+    }
+    json!({ "files": files })
+}
+
+/// 解析过的全文缓存:按 (文件大小, 修改时间) 认。
+///
+/// 预览每 3 秒刷一次,而一份 JSONL 动辄 6–7MB。**要显示全部历史**就得读整份文件,
+/// 但没理由每 3 秒整份重读 —— 文件没变就直接用上次的结果,变了再解析。
+static TRANSCRIPT_CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<PathBuf, (u64, u128, std::sync::Arc<Vec<Value>>)>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+/// 这一行里的图算不算进编号。parse_transcript 和 sd_image **共用这一个判断**。
+fn counts_for_images(d: &Value) -> bool {
+    let flag = |k: &str| d.get(k).and_then(|v| v.as_bool()).unwrap_or(false);
+    if flag("isSidechain") || flag("isCompactSummary") || flag("isMeta") {
+        return false;
+    }
+    matches!(d.get("type").and_then(|v| v.as_str()), Some("user") | Some("assistant"))
+}
+
+fn parse_transcript(path: &Path) -> Vec<Value> {
+    let Ok(mut f) = std::fs::File::open(path) else { return Vec::new() };
+    let mut buf = String::new();
+    // **整份读**。用户要的是"所有的对话历史",不是尾巴上那几百 KB ——
+    // 第一版只读最后 900KB,长会话的前半段根本看不到。
+    let _ = f.read_to_string(&mut buf);
+    let mut out: Vec<Value> = Vec::new();
+    let mut img_n: usize = 0; // 文件里第几张图 —— sd_image 按这个编号去取
+    for line in buf.lines() {
+        let Ok(d) = serde_json::from_str::<Value>(line) else { continue };
+        if d.get("isSidechain").and_then(|v| v.as_bool()).unwrap_or(false) {
+            continue; // 子 agent 的旁支,不是这段对话本身
+        }
+        let t = d.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let ts = d.get("timestamp").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        // 上下文被压缩过的地方留一条分隔线 —— 那是真实发生过的事,藏起来会让人以为
+        // 对话在那儿断了一截。
+        if d.get("isCompactSummary").and_then(|v| v.as_bool()).unwrap_or(false) {
+            out.push(json!({ "role": "system", "kind": "divider", "text": "上下文已压缩 · 之前的内容仍在上面", "ts": ts }));
+            continue;
+        }
+        if d.get("isMeta").and_then(|v| v.as_bool()).unwrap_or(false) {
+            continue;
+        }
+        if t != "user" && t != "assistant" {
+            continue;
+        }
+        let content = d.get("message").and_then(|m| m.get("content"));
+        let mut push = |kind: &str, text: String| {
+            let text = if kind == "tool" || kind == "image" { text } else { strip_tags(&text) };
+            if !text.is_empty() {
+                // 上限只是防一条几十万字的怪消息把界面卡死,正常对话一个字都不截
+                out.push(json!({ "role": t, "kind": kind, "text": clip(&text, 60000), "ts": ts }));
+            }
+        };
+        match content {
+            Some(Value::String(s)) => push("text", s.clone()),
+            Some(Value::Array(blocks)) => {
+                for b in blocks {
+                    match b.get("type").and_then(|v| v.as_str()).unwrap_or("") {
+                        "text" => push("text", b.get("text").and_then(|v| v.as_str()).unwrap_or("").to_string()),
+                        "image" => {
+                            // 图片不内联进 transcript(一张截图 base64 就是几百 KB,整段对话
+                            // 塞进一次 IPC 会卡住预览)。只给一个编号,前端需要时再单独要。
+                            push("image", format!("img:{img_n}"));
+                            img_n += 1;
+                        }
+                        "tool_use" => {
+                            let name = b.get("name").and_then(|v| v.as_str()).unwrap_or("tool");
+                            let inp = b.get("input");
+                            let arg = ["description", "command", "file_path", "pattern", "url", "query", "prompt"]
+                                .iter()
+                                .find_map(|k| inp.and_then(|i| i.get(*k)).and_then(|v| v.as_str()))
+                                .unwrap_or("");
+                            push("tool", format!("{name}  {}", clip(arg, 300)));
+                        }
+                        _ => {} // thinking / tool_result:不是对话本身
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// 一段会话的**全部**历史。`limit` 只在调用方明确要少的时候才截。
+#[tauri::command(async)]
+pub fn sd_transcript(id: String, limit: Option<usize>) -> Vec<Value> {
+    if let Some(tid) = id.strip_prefix(CODEX_PREFIX) {
+        let Some(p) = codex_threads().into_iter().find(|t| t["id"] == tid).and_then(|t| codex_rollout(t["rollout"].as_str()?)) else { return Vec::new() };
+        let all = codex_transcript(&p);
+        let skip = all.len().saturating_sub(limit.unwrap_or(usize::MAX));
+        return all.into_iter().skip(skip).collect();
+    }
+    let Some(path) = find_transcript(&id) else { return Vec::new() };
+    let meta = std::fs::metadata(&path).ok();
+    let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+    let mtime = meta.and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_nanos()).unwrap_or(0);
+    let cached = TRANSCRIPT_CACHE.lock().ok()
+        .and_then(|c| c.get(&path).filter(|(s, m, _)| *s == size && *m == mtime).map(|(_, _, v)| v.clone()));
+    let all = match cached {
+        Some(v) => v,
+        None => {
+            let v = std::sync::Arc::new(parse_transcript(&path));
+            if let Ok(mut c) = TRANSCRIPT_CACHE.lock() {
+                if c.len() > 24 { c.clear(); } // 只留最近看过的几段,别无限长
+                c.insert(path.clone(), (size, mtime, v.clone()));
+            }
+            v
+        }
+    };
+    let n = limit.unwrap_or(usize::MAX);
+    let skip = all.len().saturating_sub(n);
+    all.iter().skip(skip).cloned().collect()
+}
+
+/// 取对话里第 `n` 张图,缩到长边 ≤560px、重编成 JPEG,返回 data URL。
+///
+/// 为什么要缩:粒子只需要几百像素宽的底图 —— 一张 3MB 的截图原样过 IPC、原样解码,
+/// 每次 hover 都要卡一下,换来的清晰度粒子根本表达不出来。
+static IMAGE_CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<(PathBuf, usize), String>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+fn width_of(mode: &str, sw: f64) -> f64 {
+    match mode {
+        // 2026-09 全粒子版:列表 400(卡片里要放命令和按钮),预览再往右 560;收起是 14 宽的状态珠轨
+        "list" => 400.0,
+        "preview" => (400.0 + 560.0f64).min(sw - 20.0),
+        _ => 14.0,
+    }
+}
+
+
+/// 真正改窗口大小 + 告诉网页现在是哪种状态。
+fn apply(app: &tauri::AppHandle, mode: &str) {
+    use tauri::Emitter;
+    let Ok(win) = ensure_window(app) else { return };
+    let (top, h, sw) = DOCK.lock().map(|d| (d.top, d.h, d.sw)).unwrap_or((34.0, 800.0, 1440.0));
+    let w = width_of(mode, sw);
+    let _ = win.set_size(tauri::LogicalSize::new(w, h));
+    let _ = win.set_position(tauri::LogicalPosition::new(0.0, top));
+    show_no_activate(&win);
+    // Collapsed, the strip is 14px of transparent always-on-top window on the
+    // left edge. macOS passes clicks through transparent pixels; Windows does not,
+    // so the strip would eat clicks on whatever sits there (a maximized editor's
+    // activity bar). Opening is driven by cursor polling in start(), not clicks,
+    // so the strip can be fully click-through; the open dock takes clicks.
+    let _ = win.set_ignore_cursor_events(mode == "strip");
+    let _ = app.emit("sd-state", json!({ "mode": mode }));
+}
+
+/// 网页要求换状态(比如停在某一行上 → preview)。
+#[tauri::command]
+pub fn sd_dock(app: tauri::AppHandle, mode: String) -> Result<(), String> {
+    ensure_window(&app)?;
+    if let Ok(mut d) = DOCK.lock() { d.mode = mode.clone(); }
+    apply(&app, &mode);
+    Ok(())
+}
+
+/// 从粒子页点"打开会话栏":展开,并且**在人移进来之前不收起**(最多 10 秒)。
+#[tauri::command]
+pub fn sd_dock_open(app: tauri::AppHandle) -> Result<(), String> {
+    ensure_window(&app)?;
+    if let Ok(mut d) = DOCK.lock() {
+        d.mode = "list".into();
+        d.entered = false;
+        d.outside_since = None;
+        d.pinned_until = Some(std::time::Instant::now() + std::time::Duration::from_secs(10));
+    }
+    apply(&app, "list");
+    Ok(())
+}
+
+#[tauri::command]
+pub fn sd_dock_hide(app: tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("sessions-dock") {
+        let _ = w.hide();
+    }
+}
+
+/// 开机就起:建出那条细线,然后每 50ms 看一眼光标。
+pub fn start(app: tauri::AppHandle) {
+    let _ = ensure_window(&app).map(|_| apply(&app, "strip"));
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        use tauri::Emitter;
+        let (mode, top, h, sw, sh) = match DOCK.lock() {
+            Ok(d) => (d.mode.clone(), d.top, d.h, d.sw, d.sh),
+            Err(_) => continue,
+        };
+        let (mx, my) = cursor(sh);
+        let in_y = my >= top && my <= top + h;
+        let w = width_of(&mode, sw);
+        let now = std::time::Instant::now();
+        if mode == "strip" {
+            // 贴到屏幕最左边那几像素就展开 —— 和 Dock 的"碰到边缘就出来"是同一个手感
+            if mx <= 4.0 && in_y {
+                if let Ok(mut d) = DOCK.lock() { d.mode = "list".into(); d.entered = true; d.outside_since = None; d.pinned_until = None; }
+                apply(&app, "list");
+            }
+            continue;
+        }
+        let inside = mx >= 0.0 && mx <= w && in_y;
+        let mut collapse = false;
+        if let Ok(mut d) = DOCK.lock() {
+            if inside {
+                d.entered = true;
+                d.outside_since = None;
+                let cur = (mx as i32, (my - top) as i32);
+                if cur != d.last {
+                    d.last = cur;
+                    let _ = app.emit("sd-mouse", json!({ "x": mx, "y": my - top, "inside": true }));
+                }
+            } else {
+                let pinned = !d.entered && d.pinned_until.map(|t| now < t).unwrap_or(false);
+                if !pinned {
+                    let since = *d.outside_since.get_or_insert(now);
+                    // 留 450ms:鼠标从列表滑去预览的那一下会短暂擦过边界,立刻收起的话,
+                    // 人永远够不到右边那一栏
+                    if now.duration_since(since) > std::time::Duration::from_millis(450) {
+                        d.mode = "strip".into();
+                        d.outside_since = None;
+                        d.last = (-1, -1);
+                        collapse = true;
+                    }
+                }
+            }
+        }
+        if collapse {
+            let _ = app.emit("sd-mouse", json!({ "inside": false }));
+            apply(&app, "strip");
+        }
+    });
+}
+
+/// 回复框要打字:让会话栏窗口临时成为焦点窗口(平时它从不抢焦点)
+#[tauri::command]
+pub fn sd_focus_input(app: tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("sessions-dock") { let _ = w.set_focus(); }
+}
+
+#[tauri::command(async)]
+pub fn sd_image(id: String, n: usize) -> Option<String> {
+    let path = find_transcript(&id)?;
+    if let Some(v) = IMAGE_CACHE.lock().ok().and_then(|c| c.get(&(path.clone(), n)).cloned()) {
+        return Some(v);
+    }
+    let buf = std::fs::read_to_string(&path).ok()?;
+    let mut seen = 0usize;
+    for line in buf.lines() {
+        if !line.contains("\"image\"") {
+            continue;
+        }
+        let Ok(d) = serde_json::from_str::<Value>(line) else { continue };
+        // ⚠ 跳过规则必须和 parse_transcript **一字不差**。编号是"第几张图",两边只要有一边
+        // 多数或少数了一行,之后每一张图都会张冠李戴 —— 而且不会报错,只是显示错的图。
+        if !counts_for_images(&d) {
+            continue;
+        }
+        let Some(Value::Array(blocks)) = d.get("message").and_then(|m| m.get("content")) else { continue };
+        for b in blocks {
+            if b.get("type").and_then(|v| v.as_str()) != Some("image") {
+                continue;
+            }
+            if seen == n {
+                let src = b.get("source");
+                let data = src.and_then(|s| s.get("data")).and_then(|v| v.as_str())?;
+                let media = src.and_then(|s| s.get("media_type")).and_then(|v| v.as_str()).unwrap_or("image/png");
+                /* 先缩小再过 IPC。解不开的时候**把原图直接交出去**,而不是返回空 ——
+                   实测这段会话里前两张是 WebP,当时 image crate 只开了 jpeg/png,解码失败,
+                   sd_image 返回 None,会话栏里那两张图就永远停在"加载中"。
+                   webview 自己认得 webp/png/jpeg/gif,原图大一点,但总比一个永远的占位好。 */
+                /* macOS shrinks to a 560px JPEG here with the `image` crate. The
+                   Windows build does not link it, so this takes the macOS code's own
+                   fallback: hand the original over and let WebView2 decode it. */
+                let thumb: Option<String> = None;
+                let url = match thumb {
+                    Some(u) => u,
+                    None if media.starts_with("image/") && data.len() < 8_000_000 => format!("data:{media};base64,{data}"),
+                    None => return None,
+                };
+                if let Ok(mut c) = IMAGE_CACHE.lock() {
+                    if c.len() > 64 { c.clear(); }
+                    c.insert((path.clone(), n), url.clone());
+                }
+                return Some(url);
+            }
+            seen += 1;
+        }
+    }
+    None
 }

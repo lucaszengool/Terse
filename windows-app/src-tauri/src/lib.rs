@@ -4707,6 +4707,9 @@ pub fn run() {
             // stream for the wallpaper's big text.
             feeds::start(app.handle().clone());
             dock_hook::start(app.handle().clone());
+            // The session dock (会话栏): a 14px strip on the left edge that opens
+            // when the cursor touches it — started at launch, as on macOS.
+            session_dock::start(app.handle().clone());
             room_link::start(app.handle().clone());
 
             // The localhost route Claude Code's hook posts to. One thread per
@@ -4893,6 +4896,21 @@ pub fn run() {
             // and none of the rl_* commands below can ever be reached.
             session_dock::sd_active,
             session_dock::sd_sessions,
+            session_dock::sd_usage,
+            session_dock::sd_git,
+            session_dock::sd_diff,
+            session_dock::sd_codex_open,
+            session_dock::sd_open_claude,
+            session_dock::sd_jump,
+            session_dock::sd_send,
+            session_dock::sd_stop,
+            session_dock::sd_alert,
+            session_dock::sd_focus_input,
+            session_dock::sd_transcript,
+            session_dock::sd_image,
+            session_dock::sd_dock,
+            session_dock::sd_dock_hide,
+            session_dock::sd_dock_open,
             room_link::rl_status,
             town_drop_mode,
             pet_chat_show,

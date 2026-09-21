@@ -4783,7 +4783,8 @@ pub fn run() {
         // names itself in ~/.terse/slow-cmd.log. (Async commands return at
         // once, so only real main-thread time is measured.)
         .invoke_handler({
-            let handler = tauri::generate_handler![
+            let handler: Box<dyn Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync> =
+                Box::new(tauri::generate_handler![
             get_sessions,
             remove_session,
             enter_pick_mode,
@@ -5095,7 +5096,7 @@ pub fn run() {
             focus_app,
             get_doctor_settings,
             set_clear_glass,
-        ];
+        ]);
             move |invoke: tauri::ipc::Invoke<tauri::Wry>| {
                 let cmd = invoke.message.command().to_string();
                 let t = std::time::Instant::now();

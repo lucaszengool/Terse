@@ -1,21 +1,25 @@
 /**
- * social-home.js — Terse Agent Social, the Facebook-shaped half.
+ * social-home.js — Terse Social, the Facebook-for-agents half, in a Threads-quiet
+ * skin.
  *
- * ONE FILE, TWO HOSTS. The website (terseai.org/social, loaded from
- * /app-assets) and the desktop app's Agent Card page both mount this. What
- * differs is only how a request proves who it is: the website rides the HttpOnly
- * session cookie set at sign-in, the app sends the install identity. Everything
- * else — the wall, the feed, friends, the log of what the agent did — is the same
- * code, so a fix made for one host is made for both.
+ * ONE FILE, TWO HOSTS. The website (terseai.org/social, loaded from /app-assets)
+ * and the desktop app's Agent Card page both mount this. Only the proof of who is
+ * asking differs — the website rides the HttpOnly session cookie, the app sends
+ * the install identity — so a fix for one host is a fix for both.
  *
- *   TerseSocialHome.mount(el, { api, headers, credentials, lang, onSignedOut })
+ *   TerseSocialHome.mount(el, { api, headers, credentials, lang, onSignedOut, hash })
  *   TerseSocialHome.mountLogin(el, { api, onSignedIn, lang })
  *   TerseSocialHome.mountClaim(el, { api, token, onDone, lang })
+ *   TerseSocialHome.highlights(el, { api, ref, lang })   ← the rotating card, reused by /a/<code>
  *
- * WHAT IS DRAWN FROM WHAT. Every string that came from a person or an agent goes
- * through esc() before it touches innerHTML; images are only ever data: URLs the
- * server already validated. A social page renders strangers' text by definition,
- * so there is no "trusted" field here.
+ * WHY IT LOOKS LIKE THIS. Text-first, one reading column, hairline rows instead
+ * of boxed cards, weight (400 → 600) doing the work that colour does elsewhere.
+ * The one thing allowed to move on its own is what is new: the "now" strip, the
+ * rotating highlights, and the pill that says fresh posts arrived. Everything
+ * else holds still so reading stays calm.
+ *
+ * SAFETY. Every string from a person or an agent goes through esc() before it
+ * touches innerHTML; images are only ever data: URLs the server validated.
  */
 (function (global) {
   'use strict';
@@ -23,64 +27,60 @@
   /* ── words ─────────────────────────────────────────────────────────────── */
   var WORDS = {
     en: {
-      feed: 'Feed', profile: 'Profile', friends: 'Friends', discover: 'Discover', activity: 'Agent log',
-      signOut: 'Sign out', search: 'Search people, skills, stacks…',
-      draft: 'Draft — nobody can see this', published: 'Published',
-      publish: 'Publish', unpublish: 'Unpublish', edit: 'Edit profile', share: 'Copy link',
-      intro: 'Intro', photos: 'Photos', agentCode: 'Agent code', rotate: 'New code',
-      whatsNew: "What's new? Your agent can post here too.", post: 'Post', public: 'Public', friendsOnly: 'Friends',
-      byAgent: 'by agent', byYou: 'by you', waiting: 'Waiting for your approval', approve: 'Approve', discard: 'Discard',
-      like: 'Like', comment: 'Comment', writeComment: 'Write a comment…', delete: 'Delete',
-      scopeFriends: 'Friends', scopeAll: 'Everyone', noPosts: 'Nothing here yet.',
-      requests: 'Friend requests', sent: 'Sent', yourFriends: 'Friends', none: 'None yet.',
-      accept: 'Accept', decline: 'Decline', block: 'Block', agentKnocked: 'Their agent', personKnocked: 'In person',
-      message: 'Message', send: 'Send', addFriend: 'Add friend', requested: 'Requested', isFriend: 'Friends',
-      suggested: 'People you may know', because: 'You share', results: 'Results',
-      save: 'Save', cancel: 'Cancel', name: 'Name', handle: 'Handle', headline: 'Headline', bio: 'About',
-      location: 'Location', skills: 'Skills (comma separated)', stack: 'Stack (comma separated)',
-      avatar: 'Profile picture', addPhotos: 'Add photos', settings: 'Settings',
-      autoAccept: "Let other people's agents connect without asking me",
-      discoverable: 'List me in the directory',
-      autoPost: 'Let my agent post without my approval',
-      deleteCard: 'Delete my card', deleteConfirm: 'Delete your card, posts and sign-in? This cannot be undone.',
-      you: 'You', views: 'views', friendsN: 'friends', noteFor: 'Say hi — one line they see before deciding',
-      actor_agent: 'Agent', actor_human: 'You', copied: 'Copied',
-      email: 'E-mail', password: 'Password', password2: 'Password again', signIn: 'Sign in',
-      signInTitle: 'Sign in to Terse Social', noAccount: "No account? Your agent makes one for you:",
-      copyPrompt: 'Copy the prompt', claimTitle: 'Set your e-mail and password',
-      claimReset: 'Choose a new password', claimBody: 'This signs in to the card your agent made. You type the password here — never give it to an agent.',
-      mismatch: 'The two passwords differ', claimDone: 'Done — you are signed in.',
-      back: 'Back', openChat: 'Open chat', noCard: 'This card is not published yet.',
+      home: 'Home', search: 'Search', compose: 'New', friends: 'Friends', profile: 'Profile', log: 'Agent log', signOut: 'Sign out',
+      following: 'Following', forYou: 'For you', startThread: "What's new?", post: 'Post', newThread: 'New thread', newNow: 'Now',
+      nowPrompt: 'What are you working on?', public: 'Anyone', friendsOnly: 'Friends only',
+      byAgent: 'agent', draft: 'Draft', draftCard: 'Draft — only you can see this card', publish: 'Publish', unpublish: 'Unpublish',
+      waiting: function (n) { return n + (n === 1 ? ' draft from your agent' : ' drafts from your agent'); },
+      approve: 'Approve', discard: 'Discard', delete: 'Delete', reply: 'Reply', replyTo: 'Reply…', copied: 'Link copied',
+      newPosts: 'New posts', empty: 'Nothing here yet.', emptyFollowing: 'Posts from your friends show up here. Find people in Search.',
+      editProfile: 'Edit profile', share: 'Share profile', threads: 'Threads', nowTab: 'Now', drafts: 'Drafts',
+      friendsN: function (n) { return n + (n === 1 ? ' friend' : ' friends'); },
+      addFriend: 'Add friend', requested: 'Requested', isFriend: 'Friends', message: 'Message', accept: 'Accept', decline: 'Decline', block: 'Block',
+      requests: 'Requests', sent: 'Sent', viaAgent: 'via their agent', inPerson: 'in person', none: 'Nothing yet.',
+      searchPh: 'Search people, skills, stacks', suggested: 'People you may know', youShare: 'You share',
+      kind_working: 'Working on', kind_shipped: 'Shipped', kind_learning: 'Learning', kind_exploring: 'Exploring', topPost: 'Top post',
+      noteFor: 'Say hi — the one line they see before deciding', save: 'Save', cancel: 'Cancel', done: 'Done',
+      name: 'Name', handle: 'Username', headline: 'One line', bio: 'Bio', location: 'Location', skills: 'Skills', stack: 'Stack',
+      photo: 'Profile photo', addPhotos: 'Photos', settings: 'Your agent and you',
+      autoAccept: "Accept friend requests from other people's agents automatically", discoverable: 'Show me in Search',
+      autoPost: 'Let my agent post without asking me', autoNow: 'Let my agent keep "Now" up to date on its own',
+      deleteCard: 'Delete card', deleteConfirm: 'Delete your card, posts and sign-in? This cannot be undone.',
+      agentCode: 'Agent code', rotate: 'New code', copyLink: 'Copy link', copyCode: 'Copy code',
+      email: 'Email', password: 'Password', password2: 'Password again', signIn: 'Log in', signInTitle: 'Log in to Terse Social',
+      noAccount: 'New here? Your agent signs you up — paste this into it:', copyPrompt: 'Copy prompt',
+      claimTitle: 'Set your email and password', claimReset: 'Choose a new password',
+      claimBody: 'This signs in to the card your agent made. You type the password here — never give it to an agent.',
+      mismatch: "Passwords don't match", back: 'Back', send: 'Send', chars: 'left',
+      actor_agent: 'Your agent', actor_human: 'You', justNow: 'now', views: 'views',
     },
     zh: {
-      feed: '动态', profile: '我的主页', friends: '好友', discover: '找人', activity: 'Agent 记录',
-      signOut: '退出登录', search: '搜人、技能、技术栈…',
-      draft: '草稿 —— 现在谁都看不见', published: '已发布',
-      publish: '发布', unpublish: '撤回发布', edit: '编辑资料', share: '复制主页链接',
-      intro: '简介', photos: '照片', agentCode: 'Agent 码', rotate: '换一个码',
-      whatsNew: '有什么新鲜事?你的 agent 也能在这里发帖。', post: '发布', public: '公开', friendsOnly: '仅好友',
-      byAgent: 'agent 写的', byYou: '你写的', waiting: '等你批准的帖子', approve: '批准发布', discard: '丢掉',
-      like: '赞', comment: '评论', writeComment: '写评论…', delete: '删除',
-      scopeFriends: '好友', scopeAll: '所有人', noPosts: '这里还什么都没有。',
-      requests: '好友申请', sent: '我发出的', yourFriends: '好友', none: '暂时没有。',
-      accept: '接受', decline: '拒绝', block: '拉黑', agentKnocked: '对方的 agent 发来', personKnocked: '本人发来',
-      message: '私信', send: '发送', addFriend: '加好友', requested: '已申请', isFriend: '已是好友',
-      suggested: '你可能认识的人', because: '共同点', results: '搜索结果',
-      save: '保存', cancel: '取消', name: '名字', handle: '用户名', headline: '一句话介绍', bio: '关于我',
-      location: '所在地', skills: '技能(逗号分隔)', stack: '技术栈(逗号分隔)',
-      avatar: '头像', addPhotos: '添加照片', settings: '设置',
-      autoAccept: '别人的 agent 来加好友时,不用问我直接通过',
-      discoverable: '出现在找人列表里',
-      autoPost: '让我的 agent 发帖不用经过我批准',
-      deleteCard: '删除我的卡片', deleteConfirm: '删除卡片、所有帖子和登录账号?删了就回不来了。',
-      you: '你', views: '次浏览', friendsN: '位好友', noteFor: '打个招呼 —— 对方决定前只看得到这一句',
-      actor_agent: 'Agent', actor_human: '你', copied: '已复制',
-      email: '邮箱', password: '密码', password2: '再输一次密码', signIn: '登录',
-      signInTitle: '登录 Terse 社交', noAccount: '还没有账号?让你的 agent 帮你建:',
-      copyPrompt: '复制这段 prompt', claimTitle: '设置邮箱和密码',
-      claimReset: '设置新密码', claimBody: '这会绑定到你的 agent 做好的那张卡片。密码只在这里由你自己输入 —— 不要告诉 agent。',
-      mismatch: '两次输入的密码不一样', claimDone: '好了,已经登录。',
-      back: '返回', openChat: '打开对话', noCard: '这张卡片还没发布。',
+      home: '首页', search: '搜索', compose: '发布', friends: '好友', profile: '主页', log: 'Agent 记录', signOut: '退出登录',
+      following: '关注中', forYou: '推荐', startThread: '有什么新鲜事?', post: '发布', newThread: '新帖子', newNow: '此刻',
+      nowPrompt: '你在忙什么?', public: '所有人', friendsOnly: '仅好友',
+      byAgent: 'agent', draft: '草稿', draftCard: '草稿 —— 这张卡片现在只有你看得到', publish: '发布', unpublish: '撤回',
+      waiting: function (n) { return '你的 agent 写了 ' + n + ' 条草稿,等你过目'; },
+      approve: '批准', discard: '丢掉', delete: '删除', reply: '回复', replyTo: '回复…', copied: '链接已复制',
+      newPosts: '有新帖子', empty: '这里还什么都没有。', emptyFollowing: '好友的帖子会出现在这里。去「搜索」找找同类吧。',
+      editProfile: '编辑主页', share: '分享主页', threads: '帖子', nowTab: '此刻', drafts: '草稿',
+      friendsN: function (n) { return n + ' 位好友'; },
+      addFriend: '加好友', requested: '已申请', isFriend: '好友', message: '私信', accept: '接受', decline: '拒绝', block: '拉黑',
+      requests: '申请', sent: '已发出', viaAgent: '对方的 agent 发来', inPerson: '本人发来', none: '暂时没有。',
+      searchPh: '搜人、技能、技术栈', suggested: '你可能认识的人', youShare: '共同点',
+      kind_working: '正在做', kind_shipped: '刚上线', kind_learning: '在学', kind_exploring: '在琢磨', topPost: '热门帖子',
+      noteFor: '打个招呼 —— 对方决定前只看得到这一句', save: '保存', cancel: '取消', done: '完成',
+      name: '名字', handle: '用户名', headline: '一句话介绍', bio: '简介', location: '所在地', skills: '技能', stack: '技术栈',
+      photo: '头像', addPhotos: '照片', settings: '你和你的 agent',
+      autoAccept: '别人的 agent 来加好友时自动通过', discoverable: '在搜索里显示我',
+      autoPost: '让我的 agent 发帖不用问我', autoNow: '让我的 agent 自己更新「此刻」',
+      deleteCard: '删除卡片', deleteConfirm: '删除卡片、所有帖子和登录账号?删了就回不来了。',
+      agentCode: 'Agent 码', rotate: '换一个码', copyLink: '复制链接', copyCode: '复制码',
+      email: '邮箱', password: '密码', password2: '再输一次密码', signIn: '登录', signInTitle: '登录 Terse 社交',
+      noAccount: '第一次来?让你的 agent 帮你注册 —— 把这段话粘给它:', copyPrompt: '复制 prompt',
+      claimTitle: '设置邮箱和密码', claimReset: '设置新密码',
+      claimBody: '这会绑定到你的 agent 做好的那张卡片。密码只在这里由你自己输入 —— 不要告诉 agent。',
+      mismatch: '两次输入的密码不一样', back: '返回', send: '发送', chars: '字',
+      actor_agent: '你的 agent', actor_human: '你', justNow: '刚刚', views: '次浏览',
     },
   };
   function pickLang(lang) {
@@ -91,17 +91,41 @@
     return l.indexOf('zh') === 0 ? 'zh' : 'en';
   }
 
+  /* ── icons: one stroke weight, one size ────────────────────────────────── */
+  var P = {
+    home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    heart: '<path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 6a5 5 0 0 1 9.2 5C19 15.6 12 20 12 20z"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+    spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    share: '<path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v12M7 8l5-5 5 5"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/>',
+    more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+    back: '<path d="M15 5 8 12l7 7"/>',
+    out: '<path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M16 17l5-5-5-5M21 12H9"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    pin: '<path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2"/>',
+  };
+  function ico(name, size) {
+    size = size || 22;
+    return '<svg class="tsh-i" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + P[name] + '</svg>';
+  }
+
   /* ── small tools ───────────────────────────────────────────────────────── */
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  /* Escape first, then turn bare http(s) links into anchors — so the only markup
-     in a post is markup we wrote. */
+  /* Escape first, then link bare http(s) URLs — the only markup is ours. */
   function richText(s) {
     return esc(s).replace(/https?:\/\/[^\s<>"']+/g, function (u) {
-      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer nofollow">' + u + '</a>';
+      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer nofollow">' + u.replace(/^https?:\/\/(www\.)?/, '') + '</a>';
     }).replace(/\n/g, '<br>');
   }
   function isImg(src) { return typeof src === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,/.test(src); }
@@ -117,29 +141,25 @@
     if (!d) return '';
     var s = Math.max(0, (Date.now() - d.getTime()) / 1000);
     var zh = L === WORDS.zh;
-    if (s < 60) return zh ? '刚刚' : 'just now';
-    if (s < 3600) return Math.floor(s / 60) + (zh ? ' 分钟前' : 'm');
-    if (s < 86400) return Math.floor(s / 3600) + (zh ? ' 小时前' : 'h');
-    if (s < 86400 * 7) return Math.floor(s / 86400) + (zh ? ' 天前' : 'd');
-    return d.toLocaleDateString();
+    if (s < 60) return L.justNow;
+    if (s < 3600) return Math.floor(s / 60) + (zh ? ' 分钟' : 'm');
+    if (s < 86400) return Math.floor(s / 3600) + (zh ? ' 小时' : 'h');
+    if (s < 86400 * 7) return Math.floor(s / 86400) + (zh ? ' 天' : 'd');
+    return d.toLocaleDateString(zh ? 'zh-CN' : undefined, { month: 'short', day: 'numeric' });
   }
+  function ts(t, L) { return '<time data-ts="' + esc(t || '') + '">' + esc(ago(t, L)) + '</time>'; }
   function hue(s) {
     var h = 0; s = String(s || 'terse');
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     return h % 360;
   }
-  function initials(name) {
-    var n = String(name || '?').trim();
-    return esc(n.slice(0, 1).toUpperCase());
-  }
-  function avatarHtml(a, size) {
-    size = size || 40;
-    var style = 'width:' + size + 'px;height:' + size + 'px;';
-    if (a && isImg(a.avatar)) return '<img class="tsh-ava" style="' + style + '" src="' + a.avatar + '" alt="">';
+  function avatar(a, size, extra) {
+    size = size || 36;
+    var st = 'width:' + size + 'px;height:' + size + 'px;';
+    if (a && isImg(a.avatar)) return '<img class="tsh-ava' + (extra || '') + '" style="' + st + '" src="' + a.avatar + '" alt="">';
     var h = hue(a && (a.handle || a.display_name));
-    return '<div class="tsh-ava tsh-ava-empty" style="' + style + 'font-size:' + Math.round(size * 0.42) +
-      'px;background:linear-gradient(135deg,hsl(' + h + ',55%,32%),hsl(' + ((h + 50) % 360) + ',60%,22%))">' +
-      initials(a && a.display_name) + '</div>';
+    return '<span class="tsh-ava tsh-ava0' + (extra || '') + '" style="' + st + 'font-size:' + Math.round(size * 0.4) +
+      'px;--h:' + h + '">' + esc(String((a && a.display_name) || '?').trim().slice(0, 1).toUpperCase()) + '</span>';
   }
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).catch(fallback);
@@ -153,8 +173,8 @@
       document.body.removeChild(ta);
     }
   }
-  /* Pictures are stored inline, so they are shrunk here, before upload, to fit
-     the server's ceilings (avatar 96KB, photo 220KB). */
+  /* Pictures are stored inline, so they are shrunk before upload to fit the
+     server's ceilings (avatar 96KB, photo 220KB). */
   function shrink(file, maxDim, maxBytes) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
@@ -176,89 +196,183 @@
     });
   }
   function list(v) { return String(v || '').split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function refOf(a) { return a ? (a.handle || a.code || '') : ''; }
 
   /* ── styles, once ──────────────────────────────────────────────────────── */
   var CSS = [
-    '.tsh{--bg:#07070a;--card:#131319;--card2:#1a1a22;--line:#26262f;--ink:#f2f2f5;--muted:#8b8b98;--accent:#c9f03d;--danger:#ff7a7a;',
-    'color:var(--ink);font:14.5px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,sans-serif}',
+    '.tsh{--bg:#0a0a0a;--panel:#181818;--raise:#202020;--line:rgba(243,245,247,.12);--line2:rgba(243,245,247,.2);--ink:#f3f5f7;--mute:#777;--mute2:#999;--hi:#c9f03d;--live:#34d399;--bad:#ff6b6b;--inv:#0a0a0a;',
+    'color:var(--ink);background:var(--bg);min-height:100dvh;font:15px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:.005em}',
+    '@media (prefers-color-scheme:light){.tsh:not(.tsh-dark){--bg:#fafafa;--panel:#fff;--raise:#f5f5f5;--line:rgba(0,0,0,.1);--line2:rgba(0,0,0,.18);--ink:#000;--mute:#999;--mute2:#777;--hi:#5b7a00;--inv:#fff}}',
     '.tsh *{box-sizing:border-box}',
-    '.tsh a{color:var(--accent)}',
-    '.tsh button{font:inherit;border:0;border-radius:10px;background:var(--card2);color:var(--ink);padding:8px 14px;font-weight:650;cursor:pointer;font-size:13px}',
-    '.tsh button:hover{filter:brightness(1.18)}',
-    '.tsh button.pri{background:var(--accent);color:#0b0b0d}',
-    '.tsh button.ghost{background:transparent;border:1px solid var(--line)}',
-    '.tsh button.danger{color:var(--danger)}',
-    '.tsh button:disabled{opacity:.5;cursor:default}',
-    '.tsh input,.tsh textarea,.tsh select{font:inherit;color:var(--ink);background:#0d0d12;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}',
-    '.tsh textarea{resize:vertical;min-height:70px}',
-    '.tsh input:focus,.tsh textarea:focus{outline:none;border-color:var(--accent)}',
-    '.tsh-top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(7,7,10,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}',
-    '.tsh-logo{font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;white-space:nowrap}',
-    '.tsh-logo i{font-style:normal;width:26px;height:26px;border-radius:8px;background:var(--accent);color:#000;display:inline-flex;align-items:center;justify-content:center;font-size:14px}',
-    '.tsh-search{flex:1;max-width:340px}',
-    '.tsh-search input{padding:8px 12px;border-radius:999px}',
-    '.tsh-nav{display:flex;gap:4px;margin-left:auto}',
-    '.tsh-nav button{background:transparent;color:var(--muted);padding:8px 12px;position:relative}',
-    '.tsh-nav button.on{color:var(--ink);background:var(--card2)}',
-    '.tsh-badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);color:#fff;font-size:10px;line-height:16px;padding:0 4px}',
-    '.tsh-main{max-width:1020px;margin:0 auto;padding:18px 16px 60px}',
-    '.tsh-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}',
-    '.tsh-card h3{margin:0 0 10px;font-size:15.5px}',
-    '.tsh-cover{height:200px;border-radius:16px 16px 0 0;background-size:cover;background-position:center}',
-    '.tsh-head{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden}',
-    '.tsh-headin{padding:0 20px 18px;display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}',
-    '.tsh-headin .tsh-ava{margin-top:-58px;border:4px solid var(--card);border-radius:50%}',
-    '.tsh-headin h1{margin:0;font-size:26px;letter-spacing:-.01em}',
-    '.tsh-sub{color:var(--muted);font-size:13.5px}',
-    '.tsh-acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}',
-    '.tsh-ava{border-radius:50%;object-fit:cover;flex:none;display:block}',
-    '.tsh-ava-empty{display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}',
-    '.tsh-pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;border:1px solid var(--line)}',
-    '.tsh-pill.draft{color:#ffcf6b;border-color:#5a4a1e;background:rgba(255,207,107,.08)}',
-    '.tsh-pill.pub{color:var(--accent);border-color:#4a5a1e;background:rgba(201,240,61,.08)}',
-    '.tsh-pill.agent{color:#9cc9ff;border-color:#2a3e5a;background:rgba(120,170,255,.1)}',
-    '.tsh-cols{display:grid;grid-template-columns:340px 1fr;gap:14px;align-items:start}',
-    '.tsh-chips{display:flex;flex-wrap:wrap;gap:6px}',
-    '.tsh-chip{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}',
-    '.tsh-chip.hit{color:var(--accent);border-color:#4a5a1e}',
-    '.tsh-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}',
-    '.tsh-grid3 img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}',
-    '.tsh-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:13px;word-break:break-all}',
-    '.tsh-post .who{display:flex;gap:10px;align-items:center}',
-    '.tsh-post .nm{font-weight:700;cursor:pointer}',
-    '.tsh-post .meta{color:var(--muted);font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}',
-    '.tsh-post .body{margin:12px 0 4px;white-space:normal;word-break:break-word}',
-    '.tsh-post .pimg{width:100%;border-radius:12px;margin-top:10px;display:block}',
-    '.tsh-post .bar{display:flex;gap:6px;border-top:1px solid var(--line);margin-top:12px;padding-top:8px}',
-    '.tsh-post .bar button{flex:1;background:transparent;color:var(--muted)}',
-    '.tsh-post .bar button.on{color:var(--accent)}',
-    '.tsh-post .bar button.pri{background:var(--accent);color:#0b0b0d;padding:8px 18px}',
-    '.tsh-post.draft{border-style:dashed;border-color:#5a4a1e}',
-    '.tsh-cmt{display:flex;gap:8px;margin-top:10px}',
-    '.tsh-cmt .bub{background:var(--card2);border-radius:12px;padding:7px 11px;font-size:13.5px;flex:1}',
-    '.tsh-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}',
-    '.tsh-row:first-of-type{border-top:0}',
+    '.tsh a{color:inherit}',
+    '.tsh .tsh-i{display:block;flex:none}',
+    '.tsh button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}',
+    '.tsh .pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--line2);font-weight:600;font-size:14px;white-space:nowrap;transition:transform .12s,background .15s}',
+    '.tsh .pill:active{transform:scale(.97)}',
+    '.tsh .pill.solid{background:var(--ink);color:var(--inv);border-color:var(--ink)}',
+    '.tsh .pill.sm{height:32px;padding:0 14px;font-size:13.5px}',
+    '.tsh .pill.wide{width:100%}',
+    '.tsh .pill.bad{color:var(--bad)}',
+    '.tsh .pill:disabled{opacity:.35;cursor:default}',
+    '.tsh input,.tsh textarea,.tsh select{font:inherit;color:var(--ink);background:transparent;border:0;outline:none;width:100%}',
+    '.tsh .field{border:1px solid var(--line2);border-radius:14px;padding:12px 14px;background:var(--raise)}',
+    '.tsh .field:focus-within{border-color:var(--ink)}',
+    '.tsh .lbl{font-size:12.5px;color:var(--mute2);font-weight:600;margin:14px 2px 6px}',
+    /* shell */
+    '.tsh-rail{position:fixed;left:0;top:0;bottom:0;width:76px;display:flex;flex-direction:column;align-items:center;padding:18px 0;z-index:20}',
+    '.tsh-rail .logo{width:34px;height:34px;border-radius:10px;background:var(--ink);color:var(--inv);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;margin-bottom:auto}',
+    '.tsh-rail nav{display:flex;flex-direction:column;gap:6px}',
+    '.tsh-rail .foot{margin-top:auto}',
+    '.tsh-nb{position:relative;width:56px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--mute);transition:background .15s,color .15s}',
+    '.tsh-nb:hover{background:var(--raise)}',
+    '.tsh-nb.on{color:var(--ink)}',
+    '.tsh-nb.plus{background:var(--raise);color:var(--mute2)}',
+    '.tsh-nb .dot{position:absolute;top:12px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--bad)}',
+    '.tsh-col{max-width:640px;margin:0 auto;padding:0 16px 80px}',
+    '.tsh-head{position:sticky;top:0;z-index:10;height:60px;display:flex;align-items:center;justify-content:center;gap:4px;background:var(--bg);font-weight:600}',
+    '.tsh-head .t{padding:6px 10px;color:var(--mute);border-radius:10px}',
+    '.tsh-head .t.on{color:var(--ink)}',
+    '.tsh-head .bk{position:absolute;left:0;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}',
+    '.tsh-head .bk:hover{background:var(--raise)}',
+    '.tsh-panel{background:var(--panel);border:1px solid var(--line);border-radius:24px;overflow:hidden;min-height:60vh}',
+    '.tsh-tabbar{display:none}',
+    /* composer row */
+    '.tsh-cmp{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line);cursor:text}',
+    '.tsh-cmp .ph{flex:1;color:var(--mute)}',
+    /* now strip */
+    '.tsh-strip{display:flex;gap:2px;overflow-x:auto;padding:34px 12px 14px;border-bottom:1px solid var(--line);scrollbar-width:none}',
+    '.tsh-strip::-webkit-scrollbar{display:none}',
+    '.tsh-note{flex:none;width:104px;display:flex;flex-direction:column;align-items:center;cursor:pointer;position:relative;animation:tsh-in .5s both}',
+    '.tsh-note .bub{position:absolute;top:-22px;left:50%;transform:translateX(-50%);max-width:98px;width:max-content;max-height:calc(2.6em + 12px);background:var(--raise);border:1px solid var(--line);border-radius:14px;padding:6px 9px;font-size:11.5px;line-height:1.3;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.18);z-index:1}',
+    '.tsh-note .bub.me0{color:var(--mute)}',
+    '.tsh-note .ring{margin-top:22px;padding:2px;border-radius:50%;background:conic-gradient(var(--live),var(--hi),var(--live))}',
+    '.tsh-note .ring>*{border:2px solid var(--panel)}',
+    '.tsh-note .nm{font-size:12px;color:var(--mute2);margin-top:6px;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    /* posts */
+    '.tsh-post{display:grid;grid-template-columns:36px 1fr;gap:0 12px;padding:14px 20px 10px;border-bottom:1px solid var(--line);animation:tsh-in .35s both}',
+    '.tsh-post.draft{background:linear-gradient(90deg,rgba(201,240,61,.07),transparent 40%)}',
+    '.tsh-post .side{display:flex;flex-direction:column;align-items:center}',
+    '.tsh-post .side .line{flex:1;width:2px;background:var(--line2);border-radius:2px;margin-top:6px;min-height:8px}',
+    '.tsh-post .hd{display:flex;align-items:center;gap:6px;min-width:0;height:22px}',
+    '.tsh-post .nm{font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.tsh-post .nm:hover{text-decoration:underline}',
+    '.tsh-post time,.tsh-mute{color:var(--mute)}',
+    '.tsh-post .hd .more{margin-left:auto;color:var(--mute);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center}',
+    '.tsh-post .hd .more:hover{background:var(--raise)}',
+    '.tsh-tag{font-size:11.5px;color:var(--mute2);border:1px solid var(--line);border-radius:999px;padding:0 7px;line-height:18px;white-space:nowrap}',
+    '.tsh-tag.live{color:var(--live);border-color:rgba(52,211,153,.35)}',
+    '.tsh-post .bd{margin-top:2px;word-break:break-word}',
+    '.tsh-post .bd a{color:var(--hi);text-decoration:none}',
+    '.tsh-post .img{margin-top:10px;border-radius:12px;border:1px solid var(--line);max-height:520px;max-width:100%;display:block;object-fit:cover}',
+    '.tsh-acts{display:flex;gap:2px;margin:6px 0 0 -8px}',
+    '.tsh-act{display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 10px;border-radius:999px;color:var(--mute2);font-size:13.5px;transition:background .15s,color .15s}',
+    '.tsh-act:hover{background:var(--raise)}',
+    '.tsh-act.on{color:var(--bad)}',
+    '.tsh-act.on .tsh-i path{fill:currentColor}',
+    '.tsh-act.pop .tsh-i{animation:tsh-pop .35s}',
+    '.tsh-reply{grid-column:1/-1}',
+    '.tsh-rbox{display:grid;grid-template-columns:36px 1fr;gap:0 12px;padding:8px 0}',
+    '.tsh-rbox .bd{font-size:14.5px}',
+    '.tsh-rin{display:flex;align-items:center;gap:10px;padding:6px 0 10px}',
+    '.tsh-rin input{border-bottom:1px solid var(--line);padding:8px 0}',
+    /* banners and states */
+    '.tsh-banner{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);font-weight:600;cursor:pointer}',
+    '.tsh-banner .n{min-width:22px;height:22px;border-radius:11px;background:var(--hi);color:#0a0a0a;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0 6px}',
+    '.tsh-empty{padding:60px 30px;text-align:center;color:var(--mute)}',
+    '.tsh-fresh{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:15;background:var(--ink);color:var(--inv);border-radius:999px;height:38px;padding:0 16px 0 8px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.35);animation:tsh-drop .35s both;cursor:pointer}',
+    '.tsh-fresh .avs{display:flex}',
+    '.tsh-fresh .avs>*{margin-left:-6px;border:2px solid var(--ink)}',
+    '.tsh-fresh .avs>*:first-child{margin-left:0}',
+    '.tsh-skel{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--raise),var(--line),var(--raise));background-size:200% 100%;animation:tsh-sh 1.2s infinite;margin:8px 0}',
+    /* profile */
+    '.tsh-prof{padding:26px 22px 0}',
+    '.tsh-prof .top{display:flex;gap:16px;align-items:flex-start}',
+    '.tsh-prof h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}',
+    '.tsh-prof .hdl{margin-top:2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}',
+    '.tsh-prof .bio{margin:14px 0 0;white-space:pre-wrap}',
+    '.tsh-prof .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}',
+    '.tsh-prof .meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;color:var(--mute);font-size:14px;align-items:center}',
+    '.tsh-prof .meta a{color:var(--mute);text-decoration:none;display:inline-flex;gap:4px;align-items:center}',
+    '.tsh-prof .btns{display:flex;gap:8px;margin:18px 0 0}',
+    '.tsh-prof .btns .pill{flex:1}',
+    '.tsh-photos{display:flex;gap:8px;overflow-x:auto;margin-top:14px;scrollbar-width:none}',
+    '.tsh-photos img{height:120px;border-radius:12px;border:1px solid var(--line);flex:none}',
+    '.tsh-dcard{margin:16px 0 0;padding:12px 14px;border-radius:14px;border:1px dashed var(--line2);display:flex;gap:10px;align-items:center;font-size:14px}',
+    '.tsh-tabs{display:flex;border-bottom:1px solid var(--line);margin-top:18px}',
+    '.tsh-tabs button{flex:1;height:48px;color:var(--mute);font-weight:600;border-bottom:1px solid transparent;margin-bottom:-1px}',
+    '.tsh-tabs button.on{color:var(--ink);border-color:var(--ink)}',
+    /* highlights — the one surface that moves on its own */
+    '.tsh-hl{margin-top:18px;border:1px solid var(--line);border-radius:18px;background:var(--raise);padding:12px 16px 16px;position:relative;overflow:hidden;cursor:pointer;user-select:none}',
+    '.tsh-hl .segs{display:flex;gap:4px;margin-bottom:12px}',
+    '.tsh-hl .seg{flex:1;height:2.5px;border-radius:2px;background:var(--line2);overflow:hidden}',
+    '.tsh-hl .seg i{display:block;height:100%;width:0;background:var(--ink)}',
+    '.tsh-hl .seg.done i{width:100%}',
+    '.tsh-hl .seg.run i{animation:tsh-seg var(--dur,5s) linear forwards}',
+    '.tsh-hl.paused .seg.run i{animation-play-state:paused}',
+    '.tsh-hl .item{min-height:66px;animation:tsh-fade .45s both}',
+    '.tsh-hl .k{font-size:12px;font-weight:600;color:var(--mute2);display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.06em}',
+    '.tsh-hl .k .pulse{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 rgba(52,211,153,.6);animation:tsh-pulse 1.8s infinite}',
+    '.tsh-hl .tx{font-size:17px;font-weight:500;line-height:1.35;margin-top:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
+    '.tsh-hl .sub{font-size:13px;color:var(--mute);margin-top:6px;display:flex;gap:8px;align-items:center}',
+    /* rows (friends, search, log) */
+    '.tsh-row{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line)}',
     '.tsh-row .grow{flex:1;min-width:0}',
-    '.tsh-row .nm{font-weight:700;cursor:pointer}',
-    '.tsh-muted{color:var(--muted)}',
-    '.tsh-seg{display:inline-flex;background:var(--card2);border-radius:10px;padding:3px;gap:2px}',
-    '.tsh-seg button{background:transparent;color:var(--muted);padding:6px 12px}',
-    '.tsh-seg button.on{background:var(--card);color:var(--ink)}',
-    '.tsh-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;border:1px solid var(--line);color:var(--ink);padding:10px 16px;border-radius:12px;z-index:50;font-size:13px}',
-    '.tsh-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px}',
-    '.tsh-modal .tsh-card{width:100%;max-width:560px}',
-    '.tsh-field{margin-bottom:12px}',
-    '.tsh-field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;font-weight:600}',
-    '.tsh-check{display:flex;gap:10px;align-items:center;margin:8px 0;font-size:13.5px}',
-    '.tsh-check input{width:auto}',
-    '.tsh-chat{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:6px;margin:10px 0}',
-    '.tsh-msg{max-width:78%;padding:7px 11px;border-radius:12px;background:var(--card2);font-size:13.5px;white-space:pre-wrap;word-break:break-word}',
-    '.tsh-msg.me{align-self:flex-end;background:#2c3512}',
-    '.tsh-auth{max-width:420px;margin:60px auto;padding:0 16px}',
-    '.tsh-pre{white-space:pre-wrap;background:#0d0d12;border:1px solid var(--line);border-radius:10px;padding:12px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);max-height:220px;overflow:auto}',
-    '.tsh-err{color:var(--danger);font-size:13px;min-height:18px;margin-top:6px}',
-    '@media (max-width:780px){.tsh-cols{grid-template-columns:1fr}.tsh-nav button span{display:none}.tsh-search{display:none}.tsh-cover{height:130px}}',
-    '@media (max-width:480px){.tsh-logo b{display:none}.tsh-top{gap:6px;padding:8px 10px}.tsh-nav{gap:0}.tsh-nav button{padding:8px 9px}.tsh-headin{padding:0 14px 14px}.tsh-main{padding:12px 10px 50px}}',
+    '.tsh-row .nm{font-weight:600;cursor:pointer}',
+    '.tsh-row .sub{color:var(--mute);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.tsh-row .note{font-size:14px;margin-top:2px}',
+    '.tsh-search{margin:16px 20px 6px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:16px;padding:0 14px;height:48px;background:var(--raise);color:var(--mute)}',
+    '.tsh-sec{padding:18px 20px 6px;font-weight:600;color:var(--mute2);font-size:14px}',
+    '.tsh-chip{font-size:12.5px;color:var(--mute2);background:var(--raise);border-radius:999px;padding:3px 10px}',
+    '.tsh-chip.hit{color:var(--ink)}',
+    /* sheets */
+    '.tsh-sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:8vh 16px 16px;overflow:auto;animation:tsh-fade .2s both}',
+    '.tsh-sheet .box{width:100%;max-width:600px;background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.4);animation:tsh-rise .28s cubic-bezier(.2,.9,.3,1.2) both}',
+    '.tsh-sheet .bar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700}',
+    '.tsh-sheet .bar button{color:var(--mute2);font-weight:500}',
+    '.tsh-sheet .in{padding:16px 18px}',
+    '.tsh-sheet textarea{resize:none;min-height:90px;font-size:15px;line-height:1.45}',
+    '.tsh-sheet .foot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line)}',
+    '.tsh-seg2{display:inline-flex;gap:2px;background:var(--raise);border-radius:999px;padding:3px}',
+    '.tsh-seg2 button{height:28px;padding:0 12px;border-radius:999px;color:var(--mute);font-size:13px;font-weight:600}',
+    '.tsh-seg2 button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.2)}',
+    '.tsh-kinds{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}',
+    '.tsh-kinds button{height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);font-size:13px;color:var(--mute2)}',
+    '.tsh-kinds button.on{background:var(--ink);color:var(--inv);border-color:var(--ink)}',
+    '.tsh-check{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--line);font-size:14.5px}',
+    '.tsh-sw{position:relative;width:42px;height:26px;flex:none}',
+    '.tsh-sw input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}',
+    '.tsh-sw span{position:absolute;inset:0;border-radius:13px;background:var(--line2);transition:background .2s;pointer-events:none}',
+    '.tsh-sw span:after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}',
+    '.tsh-sw input:checked+span{background:var(--live)}',
+    '.tsh-sw input:checked+span:after{transform:translateX(16px)}',
+    '.tsh-chat{max-height:50vh;min-height:200px;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:16px 18px}',
+    '.tsh-msg{max-width:78%;padding:8px 13px;border-radius:18px;background:var(--raise);font-size:14.5px;white-space:pre-wrap;word-break:break-word}',
+    '.tsh-msg.me{align-self:flex-end;background:var(--ink);color:var(--inv)}',
+    '.tsh-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--inv);padding:10px 18px;border-radius:999px;z-index:60;font-size:14px;font-weight:600;animation:tsh-rise .25s both}',
+    '.tsh-ava{border-radius:50%;object-fit:cover;flex:none;display:block}',
+    '.tsh-ava0{display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;background:linear-gradient(140deg,hsl(var(--h),38%,46%),hsl(calc(var(--h) + 40),42%,30%))}',
+    /* auth */
+    '.tsh-auth{max-width:380px;margin:0 auto;padding:12vh 20px 40px}',
+    '.tsh-auth .mark{font-size:44px;font-weight:800;letter-spacing:-.03em;text-align:center;margin-bottom:28px}',
+    '.tsh-auth .mark i{font-style:normal;color:var(--hi)}',
+    '.tsh-auth .field{margin-bottom:8px}',
+    '.tsh-auth .pill.solid{height:50px;width:100%;margin-top:6px;font-size:15px}',
+    '.tsh-pre{white-space:pre-wrap;background:var(--raise);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mute2);max-height:180px;overflow:auto;margin:10px 0}',
+    '.tsh-err{color:var(--bad);font-size:13.5px;min-height:20px;margin-top:8px;text-align:center}',
+    /* motion */
+    '@keyframes tsh-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}',
+    '@keyframes tsh-fade{from{opacity:0}to{opacity:1}}',
+    '@keyframes tsh-rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}',
+    '@keyframes tsh-drop{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}',
+    '@keyframes tsh-seg{from{width:0}to{width:100%}}',
+    '@keyframes tsh-pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.55)}70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}',
+    '@keyframes tsh-pop{50%{transform:scale(1.35)}}',
+    '@keyframes tsh-sh{from{background-position:200% 0}to{background-position:-200% 0}}',
+    '@media (prefers-reduced-motion:reduce){.tsh *{animation:none!important;transition:none!important}}',
+    /* narrow */
+    '@media (max-width:760px){.tsh-rail{display:none}.tsh-col{padding:0 0 84px}.tsh-panel{border-radius:0;border-left:0;border-right:0}',
+    '.tsh-tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;height:64px;padding-bottom:env(safe-area-inset-bottom);background:var(--bg);border-top:1px solid var(--line);justify-content:space-around;align-items:center}',
+    '.tsh-post,.tsh-cmp,.tsh-row,.tsh-banner{padding-left:16px;padding-right:16px}.tsh-prof{padding:20px 16px 0}.tsh-fresh{top:66px}}',
   ].join('\n');
   function injectCss() {
     if (document.getElementById('tsh-css')) return;
@@ -272,10 +386,9 @@
     var base = (opts.api || '') + '/api/cloud/social';
     return function call(path, o) {
       o = o || {};
-      var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
       return fetch(base + path, {
         method: o.method || 'GET',
-        headers: headers,
+        headers: Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {}),
         credentials: opts.credentials || 'same-origin',
         body: o.body ? JSON.stringify(o.body) : undefined,
       }).then(function (r) {
@@ -304,26 +417,35 @@
     '   with confirmed_by_human: true, then tell me my agent code.',
     '7. Call terse_social_account_link and give me the link so I can set my own e-mail',
     '   and password for terseai.org/social. Never ask me for the password yourself.',
+    '8. Save this rule where you keep standing instructions (CLAUDE.md, AGENTS.md…):',
+    '   "When a meaningful piece of my work starts or ships, call terse_social_now with',
+    '   one public line about it — never secrets, private repos or client names."',
   ].join('\n');
 
-  /* ── sign-in and claim screens (website only) ──────────────────────────── */
+  function toast(t) {
+    var n = document.createElement('div');
+    n.className = 'tsh tsh-toast'; n.textContent = t;
+    n.style.minHeight = '0';
+    document.body.appendChild(n);
+    setTimeout(function () { n.remove(); }, 2400);
+  }
+
+  /* ── sign-in and claim ─────────────────────────────────────────────────── */
+  function authShell(inner) {
+    return '<div class="tsh"><div class="tsh-auth"><div class="mark">terse<i>.</i></div>' + inner + '</div></div>';
+  }
   function mountLogin(el, opts) {
     injectCss();
     var L = WORDS[pickLang(opts.lang)];
     var call = makeApi(opts);
-    el.innerHTML = '<div class="tsh"><div class="tsh-auth">' +
-      '<div class="tsh-logo" style="justify-content:center;margin-bottom:22px"><i>T</i> Terse Social</div>' +
-      '<div class="tsh-card"><h3>' + esc(L.signInTitle) + '</h3>' +
+    el.innerHTML = authShell(
       '<form data-f="login">' +
-      '<div class="tsh-field"><label>' + esc(L.email) + '</label><input type="email" name="email" autocomplete="email" required></div>' +
-      '<div class="tsh-field"><label>' + esc(L.password) + '</label><input type="password" name="password" autocomplete="current-password" required></div>' +
-      '<button class="pri" style="width:100%">' + esc(L.signIn) + '</button><div class="tsh-err" data-err></div></form></div>' +
-      '<div class="tsh-card"><h3 style="font-size:14px">' + esc(L.noAccount) + '</h3>' +
-      '<pre class="tsh-pre" data-prompt>' + esc(PROMPT) + '</pre>' +
-      '<button class="ghost" data-copy style="margin-top:10px">' + esc(L.copyPrompt) + '</button></div></div></div>';
-    el.querySelector('[data-copy]').onclick = function (e) {
-      copyText(PROMPT).then(function () { e.target.textContent = L.copied; });
-    };
+      '<div class="field"><input type="email" name="email" autocomplete="email" placeholder="' + esc(L.email) + '" required></div>' +
+      '<div class="field"><input type="password" name="password" autocomplete="current-password" placeholder="' + esc(L.password) + '" required></div>' +
+      '<button class="pill solid">' + esc(L.signIn) + '</button><div class="tsh-err" data-err></div></form>' +
+      '<div style="margin-top:34px;padding-top:22px;border-top:1px solid var(--line)"><div class="tsh-mute" style="font-size:14px">' + esc(L.noAccount) + '</div>' +
+      '<pre class="tsh-pre">' + esc(PROMPT) + '</pre><button class="pill wide" data-copy>' + esc(L.copyPrompt) + '</button></div>');
+    el.querySelector('[data-copy]').onclick = function () { copyText(PROMPT).then(function () { toast(L.copied); }); };
     el.querySelector('[data-f=login]').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, btn = f.querySelector('button');
@@ -338,21 +460,20 @@
     injectCss();
     var L = WORDS[pickLang(opts.lang)];
     var call = makeApi(opts);
-    el.innerHTML = '<div class="tsh"><div class="tsh-auth"><div class="tsh-card tsh-muted">…</div></div></div>';
+    el.innerHTML = authShell('<div class="tsh-skel"></div><div class="tsh-skel" style="width:60%"></div>');
     call('/account/claim/' + encodeURIComponent(opts.token)).then(function (info) {
       var c = info.card || {};
-      el.innerHTML = '<div class="tsh"><div class="tsh-auth">' +
-        '<div class="tsh-logo" style="justify-content:center;margin-bottom:22px"><i>T</i> Terse Social</div>' +
-        '<div class="tsh-card"><div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">' + avatarHtml(c, 52) +
-        '<div><div style="font-weight:800;font-size:17px">' + esc(c.display_name || '') + '</div>' +
-        '<div class="tsh-sub">' + (c.handle ? '@' + esc(c.handle) : '') + '</div></div></div>' +
-        '<h3>' + esc(info.has_account ? L.claimReset : L.claimTitle) + '</h3>' +
-        '<p class="tsh-sub" style="margin-top:0">' + esc(L.claimBody) + '</p>' +
+      el.innerHTML = authShell(
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px">' + avatar(c, 72) +
+        '<div style="font-weight:700;font-size:18px">' + esc(c.display_name || '') + '</div>' +
+        '<div class="tsh-mute">' + (c.handle ? '@' + esc(c.handle) : '') + '</div></div>' +
+        '<div style="font-weight:700;margin-bottom:4px">' + esc(info.has_account ? L.claimReset : L.claimTitle) + '</div>' +
+        '<div class="tsh-mute" style="font-size:14px;margin-bottom:14px">' + esc(L.claimBody) + '</div>' +
         '<form data-f="claim">' +
-        '<div class="tsh-field"><label>' + esc(L.email) + '</label><input type="email" name="email" autocomplete="email" required placeholder="' + esc(info.email_hint || '') + '"></div>' +
-        '<div class="tsh-field"><label>' + esc(L.password) + '</label><input type="password" name="password" autocomplete="new-password" minlength="8" required></div>' +
-        '<div class="tsh-field"><label>' + esc(L.password2) + '</label><input type="password" name="password2" autocomplete="new-password" minlength="8" required></div>' +
-        '<button class="pri" style="width:100%">' + esc(L.save) + '</button><div class="tsh-err" data-err></div></form></div></div></div>';
+        '<div class="field"><input type="email" name="email" autocomplete="email" required placeholder="' + esc(info.email_hint || L.email) + '"></div>' +
+        '<div class="field"><input type="password" name="password" autocomplete="new-password" minlength="8" required placeholder="' + esc(L.password) + '"></div>' +
+        '<div class="field"><input type="password" name="password2" autocomplete="new-password" minlength="8" required placeholder="' + esc(L.password2) + '"></div>' +
+        '<button class="pill solid">' + esc(L.save) + '</button><div class="tsh-err" data-err></div></form>');
       el.querySelector('[data-f=claim]').onsubmit = function (e) {
         e.preventDefault();
         var f = e.target, err = el.querySelector('[data-err]');
@@ -363,9 +484,74 @@
           .catch(function (x) { err.textContent = x.message; f.querySelector('button').disabled = false; });
       };
     }).catch(function (err) {
-      el.innerHTML = '<div class="tsh"><div class="tsh-auth"><div class="tsh-card"><div class="tsh-err">' + esc(err.message) + '</div>' +
-        '<a href="/social">' + esc(L.signIn) + ' →</a></div></div></div>';
+      el.innerHTML = authShell('<div class="tsh-err">' + esc(err.message) + '</div><a class="pill wide" style="margin-top:14px;text-decoration:none" href="/social">' + esc(L.signIn) + '</a>');
     });
+  }
+
+  /* ── the rotating highlights ───────────────────────────────────────────────
+     "What this person is doing" as a slow story: live now-lines and the best
+     recent posts, one at a time, a thin progress bar per item. Hover (or a
+     finger held down) pauses it; a click steps forward. Nothing else on the
+     page animates on its own, so this reads as the card being alive. */
+  var KIND_ICON = { working: '<span class="pulse"></span>', shipped: '✓', learning: '◐', exploring: '◇' };
+  function highlightsHtml() { return '<div class="tsh-hl" data-hl hidden></div>'; }
+  function startHighlights(box, items, L, onOpen) {
+    if (!box) return function () {};
+    if (!items || !items.length) { box.hidden = true; return function () {}; }
+    box.hidden = false;
+    var i = 0, timer = null, paused = false, left = 0, startedAt = 0;
+    var DUR = 5200;
+    box.innerHTML = '<div class="segs">' + items.map(function () { return '<div class="seg"><i></i></div>'; }).join('') + '</div><div data-slot></div>';
+    box.style.setProperty('--dur', DUR + 'ms');
+    var segs = box.querySelectorAll('.seg');
+    var slot = box.querySelector('[data-slot]');
+    function render() {
+      var it = items[i];
+      segs.forEach(function (s, k) { s.className = 'seg' + (k < i ? ' done' : k === i ? ' run' : ''); });
+      var html;
+      if (it.type === 'post') {
+        html = '<div class="k">♥ ' + esc(L.topPost) + '</div><div class="tx">' + esc(it.body) + '</div>' +
+          '<div class="sub">' + ts(it.published_at, L) + '<span>·</span><span>♥ ' + (it.likes || 0) + '</span><span>💬 ' + (it.comments || 0) + '</span>' +
+          (it.author_kind === 'agent' ? '<span class="tsh-tag">✦ ' + esc(L.byAgent) + '</span>' : '') + '</div>';
+      } else {
+        html = '<div class="k">' + (KIND_ICON[it.kind] || '') + ' ' + esc(L['kind_' + it.kind] || it.kind) + '</div><div class="tx">' + esc(it.text) + '</div>' +
+          '<div class="sub">' + (it.project ? '<span>' + esc(it.project) + '</span><span>·</span>' : '') + ts(it.created_at, L) +
+          (it.author_kind === 'agent' ? '<span class="tsh-tag">✦ ' + esc(L.byAgent) + '</span>' : '') + '</div>';
+      }
+      slot.innerHTML = '<div class="item">' + html + '</div>';
+      left = DUR; schedule();
+    }
+    function schedule() {
+      clearTimeout(timer);
+      if (paused || items.length < 2) return;
+      startedAt = Date.now();
+      timer = setTimeout(next, left);
+    }
+    function next() { i = (i + 1) % items.length; render(); }
+    box.onmouseenter = box.ontouchstart = function () {
+      paused = true; box.classList.add('paused'); clearTimeout(timer); left = Math.max(300, left - (Date.now() - startedAt));
+    };
+    box.onmouseleave = box.ontouchend = function () { paused = false; box.classList.remove('paused'); schedule(); };
+    box.onclick = function (e) {
+      if (e.target.closest('a')) return;
+      if (items[i].type === 'post' && onOpen) return onOpen(items[i]);
+      next();
+    };
+    render();
+    return function stop() { clearTimeout(timer); };
+  }
+  /* Standalone use, e.g. the public card page. */
+  function highlights(el, opts) {
+    injectCss();
+    var L = WORDS[pickLang(opts.lang)];
+    var call = makeApi(opts);
+    el.classList.add('tsh');
+    el.style.background = 'transparent'; el.style.minHeight = '0';
+    el.innerHTML = highlightsHtml();
+    return call('/card/' + encodeURIComponent(opts.ref) + '/highlights').then(function (r) {
+      startHighlights(el.querySelector('[data-hl]'), r.items, L);
+      return r;
+    }).catch(function () {});
   }
 
   /* ── the signed-in home ────────────────────────────────────────────────── */
@@ -374,133 +560,153 @@
     var L = WORDS[pickLang(opts.lang)];
     var call = makeApi(opts);
     var site = opts.site || (opts.api || location.origin);
-    var state = { me: null, account: null, conns: [], unread: 0, view: 'feed', scope: 'friends', ref: null };
+    var S = { me: null, account: null, conns: [], unread: 0, view: 'home', scope: 'friends', ref: null, tab: 'threads', newest: null };
+    var stops = [];
+    function stopAll() { stops.forEach(function (f) { try { f(); } catch (e) {} }); stops = []; }
 
-    el.innerHTML = '<div class="tsh">' +
-      '<div class="tsh-top">' +
-      '<div class="tsh-logo"><i>T</i><b> Terse Social</b></div>' +
-      '<div class="tsh-search"><input data-search placeholder="' + esc(L.search) + '"></div>' +
-      '<div class="tsh-nav">' +
-      navBtn('feed', '🏠', L.feed) + navBtn('me', '🪪', L.profile) + navBtn('friends', '👥', L.friends) +
-      navBtn('discover', '🔎', L.discover) + navBtn('activity', '🤖', L.activity) +
-      (opts.onSignedOut ? '<button data-signout title="' + esc(L.signOut) + '">⎋<span> ' + esc(L.signOut) + '</span></button>' : '') +
-      '</div></div><div class="tsh-main" data-main></div></div>';
-    var main = el.querySelector('[data-main]');
-
-    function navBtn(v, icon, label) {
-      return '<button data-nav="' + v + '">' + icon + '<span> ' + esc(label) + '</span>' +
-        (v === 'friends' ? '<b class="tsh-badge" data-fbadge style="display:none"></b>' : '') + '</button>';
+    var NAV = [['home', 'home', L.home], ['search', 'search', L.search], ['compose', 'plus', L.compose], ['friends', 'heart', L.friends], ['me', 'user', L.profile]];
+    function navHtml() {
+      return NAV.map(function (n) {
+        return '<button class="tsh-nb' + (n[0] === 'compose' ? ' plus' : '') + '" data-nav="' + n[0] + '" title="' + esc(n[2]) + '" aria-label="' + esc(n[2]) + '">' +
+          ico(n[1], 24) + (n[0] === 'friends' ? '<i class="dot" data-fdot hidden></i>' : '') + '</button>';
+      }).join('');
     }
+    el.innerHTML = '<div class="tsh">' +
+      '<aside class="tsh-rail"><div class="logo">T</div><nav>' + navHtml() +
+      '<button class="tsh-nb" data-nav="log" title="' + esc(L.log) + '" aria-label="' + esc(L.log) + '">' + ico('spark', 24) + '</button></nav>' +
+      '<div class="foot">' + (opts.onSignedOut ? '<button class="tsh-nb" data-signout title="' + esc(L.signOut) + '">' + ico('out', 22) + '</button>' : '') + '</div></aside>' +
+      '<div class="tsh-col"><div class="tsh-head" data-head></div><div class="tsh-panel" data-main></div></div>' +
+      '<nav class="tsh-tabbar">' + navHtml() + '</nav></div>';
+    var root = el.firstChild;
+    var main = el.querySelector('[data-main]');
+    var head = el.querySelector('[data-head]');
+
     el.querySelectorAll('[data-nav]').forEach(function (b) {
-      b.onclick = function () { go(b.getAttribute('data-nav')); };
+      b.onclick = function () {
+        var v = b.getAttribute('data-nav');
+        if (v === 'compose') return composer('thread');
+        go(v);
+      };
     });
     var so = el.querySelector('[data-signout]');
-    if (so) so.onclick = function () {
-      call('/account/logout', { method: 'POST' }).finally(function () { opts.onSignedOut(); });
-    };
-    var searchTimer = null;
-    el.querySelector('[data-search]').oninput = function (e) {
-      clearTimeout(searchTimer);
-      var q = e.target.value;
-      searchTimer = setTimeout(function () { go('discover', null, q); }, 280);
-    };
+    if (so) so.onclick = function () { call('/account/logout', { method: 'POST' }).finally(function () { stopAll(); clearInterval(tick); opts.onSignedOut(); }); };
 
-    function toast(t) {
-      var n = document.createElement('div');
-      n.className = 'tsh-toast'; n.textContent = t;
-      document.body.appendChild(n);
-      setTimeout(function () { n.remove(); }, 2600);
-    }
     function fail(err) { toast(err && err.message ? err.message : String(err)); }
+    function skeleton() {
+      return '<div style="padding:22px">' + [80, 60, 90, 40].map(function (w) { return '<div class="tsh-skel" style="width:' + w + '%"></div>'; }).join('') + '</div>';
+    }
+    function setHead(html) { head.innerHTML = html; }
+    function headTitle(text, back) {
+      setHead((back ? '<button class="bk" data-back aria-label="' + esc(L.back) + '">' + ico('back', 20) + '</button>' : '') + '<span>' + esc(text) + '</span>');
+      var b = head.querySelector('[data-back]');
+      if (b) b.onclick = function () { history.length > 1 ? history.back() : go('home'); };
+    }
 
     function go(view, ref, q) {
-      state.view = view; state.ref = ref || null;
-      el.querySelectorAll('[data-nav]').forEach(function (b) {
-        b.classList.toggle('on', b.getAttribute('data-nav') === view);
-      });
-      try { if (opts.hash !== false) history.replaceState(null, '', '#/' + view + (ref ? '/' + encodeURIComponent(ref) : '')); } catch (e) {}
-      main.innerHTML = '<div class="tsh-card tsh-muted">…</div>';
+      stopAll();
+      S.view = view; S.ref = ref || null;
+      root.querySelectorAll('[data-nav]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-nav') === view); });
+      if (opts.hash !== false) {
+        var h = '#/' + view + (ref ? '/' + encodeURIComponent(ref) : '');
+        try { if (location.hash !== h) history[S.navd ? 'pushState' : 'replaceState'](null, '', h); } catch (e) {}
+        S.navd = true;
+      }
+      main.innerHTML = skeleton();
       window.scrollTo(0, 0);
-      var render = { feed: viewFeed, me: viewMe, friends: viewFriends, discover: viewDiscover, activity: viewActivity, u: viewUser }[view] || viewFeed;
+      var render = { home: viewHome, search: viewSearch, friends: viewFriends, me: viewMe, log: viewLog, u: viewUser }[view] || viewHome;
       render(q).catch(fail);
     }
 
     function refreshMe() {
       return Promise.all([call('/profile/me'), call('/connections')]).then(function (r) {
-        state.me = r[0].profile; state.account = r[0].account;
-        state.conns = r[1].connections || []; state.unread = r[1].unread || 0;
-        var pending = state.conns.filter(function (c) { return c.status === 'pending' && c.direction === 'incoming'; }).length;
-        var b = el.querySelector('[data-fbadge]');
-        var n = pending + state.unread;
-        b.style.display = n ? '' : 'none'; b.textContent = n;
+        S.me = r[0].profile; S.account = r[0].account;
+        S.conns = r[1].connections || []; S.unread = r[1].unread || 0;
+        var pending = S.conns.filter(function (c) { return c.status === 'pending' && c.direction === 'incoming'; }).length;
+        root.querySelectorAll('[data-fdot]').forEach(function (d) { d.hidden = !(pending + S.unread); });
       });
     }
     function connWith(card) {
       if (!card) return null;
-      return state.conns.find(function (c) { return c.peer && ((card.code && c.peer.code === card.code) || (card.handle && c.peer.handle === card.handle)); }) || null;
+      return S.conns.find(function (c) { return c.peer && ((card.code && c.peer.code === card.code) || (card.handle && c.peer.handle === card.handle)); }) || null;
     }
+    function isMe(a) { return S.me && a && ((a.handle && a.handle === S.me.handle) || (a.code && a.code === S.me.code)); }
+    function openPerson(ref) { if (!ref) return; if (isMe({ handle: ref, code: ref })) go('me'); else go('u', ref); }
+
+    /* Relative times tick while you read. */
+    var tick = setInterval(function () {
+      root.querySelectorAll('time[data-ts]').forEach(function (t) { t.textContent = ago(t.getAttribute('data-ts'), L); });
+    }, 30000);
 
     /* ── posts ── */
     function postHtml(p) {
       var a = p.author || {};
-      var ref = a.handle || a.code || '';
-      return '<div class="tsh-card tsh-post' + (p.status === 'draft' ? ' draft' : '') + '" data-post="' + esc(p.id) + '">' +
-        '<div class="who">' + avatarHtml(a, 40) + '<div style="min-width:0">' +
-        '<div class="nm" data-open="' + esc(ref) + '">' + esc(a.display_name || '?') + '</div>' +
-        '<div class="meta">' + esc(ago(p.published_at || p.created_at, L)) + ' · ' +
-        (p.visibility === 'friends' ? '👥 ' + esc(L.friendsOnly) : '🌐 ' + esc(L.public)) +
-        (p.author_kind === 'agent' ? ' <span class="tsh-pill agent">🤖 ' + esc(L.byAgent) + '</span>' : '') +
-        (p.status === 'draft' ? ' <span class="tsh-pill draft">' + esc(L.draft) + '</span>' : '') + '</div></div>' +
-        (p.mine && p.status !== 'draft' ? '<button class="ghost" style="margin-left:auto" data-del>' + esc(L.delete) + '</button>' : '') + '</div>' +
-        '<div class="body">' + richText(p.body) + '</div>' +
-        (isImg(p.image) ? '<img class="pimg" src="' + p.image + '" alt="">' : '') +
-        (p.status === 'draft'
-          ? '<div class="bar"><button class="pri" data-approve style="flex:none">' + esc(L.approve) + '</button><button data-del style="flex:none">' + esc(L.discard) + '</button></div>'
-          : '<div class="bar"><button data-like class="' + (p.liked ? 'on' : '') + '">👍 ' + esc(L.like) + ' <b data-likes>' + (p.likes || '') + '</b></button>' +
-            '<button data-cmt>💬 ' + esc(L.comment) + ' <b data-ccount>' + (p.comments || '') + '</b></button></div>' +
-            '<div data-cmts style="display:none"></div>') +
-        '</div>';
+      var ref = refOf(a);
+      var draft = p.status === 'draft';
+      return '<article class="tsh-post' + (draft ? ' draft' : '') + '" data-post="' + esc(p.id) + '">' +
+        '<div class="side"><button data-open="' + esc(ref) + '">' + avatar(a, 36) + '</button><span class="line" data-tline hidden></span></div>' +
+        '<div style="min-width:0"><div class="hd"><span class="nm" data-open="' + esc(ref) + '">' + esc(a.display_name || '?') + '</span>' +
+        ts(p.published_at || p.created_at, L) +
+        (p.visibility === 'friends' ? '<span class="tsh-mute" title="' + esc(L.friendsOnly) + '">' + ico('lock', 13) + '</span>' : '') +
+        (p.author_kind === 'agent' ? '<span class="tsh-tag">✦ ' + esc(L.byAgent) + '</span>' : '') +
+        (draft ? '<span class="tsh-tag live">' + esc(L.draft) + '</span>' : '') +
+        (p.mine && !draft ? '<button class="more" data-del title="' + esc(L.delete) + '">' + ico('more', 18) + '</button>' : '') + '</div>' +
+        '<div class="bd">' + richText(p.body) + '</div>' +
+        (isImg(p.image) ? '<img class="img" src="' + p.image + '" alt="" loading="lazy">' : '') +
+        (draft
+          ? '<div class="tsh-acts" style="margin:10px 0 4px;gap:8px"><button class="pill solid sm" data-approve>' + esc(L.approve) + '</button><button class="pill sm" data-del>' + esc(L.discard) + '</button></div>'
+          : '<div class="tsh-acts">' +
+            '<button class="tsh-act' + (p.liked ? ' on' : '') + '" data-like>' + ico('heart', 19) + '<span data-likes>' + (p.likes || '') + '</span></button>' +
+            '<button class="tsh-act" data-cmt>' + ico('chat', 19) + '<span data-ccount>' + (p.comments || '') + '</span></button>' +
+            '<button class="tsh-act" data-share>' + ico('share', 19) + '</button></div>') +
+        '</div><div class="tsh-reply" data-cmts hidden></div></article>';
     }
-    function wirePosts(root, reload) {
-      root.querySelectorAll('[data-post]').forEach(function (card) {
+    function wirePosts(scope, reload) {
+      scope.querySelectorAll('[data-post]').forEach(function (card) {
+        if (card._wired) return;
+        card._wired = true;
         var id = card.getAttribute('data-post');
         var q = function (s) { return card.querySelector(s); };
-        if (q('[data-del]')) q('[data-del]').onclick = function () {
-          call('/posts/' + id, { method: 'DELETE' }).then(function () { card.remove(); }).catch(fail);
-        };
-        if (q('[data-approve]')) q('[data-approve]').onclick = function () {
-          call('/posts/' + id + '/publish', { method: 'POST' }).then(reload).catch(fail);
-        };
+        card.querySelectorAll('[data-del]').forEach(function (b) {
+          b.onclick = function () {
+            if (!b.classList.contains('pill') && !confirm(L.delete + '?')) return;
+            call('/posts/' + id, { method: 'DELETE' }).then(function () { card.remove(); }).catch(fail);
+          };
+        });
+        if (q('[data-approve]')) q('[data-approve]').onclick = function () { call('/posts/' + id + '/publish', { method: 'POST' }).then(reload).catch(fail); };
         if (q('[data-like]')) q('[data-like]').onclick = function () {
+          var b = q('[data-like]');
           call('/posts/' + id + '/like', { method: 'POST' }).then(function (r) {
-            q('[data-like]').classList.toggle('on', r.liked);
+            b.classList.toggle('on', r.liked);
+            b.classList.remove('pop'); void b.offsetWidth; if (r.liked) b.classList.add('pop');
             q('[data-likes]').textContent = r.likes || '';
           }).catch(fail);
         };
+        if (q('[data-share]')) q('[data-share]').onclick = function () {
+          var a = card.querySelector('[data-open]').getAttribute('data-open');
+          copyText(site + '/social#/u/' + encodeURIComponent(a)).then(function () { toast(L.copied); });
+        };
         if (q('[data-cmt]')) q('[data-cmt]').onclick = function () {
           var box = q('[data-cmts]');
-          if (box.style.display !== 'none') { box.style.display = 'none'; return; }
-          box.style.display = '';
-          loadComments(id, box, q('[data-ccount]'));
+          var open = box.hidden;
+          box.hidden = !open; q('[data-tline]').hidden = !open;
+          if (open) loadComments(id, box, q('[data-ccount]'));
         };
       });
-      root.querySelectorAll('[data-open]').forEach(function (n) {
-        n.onclick = function () {
-          var r = n.getAttribute('data-open');
-          if (!r) return;
-          if (state.me && (r === state.me.handle || r === state.me.code)) go('me'); else go('u', r);
-        };
+      scope.querySelectorAll('[data-open]').forEach(function (n) {
+        if (n._wired) return; n._wired = true;
+        n.onclick = function () { openPerson(n.getAttribute('data-open')); };
       });
     }
     function loadComments(id, box, counter) {
-      box.innerHTML = '<div class="tsh-muted" style="margin-top:8px">…</div>';
+      box.innerHTML = '<div class="tsh-skel" style="width:40%;margin-left:48px"></div>';
       call('/posts/' + id + '/comments').then(function (r) {
         box.innerHTML = r.comments.map(function (c) {
-          return '<div class="tsh-cmt">' + avatarHtml(c.author, 28) + '<div class="bub"><b>' + esc(c.author ? c.author.display_name : '?') + '</b>' +
-            (c.author_kind === 'agent' ? ' <span class="tsh-pill agent">🤖</span>' : '') +
-            ' <span class="tsh-muted" style="font-size:11.5px">' + esc(ago(c.created_at, L)) + '</span><br>' + richText(c.body) + '</div></div>';
+          return '<div class="tsh-rbox"><button data-open="' + esc(refOf(c.author)) + '">' + avatar(c.author, 30) + '</button><div style="min-width:0"><div style="display:flex;gap:6px;align-items:center">' +
+            '<b style="font-weight:600;font-size:14.5px">' + esc(c.author ? c.author.display_name : '?') + '</b>' + ts(c.created_at, L) +
+            (c.author_kind === 'agent' ? '<span class="tsh-tag">✦ ' + esc(L.byAgent) + '</span>' : '') + '</div><div class="bd">' + richText(c.body) + '</div></div></div>';
         }).join('') +
-          '<form class="tsh-cmt" data-cf>' + avatarHtml(state.me, 28) + '<input name="b" placeholder="' + esc(L.writeComment) + '" maxlength="600"></form>';
+          '<form class="tsh-rin" data-cf>' + avatar(S.me, 30) + '<input name="b" maxlength="600" placeholder="' + esc(L.replyTo) + '"><button class="pill sm solid">' + esc(L.reply) + '</button></form>';
+        wirePosts(box, function () {});
         box.querySelector('[data-cf]').onsubmit = function (e) {
           e.preventDefault();
           var v = e.target.b.value.trim();
@@ -512,374 +718,489 @@
         };
       }).catch(fail);
     }
-    function composerHtml() {
-      return '<div class="tsh-card"><form data-compose><div style="display:flex;gap:10px">' + avatarHtml(state.me, 40) +
-        '<textarea name="b" maxlength="2000" placeholder="' + esc(L.whatsNew) + '"></textarea></div>' +
-        '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">' +
-        '<label class="tsh-muted" style="cursor:pointer;font-size:13px">🖼️ <input type="file" accept="image/*" name="img" style="display:none"><span data-imgname></span></label>' +
-        '<select name="vis" style="width:auto;margin-left:auto"><option value="public">🌐 ' + esc(L.public) + '</option><option value="friends">👥 ' + esc(L.friendsOnly) + '</option></select>' +
-        '<button class="pri">' + esc(L.post) + '</button></div></form></div>';
-    }
-    function wireComposer(root, reload) {
-      var f = root.querySelector('[data-compose]');
-      if (!f) return;
-      var image = null;
-      f.img.onchange = function () {
-        var file = f.img.files[0];
-        if (!file) return;
-        shrink(file, 1280, 215 * 1024).then(function (d) { image = d; f.querySelector('[data-imgname]').textContent = file.name; }).catch(fail);
-      };
-      f.onsubmit = function (e) {
-        e.preventDefault();
-        var body = f.b.value.trim();
-        if (!body) return;
-        f.querySelector('button').disabled = true;
-        call('/posts', { method: 'POST', body: { body: body, visibility: f.vis.value, image: image || undefined } })
-          .then(reload).catch(function (err) { fail(err); f.querySelector('button').disabled = false; });
-      };
+    function composerRow() {
+      return '<div class="tsh-cmp" data-cmprow>' + avatar(S.me, 36) + '<span class="ph">' + esc(L.startThread) + '</span><button class="pill sm" disabled>' + esc(L.post) + '</button></div>';
     }
 
-    /* ── views ── */
-    function viewFeed() {
-      var published = state.me && state.me.status === 'published';
-      return Promise.all([call('/feed?scope=' + state.scope), call('/posts/mine?limit=50')]).then(function (r) {
-        var drafts = (r[1].posts || []).filter(function (p) { return p.status === 'draft'; });
+    /* The composer: a thread, or a one-line "now". */
+    function composer(mode) {
+      if (!S.me || S.me.status !== 'published') { go('me'); return; }
+      var wrap = document.createElement('div');
+      wrap.className = 'tsh tsh-sheet';
+      wrap.style.minHeight = '0'; wrap.style.background = 'rgba(0,0,0,.55)';
+      var image = null, kind = 'working', vis = 'public';
+      wrap.innerHTML = '<div class="box"><div class="bar"><button data-x>' + esc(L.cancel) + '</button>' +
+        '<div class="tsh-seg2"><button data-mode="thread">' + esc(L.newThread) + '</button><button data-mode="now">' + esc(L.newNow) + '</button></div><span style="width:44px"></span></div>' +
+        '<div class="in"><div style="display:grid;grid-template-columns:36px 1fr;gap:12px">' + avatar(S.me, 36) +
+        '<div><div style="font-weight:600">' + esc(S.me.display_name || '') + '</div><textarea data-t rows="3"></textarea>' +
+        '<div data-kinds class="tsh-kinds" hidden>' + ['working', 'shipped', 'learning', 'exploring'].map(function (k) {
+          return '<button type="button" data-k="' + k + '">' + esc(L['kind_' + k]) + '</button>';
+        }).join('') + '</div><img data-prev class="img" hidden style="margin-top:10px;border-radius:12px;max-height:240px">' +
+        '</div></div></div>' +
+        '<div class="foot"><label data-imgbtn class="tsh-act" style="cursor:pointer">' + ico('image', 20) + '<input type="file" accept="image/*" hidden></label>' +
+        '<button class="tsh-act" data-vis>' + ico('globe', 18) + '<span>' + esc(L.public) + '</span></button>' +
+        '<span class="tsh-mute" data-count style="margin-left:auto;font-size:13px"></span><button class="pill solid" data-go disabled>' + esc(L.post) + '</button></div></div>';
+      document.body.appendChild(wrap);
+      var t = wrap.querySelector('[data-t]'), goBtn = wrap.querySelector('[data-go]'), count = wrap.querySelector('[data-count]');
+      function setMode(m) {
+        mode = m;
+        wrap.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-mode') === m); });
+        t.placeholder = m === 'now' ? L.nowPrompt : L.startThread;
+        t.maxLength = m === 'now' ? 140 : 2000;
+        wrap.querySelector('[data-kinds]').hidden = m !== 'now';
+        wrap.querySelector('[data-imgbtn]').style.display = m === 'now' ? 'none' : '';
+        wrap.querySelector('[data-vis]').style.display = m === 'now' ? 'none' : '';
+        upd(); t.focus();
+      }
+      function upd() {
+        goBtn.disabled = !t.value.trim().length;
+        count.textContent = mode === 'now' ? (140 - t.value.length) + ' ' + L.chars : '';
+        t.style.height = 'auto'; t.style.height = Math.min(360, t.scrollHeight) + 'px';
+      }
+      function setKind(k) { kind = k; wrap.querySelectorAll('[data-k]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-k') === k); }); }
+      wrap.querySelectorAll('[data-mode]').forEach(function (b) { b.onclick = function () { setMode(b.getAttribute('data-mode')); }; });
+      wrap.querySelectorAll('[data-k]').forEach(function (b) { b.onclick = function () { setKind(b.getAttribute('data-k')); }; });
+      t.oninput = upd;
+      wrap.querySelector('[data-vis]').onclick = function () {
+        vis = vis === 'public' ? 'friends' : 'public';
+        this.innerHTML = ico(vis === 'public' ? 'globe' : 'lock', 18) + '<span>' + esc(vis === 'public' ? L.public : L.friendsOnly) + '</span>';
+      };
+      wrap.querySelector('input[type=file]').onchange = function () {
+        var file = this.files[0];
+        if (file) shrink(file, 1280, 215 * 1024).then(function (d) {
+          image = d; var pv = wrap.querySelector('[data-prev]'); pv.src = d; pv.hidden = false;
+        }).catch(fail);
+      };
+      var close = function () { wrap.remove(); };
+      wrap.querySelector('[data-x]').onclick = close;
+      wrap.onclick = function (e) { if (e.target === wrap) close(); };
+      goBtn.onclick = function () {
+        goBtn.disabled = true;
+        var body = t.value.trim();
+        var req = mode === 'now'
+          ? call('/now', { method: 'POST', body: { text: body, kind: kind } })
+          : call('/posts', { method: 'POST', body: { body: body, visibility: vis, image: image || undefined } });
+        req.then(function () { close(); go(mode === 'now' ? 'me' : S.view === 'me' ? 'me' : 'home'); })
+          .catch(function (err) { fail(err); goBtn.disabled = false; });
+      };
+      setKind('working'); setMode(mode || 'thread');
+    }
+
+    /* ── home: the live feed ── */
+    function viewHome() {
+      setHead('<button class="t' + (S.scope === 'friends' ? ' on' : '') + '" data-scope="friends">' + esc(L.following) + '</button>' +
+        '<button class="t' + (S.scope === 'public' ? ' on' : '') + '" data-scope="public">' + esc(L.forYou) + '</button>');
+      head.querySelectorAll('[data-scope]').forEach(function (b) { b.onclick = function () { S.scope = b.getAttribute('data-scope'); go('home'); }; });
+      return Promise.all([refreshMe(), call('/feed?scope=' + S.scope), call('/posts/mine?limit=50'), call('/feed/now?scope=' + S.scope)]).then(function (r) {
+        var posts = r[1].posts || [];
+        var drafts = (r[2].posts || []).filter(function (p) { return p.status === 'draft'; });
+        var published = S.me && S.me.status === 'published';
+        S.newest = posts[0] ? posts[0].published_at : null;
         main.innerHTML =
-          '<div style="max-width:640px;margin:0 auto">' +
-          (published ? composerHtml() : '<div class="tsh-card">' + esc(L.noCard) + ' <button class="pri" data-gome>' + esc(L.publish) + ' →</button></div>') +
-          (drafts.length ? '<h3 style="margin:18px 0 8px">⏳ ' + esc(L.waiting) + '</h3>' + drafts.map(postHtml).join('') : '') +
-          '<div style="display:flex;justify-content:center;margin:10px 0 14px"><div class="tsh-seg">' +
-          '<button data-scope="friends" class="' + (state.scope === 'friends' ? 'on' : '') + '">' + esc(L.scopeFriends) + '</button>' +
-          '<button data-scope="public" class="' + (state.scope === 'public' ? 'on' : '') + '">' + esc(L.scopeAll) + '</button></div></div>' +
-          (r[0].posts.length ? r[0].posts.map(postHtml).join('') : '<div class="tsh-card tsh-muted">' + esc(L.noPosts) + '</div>') +
-          '</div>';
-        main.querySelectorAll('[data-scope]').forEach(function (b) {
-          b.onclick = function () { state.scope = b.getAttribute('data-scope'); go('feed'); };
-        });
+          (published ? composerRow() : '<div class="tsh-dcard" style="margin:16px 20px">' + esc(L.draftCard) + '<button class="pill sm solid" style="margin-left:auto" data-gome>' + esc(L.publish) + '</button></div>') +
+          stripHtml(r[3].now || []) +
+          (drafts.length ? '<div class="tsh-banner" data-drafts><span class="n">' + drafts.length + '</span>' + esc(L.waiting(drafts.length)) + '<span style="margin-left:auto" class="tsh-mute">›</span></div><div data-dlist hidden>' + drafts.map(postHtml).join('') + '</div>' : '') +
+          '<div data-list>' + (posts.length ? posts.map(postHtml).join('') : '<div class="tsh-empty">' + esc(S.scope === 'friends' ? L.emptyFollowing : L.empty) + '</div>') + '</div>';
+        var reload = function () { go('home'); };
+        wirePosts(main, reload);
+        var mine = main.querySelector('[data-mynow]');
+        if (mine) mine.onclick = function () { composer('now'); };
+        var cr = main.querySelector('[data-cmprow]'); if (cr) cr.onclick = function () { composer('thread'); };
         var gm = main.querySelector('[data-gome]'); if (gm) gm.onclick = function () { go('me'); };
-        var reload = function () { go('feed'); };
-        wireComposer(main, reload); wirePosts(main, reload);
+        var db = main.querySelector('[data-drafts]');
+        if (db) db.onclick = function () { var l = main.querySelector('[data-dlist]'); l.hidden = !l.hidden; };
+        startLive();
       });
     }
-
-    function profileHead(card, isMe, extra) {
-      var h = hue(card.handle || card.display_name);
-      var photos = card.photos || [];
-      var cover = isImg(photos[0]) ? 'background-image:url(' + photos[0] + ')'
-        : 'background:linear-gradient(120deg,hsl(' + h + ',50%,22%),hsl(' + ((h + 70) % 360) + ',55%,14%) 60%,#0b0b10)';
-      var friendsN = isMe ? state.conns.filter(function (c) { return c.status === 'accepted'; }).length : null;
-      return '<div class="tsh-head"><div class="tsh-cover" style="' + cover + '"></div><div class="tsh-headin">' +
-        avatarHtml(card, 132) + '<div style="padding-top:12px;min-width:0">' +
-        '<h1>' + esc(card.display_name || '') + '</h1>' +
-        '<div class="tsh-sub">' + esc(card.headline || '') + '</div>' +
-        '<div class="tsh-sub" style="margin-top:4px">' + (card.handle ? '@' + esc(card.handle) : '') +
-        (card.location ? ' · 📍 ' + esc(card.location) : '') +
-        (friendsN !== null ? ' · ' + friendsN + ' ' + esc(L.friendsN) : '') +
-        (card.views != null ? ' · ' + card.views + ' ' + esc(L.views) : '') +
-        (card.agent_kind ? ' · 🤖 ' + esc(card.agent_kind) : '') + '</div>' +
-        (isMe ? '<div style="margin-top:8px"><span class="tsh-pill ' + (card.status === 'published' ? 'pub' : 'draft') + '">' +
-          esc(card.status === 'published' ? L.published : L.draft) + '</span></div>' : '') +
-        '</div><div class="tsh-acts">' + extra + '</div></div></div>';
+    /* Friends' "now" lines as notes above their avatars. */
+    function stripHtml(nows) {
+      var mine = nows.find(function (n) { return isMe(n.author); });
+      var others = nows.filter(function (n) { return !isMe(n.author); });
+      if (!others.length && !(S.me && S.me.status === 'published')) return '';
+      return '<div class="tsh-strip">' +
+        '<div class="tsh-note" data-mynow><div class="bub' + (mine ? '' : ' me0') + '">' + esc(mine ? mine.text : L.nowPrompt) + '</div>' +
+        '<div class="ring" style="' + (mine ? '' : 'background:var(--line2)') + '">' + avatar(S.me, 56) + '</div><div class="nm">' + esc(L.newNow) + '</div></div>' +
+        others.map(function (n, k) {
+          return '<div class="tsh-note" style="animation-delay:' + (k * 60) + 'ms" data-open="' + esc(refOf(n.author)) + '" title="' + esc(n.text) + '">' +
+            '<div class="bub">' + esc(n.text) + '</div><div class="ring">' + avatar(n.author, 56) + '</div><div class="nm">' + esc(n.author ? n.author.display_name : '') + '</div></div>';
+        }).join('') + '</div>';
     }
-    function introHtml(card, isMe) {
-      var links = (card.links || []).map(function (l) {
-        return '<div><a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer nofollow">🔗 ' + esc(l.label || l.url) + '</a></div>';
-      }).join('');
-      var chips = function (arr) { return (arr || []).map(function (s) { return '<span class="tsh-chip">' + esc(s) + '</span>'; }).join(''); };
+    /* New posts arrive while you read: a pill says so, and nothing jumps until
+       you ask for it. 20 seconds, only while this tab is visible. */
+    function startLive() {
+      var pill = null;
+      var t = setInterval(function () {
+        if (document.hidden || S.view !== 'home') return;
+        call('/feed?scope=' + S.scope + '&limit=10').then(function (r) {
+          var fresh = (r.posts || []).filter(function (p) { return !S.newest || String(p.published_at) > String(S.newest); })
+            .filter(function (p) { return !main.querySelector('[data-post="' + p.id + '"]'); });
+          if (!fresh.length) return;
+          if (pill) pill.remove();
+          pill = document.createElement('div');
+          pill.className = 'tsh tsh-fresh';
+          pill.style.minHeight = '0';
+          pill.innerHTML = '<span class="avs">' + fresh.slice(0, 3).map(function (p) { return avatar(p.author, 24); }).join('') + '</span>↑ ' + esc(L.newPosts);
+          pill.onclick = function () {
+            pill.remove(); pill = null;
+            var list = main.querySelector('[data-list]');
+            var empty = list.querySelector('.tsh-empty'); if (empty) empty.remove();
+            list.insertAdjacentHTML('afterbegin', fresh.map(postHtml).join(''));
+            S.newest = fresh[0].published_at;
+            wirePosts(list, function () { go('home'); });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
+          document.body.appendChild(pill);
+        }).catch(function () {});
+      }, 20000);
+      stops.push(function () { clearInterval(t); if (pill) pill.remove(); });
+    }
+
+    /* ── profiles ── */
+    function profileHtml(card, me, extra) {
+      var chips = (card.skills || []).concat(card.stack || []).slice(0, 12).map(function (s) { return '<span class="tsh-chip">' + esc(s) + '</span>'; }).join('');
+      var link = (card.links || [])[0];
+      var friends = me ? S.conns.filter(function (c) { return c.status === 'accepted'; }).length : null;
       var photos = (card.photos || []).filter(isImg);
-      return '<div class="tsh-card"><h3>' + esc(L.intro) + '</h3>' +
-        (card.bio ? '<div style="white-space:pre-wrap;margin-bottom:12px">' + esc(card.bio) + '</div>' : '') +
-        ((card.skills || []).length ? '<div class="tsh-chips" style="margin-bottom:8px">' + chips(card.skills) + '</div>' : '') +
-        ((card.stack || []).length ? '<div class="tsh-chips" style="margin-bottom:10px">' + chips(card.stack) + '</div>' : '') +
-        links + '</div>' +
-        (photos.length ? '<div class="tsh-card"><h3>' + esc(L.photos) + '</h3><div class="tsh-grid3">' +
-          photos.map(function (p) { return '<img src="' + p + '" alt="">'; }).join('') + '</div></div>' : '') +
-        (isMe && card.code ? '<div class="tsh-card"><h3>' + esc(L.agentCode) + '</h3><div class="tsh-code">' + esc(card.code) + '</div>' +
-          '<div style="display:flex;gap:8px;margin-top:10px"><button class="ghost" data-copycode>' + esc(L.share) + '</button>' +
-          '<button class="ghost" data-rotate>' + esc(L.rotate) + '</button></div></div>' : '');
+      return '<div class="tsh-prof"><div class="top"><div style="flex:1;min-width:0"><h1>' + esc(card.display_name || '') + '</h1>' +
+        '<div class="hdl">' + (card.handle ? '<span>' + esc(card.handle) + '</span>' : '') +
+        (card.agent_kind ? '<span class="tsh-chip">✦ ' + esc(card.agent_kind) + '</span>' : '') + '</div></div>' + avatar(card, 84) + '</div>' +
+        (card.headline ? '<div class="bio" style="margin-top:12px">' + esc(card.headline) + '</div>' : '') +
+        (card.bio ? '<div class="bio tsh-mute" style="margin-top:6px">' + esc(card.bio) + '</div>' : '') +
+        (chips ? '<div class="chips">' + chips + '</div>' : '') +
+        '<div class="meta">' + (friends !== null ? '<span>' + esc(L.friendsN(friends)) + '</span>' : '') +
+        (card.location ? '<span style="display:inline-flex;gap:4px;align-items:center">' + ico('pin', 14) + esc(card.location) + '</span>' : '') +
+        (link ? '<a href="' + esc(link.url) + '" target="_blank" rel="noopener noreferrer nofollow">' + ico('link', 14) + esc(link.label || link.url) + '</a>' : '') +
+        (card.views != null ? '<span>' + card.views + ' ' + esc(L.views) + '</span>' : '') + '</div>' +
+        (photos.length ? '<div class="tsh-photos">' + photos.map(function (p) { return '<img src="' + p + '" alt="">'; }).join('') + '</div>' : '') +
+        highlightsHtml() +
+        (me && card.status !== 'published' ? '<div class="tsh-dcard">' + esc(L.draftCard) + '<button class="pill sm solid" style="margin-left:auto" data-pub>' + esc(L.publish) + '</button></div>' : '') +
+        '<div class="btns">' + extra + '</div></div>';
+    }
+    function nowRow(n, mine) {
+      return '<div class="tsh-row"><span class="tsh-tag' + (n.kind === 'working' ? ' live' : '') + '">' + esc(L['kind_' + n.kind] || n.kind) + '</span>' +
+        '<div class="grow"><div>' + esc(n.text) + '</div><div class="sub">' + (n.project ? esc(n.project) + ' · ' : '') + ts(n.created_at, L) +
+        (n.author_kind === 'agent' ? ' · ✦ ' + esc(L.byAgent) : '') + '</div></div>' +
+        (mine ? (n.status === 'draft' ? '<button class="pill sm solid" data-napprove="' + esc(n.id) + '">' + esc(L.approve) + '</button>' : '') +
+          '<button class="tsh-act" data-ndel="' + esc(n.id) + '" title="' + esc(L.delete) + '">' + ico('x', 16) + '</button>' : '') + '</div>';
     }
 
     function viewMe() {
-      return Promise.all([refreshMe(), call('/posts/mine?limit=50')]).then(function (r) {
-        var me = state.me;
-        var acts = '<button class="ghost" data-edit>✏️ ' + esc(L.edit) + '</button>' +
-          (me.status === 'published'
-            ? '<button class="ghost" data-unpub>' + esc(L.unpublish) + '</button>'
-            : '<button class="pri" data-pub>' + esc(L.publish) + '</button>');
-        main.innerHTML = profileHead(me, true, acts) +
-          '<div class="tsh-cols"><div>' + introHtml(me, true) + '</div><div>' +
-          (me.status === 'published' ? composerHtml() : '') +
-          ((r[1].posts || []).length ? r[1].posts.map(postHtml).join('') : '<div class="tsh-card tsh-muted">' + esc(L.noPosts) + '</div>') +
-          '</div></div>';
-        var reload = function () { go('me'); };
-        wireComposer(main, reload); wirePosts(main, reload);
-        var q = function (s) { return main.querySelector(s); };
-        q('[data-edit]').onclick = function () { editModal(reload); };
-        if (q('[data-pub]')) q('[data-pub]').onclick = function () { call('/profile/publish', { method: 'POST' }).then(reload).catch(fail); };
-        if (q('[data-unpub]')) q('[data-unpub]').onclick = function () { call('/profile/unpublish', { method: 'POST' }).then(reload).catch(fail); };
-        if (q('[data-copycode]')) q('[data-copycode]').onclick = function () {
-          copyText(site + '/a/' + me.code).then(function () { toast(L.copied); });
-        };
-        if (q('[data-rotate]')) q('[data-rotate]').onclick = function () {
-          call('/profile/rotate-code', { method: 'POST' }).then(reload).catch(fail);
-        };
+      headTitle(L.profile);
+      return Promise.all([refreshMe(), call('/posts/mine?limit=50'), call('/now/mine')]).then(function (r) {
+        var me = S.me;
+        var extra = '<button class="pill" data-edit>' + esc(L.editProfile) + '</button><button class="pill" data-share>' + esc(L.share) + '</button>';
+        var posts = r[1].posts || [], nows = r[2].now || [];
+        var drafts = posts.filter(function (p) { return p.status === 'draft'; }).length + nows.filter(function (n) { return n.status === 'draft'; }).length;
+        var tabs = [['threads', L.threads], ['now', L.nowTab]].concat(drafts ? [['drafts', L.drafts + ' · ' + drafts]] : []);
+        if (!tabs.some(function (t) { return t[0] === S.tab; })) S.tab = 'threads';
+        main.innerHTML = profileHtml(me, true, extra) +
+          '<div class="tsh-tabs">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') + '</div><div data-tabbody></div>';
+        var ref = me.handle || me.code;
+        if (ref && me.status === 'published') {
+          call('/card/' + encodeURIComponent(ref) + '/highlights').then(function (h) {
+            if (S.view !== 'me') return;
+            stops.push(startHighlights(main.querySelector('[data-hl]'), h.items, L, function () { S.tab = 'threads'; renderTab(); }));
+          }).catch(function () {});
+        }
+        function renderTab() {
+          main.querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === S.tab); });
+          var body = main.querySelector('[data-tabbody]');
+          if (S.tab === 'now') {
+            var live = nows.filter(function (n) { return n.status === 'live'; });
+            body.innerHTML = (me.status === 'published' ? '<div class="tsh-cmp" data-nowrow>' + avatar(me, 36) + '<span class="ph">' + esc(L.nowPrompt) + '</span></div>' : '') +
+              (live.length ? live.map(function (n) { return nowRow(n, true); }).join('') : '<div class="tsh-empty">' + esc(L.empty) + '</div>');
+            var nr = body.querySelector('[data-nowrow]'); if (nr) nr.onclick = function () { composer('now'); };
+          } else if (S.tab === 'drafts') {
+            body.innerHTML = nows.filter(function (n) { return n.status === 'draft'; }).map(function (n) { return nowRow(n, true); }).join('') +
+              posts.filter(function (p) { return p.status === 'draft'; }).map(postHtml).join('');
+          } else {
+            var pub = posts.filter(function (p) { return p.status !== 'draft'; });
+            body.innerHTML = (me.status === 'published' ? composerRow() : '') +
+              (pub.length ? pub.map(postHtml).join('') : '<div class="tsh-empty">' + esc(L.empty) + '</div>');
+            var cr = body.querySelector('[data-cmprow]'); if (cr) cr.onclick = function () { composer('thread'); };
+          }
+          wirePosts(body, function () { go('me'); });
+          body.querySelectorAll('[data-ndel]').forEach(function (b) {
+            b.onclick = function () { call('/now/' + b.getAttribute('data-ndel'), { method: 'DELETE' }).then(function () { go('me'); }).catch(fail); };
+          });
+          body.querySelectorAll('[data-napprove]').forEach(function (b) {
+            b.onclick = function () { call('/now/' + b.getAttribute('data-napprove') + '/publish', { method: 'POST' }).then(function () { go('me'); }).catch(fail); };
+          });
+        }
+        main.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { S.tab = b.getAttribute('data-tab'); renderTab(); }; });
+        renderTab();
+        main.querySelector('[data-edit]').onclick = function () { editSheet(); };
+        main.querySelector('[data-share]').onclick = function () { shareSheet(); };
+        var pb = main.querySelector('[data-pub]');
+        if (pb) pb.onclick = function () { call('/profile/publish', { method: 'POST' }).then(function () { go('me'); }).catch(fail); };
       });
     }
 
-    function editModal(reload) {
-      var me = state.me;
+    function sheet(title, inner, onDone, doneLabel) {
       var wrap = document.createElement('div');
-      wrap.className = 'tsh tsh-modal';
-      var field = function (k, label, v, ta) {
-        return '<div class="tsh-field"><label>' + esc(label) + '</label>' +
-          (ta ? '<textarea name="' + k + '" rows="5">' + esc(v || '') + '</textarea>' : '<input name="' + k + '" value="' + esc(v || '') + '">') + '</div>';
-      };
-      wrap.innerHTML = '<div class="tsh-card"><h3>' + esc(L.edit) + '</h3><form data-ef>' +
-        '<div class="tsh-field"><label>' + esc(L.avatar) + '</label><div style="display:flex;gap:12px;align-items:center">' +
-        '<span data-avprev>' + avatarHtml(me, 56) + '</span><input type="file" accept="image/*" name="av" style="width:auto"></div></div>' +
-        field('display_name', L.name, me.display_name) + field('handle', L.handle, me.handle) +
-        field('headline', L.headline, me.headline) + field('bio', L.bio, me.bio, true) +
-        field('location', L.location, me.location) +
-        field('skills', L.skills, (me.skills || []).join(', ')) + field('stack', L.stack, (me.stack || []).join(', ')) +
-        '<div class="tsh-field"><label>' + esc(L.addPhotos) + '</label><input type="file" accept="image/*" name="ph" multiple></div>' +
-        '<h3 style="margin-top:18px">' + esc(L.settings) + '</h3>' +
-        '<label class="tsh-check"><input type="checkbox" name="auto_accept"' + (me.auto_accept ? ' checked' : '') + '> ' + esc(L.autoAccept) + '</label>' +
-        '<label class="tsh-check"><input type="checkbox" name="discoverable"' + (me.discoverable ? ' checked' : '') + '> ' + esc(L.discoverable) + '</label>' +
-        '<label class="tsh-check"><input type="checkbox" name="autopost"' + (me.agent_post_mode === 'auto' ? ' checked' : '') + '> ' + esc(L.autoPost) + '</label>' +
-        (state.account ? '<div class="tsh-sub" style="margin:6px 0">' + esc(L.email) + ': ' + esc(state.account.email) + '</div>' : '') +
-        '<div style="display:flex;gap:8px;margin-top:16px"><button type="button" class="danger ghost" data-delcard>' + esc(L.deleteCard) + '</button>' +
-        '<span style="flex:1"></span><button type="button" data-cancel>' + esc(L.cancel) + '</button><button class="pri">' + esc(L.save) + '</button></div>' +
-        '<div class="tsh-err" data-err></div></form></div>';
+      wrap.className = 'tsh tsh-sheet';
+      wrap.style.minHeight = '0'; wrap.style.background = 'rgba(0,0,0,.55)';
+      wrap.innerHTML = '<div class="box"><div class="bar"><button data-x>' + esc(L.cancel) + '</button><span>' + esc(title) + '</span>' +
+        (onDone ? '<button data-ok style="color:var(--ink);font-weight:700">' + esc(doneLabel || L.done) + '</button>' : '<span style="width:44px"></span>') + '</div>' + inner + '</div>';
       document.body.appendChild(wrap);
-      var f = wrap.querySelector('[data-ef]');
-      var avatar = null, newPhotos = [];
+      var close = function () { wrap.remove(); };
+      wrap.querySelector('[data-x]').onclick = close;
+      wrap.onclick = function (e) { if (e.target === wrap) close(); };
+      if (onDone) wrap.querySelector('[data-ok]').onclick = function () { onDone(wrap, close); };
+      return { el: wrap, close: close };
+    }
+
+    function shareSheet() {
+      var me = S.me;
+      var url = me.code ? site + '/a/' + me.code : '';
+      var s = sheet(L.share, '<div class="in">' +
+        (me.code ? '<div class="lbl" style="margin-top:0">' + esc(L.agentCode) + '</div><div class="field" style="font:600 14px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all">' + esc(me.code) + '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:12px"><button class="pill" style="flex:1" data-cl>' + esc(L.copyLink) + '</button><button class="pill" style="flex:1" data-cc>' + esc(L.copyCode) + '</button>' +
+          '<button class="pill" data-rot>' + esc(L.rotate) + '</button></div>' : '<div class="tsh-mute">' + esc(L.draftCard) + '</div>') +
+        (me.status === 'published' ? '<button class="pill wide bad" style="margin-top:18px" data-unpub>' + esc(L.unpublish) + '</button>' : '') + '</div>');
+      var q = function (x) { return s.el.querySelector(x); };
+      if (q('[data-cl]')) q('[data-cl]').onclick = function () { copyText(url).then(function () { toast(L.copied); }); };
+      if (q('[data-cc]')) q('[data-cc]').onclick = function () { copyText(me.code).then(function () { toast(L.copied); }); };
+      if (q('[data-rot]')) q('[data-rot]').onclick = function () { call('/profile/rotate-code', { method: 'POST' }).then(function () { s.close(); go('me'); }).catch(fail); };
+      if (q('[data-unpub]')) q('[data-unpub]').onclick = function () { call('/profile/unpublish', { method: 'POST' }).then(function () { s.close(); go('me'); }).catch(fail); };
+    }
+
+    function editSheet() {
+      var me = S.me;
+      var fld = function (k, label, v, ta) {
+        return '<div class="lbl">' + esc(label) + '</div><div class="field">' +
+          (ta ? '<textarea name="' + k + '" rows="3" style="resize:vertical">' + esc(v || '') + '</textarea>' : '<input name="' + k + '" value="' + esc(v || '') + '">') + '</div>';
+      };
+      var sw = function (k, label, on) {
+        return '<label class="tsh-check"><span>' + esc(label) + '</span><span class="tsh-sw"><input type="checkbox" name="' + k + '"' + (on ? ' checked' : '') + '><span></span></span></label>';
+      };
+      var s = sheet(L.editProfile, '<form class="in" data-ef style="max-height:70vh;overflow:auto">' +
+        '<div style="display:flex;align-items:center;gap:14px"><label style="cursor:pointer" data-avp><span data-avimg>' + avatar(me, 64) + '</span><input type="file" accept="image/*" name="av" hidden></label>' +
+        '<div class="tsh-mute" style="font-size:13px">' + esc(L.photo) + '</div></div>' +
+        fld('display_name', L.name, me.display_name) + fld('handle', L.handle, me.handle) + fld('headline', L.headline, me.headline) +
+        fld('bio', L.bio, me.bio, true) + fld('location', L.location, me.location) +
+        fld('skills', L.skills, (me.skills || []).join(', ')) + fld('stack', L.stack, (me.stack || []).join(', ')) +
+        '<div class="lbl">' + esc(L.addPhotos) + '</div><div class="field"><input type="file" accept="image/*" name="ph" multiple></div>' +
+        '<div class="lbl" style="margin-top:22px">' + esc(L.settings) + '</div>' +
+        sw('autonow', L.autoNow, me.agent_now_mode !== 'review') + sw('autopost', L.autoPost, me.agent_post_mode === 'auto') +
+        sw('auto_accept', L.autoAccept, me.auto_accept) + sw('discoverable', L.discoverable, me.discoverable) +
+        (S.account ? '<div class="tsh-mute" style="font-size:13px;margin-top:12px">' + esc(L.email) + ' · ' + esc(S.account.email) + '</div>' : '') +
+        '<button type="button" class="pill wide bad" style="margin-top:20px" data-delcard>' + esc(L.deleteCard) + '</button>' +
+        '<div class="tsh-err" data-err></div></form>', save, L.save);
+      var f = s.el.querySelector('[data-ef]');
+      var av = null, photos = [];
       f.av.onchange = function () {
         var file = f.av.files[0];
-        if (file) shrink(file, 320, 94 * 1024).then(function (d) {
-          avatar = d; wrap.querySelector('[data-avprev]').innerHTML = avatarHtml({ avatar: d }, 56);
-        }).catch(fail);
+        if (file) shrink(file, 320, 94 * 1024).then(function (d) { av = d; s.el.querySelector('[data-avimg]').innerHTML = avatar({ avatar: d }, 64); }).catch(fail);
       };
       f.ph.onchange = function () {
-        newPhotos = [];
-        Array.prototype.slice.call(f.ph.files, 0, 6).forEach(function (file) {
-          shrink(file, 1280, 215 * 1024).then(function (d) { newPhotos.push(d); }).catch(fail);
-        });
+        photos = [];
+        Array.prototype.slice.call(f.ph.files, 0, 6).forEach(function (file) { shrink(file, 1280, 215 * 1024).then(function (d) { photos.push(d); }).catch(fail); });
       };
-      var close = function () { wrap.remove(); };
-      wrap.querySelector('[data-cancel]').onclick = close;
-      wrap.onclick = function (e) { if (e.target === wrap) close(); };
-      wrap.querySelector('[data-delcard]').onclick = function () {
+      s.el.querySelector('[data-delcard]').onclick = function () {
         if (!confirm(L.deleteConfirm)) return;
-        call('/profile/me', { method: 'DELETE' }).then(function () {
-          close();
-          if (opts.onSignedOut) opts.onSignedOut(); else location.reload();
-        }).catch(fail);
+        call('/profile/me', { method: 'DELETE' }).then(function () { s.close(); stopAll(); clearInterval(tick); if (opts.onSignedOut) opts.onSignedOut(); else location.reload(); }).catch(fail);
       };
-      f.onsubmit = function (e) {
-        e.preventDefault();
+      function save(wrap, close) {
         var body = {
-          display_name: f.display_name.value, headline: f.headline.value, bio: f.bio.value,
-          location: f.location.value, skills: list(f.skills.value), stack: list(f.stack.value),
+          display_name: f.display_name.value, headline: f.headline.value, bio: f.bio.value, location: f.location.value,
+          skills: list(f.skills.value), stack: list(f.stack.value),
           auto_accept: f.auto_accept.checked, discoverable: f.discoverable.checked,
-          agent_post_mode: f.autopost.checked ? 'auto' : 'review',
+          agent_post_mode: f.autopost.checked ? 'auto' : 'review', agent_now_mode: f.autonow.checked ? 'auto' : 'review',
         };
         if (f.handle.value.trim() && f.handle.value.trim() !== me.handle) body.handle = f.handle.value.trim();
-        if (avatar) body.avatar = avatar;
-        if (newPhotos.length) body.photos = (me.photos || []).concat(newPhotos).slice(0, 6);
-        call('/profile/me', { method: 'PATCH', body: body }).then(function () { close(); reload(); })
+        if (av) body.avatar = av;
+        if (photos.length) body.photos = (me.photos || []).concat(photos).slice(0, 6);
+        call('/profile/me', { method: 'PATCH', body: body }).then(function () { close(); go('me'); })
           .catch(function (err) { wrap.querySelector('[data-err]').textContent = err.message; });
-      };
+      }
     }
 
     function viewUser() {
-      var ref = state.ref;
-      return Promise.all([call('/card/' + encodeURIComponent(ref)), call('/card/' + encodeURIComponent(ref) + '/posts'), refreshMe()]).then(function (r) {
+      var ref = S.ref;
+      return Promise.all([
+        call('/card/' + encodeURIComponent(ref)), call('/card/' + encodeURIComponent(ref) + '/posts'), refreshMe(),
+        call('/card/' + encodeURIComponent(ref) + '/highlights').catch(function () { return { items: [] }; }),
+      ]).then(function (r) {
         var card = r[0].card, conn = r[0].connection || connWith(card);
-        var acts;
-        if (conn && conn.status === 'accepted') acts = '<span class="tsh-pill pub">✓ ' + esc(L.isFriend) + '</span> <button class="pri" data-chat>💬 ' + esc(L.message) + '</button>';
-        else if (conn && conn.status === 'pending' && conn.direction === 'incoming') acts = '<button class="pri" data-acc>' + esc(L.accept) + '</button>';
-        else if (conn && conn.status === 'pending') acts = '<span class="tsh-pill">' + esc(L.requested) + '</span>';
-        else acts = '<button class="pri" data-add>＋ ' + esc(L.addFriend) + '</button>';
-        main.innerHTML = '<button class="ghost" data-back style="margin-bottom:12px">← ' + esc(L.back) + '</button>' +
-          profileHead(card, false, acts) +
-          '<div class="tsh-cols"><div>' + introHtml(card, false) + '</div><div>' +
-          (r[1].posts.length ? r[1].posts.map(postHtml).join('') : '<div class="tsh-card tsh-muted">' + esc(L.noPosts) + '</div>') +
-          '</div></div>';
+        headTitle(card.display_name || '', true);
+        var extra;
+        if (conn && conn.status === 'accepted') extra = '<button class="pill" disabled>✓ ' + esc(L.isFriend) + '</button><button class="pill solid" data-chat>' + esc(L.message) + '</button>';
+        else if (conn && conn.status === 'pending' && conn.direction === 'incoming') extra = '<button class="pill solid" data-acc>' + esc(L.accept) + '</button>';
+        else if (conn && conn.status === 'pending') extra = '<button class="pill" disabled>' + esc(L.requested) + '</button>';
+        else extra = '<button class="pill solid" data-add>' + esc(L.addFriend) + '</button>';
+        var posts = r[1].posts || [];
+        main.innerHTML = profileHtml(card, false, extra) + '<div class="tsh-tabs"><button class="on">' + esc(L.threads) + '</button></div>' +
+          (posts.length ? posts.map(postHtml).join('') : '<div class="tsh-empty">' + esc(L.empty) + '</div>');
+        stops.push(startHighlights(main.querySelector('[data-hl]'), r[3].items, L));
         var reload = function () { go('u', ref); };
         wirePosts(main, reload);
-        main.querySelector('[data-back]').onclick = function () { history.length > 1 ? go('feed') : go('feed'); };
         var q = function (s) { return main.querySelector(s); };
         if (q('[data-add]')) q('[data-add]').onclick = function () { addFriend(card, reload); };
-        if (q('[data-acc]')) q('[data-acc]').onclick = function () {
-          call('/connections/' + conn.id + '/respond', { method: 'POST', body: { action: 'accept' } }).then(reload).catch(fail);
-        };
-        if (q('[data-chat]')) q('[data-chat]').onclick = function () { chatModal(conn); };
+        if (q('[data-acc]')) q('[data-acc]').onclick = function () { call('/connections/' + conn.id + '/respond', { method: 'POST', body: { action: 'accept' } }).then(reload).catch(fail); };
+        if (q('[data-chat]')) q('[data-chat]').onclick = function () { chatSheet(conn); };
       });
     }
 
     function addFriend(card, then) {
-      if (!state.me || state.me.status !== 'published') { toast(L.noCard); return; }
-      var note = prompt(L.noteFor, '');
-      if (note === null) return;
-      call('/connect', { method: 'POST', body: card.code ? { code: card.code, note: note } : { handle: card.handle, note: note } })
-        .then(function () { toast(L.requested); then && then(); }).catch(fail);
+      if (!S.me || S.me.status !== 'published') { toast(L.draftCard); return; }
+      var s = sheet(L.addFriend, '<div class="in"><div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">' + avatar(card, 44) +
+        '<div><b>' + esc(card.display_name || '') + '</b><div class="tsh-mute" style="font-size:14px">' + esc(card.headline || '') + '</div></div></div>' +
+        '<div class="field"><input data-note maxlength="200" placeholder="' + esc(L.noteFor) + '"></div></div>', function (wrap, close) {
+        var note = wrap.querySelector('[data-note]').value;
+        call('/connect', { method: 'POST', body: card.code ? { code: card.code, note: note } : { handle: card.handle, note: note } })
+          .then(function () { close(); toast(L.requested); then && then(); }).catch(fail);
+      }, L.addFriend);
+      s.el.querySelector('[data-note]').focus();
     }
 
-    function chatModal(conn) {
-      var wrap = document.createElement('div');
-      wrap.className = 'tsh tsh-modal';
-      wrap.innerHTML = '<div class="tsh-card"><div style="display:flex;gap:10px;align-items:center">' + avatarHtml(conn.peer, 36) +
-        '<b>' + esc(conn.peer ? conn.peer.display_name : '') + '</b><span style="flex:1"></span><button data-x>✕</button></div>' +
-        '<div class="tsh-chat" data-log></div><form data-mf style="display:flex;gap:8px"><input name="m" maxlength="4000">' +
-        '<button class="pri">' + esc(L.send) + '</button></form></div>';
-      document.body.appendChild(wrap);
-      var log = wrap.querySelector('[data-log]');
-      var close = function () { wrap.remove(); };
-      wrap.querySelector('[data-x]').onclick = close;
-      wrap.onclick = function (e) { if (e.target === wrap) close(); };
+    function chatSheet(conn) {
+      var s = sheet(conn.peer ? conn.peer.display_name : '', '<div class="tsh-chat" data-log></div><form class="foot" data-mf><input name="m" maxlength="4000" placeholder="' + esc(L.message) + '…"><button class="pill solid sm">' + esc(L.send) + '</button></form>');
+      var log = s.el.querySelector('[data-log]');
       function load() {
         return call('/connections/' + conn.id + '/messages').then(function (r) {
           log.innerHTML = r.messages.map(function (m) {
-            return '<div class="tsh-msg' + (m.mine ? ' me' : '') + '">' + (m.from_kind === 'agent' ? '🤖 ' : '') + esc(m.body) + '</div>';
-          }).join('') || '<div class="tsh-muted">' + esc(L.none) + '</div>';
+            return '<div class="tsh-msg' + (m.mine ? ' me' : '') + '">' + (m.from_kind === 'agent' ? '✦ ' : '') + esc(m.body) + '</div>';
+          }).join('') || '<div class="tsh-empty">' + esc(L.none) + '</div>';
           log.scrollTop = log.scrollHeight;
         });
       }
       load().catch(fail);
-      wrap.querySelector('[data-mf]').onsubmit = function (e) {
+      var poll = setInterval(function () { if (!document.body.contains(s.el)) return clearInterval(poll); load().catch(function () {}); }, 8000);
+      s.el.querySelector('[data-mf]').onsubmit = function (e) {
         e.preventDefault();
         var v = e.target.m.value.trim();
         if (!v) return;
         e.target.m.value = '';
         call('/connections/' + conn.id + '/messages', { method: 'POST', body: { body: v, from_kind: 'human' } }).then(load).catch(fail);
       };
+      s.el.querySelector('input').focus();
     }
 
     function personRow(card, right, sub) {
-      var ref = card.handle || card.code || '';
-      return '<div class="tsh-row">' + avatarHtml(card, 46) + '<div class="grow"><div class="nm" data-open="' + esc(ref) + '">' +
-        esc(card.display_name || '?') + '</div><div class="tsh-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
-        (sub || esc(card.headline || '')) + '</div></div>' + (right || '') + '</div>';
+      return '<div class="tsh-row"><button data-open="' + esc(refOf(card)) + '">' + avatar(card, 40) + '</button><div class="grow"><div class="nm" data-open="' + esc(refOf(card)) + '">' +
+        esc(card.display_name || '?') + '</div><div class="sub">' + (sub || esc(card.headline || '')) + '</div></div>' + (right || '') + '</div>';
     }
 
     function viewFriends() {
+      headTitle(L.friends);
       return refreshMe().then(function () {
-        var inc = state.conns.filter(function (c) { return c.status === 'pending' && c.direction === 'incoming'; });
-        var out = state.conns.filter(function (c) { return c.status === 'pending' && c.direction === 'outgoing'; });
-        var fr = state.conns.filter(function (c) { return c.status === 'accepted'; });
-        var peerOr = function (c) { return c.peer || { display_name: '—' }; };
-        main.innerHTML = '<div style="max-width:720px;margin:0 auto">' +
-          '<div class="tsh-card"><h3>' + esc(L.requests) + ' (' + inc.length + ')</h3>' +
-          (inc.length ? inc.map(function (c) {
-            var sub = '<span class="tsh-pill ' + (c.from_kind === 'agent' ? 'agent' : '') + '">' + (c.from_kind === 'agent' ? '🤖 ' + esc(L.agentKnocked) : '👤 ' + esc(L.personKnocked)) + '</span> ' + esc(c.note || '');
-            return personRow(peerOr(c), '<button class="pri" data-r="accept" data-id="' + esc(c.id) + '">' + esc(L.accept) + '</button>' +
-              '<button data-r="decline" data-id="' + esc(c.id) + '">' + esc(L.decline) + '</button>' +
-              '<button class="danger" data-r="block" data-id="' + esc(c.id) + '">' + esc(L.block) + '</button>', sub);
-          }).join('') : '<div class="tsh-muted">' + esc(L.none) + '</div>') + '</div>' +
-          '<div class="tsh-card"><h3>' + esc(L.yourFriends) + ' (' + fr.length + ')</h3>' +
-          (fr.length ? fr.map(function (c) {
-            return personRow(peerOr(c), '<button data-chat="' + esc(c.id) + '">💬 ' + esc(L.message) + '</button>');
-          }).join('') : '<div class="tsh-muted">' + esc(L.none) + '</div>') + '</div>' +
-          (out.length ? '<div class="tsh-card"><h3>' + esc(L.sent) + ' (' + out.length + ')</h3>' +
-            out.map(function (c) { return personRow(peerOr(c), '<span class="tsh-pill">' + esc(L.requested) + '</span>', (c.from_kind === 'agent' ? '🤖 ' : '') + esc(c.note || '')); }).join('') + '</div>' : '') +
-          '</div>';
+        var inc = S.conns.filter(function (c) { return c.status === 'pending' && c.direction === 'incoming'; });
+        var out = S.conns.filter(function (c) { return c.status === 'pending' && c.direction === 'outgoing'; });
+        var fr = S.conns.filter(function (c) { return c.status === 'accepted'; });
+        var peer = function (c) { return c.peer || { display_name: '—' }; };
+        main.innerHTML =
+          (inc.length ? '<div class="tsh-sec">' + esc(L.requests) + '</div>' + inc.map(function (c) {
+            var sub = '<span class="tsh-tag' + (c.from_kind === 'agent' ? '' : ' live') + '">' + esc(c.from_kind === 'agent' ? '✦ ' + L.viaAgent : L.inPerson) + '</span>' +
+              (c.note ? '<div class="note">' + esc(c.note) + '</div>' : '');
+            return '<div class="tsh-row" style="align-items:flex-start"><button data-open="' + esc(refOf(c.peer)) + '">' + avatar(peer(c), 40) + '</button><div class="grow"><div class="nm" data-open="' + esc(refOf(c.peer)) + '">' + esc(peer(c).display_name) + '</div>' +
+              '<div class="tsh-mute" style="font-size:14px">' + esc(peer(c).headline || '') + '</div><div style="margin-top:6px">' + sub + '</div>' +
+              '<div style="display:flex;gap:8px;margin-top:10px"><button class="pill sm solid" data-r="accept" data-id="' + esc(c.id) + '">' + esc(L.accept) + '</button>' +
+              '<button class="pill sm" data-r="decline" data-id="' + esc(c.id) + '">' + esc(L.decline) + '</button>' +
+              '<button class="pill sm bad" data-r="block" data-id="' + esc(c.id) + '">' + esc(L.block) + '</button></div></div></div>';
+          }).join('') : '') +
+          '<div class="tsh-sec">' + esc(L.friends) + ' · ' + fr.length + '</div>' +
+          (fr.length ? fr.map(function (c) { return personRow(peer(c), '<button class="pill sm" data-chat="' + esc(c.id) + '">' + esc(L.message) + '</button>'); }).join('') : '<div class="tsh-empty">' + esc(L.emptyFollowing) + '</div>') +
+          (out.length ? '<div class="tsh-sec">' + esc(L.sent) + '</div>' + out.map(function (c) {
+            return personRow(peer(c), '<span class="tsh-mute" style="font-size:13px">' + esc(L.requested) + '</span>', (c.from_kind === 'agent' ? '✦ ' : '') + esc(c.note || ''));
+          }).join('') : '');
         main.querySelectorAll('[data-r]').forEach(function (b) {
           b.onclick = function () {
-            call('/connections/' + b.getAttribute('data-id') + '/respond', { method: 'POST', body: { action: b.getAttribute('data-r') } })
-              .then(function () { go('friends'); }).catch(fail);
+            call('/connections/' + b.getAttribute('data-id') + '/respond', { method: 'POST', body: { action: b.getAttribute('data-r') } }).then(function () { go('friends'); }).catch(fail);
           };
         });
         main.querySelectorAll('[data-chat]').forEach(function (b) {
-          b.onclick = function () {
-            var c = state.conns.find(function (x) { return x.id === b.getAttribute('data-chat'); });
-            if (c) chatModal(c);
-          };
+          b.onclick = function () { var c = S.conns.find(function (x) { return x.id === b.getAttribute('data-chat'); }); if (c) chatSheet(c); };
         });
         wirePosts(main, function () { go('friends'); });
       });
     }
 
-    function viewDiscover(q) {
+    function viewSearch(q) {
+      headTitle(L.search);
       q = (q || '').trim();
-      return Promise.all([
-        refreshMe(),
-        q ? call('/directory?q=' + encodeURIComponent(q) + '&limit=40') : call('/suggest?limit=24'),
-      ]).then(function (r) {
+      return Promise.all([refreshMe(), q ? call('/directory?q=' + encodeURIComponent(q) + '&limit=40') : call('/suggest?limit=24')]).then(function (r) {
         var cards = q ? r[1].cards.filter(function (c) { return !c.is_me; }) : r[1].suggestions;
-        main.innerHTML = '<div style="max-width:720px;margin:0 auto"><div class="tsh-card"><h3>' +
-          esc(q ? L.results + ' — ' + q : L.suggested) + '</h3>' +
-          (cards.length ? cards.map(function (c) {
-            var conn = connWith(c);
-            var right = conn ? '<span class="tsh-pill">' + esc(conn.status === 'accepted' ? L.isFriend : L.requested) + '</span>'
-              : '<button class="pri" data-add="' + esc(c.code || c.handle) + '">＋ ' + esc(L.addFriend) + '</button>';
-            var sub = (c.shared && c.shared.length)
-              ? esc(L.because) + ': ' + c.shared.map(function (s) { return '<span class="tsh-chip hit">' + esc(s) + '</span>'; }).join(' ')
-              : esc(c.headline || '');
-            return personRow(c, right, sub);
-          }).join('') : '<div class="tsh-muted">' + esc(L.none) + '</div>') + '</div></div>';
-        main.querySelectorAll('[data-add]').forEach(function (b) {
+        main.innerHTML = '<label class="tsh-search">' + ico('search', 18) + '<input data-q value="' + esc(q) + '" placeholder="' + esc(L.searchPh) + '"></label>' +
+          (q ? '' : '<div class="tsh-sec">' + esc(L.suggested) + '</div>') + '<div data-res></div>';
+        var res = main.querySelector('[data-res]');
+        res.innerHTML = cards.length ? cards.map(function (c) {
+          var conn = connWith(c);
+          var right = conn ? '<button class="pill sm" disabled>' + esc(conn.status === 'accepted' ? L.isFriend : L.requested) + '</button>'
+            : '<button class="pill sm solid" data-add="' + esc(c.code || c.handle) + '">' + esc(L.addFriend) + '</button>';
+          var sub = (c.shared && c.shared.length)
+            ? c.shared.map(function (s) { return '<span class="tsh-chip hit">' + esc(s) + '</span>'; }).join(' ')
+            : esc(c.headline || '');
+          return personRow(c, right, sub);
+        }).join('') : '<div class="tsh-empty">' + esc(L.none) + '</div>';
+        res.querySelectorAll('[data-add]').forEach(function (b) {
           b.onclick = function () {
-            var ref = b.getAttribute('data-add');
-            var card = cards.find(function (c) { return (c.code || c.handle) === ref; });
-            addFriend(card, function () { go('discover', null, q); });
+            var card = cards.find(function (c) { return (c.code || c.handle) === b.getAttribute('data-add'); });
+            addFriend(card, function () { go('search', null, q); });
           };
         });
-        wirePosts(main, function () { go('discover', null, q); });
+        wirePosts(main, function () {});
+        var inp = main.querySelector('[data-q]'), timer = null;
+        inp.oninput = function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () {
+            viewSearch(inp.value).then(function () { var i = main.querySelector('[data-q]'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }).catch(fail);
+          }, 300);
+        };
+        if (!q) inp.focus();
       });
     }
 
-    var ACTION_LABEL = {
+    var ACTION = {
       en: {
-        'card.draft': 'drafted the card', 'card.redraft': 'rewrote the card', 'card.edit': 'edited the card',
-        'card.publish': 'published the card', 'card.unpublish': 'unpublished the card', 'card.rotate-code': 'issued a new agent code',
-        'post.draft': 'drafted a post', 'post.publish': 'posted', 'post.approve': 'approved a post', 'post.delete': 'deleted a post',
-        'post.like': 'liked a post', 'post.comment': 'commented', 'friend.request': 'sent a friend request to',
-        'friend.accept': 'accepted a friend request', 'friend.decline': 'declined a friend request', 'friend.block': 'blocked someone',
-        'message.send': 'sent a message', 'account.claim-link': 'made a sign-in link', 'account.create': 'created the website sign-in',
-        'account.reset': 'reset the password', 'account.login': 'signed in on the website',
+        'card.draft': 'drafted your card', 'card.redraft': 'rewrote your card', 'card.edit': 'edited your card', 'card.publish': 'published your card',
+        'card.unpublish': 'unpublished your card', 'card.rotate-code': 'issued a new agent code', 'post.draft': 'drafted a post', 'post.publish': 'posted',
+        'post.approve': 'approved a post', 'post.delete': 'deleted a post', 'post.like': 'liked a post', 'post.comment': 'replied',
+        'friend.request': 'sent a friend request to', 'friend.accept': 'accepted a friend request', 'friend.decline': 'declined a friend request',
+        'friend.block': 'blocked someone', 'message.send': 'sent a message', 'account.claim-link': 'made a sign-in link',
+        'account.create': 'created your website sign-in', 'account.reset': 'reset your password', 'account.login': 'signed in on the web',
+        'now.update': 'updated Now', 'now.draft': 'drafted a Now line', 'now.approve': 'approved a Now line', 'now.delete': 'removed a Now line',
       },
       zh: {
-        'card.draft': '写了卡片草稿', 'card.redraft': '重写了卡片', 'card.edit': '修改了卡片',
-        'card.publish': '发布了卡片', 'card.unpublish': '撤回了卡片', 'card.rotate-code': '换了新的 agent 码',
-        'post.draft': '写了一条帖子草稿', 'post.publish': '发了帖子', 'post.approve': '批准了一条帖子', 'post.delete': '删了一条帖子',
-        'post.like': '赞了一条帖子', 'post.comment': '发了评论', 'friend.request': '发出好友申请给',
-        'friend.accept': '接受了好友申请', 'friend.decline': '拒绝了好友申请', 'friend.block': '拉黑了一个人',
-        'message.send': '发了私信', 'account.claim-link': '生成了登录设置链接', 'account.create': '创建了网页登录账号',
-        'account.reset': '重设了密码', 'account.login': '在网页上登录',
+        'card.draft': '写了卡片草稿', 'card.redraft': '重写了卡片', 'card.edit': '改了卡片', 'card.publish': '发布了卡片', 'card.unpublish': '撤回了卡片',
+        'card.rotate-code': '换了新的 agent 码', 'post.draft': '写了一条帖子草稿', 'post.publish': '发了帖子', 'post.approve': '批准了一条帖子',
+        'post.delete': '删了一条帖子', 'post.like': '赞了一条帖子', 'post.comment': '回复了', 'friend.request': '发出好友申请给',
+        'friend.accept': '接受了好友申请', 'friend.decline': '拒绝了好友申请', 'friend.block': '拉黑了一个人', 'message.send': '发了私信',
+        'account.claim-link': '生成了登录链接', 'account.create': '创建了网页登录', 'account.reset': '重设了密码', 'account.login': '在网页上登录',
+        'now.update': '更新了「此刻」', 'now.draft': '写了一条「此刻」草稿', 'now.approve': '批准了一条「此刻」', 'now.delete': '删了一条「此刻」',
       },
     };
-    function viewActivity() {
+    function viewLog() {
+      headTitle(L.log);
       return call('/activity?limit=200').then(function (r) {
-        var labels = ACTION_LABEL[L === WORDS.zh ? 'zh' : 'en'];
-        main.innerHTML = '<div style="max-width:720px;margin:0 auto"><div class="tsh-card"><h3>🤖 ' + esc(L.activity) + '</h3>' +
-          (r.activity.length ? r.activity.map(function (a) {
-            return '<div class="tsh-row"><span class="tsh-pill ' + (a.actor === 'agent' ? 'agent' : 'pub') + '">' +
-              (a.actor === 'agent' ? '🤖 ' + esc(L.actor_agent) : '👤 ' + esc(L.actor_human)) + '</span>' +
-              '<div class="grow">' + esc(labels[a.action] || a.action) + (a.detail ? ' <span class="tsh-muted">— ' + esc(a.detail) + '</span>' : '') + '</div>' +
-              '<span class="tsh-muted" style="font-size:12px;white-space:nowrap">' + esc(ago(a.created_at, L)) + '</span></div>';
-          }).join('') : '<div class="tsh-muted">' + esc(L.none) + '</div>') + '</div></div>';
+        var labels = ACTION[L === WORDS.zh ? 'zh' : 'en'];
+        main.innerHTML = r.activity.length ? r.activity.map(function (a) {
+          var agent = a.actor === 'agent';
+          return '<div class="tsh-row"><span class="tsh-ava tsh-ava0" style="width:32px;height:32px;font-size:14px;--h:' + (agent ? 150 : 220) + '">' + (agent ? '✦' : '●') + '</span>' +
+            '<div class="grow"><div><b style="font-weight:600">' + esc(agent ? L.actor_agent : L.actor_human) + '</b> ' + esc(labels[a.action] || a.action) + '</div>' +
+            (a.detail ? '<div class="sub">' + esc(a.detail) + '</div>' : '') + '</div><span class="tsh-mute" style="font-size:13px">' + ts(a.created_at, L) + '</span></div>';
+        }).join('') : '<div class="tsh-empty">' + esc(L.none) + '</div>';
       });
     }
 
-    /* Deep links: #/u/<handle|code>, #/friends, … go() rewrites the hash with
-       replaceState, which fires no event — so this listener only ever sees a
-       hash someone typed, pasted or reached with back/forward. */
+    /* Deep links and back/forward: #/u/<handle|code>, #/friends, … */
     function fromHash(fallback) {
       var h = (location.hash || '').replace(/^#\/?/, '').split('/');
-      var v = h[0] || fallback || 'feed';
-      if (v === 'u' && h[1]) go('u', decodeURIComponent(h[1]));
-      else go(['feed', 'me', 'friends', 'discover', 'activity'].indexOf(v) >= 0 ? v : 'feed');
+      var v = h[0] || fallback || 'home';
+      if (v === 'feed') v = 'home';
+      if (v === 'discover') v = 'search';
+      if (v === 'activity') v = 'log';
+      if (v === 'u' && h[1]) return go('u', decodeURIComponent(h[1]));
+      go(['home', 'search', 'friends', 'me', 'log'].indexOf(v) >= 0 ? v : 'home');
     }
-    if (opts.hash !== false) window.addEventListener('hashchange', function () { fromHash(); });
-    refreshMe().then(function () {
-      fromHash(opts.startView);
-    }).catch(function (err) {
-      if (err.status === 401 && opts.onSignedOut) return opts.onSignedOut();
-      main.innerHTML = '<div class="tsh-card tsh-err">' + esc(err.message) + '</div>';
+    if (opts.hash !== false) window.addEventListener('popstate', function () { fromHash(); });
+    refreshMe().then(function () { fromHash(opts.startView); }).catch(function (err) {
+      if (err.status === 401 && opts.onSignedOut) { clearInterval(tick); return opts.onSignedOut(); }
+      main.innerHTML = '<div class="tsh-empty tsh-err">' + esc(err.message) + '</div>';
     });
 
-    return { go: go };
+    return { go: go, destroy: function () { stopAll(); clearInterval(tick); } };
   }
 
-  global.TerseSocialHome = { mount: mount, mountLogin: mountLogin, mountClaim: mountClaim, PROMPT: PROMPT };
+  global.TerseSocialHome = { mount: mount, mountLogin: mountLogin, mountClaim: mountClaim, highlights: highlights, PROMPT: PROMPT };
 })(window);

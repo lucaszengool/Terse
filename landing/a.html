@@ -68,6 +68,23 @@
   .post .txt a{color:var(--accent)}
   .post img{width:100%;border-radius:12px;margin-top:10px;display:block}
   .post .ct{color:var(--muted);font-size:12px;margin-top:8px}
+  /* The card's live half: what they are working on now, and their best posts,
+     one at a time — a slow story, paused under a finger. */
+  .hl{margin-top:18px;border:1px solid var(--line);border-radius:16px;padding:12px 14px 14px;background:rgba(255,255,255,.02);cursor:pointer;user-select:none}
+  .hl .segs{display:flex;gap:4px;margin-bottom:10px}
+  .hl .seg{flex:1;height:2.5px;border-radius:2px;background:var(--line);overflow:hidden}
+  .hl .seg i{display:block;height:100%;width:0;background:var(--ink)}
+  .hl .seg.done i{width:100%}
+  .hl .seg.run i{animation:seg 5.2s linear forwards}
+  .hl.paused .seg.run i{animation-play-state:paused}
+  .hl .k{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .hl .k .pulse{width:7px;height:7px;border-radius:50%;background:#34d399;animation:pulse 1.8s infinite}
+  .hl .tx{font-size:16px;font-weight:500;line-height:1.4;margin-top:6px;animation:fade .45s both}
+  .hl .sb{font-size:12.5px;color:var(--muted);margin-top:6px}
+  @keyframes seg{from{width:0}to{width:100%}}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.55)}70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  @media (prefers-reduced-motion:reduce){.hl *{animation:none!important}}
   .tag{font-size:11px;font-weight:700;color:#9cc9ff;border:1px solid #2a3e5a;border-radius:999px;padding:1px 7px;margin-left:4px}
 </style>
 </head>
@@ -89,6 +106,7 @@
       <div class="at" id="at"></div>
     </div>
   </div>
+  <div id="hl" class="hl hide"></div>
   <div class="chips" id="chips"></div>
   <div class="bio" id="bio"></div>
   <div class="shots" id="shots"></div>
@@ -175,6 +193,7 @@
       $('#inSocial').href = '/social#/u/' + encodeURIComponent(c.handle || c.code || ref);
       show('card');
       loadWall();
+      loadHighlights();
     })
     .catch(function () { show('missing'); });
 
@@ -192,6 +211,36 @@
       return '<a href="' + u + '" target="_blank" rel="noopener noreferrer nofollow">' + u + '</a>';
     }).replace(/\n/g, '<br>');
   }
+  var KIND = { working: 'Working on', shipped: 'Shipped', learning: 'Learning', exploring: 'Exploring' };
+  var MARK = { working: '<span class="pulse"></span>', shipped: '✓', learning: '◐', exploring: '◇' };
+  function loadHighlights() {
+    fetch('/api/cloud/social/card/' + encodeURIComponent(ref) + '/highlights')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.items || !j.items.length) return;
+        var items = j.items, box = $('#hl'), i = 0, timer = null, paused = false;
+        box.innerHTML = '<div class="segs">' + items.map(function () { return '<div class="seg"><i></i></div>'; }).join('') + '</div><div id="hlslot"></div>';
+        box.classList.remove('hide');
+        var segs = box.querySelectorAll('.seg');
+        function render() {
+          var it = items[i];
+          segs.forEach(function (s, k) { s.className = 'seg' + (k < i ? ' done' : k === i ? ' run' : ''); });
+          $('#hlslot').innerHTML = it.type === 'post'
+            ? '<div class="k">♥ Top post</div><div class="tx">' + esc(it.body.slice(0, 220)) + '</div><div class="sb">' + esc(ago(it.published_at)) + ' · ♥ ' + (it.likes || 0) + ' · 💬 ' + (it.comments || 0) + '</div>'
+            : '<div class="k">' + (MARK[it.kind] || '') + ' ' + esc(KIND[it.kind] || it.kind) + '</div><div class="tx">' + esc(it.text) + '</div><div class="sb">' +
+              (it.project ? esc(it.project) + ' · ' : '') + esc(ago(it.created_at)) + (it.author_kind === 'agent' ? ' · ✦ updated by their agent' : '') + '</div>';
+          clearTimeout(timer);
+          if (!paused && items.length > 1) timer = setTimeout(next, 5200);
+        }
+        function next() { i = (i + 1) % items.length; render(); }
+        box.onmouseenter = box.ontouchstart = function () { paused = true; box.classList.add('paused'); clearTimeout(timer); };
+        box.onmouseleave = box.ontouchend = function () { paused = false; box.classList.remove('paused'); timer = setTimeout(next, 2600); };
+        box.onclick = next;
+        render();
+      })
+      .catch(function () {});
+  }
+
   function loadWall() {
     fetch('/api/cloud/social/card/' + encodeURIComponent(ref) + '/posts?limit=20')
       .then(function (r) { return r.ok ? r.json() : null; })

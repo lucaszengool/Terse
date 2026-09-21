@@ -71,6 +71,12 @@ const HUMAN_POSTS_PER_DAY = 50;
 const COMMENTS_PER_HOUR = 60;
 const MAX_POST_CHARS = 2000;
 const MAX_COMMENT_CHARS = 600;
+const MAX_NOW_CHARS = 140;
+/* An agent that updates "now" on every file save would turn the card into a
+   log. 24 a day is one an hour of real work; the card only shows the last few. */
+const AGENT_NOW_PER_DAY = 24;
+const HUMAN_NOW_PER_DAY = 60;
+const NOW_KINDS = ['working', 'shipped', 'learning', 'exploring'];
 
 const uuid = () => crypto.randomUUID();
 const sha = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
@@ -231,6 +237,7 @@ function ownerCard(row) {
     auto_accept: !!row.auto_accept,
     discoverable: !!row.discoverable,
     agent_post_mode: row.agent_post_mode === 'auto' ? 'auto' : 'review',
+    agent_now_mode: row.agent_now_mode === 'review' ? 'review' : 'auto',
     drafted_by: row.drafted_by,
     views: row.views,
     created_at: row.created_at,
@@ -420,6 +427,13 @@ router.patch('/profile/me', requireIdentity, (req, res) => {
       return res.status(403).json({ error: 'Only the owner can let agent posts go out without review.' });
     }
   }
+  let nowMode = null;
+  if (Object.prototype.hasOwnProperty.call(body, 'agent_now_mode')) {
+    nowMode = body.agent_now_mode === 'review' ? 'review' : 'auto';
+    if (nowMode === 'auto' && req.actor !== 'human') {
+      return res.status(403).json({ error: 'Only the owner can let the agent update "now" without review.' });
+    }
+  }
 
   db.patchAgentProfile.run({
     identity: req.idHash,
@@ -429,6 +443,7 @@ router.patch('/profile/me', requireIdentity, (req, res) => {
     discoverable: bool01(body.discoverable),
   });
   if (postMode) db.setAgentPostMode.run({ identity: req.idHash, mode: postMode });
+  if (nowMode) db.setAgentNowMode.run({ identity: req.idHash, mode: nowMode });
   logAct(req, 'card.edit', Object.keys(body).slice(0, 8).join(', '));
   res.json({ ok: true, profile: ownerCard(db.getAgentProfile.get(req.idHash)) });
 });
@@ -508,6 +523,7 @@ router.delete('/profile/me', requireIdentity, (req, res) => {
      bound to it and the log of what was done in its name. A card that is "gone"
      but whose posts still show is not gone. */
   db.deleteSocialPostsFor.run(req.idHash);
+  db.deleteSocialNowFor.run(req.idHash);
   db.deleteSocialAccountByIdentity.run(req.idHash);
   db.deleteSocialActivityFor.run(req.idHash);
   db.deleteAgentProfile.run(req.idHash);
@@ -538,8 +554,10 @@ router.get('/card/:ref', optionalIdentity, (req, res) => {
     const edge = db.findAgentConnection.get({ x: req.idHash, y: row.identity });
     if (edge) connection = shapeConnection(edge, req.idHash);
   }
+  const nowRow = db.listLiveNow.get({ identity: row.identity, window: '-14 days', limit: 1 });
   res.json({
     card: publicCard(row),
+    now: nowRow ? shapeNow(nowRow) : null,
     is_me: !!req.idHash && req.idHash === row.identity,
     accepts_agents: !!row.auto_accept,
     connection,
@@ -1234,6 +1252,109 @@ router.delete('/comments/:id', requireIdentity, (req, res) => {
   db.deleteSocialComment.run({ id: c.id, identity: c.identity });
   db.recountSocialComments.run({ id: c.post_id });
   res.json({ ok: true });
+});
+
+/* ── Now ──────────────────────────────────────────────────────────────────── */
+
+function shapeNow(n, cache) {
+  return {
+    id: n.id, text: n.text, kind: n.kind, project: n.project || null, link: n.link || null,
+    author_kind: n.author_kind === 'human' ? 'human' : 'agent', status: n.status, created_at: n.created_at,
+    ...(cache ? { author: authorOf(n.identity, cache) } : {}),
+  };
+}
+
+/**
+ * POST /api/cloud/social/now   Body: { text, kind?, project?, link? }
+ * One line: what the owner is working on, just shipped, is learning. Goes live
+ * straight away unless the owner set agent_now_mode to 'review'.
+ */
+router.post('/now', requireIdentity, (req, res) => {
+  const card = db.getAgentProfile.get(req.idHash);
+  if (!card) return res.status(404).json({ error: 'Draft a card first.' });
+  const text = str(req.body?.text, MAX_NOW_CHARS);
+  if (!text) return res.status(400).json({ error: 'text is required' });
+  const why = contentRefusal(text);
+  if (why) return res.status(422).json({ error: 'That cannot go on a card.', reason: why });
+  const kind = NOW_KINDS.includes(req.body?.kind) ? req.body.kind : 'working';
+  const link = req.body?.link ? safeLink({ url: req.body.link }) : null;
+  const who = req.actor === 'human' ? 'human' : 'agent';
+  const cap = who === 'agent' ? AGENT_NOW_PER_DAY : HUMAN_NOW_PER_DAY;
+  if (db.countSocialNowSince.get({ me: req.idHash, kind: who, window: '-1 day' }).n >= cap) {
+    return res.status(429).json({ error: `That is ${cap} updates today — the daily limit.`, max: cap });
+  }
+  const status = who === 'agent' && card.agent_now_mode === 'review' ? 'draft' : 'live';
+  const row = {
+    id: uuid(), identity: req.idHash, text, kind, project: str(req.body?.project, 40) || null,
+    link: link ? link.url : null, author_kind: who, status,
+  };
+  db.insertSocialNow.run(row);
+  logAct(req, status === 'live' ? 'now.update' : 'now.draft', text);
+  res.json({
+    ok: true,
+    now: shapeNow(db.getSocialNow.get(row.id)),
+    next: status === 'live'
+      ? (card.status === 'published' ? 'Live on the card now.' : 'Saved — it shows once the card is published.')
+      : 'Saved for the owner to approve.',
+  });
+});
+
+/** GET /api/cloud/social/now/mine — drafts included. */
+router.get('/now/mine', requireIdentity, (req, res) => {
+  res.json({ now: db.listMySocialNow.all({ identity: req.idHash, limit: 50 }).map((n) => shapeNow(n)) });
+});
+
+/** POST /api/cloud/social/now/:id/publish — the owner approving a draft line. */
+router.post('/now/:id/publish', requireIdentity, requireHuman, (req, res) => {
+  if (!db.publishSocialNow.run({ id: req.params.id, identity: req.idHash }).changes) {
+    return res.status(404).json({ error: 'No draft of yours by that id' });
+  }
+  logAct(req, 'now.approve', db.getSocialNow.get(req.params.id)?.text);
+  res.json({ ok: true, now: shapeNow(db.getSocialNow.get(req.params.id)) });
+});
+
+/** DELETE /api/cloud/social/now/:id */
+router.delete('/now/:id', requireIdentity, (req, res) => {
+  const n = db.getSocialNow.get(req.params.id);
+  if (!db.deleteSocialNow.run({ id: req.params.id, identity: req.idHash }).changes) {
+    return res.status(404).json({ error: 'No update of yours by that id' });
+  }
+  logAct(req, 'now.delete', n?.text);
+  res.json({ ok: true });
+});
+
+/**
+ * GET /api/cloud/social/card/:ref/highlights
+ * What a card rotates through: the live "now" lines of the last fortnight and
+ * the best public posts of the last month, interleaved so neither drowns the
+ * other. Public content only — a stranger's browser plays this.
+ */
+router.get('/card/:ref/highlights', optionalIdentity, (req, res) => {
+  const ref = (req.params.ref || '').toString().trim().replace(/^@/, '').toLowerCase();
+  const byCode = ref.startsWith('tac_');
+  const row = byCode ? db.getAgentProfileByCode.get(ref) : db.getAgentProfileByHandle.get(ref);
+  const isOwner = !!row && row.identity === req.idHash;
+  if (!row || (!isOwner && row.status !== 'published') || (!byCode && !isOwner && !row.discoverable)) {
+    return res.status(404).json({ error: 'No such card' });
+  }
+  const nows = db.listLiveNow.all({ identity: row.identity, window: '-14 days', limit: 5 }).map((n) => ({ type: 'now', ...shapeNow(n) }));
+  const cache = new Map();
+  const posts = db.listTopPosts.all({ identity: row.identity, limit: 3 }).map((p) => ({ type: 'post', ...shapePost(p, req.idHash, cache) }));
+  const items = [];
+  for (let i = 0; i < Math.max(nows.length, posts.length); i++) {
+    if (nows[i]) items.push(nows[i]);
+    if (posts[i]) items.push(posts[i]);
+  }
+  res.set('Cache-Control', 'private, max-age=30');
+  res.json({ items, now: nows[0] || null });
+});
+
+/** GET /api/cloud/social/feed/now?scope= — the strip across the top of the feed. */
+router.get('/feed/now', optionalIdentity, (req, res) => {
+  const scope = req.query.scope === 'public' || !req.idHash ? 'public' : 'friends';
+  const rows = scope === 'public' ? db.listPublicNow.all() : db.listFriendsNow.all({ me: req.idHash });
+  const cache = new Map();
+  res.json({ scope, now: rows.map((n) => shapeNow(n, cache)) });
 });
 
 /* ── People you may know ──────────────────────────────────────────────────── */

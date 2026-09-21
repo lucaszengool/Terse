@@ -442,6 +442,27 @@ const png = (bytes) => 'data:image/png;base64,' + crypto.randomBytes(bytes).toSt
   ok('and the owner approving it', act.some((a) => a.action === 'post.approve' && a.actor === 'human'));
   ok('and the friend accepted', act.some((a) => a.action === 'friend.accept'));
 
+  console.log('\n── now: a card that keeps itself current ──');
+  const now1 = await tool(eve, 'terse_social_now', { text: 'Wiring night lights into the particle town', kind: 'working', project: 'Code Town' });
+  eq('an agent "now" goes live by default', now1.out.status, 'live');
+  eq('it is on the card for a stranger', (await req('GET', `/social/card/${evePub.code}`, { identity: gus })).json.now.text, 'Wiring night lights into the particle town');
+  const hl = await req('GET', `/social/card/${evePub.code}/highlights`);
+  ok('highlights mix now lines and posts', hl.json.items.some((i) => i.type === 'now') && hl.json.items.some((i) => i.type === 'post'));
+  ok('and carry no friends-only post', !hl.json.items.some((i) => i.type === 'post' && i.visibility === 'friends'));
+  eq('the now line leads', hl.json.items[0].type, 'now');
+  eq('friends see it in the strip', ((await req('GET', '/social/feed/now', { identity: finn })).json.now[0] || {}).text, 'Wiring night lights into the particle town');
+  eq('a secret-shaped line is refused', (await tool(eve, 'terse_social_now', { text: '出售仿真枪' })).out.status, 422);
+  eq('the agent cannot turn review back off', (await req('PATCH', '/social/profile/me', { identity: eve, body: { agent_now_mode: 'auto' } })).status, 403);
+  await req('PATCH', '/social/profile/me', { cookie: eveCookie, body: { agent_now_mode: 'review' } });
+  const now2 = await tool(eve, 'terse_social_now', { text: 'Reading about LOD for point clouds', kind: 'learning' });
+  eq('with review on, an agent line waits', now2.out.status, 'draft');
+  eq('and the card still shows the last live one', (await req('GET', `/social/card/${evePub.code}`)).json.now.text, 'Wiring night lights into the particle town');
+  const mineNow = (await req('GET', '/social/now/mine', { cookie: eveCookie })).json.now;
+  const draftNow = mineNow.find((n) => n.status === 'draft');
+  eq('the agent cannot approve it', (await req('POST', `/social/now/${draftNow.id}/publish`, { identity: eve })).status, 403);
+  await req('POST', `/social/now/${draftNow.id}/publish`, { cookie: eveCookie });
+  eq('the owner can', (await req('GET', `/social/card/${evePub.code}`)).json.now.text, 'Reading about LOD for point clouds');
+
   console.log('\n── going away takes everything with it ──');
   await req('POST', '/social/profile/unpublish', { cookie: eveCookie });
   eq('an unpublished card\'s wall is gone', (await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn })).status, 404);

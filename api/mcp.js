@@ -529,6 +529,20 @@ const SOCIAL_TOOLS = [
     },
   },
   {
+    name: 'terse_social_now',
+    description: "Update the owner's \"now\" line — one sentence on what they are working on, just shipped, are learning or exploring. The card rotates these with their best posts, so it reads like what they are doing this week. Call it when a meaningful piece of work starts or lands (not on every edit — at most a few times a day). Public: never include secrets, private client or company names, unreleased product names, or anything from a private repo the owner has not made public. Goes live immediately unless the owner set it to review. Up to 140 characters.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'e.g. "Wiring night-time window lights into the particle town".' },
+        kind: { type: 'string', enum: ['working', 'shipped', 'learning', 'exploring'], description: 'Default working.' },
+        project: { type: 'string', description: 'Optional public project name, up to 40 chars.' },
+        link: { type: 'string', description: 'Optional public https link (repo, demo, release).' },
+      },
+      required: ['text'],
+    },
+  },
+  {
     name: 'terse_social_my_posts',
     description: "The owner's own posts, drafts included — use it to tell them which of your drafts are still waiting for approval.",
     inputSchema: { type: 'object', properties: {} },
@@ -620,6 +634,7 @@ const SOCIAL_HANDLERS = {
       has_website_login: !!me.json.account,
       agent_post_mode: p.agent_post_mode,
       draft_posts_waiting_for_owner: drafts,
+      agent_now_mode: p.agent_now_mode,
       next: !me.json.account && p.status === 'published'
         ? 'Card is live. They have no website sign-in yet — offer terse_social_account_link so they can manage it at terseai.org/social.'
         : p.status === 'published'
@@ -737,6 +752,12 @@ const SOCIAL_HANDLERS = {
       visible_to_others: post.status === 'published',
       next: r.json.next,
     });
+  },
+
+  async terse_social_now(identity, args) {
+    const r = await callSocial('POST', '/now', identity, { text: args.text, kind: args.kind, project: args.project, link: args.link });
+    if (r.status >= 400) return textResult({ error: r.json?.error, reason: r.json?.reason, status: r.status });
+    return textResult({ ok: true, status: r.json.now.status, next: r.json.next });
   },
 
   terse_social_my_posts(identity) {

@@ -2382,6 +2382,85 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_social_activity ON social_activity(identity, id DESC);
 `);
 
+/* Timestamps here are millisecond-precise (strftime %f): two lines in one second
+   — an approval right after the agent's next update — must still order. */
+/* ── "Now": what this person is working on, kept current by their agent ──────
+   A post is something you decided to say. A "now" line is a status: short,
+   replaced often, and written by the agent as the work happens — "wiring the
+   town's night lights", "shipped the Windows tray fix". The card rotates the
+   live ones with the best recent posts, so a profile reads like what the
+   person is doing this week rather than what they filled in once.
+   Default agent_now_mode is 'auto' (the owner asked for a card that keeps
+   itself current); an owner can switch it to 'review', and only an owner can
+   switch it back. */
+try { db.exec(`ALTER TABLE agent_profiles ADD COLUMN agent_now_mode TEXT DEFAULT 'auto'`); } catch {}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS social_now (
+    id TEXT PRIMARY KEY,
+    identity TEXT NOT NULL,
+    text TEXT NOT NULL,
+    kind TEXT DEFAULT 'working',        -- working | shipped | learning | exploring
+    project TEXT,
+    link TEXT,
+    author_kind TEXT DEFAULT 'agent',
+    status TEXT DEFAULT 'live',         -- draft | live
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_now_owner ON social_now(identity, created_at DESC);
+`);
+const setAgentNowMode = db.prepare(
+  "UPDATE agent_profiles SET agent_now_mode = @mode, updated_at = datetime('now') WHERE identity = @identity");
+const insertSocialNow = db.prepare(`
+  INSERT INTO social_now (id, identity, text, kind, project, link, author_kind, status, created_at)
+  VALUES (@id, @identity, @text, @kind, @project, @link, @author_kind, @status,
+          strftime('%Y-%m-%d %H:%M:%f', 'now'))
+`);
+const getSocialNow = db.prepare('SELECT * FROM social_now WHERE id = ?');
+const publishSocialNow = db.prepare(
+  "UPDATE social_now SET status = 'live', created_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE id = @id AND identity = @identity AND status = 'draft'");
+const deleteSocialNow = db.prepare('DELETE FROM social_now WHERE id = @id AND identity = @identity');
+const deleteSocialNowFor = db.prepare('DELETE FROM social_now WHERE identity = ?');
+const listMySocialNow = db.prepare(
+  'SELECT * FROM social_now WHERE identity = @identity ORDER BY created_at DESC LIMIT @limit');
+const listLiveNow = db.prepare(`
+  SELECT * FROM social_now WHERE identity = @identity AND status = 'live'
+     AND created_at > datetime('now', @window)
+   ORDER BY created_at DESC LIMIT @limit
+`);
+const countSocialNowSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM social_now WHERE identity = @me AND author_kind = @kind AND created_at > datetime('now', @window)");
+/* The newest live line per person, for the strip across the top of the feed:
+   friends (scope=friends) or every listed card (scope=public). */
+const listFriendsNow = db.prepare(`
+  SELECT n.* FROM social_now n
+    JOIN (SELECT identity, MAX(created_at) AS m FROM social_now
+           WHERE status = 'live' AND created_at > datetime('now', '-3 days') GROUP BY identity) last
+      ON last.identity = n.identity AND last.m = n.created_at
+    JOIN agent_profiles c ON c.identity = n.identity
+   WHERE n.status = 'live' AND c.status = 'published'
+     AND (n.identity = @me OR n.identity IN (
+           SELECT CASE WHEN a_identity = @me THEN b_identity ELSE a_identity END
+             FROM agent_connections WHERE status = 'accepted' AND (a_identity = @me OR b_identity = @me)))
+   ORDER BY n.created_at DESC LIMIT 30
+`);
+const listPublicNow = db.prepare(`
+  SELECT n.* FROM social_now n
+    JOIN (SELECT identity, MAX(created_at) AS m FROM social_now
+           WHERE status = 'live' AND created_at > datetime('now', '-3 days') GROUP BY identity) last
+      ON last.identity = n.identity AND last.m = n.created_at
+    JOIN agent_profiles c ON c.identity = n.identity
+   WHERE n.status = 'live' AND c.status = 'published' AND c.discoverable = 1
+   ORDER BY n.created_at DESC LIMIT 30
+`);
+/* A card's best recent posts: engagement first, recency to break ties. Public
+   posts only — highlights are shown to strangers. */
+const listTopPosts = db.prepare(`
+  SELECT * FROM social_posts
+   WHERE identity = @identity AND status = 'published' AND visibility = 'public'
+     AND published_at > datetime('now', '-30 days')
+   ORDER BY (likes * 2 + comments * 3) DESC, published_at DESC LIMIT @limit
+`);
+
 const setAgentPostMode = db.prepare(
   "UPDATE agent_profiles SET agent_post_mode = @mode, updated_at = datetime('now') WHERE identity = @identity");
 const setAgentConnectionKind = db.prepare('UPDATE agent_connections SET from_kind = @kind WHERE id = @id');
@@ -2530,6 +2609,8 @@ module.exports = {
   insertSocialComment, listSocialComments, deleteSocialComment, getSocialComment, recountSocialComments,
   countSocialCommentsSince,
   insertSocialActivity, listSocialActivity, deleteSocialActivityFor, pruneSocialActivity,
+  setAgentNowMode, insertSocialNow, getSocialNow, publishSocialNow, deleteSocialNow, deleteSocialNowFor,
+  listMySocialNow, listLiveNow, countSocialNowSince, listFriendsNow, listPublicNow, listTopPosts,
 
   addTownMark, townMarks, townMarksToday, removeTownMark,
   addBlock, getBlock, removeBlock, blocksBy, blockedIdsBy, isBlockedBy,

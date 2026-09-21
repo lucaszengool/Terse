@@ -3275,6 +3275,20 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
                 &policy as *const _ as *const std::ffi::c_void,
                 std::mem::size_of_val(&policy) as u32,
             );
+            // And no system border. Windows 11 draws a 1px DWM border (plus the
+            // shadow) round every top-level window at the WINDOW edge, and every
+            // Terse page draws its own glass card inside a transparent window —
+            // so users saw two outlines, "a Windows frame behind the app". macOS
+            // draws neither. DWMWA_BORDER_COLOR (34) = DWMWA_COLOR_NONE turns it
+            // off in the compositor, where no later style change can bring it
+            // back. Windows 10 has no such border and just rejects the call.
+            let none: u32 = 0xFFFF_FFFE;
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                windows::Win32::Graphics::Dwm::DWMWINDOWATTRIBUTE(34),
+                &none as *const _ as *const std::ffi::c_void,
+                std::mem::size_of_val(&none) as u32,
+            );
         }
         if stripped != style || ex_stripped != ex {
             SetWindowLongPtrW(hwnd, GWL_STYLE, stripped);

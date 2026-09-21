@@ -2463,6 +2463,13 @@ fn town_drop_mode(app: AppHandle, on: bool) -> bool {
 
 pub(crate) fn town_drop_set(app: &AppHandle, on: bool) {
     use std::sync::atomic::Ordering;
+    if on {
+        // A wallpaper the user turned off must stay off: lifting shows it, over
+        // every icon, for as long as Ctrl is down.
+        let visible = app.get_webview_window("wallpaper")
+            .and_then(|w| w.is_visible().ok()).unwrap_or(false);
+        if !visible { return; }
+    }
     if DROP_ON.swap(on, Ordering::SeqCst) == on { return; }
     let generation = DROP_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     if let Some(win) = app.get_webview_window("wallpaper") {
@@ -6465,9 +6472,9 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         FindWindowExW, GetSystemMetrics, GetWindowLongPtrW, SendMessageTimeoutW, SetParent,
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
         HWND_TOP, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
-        SWP_SHOWWINDOW, WS_CAPTION, WS_CHILD, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
+        WS_CAPTION, WS_CHILD, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
         WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
-        WS_POPUP, WS_SYSMENU, WS_THICKFRAME, WS_VISIBLE,
+        WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
     };
 
     let raw = match win.hwnd() {
@@ -6581,10 +6588,13 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
             let drop_bits = (WS_POPUP.0 | WS_CAPTION.0 | WS_THICKFRAME.0 | WS_SYSMENU.0
                 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
+            // WS_VISIBLE is carried over, not forced: re-pins run from timers
+            // and the sentinel, and must never re-show a wallpaper the user
+            // turned off. show_wallpaper_window shows it AFTER this pin.
             SetWindowLongPtrW(
                 hwnd,
                 GWL_STYLE,
-                (style & !drop_bits) | (WS_CHILD.0 | WS_VISIBLE.0) as isize,
+                (style & !drop_bits) | WS_CHILD.0 as isize,
             );
             // WS_EX_APPWINDOW forces a taskbar button, WS_EX_WINDOWEDGE draws a
             // raised edge, and WS_EX_TOOLWINDOW — which this function used to ADD
@@ -6619,7 +6629,7 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
                 let z = insert_after.unwrap_or(HWND_TOP);
                 let _ = SetWindowPos(
                     hwnd, z, 0, 0, cx, cy,
-                    SWP_NOACTIVATE | SWP_SHOWWINDOW,
+                    SWP_NOACTIVATE,
                 );
             }
         }
@@ -6635,6 +6645,22 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
         let add = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0) as isize;
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | add);
+
+        if parent.is_invalid() {
+            // No desktop host at all (Explorer not running / restarting). Left
+            // as it is, this is a full-screen top-level window over the whole
+            // desktop — the "all my icons are gone" report. No wallpaper beats
+            // no icons; the sentinel re-pins once Explorer is back.
+            let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(
+                hwnd, windows::Win32::UI::WindowsAndMessaging::SW_HIDE);
+            WP_PIN_HIDDEN.store(true, std::sync::atomic::Ordering::SeqCst);
+            WP_PINNED.store(false, std::sync::atomic::Ordering::SeqCst);
+            pin_log("  no desktop host - wallpaper HIDDEN rather than cover the icons");
+        } else {
+            WP_PINNED.store(true, std::sync::atomic::Ordering::SeqCst);
+            WP_OVERLAY_ON.store(false, std::sync::atomic::Ordering::SeqCst);
+            WP_PIN_HIDDEN.store(false, std::sync::atomic::Ordering::SeqCst);
+        }
 
         // What the window ended up as, so the log answers "did it take?" rather
         // than only "what did we ask for?".
@@ -6657,6 +6683,166 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
 #[cfg(not(target_os = "windows"))]
 fn pin_wallpaper_window(_win: &tauri::WebviewWindow) {}
 
+/// True while the wallpaper is meant to be pinned behind the icons (not the Pro
+/// overlay, not lifted for adjust / a Ctrl file drop). Only then does the
+/// sentinel hold it to "below the icons".
+static WP_PINNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// The pin found no desktop host and hid the window instead.
+static WP_PIN_HIDDEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static WP_SENTINEL_FAILS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static WP_SENTINEL_ON: std::sync::Once = std::sync::Once::new();
+
+/// Is the pinned wallpaper really underneath the desktop icons?
+///
+/// `Some(false)` = provably not (top-level, or ordered above SHELLDLL_DefView);
+/// `None` = cannot tell (no DefView found — Explorer restarting), so no action.
+#[cfg(target_os = "windows")]
+fn wallpaper_below_icons(hwnd: windows::Win32::Foundation::HWND) -> Option<bool> {
+    use windows::core::w;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        FindWindowExW, GetAncestor, GetParent, GetWindow, GA_PARENT, GW_HWNDNEXT,
+    };
+    unsafe {
+        // The icon layer, wherever this shell keeps it.
+        let progman = FindWindowExW(None, None, w!("Progman"), None).unwrap_or_default();
+        let mut defview = if progman.is_invalid() { HWND::default() } else {
+            FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None).unwrap_or_default()
+        };
+        if defview.is_invalid() {
+            let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
+            while !worker.is_invalid() {
+                let dv = FindWindowExW(worker, None, w!("SHELLDLL_DefView"), None).unwrap_or_default();
+                if !dv.is_invalid() { defview = dv; break; }
+                worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
+            }
+        }
+        if defview.is_invalid() { return None; }
+        let icons_host = GetParent(defview).unwrap_or_default();
+        let ours = GetParent(hwnd).unwrap_or_default();
+        // Top-level (no parent, or the desktop itself is the parent): nothing
+        // keeps it behind the icons. This is the screenshot users sent.
+        let desktop = GetAncestor(icons_host, GA_PARENT);
+        if ours.is_invalid() || ours == desktop { return Some(false); }
+        // Walk down the z-order from `from` looking for `target`: found means
+        // target is below.
+        let below = |from: HWND, target: HWND| -> bool {
+            let mut h = GetWindow(from, GW_HWNDNEXT).unwrap_or_default();
+            let mut n = 0;
+            while !h.is_invalid() && n < 4096 {
+                if h == target { return true; }
+                h = GetWindow(h, GW_HWNDNEXT).unwrap_or_default();
+                n += 1;
+            }
+            false
+        };
+        if ours == icons_host {
+            // Siblings of the icons: must come after DefView.
+            Some(below(defview, hwnd))
+        } else {
+            // In another host: that host must sit below the icons' host.
+            Some(below(icons_host, ours))
+        }
+    }
+}
+
+/// Every 3 s: make sure a wallpaper that is supposed to be behind the icons IS.
+///
+/// Users kept reporting "I opened Terse and every desktop icon disappeared".
+/// Each cause fixed so far was a different path putting the wallpaper in front
+/// (wrong host, shown before pinned, a stuck Ctrl lift) — so instead of trusting
+/// the next path to get it right, this checks the outcome. Wrong → re-pin; still
+/// wrong after two re-pins → hide the wallpaper. No wallpaper beats no icons.
+fn start_wallpaper_sentinel(app: &AppHandle) {
+    #[cfg(target_os = "windows")]
+    {
+        let app = app.clone();
+        WP_SENTINEL_ON.call_once(move || {
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                let a2 = app.clone();
+                let _ = app.run_on_main_thread(move || wallpaper_sentinel_tick(&a2));
+            });
+        });
+    }
+    #[cfg(not(target_os = "windows"))]
+    let _ = app;
+}
+
+#[cfg(target_os = "windows")]
+fn wallpaper_sentinel_tick(app: &AppHandle) {
+    use std::sync::atomic::Ordering;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_LBUTTON};
+    use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
+    let Some(win) = app.get_webview_window("wallpaper") else { return };
+    let Ok(raw) = win.hwnd() else { return };
+    let hwnd = HWND(raw.0);
+
+    // Explorer came back after a pin that found no host: pin again now.
+    if WP_PIN_HIDDEN.load(Ordering::SeqCst) {
+        // Only for a wallpaper the user still has on; switching it off meanwhile
+        // must not bring it back.
+        let enabled = get_wallpaper_config().get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+        if !enabled {
+            WP_PIN_HIDDEN.store(false, Ordering::SeqCst);
+            return;
+        }
+        if !overlay_active_cached() {
+            pin_wallpaper_window(&win);
+            if wallpaper_below_icons(hwnd) == Some(true) {
+                WP_PIN_HIDDEN.store(false, Ordering::SeqCst);
+                let _ = win.show();
+                pin_log("sentinel: desktop host is back - wallpaper shown again");
+            } else {
+                // Pinned somewhere, but not provably under the icons: stay hidden
+                // and try again next tick.
+                WP_PIN_HIDDEN.store(true, Ordering::SeqCst);
+            }
+        }
+        return;
+    }
+    if !unsafe { IsWindowVisible(hwnd) }.as_bool() { return; }
+
+    // A Ctrl file-drop lift whose key-up the hook never saw (lock screen, UAC,
+    // a key released while another desktop had input). Neither Ctrl nor the
+    // mouse button is really down, so no drop can be in progress: put it back.
+    #[cfg(not(feature = "msstore"))]
+    if DROP_ON.load(Ordering::SeqCst) {
+        let held = |vk: i32| (unsafe { GetAsyncKeyState(vk) } as u16) & 0x8000 != 0;
+        if !held(VK_CONTROL.0 as i32) && !held(VK_LBUTTON.0 as i32) {
+            diag_log("town", "sentinel: drop lift with no Ctrl/mouse held - lowering");
+            town_drop_set(app, false);
+        }
+        return;
+    }
+
+    if !WP_PINNED.load(Ordering::SeqCst) || WP_ADJUST.load(Ordering::SeqCst) { return; }
+    match wallpaper_below_icons(hwnd) {
+        Some(false) => {
+            let n = WP_SENTINEL_FAILS.fetch_add(1, Ordering::SeqCst) + 1;
+            if n <= 2 {
+                pin_log(&format!("sentinel: wallpaper is ABOVE the icons - re-pin #{n}"));
+                pin_wallpaper_window(&win);
+            } else {
+                pin_log("sentinel: still above the icons after 2 re-pins - HIDING the wallpaper");
+                let _ = win.hide();
+            }
+        }
+        Some(true) => { WP_SENTINEL_FAILS.store(0, Ordering::SeqCst); }
+        None => {}
+    }
+}
+
+/// The overlay switch as last applied, without re-reading the licence (the
+/// sentinel runs every 3 s and overlay_allowed logs + loads the licence).
+#[cfg(target_os = "windows")]
+fn overlay_active_cached() -> bool {
+    !WP_PINNED.load(std::sync::atomic::Ordering::SeqCst)
+        && WP_OVERLAY_ON.load(std::sync::atomic::Ordering::SeqCst)
+}
+static WP_OVERLAY_ON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Size the (already-created) wallpaper window to the primary display, pin it
 /// behind the desktop, and show it. The window itself is built once in `setup`
 /// on the main thread; commands only show/hide it (thread-safe).
@@ -6674,7 +6860,12 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
         let _ = win.set_position(tauri::LogicalPosition::new(0.0, 0.0));
         let _ = win.set_size(tauri::LogicalSize::new(w, h));
     }
-    let _ = win.show();
+    // NOT shown here. Shown on the main thread AFTER it is placed: shown first,
+    // it is a plain full-screen window in front of every desktop icon until the
+    // pin runs — and at launch that pin is queued behind the whole of setup().
+    WP_SENTINEL_FAILS.store(0, std::sync::atomic::Ordering::SeqCst);
+    WP_PIN_HIDDEN.store(false, std::sync::atomic::Ordering::SeqCst);
+    start_wallpaper_sentinel(app);
     // Re-parenting touches the shell's window tree — must run on the main thread,
     // so this is safe whether called from `setup` or from a command handler thread.
     // Honour the Pro overlay across restarts. Without this the switch survives
@@ -6687,6 +6878,9 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
             apply_wallpaper_overlay(&win2);
         } else {
             pin_wallpaper_window(&win2);
+        }
+        if !WP_PIN_HIDDEN.load(std::sync::atomic::Ordering::SeqCst) {
+            let _ = win2.show();
         }
     });
     // The page asks for this answer at boot and then listens for changes. Without
@@ -6782,6 +6976,8 @@ fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
         }
     }
     let _ = win.set_ignore_cursor_events(true);
+    WP_PINNED.store(false, std::sync::atomic::Ordering::SeqCst);
+    WP_OVERLAY_ON.store(true, std::sync::atomic::Ordering::SeqCst);
     diag_log("wallpaper", "overlay ON — topmost, click-through");
 }
 
@@ -7153,6 +7349,7 @@ fn lift_wallpaper_above_icons(win: &tauri::WebviewWindow) {
             SWP_NOACTIVATE | SWP_SHOWWINDOW,
         );
     }
+    WP_PINNED.store(false, std::sync::atomic::Ordering::SeqCst);
     diag_log("wallpaper", "3D: lifted out of WorkerW to just above the desktop icons");
 }
 

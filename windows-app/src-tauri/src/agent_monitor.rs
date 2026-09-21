@@ -2220,7 +2220,15 @@ impl AgentMonitor {
 
     /// Scan for running agent processes. Returns (new_detections, lost_agent_types)
     pub fn scan(&mut self) -> (Vec<(&'static str, PendingDetection)>, Vec<String>) {
-        let procs = match list_processes() {
+        self.scan_with(list_processes())
+    }
+
+    /// scan() with the process list taken by the caller. `tasklist` is slow on
+    /// Windows, and start_scanning used to run it while holding the monitor
+    /// lock — so every sync command that reads a session (get_agent_sessions,
+    /// record_optimization_usage, ...) blocked the main thread behind it.
+    pub fn scan_with(&mut self, procs: Option<Vec<ProcessInfo>>) -> (Vec<(&'static str, PendingDetection)>, Vec<String>) {
+        let procs = match procs {
             Some(p) => p,
             None => return (Vec::new(), Vec::new()),
         };
@@ -2676,7 +2684,7 @@ fn find_latest_session(log_dir: &Path) -> Option<PathBuf> {
     None
 }
 
-struct ProcessInfo {
+pub(crate) struct ProcessInfo {
     pid: u32,
     comm: String,
 }
@@ -2742,11 +2750,26 @@ pub fn start_scanning(app: AppHandle) {
 
         let state = app.state::<AppState>();
 
-        // Scan for new agents
+        // Phase timings: any phase over 1 s is logged. The monitor lock is held
+        // through the locked ones, and every sync command that reads a session
+        // waits on it ON THE MAIN THREAD — i.e. a slow phase here freezes Terse.
+        let mut phase_t = std::time::Instant::now();
+        let mut phase = |name: &str| {
+            let ms = phase_t.elapsed().as_millis();
+            if ms > 1000 {
+                crate::diag_log("agent-monitor", &format!("slow scanner phase '{name}': {ms} ms"));
+            }
+            phase_t = std::time::Instant::now();
+        };
+
+        // Scan for new agents. The process list is taken BEFORE the lock.
+        let procs = list_processes();
+        phase("list_processes (unlocked)");
         let (new_detections, lost_types) = {
             let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
-            monitor.scan()
+            monitor.scan_with(procs)
         };
+        phase("scan (locked)");
 
         if !new_detections.is_empty() {
             eprintln!("[terse-agent] detected {} new agents", new_detections.len());
@@ -2771,6 +2794,7 @@ pub fn start_scanning(app: AppHandle) {
             }));
         }
 
+        phase("auto-connect (locked)");
         let member_email = {
             let auth = state.auth.lock().unwrap_or_else(|e| e.into_inner());
             auth.email.clone()
@@ -2812,6 +2836,7 @@ pub fn start_scanning(app: AppHandle) {
             updates
         };
 
+        phase("read_new_lines (locked)");
         let had_updates = !updates.is_empty();
         for (agent_type, snapshot) in updates {
             // Publish this agent's live state + new log entries to Terse cloud first
@@ -2873,6 +2898,7 @@ pub fn start_scanning(app: AppHandle) {
             (ended, idle_events, circuit_readings)
         };
 
+        phase("cowork publish + attention gather");
         // Completion summary cards.
         for (at, summary) in ended {
             let name = summary.get("agentName").and_then(|v| v.as_str()).unwrap_or("Agent").to_string();
@@ -2911,8 +2937,10 @@ pub fn start_scanning(app: AppHandle) {
             let _ = crate::circuit::evaluate(&app, r);
         }
 
+        phase("notifications + circuit breaker");
         // Weekly digest — self-throttled to one check/hour, one send/ISO-week.
         crate::digest::maybe_send_weekly(&app);
+        phase("weekly digest");
 
         // Heartbeat presence whenever something is happening, so teammates see us online.
         if had_updates {
@@ -2941,6 +2969,7 @@ pub fn start_scanning(app: AppHandle) {
             };
             crate::phone::maybe_push(&stats, &sessions);
         }
+        phase("presence + phone push");
     }
 }
 

@@ -4710,6 +4710,24 @@ pub fn run() {
             // The session dock (会话栏): a 14px strip on the left edge that opens
             // when the cursor touches it — started at launch, as on macOS.
             session_dock::start(app.handle().clone());
+            // Main-thread latency probe: every 2 s, time a no-op on the main
+            // thread. Anything over 1 s is a freeze the user feels in every
+            // window at once; the log gives each one's start and length, to line
+            // up against slow-cmd.log and the scanner's phase timings.
+            {
+                let app2 = app.handle().clone();
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    let (tx, rx) = std::sync::mpsc::channel::<()>();
+                    let t = std::time::Instant::now();
+                    if app2.run_on_main_thread(move || { let _ = tx.send(()); }).is_err() { break; }
+                    let _ = rx.recv_timeout(std::time::Duration::from_secs(120));
+                    let ms = t.elapsed().as_millis();
+                    if ms > 1000 {
+                        diag_log("main-thread", &format!("main thread was blocked ~{ms} ms"));
+                    }
+                });
+            }
             room_link::start(app.handle().clone());
 
             // The localhost route Claude Code's hook posts to. One thread per
@@ -4731,7 +4749,14 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
+        // Every command runs through this wrapper, which logs any that takes
+        // over 300 ms. A SYNC command runs on the main thread, and while it runs
+        // every Terse window is frozen — clicks, IPC, the wallpaper's boot. CI
+        // caught a 44 s freeze whose cause no log could name; now the command
+        // names itself in ~/.terse/slow-cmd.log. (Async commands return at
+        // once, so only real main-thread time is measured.)
+        .invoke_handler({
+            let handler = tauri::generate_handler![
             get_sessions,
             remove_session,
             enter_pick_mode,
@@ -5043,7 +5068,20 @@ pub fn run() {
             focus_app,
             get_doctor_settings,
             set_clear_glass,
-        ])
+        ];
+            move |invoke: tauri::ipc::Invoke<tauri::Wry>| {
+                let cmd = invoke.message.command().to_string();
+                let t = std::time::Instant::now();
+                let handled = handler(invoke);
+                let ms = t.elapsed().as_millis();
+                if ms > 300 {
+                    diag_log("slow-cmd", &format!(
+                        "{cmd} held the {} thread for {ms} ms",
+                        std::thread::current().name().unwrap_or("?")));
+                }
+                handled
+            }
+        })
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app, event| {

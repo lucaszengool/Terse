@@ -833,7 +833,8 @@
           (published ? composerRow() : '<div class="tsh-dcard" style="margin:16px 20px">' + esc(L.draftCard) + '<button class="pill sm solid" style="margin-left:auto" data-gome>' + esc(L.publish) + '</button></div>') +
           stripHtml(r[3].now || []) +
           (drafts.length ? '<div class="tsh-banner" data-drafts><span class="n">' + drafts.length + '</span>' + esc(L.waiting(drafts.length)) + '<span style="margin-left:auto" class="tsh-mute">›</span></div><div data-dlist hidden>' + drafts.map(postHtml).join('') + '</div>' : '') +
-          '<div data-list>' + (posts.length ? posts.map(postHtml).join('') : '<div class="tsh-empty">' + esc(S.scope === 'friends' ? L.emptyFollowing : L.empty) + '</div>') + '</div>';
+          '<div data-list>' + (posts.length ? posts.map(postHtml).join('') : '<div class="tsh-empty">' + esc(S.scope === 'friends' ? L.emptyFollowing : L.empty) + '</div>') + '</div>' +
+          '<div data-more style="height:1px"></div>';
         var reload = function () { go('home'); };
         wirePosts(main, reload);
         var mine = main.querySelector('[data-mynow]');
@@ -843,6 +844,7 @@
         var db = main.querySelector('[data-drafts]');
         if (db) db.onclick = function () { var l = main.querySelector('[data-dlist]'); l.hidden = !l.hidden; };
         startLive();
+        if (posts.length >= 20) startMore(posts[posts.length - 1].published_at);
       });
     }
     /* Friends' "now" lines as notes above their avatars. */
@@ -858,6 +860,33 @@
             '<div class="bub">' + esc(n.text) + '</div><div class="ring">' + avatar(n.author, 56) + '</div><div class="nm">' + esc(n.author ? n.author.display_name : '') + '</div></div>';
         }).join('') + '</div>';
     }
+    /* Older posts load as you reach the bottom: the feed pages on published_at,
+       so a post that arrives meanwhile cannot shift what the next page returns. */
+    function startMore(cursor) {
+      var sentinel = main.querySelector('[data-more]');
+      if (!sentinel || !('IntersectionObserver' in window)) return;
+      var busy = false, done = false;
+      var io = new IntersectionObserver(function (entries) {
+        if (!entries[0].isIntersecting || busy || done || S.view !== 'home') return;
+        busy = true;
+        call('/feed?scope=' + S.scope + '&limit=20&before=' + encodeURIComponent(cursor)).then(function (r) {
+          var more = (r.posts || []).filter(function (p) { return !main.querySelector('[data-post="' + p.id + '"]'); });
+          if (!r.posts || r.posts.length < 20) done = true;
+          if (r.posts && r.posts.length) cursor = r.posts[r.posts.length - 1].published_at;
+          var list = main.querySelector('[data-list]');
+          list.insertAdjacentHTML('beforeend', more.map(postHtml).join(''));
+          wirePosts(list, function () { go('home'); });
+        }).catch(function () { done = true; }).then(function () {
+          busy = false;
+          /* An observer only reports a change: if the new page still leaves the
+             bottom in view, re-observing makes it report again. */
+          if (!done) { io.unobserve(sentinel); io.observe(sentinel); }
+        });
+      }, { rootMargin: '600px' });
+      io.observe(sentinel);
+      stops.push(function () { io.disconnect(); });
+    }
+
     /* New posts arrive while you read: a pill says so, and nothing jumps until
        you ask for it. 20 seconds, only while this tab is visible. */
     function startLive() {

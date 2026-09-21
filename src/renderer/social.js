@@ -75,6 +75,10 @@
       headers: {
         'Content-Type': 'application/json',
         'x-terse-identity': identity,
+        /* This page is the owner at the keyboard, not their agent: the server
+           lets a human approve agent drafts and flip the "without review"
+           switches, and logs who did what by this header. */
+        'x-terse-actor': 'human',
       },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     }).then(function (r) {
@@ -598,13 +602,46 @@
     window.addEventListener('beforeunload', function () { clearInterval(photoTimer); });
   }
 
+  /* ── the social home (shared with terseai.org/social) ────────────────── */
+
+  var home = null;
+  function setMode(mode) {
+    if (mode === 'home' && !(me && me.status === 'published')) mode = 'card';
+    try { localStorage.setItem('terse-social-mode', mode); } catch (e) {}
+    $('#modeHome').classList.toggle('on', mode === 'home');
+    $('#modeCard').classList.toggle('on', mode === 'card');
+    $('#homeMount').classList.toggle('hide', mode !== 'home');
+    document.querySelector('.scroll').classList.toggle('hide', mode === 'home');
+    if (mode === 'home' && !home && window.TerseSocialHome) {
+      home = window.TerseSocialHome.mount($('#homeMount'), {
+        api: SITE,
+        headers: { 'x-terse-identity': identity, 'x-terse-actor': 'human' },
+        credentials: 'omit',
+        site: SITE,
+      });
+    }
+  }
+
+  function webLogin() {
+    call('/account/claim-link', { method: 'POST' }).then(function (j) {
+      if (T.openUrl) T.openUrl(j.url); else window.open(j.url, '_blank');
+      say('#mineMsg', j.has_account ? 'Opened your browser — choose a new password there.' : 'Opened your browser — set your email and password there.', 'ok');
+    }).catch(function (e) { say('#mineMsg', e.message, 'bad'); });
+  }
+
   /* ── go ───────────────────────────────────────────────────────────────── */
 
   loadIdentity().then(function () {
     wire();
+    $('#modeHome').addEventListener('click', function () { setMode('home'); });
+    $('#modeCard').addEventListener('click', function () { setMode('card'); });
+    $('#btnWebLogin').addEventListener('click', webLogin);
     setTab('conns');
     return loadMe();
   }).then(function () {
+    var saved = null;
+    try { saved = localStorage.getItem('terse-social-mode'); } catch (e) {}
+    setMode(saved || (me && me.status === 'published' ? 'home' : 'card'));
     if (me) loadConns();
     /* Somebody knocking is the one thing that arrives while you are looking at
        this page and not doing anything. A poll on the minute is enough for it —

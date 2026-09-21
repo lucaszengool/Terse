@@ -39,7 +39,7 @@ app.use('/social', socialRouter);
 app.use('/mcp', mcpRouter);
 const server = http.createServer(app);
 
-function req(method, path, { identity, body } = {}) {
+function req(method, path, { identity, body, human, cookie } = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const r = http.request({
@@ -47,12 +47,16 @@ function req(method, path, { identity, body } = {}) {
       headers: {
         ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
         ...(identity ? { 'x-terse-identity': identity } : {}),
+        ...(human ? { 'x-terse-actor': 'human' } : {}),
+        ...(cookie ? { Cookie: cookie } : {}),
       },
     }, (res) => {
       let out = '';
       res.on('data', (c) => { out += c; });
       res.on('end', () => resolve({
         status: res.statusCode,
+        headers: res.headers,
+        raw: out,
         json: (() => { try { return JSON.parse(out); } catch { return null; } })(),
       }));
     });
@@ -320,6 +324,132 @@ const png = (bytes) => 'data:image/png;base64,' + crypto.randomBytes(bytes).toSt
   eq('and can read another card', viewed.out.card.handle, annHandle);
   const connected = await tool(carl, 'terse_social_connect', { code: annCode, note: 'hi' });
   eq('and knock on it', connected.out.connection.status, 'pending');
+
+  /* ────────────────────────────────────────────────────────────────────────
+     Part two: a website sign-in, a wall, and agents that make friends.
+     Fresh people, so nothing above can make these pass by accident. */
+  const eve = id('eve'), finn = id('finn'), gus = id('gus');
+  const cookieOf = (r) => ((r.headers['set-cookie'] || [])[0] || '').split(';')[0];
+  const publishAs = async (who, name, extra = {}) => {
+    await req('POST', '/social/profile/draft', { identity: who, body: { display_name: name, ...extra } });
+    return (await req('POST', '/social/profile/publish', { identity: who, human: true })).json;
+  };
+
+  console.log('\n── the agent hands over a link; the human types the password ──');
+  const evePub = await publishAs(eve, 'Eve Park', { handle: `eve_${uniq}`, skills: ['rust', 'webgl'], stack: ['tauri'], location: 'Berlin' });
+  const link = await tool(eve, 'terse_social_account_link');
+  ok('an agent can get a claim link', /\/social\/claim\?t=tcl_/.test(link.out.url || ''));
+  ok('and is told not to type the password itself', /never type a password/i.test(link.out.next || ''));
+  const claimTok = new URL(link.out.url).searchParams.get('t');
+  const claimPeek = await req('GET', `/social/account/claim/${claimTok}`);
+  eq('the claim page knows whose card it is', claimPeek.json.card.display_name, 'Eve Park');
+  eq('and that there is no sign-in yet', claimPeek.json.has_account, false);
+  eq('a short password is refused', (await req('POST', `/social/account/claim/${claimTok}`, { body: { email: 'eve@example.com', password: 'short' } })).status, 400);
+  const claimed = await req('POST', `/social/account/claim/${claimTok}`, { body: { email: 'Eve@Example.com', password: 'correct horse battery' } });
+  eq('claiming works', claimed.status, 200);
+  eq('the e-mail is stored lowercased', claimed.json.email, 'eve@example.com');
+  const setCookie = (claimed.headers['set-cookie'] || [])[0] || '';
+  ok('and signs the browser in with an HttpOnly cookie', /^tss=tss_/.test(setCookie) && /HttpOnly/i.test(setCookie));
+  let eveCookie = cookieOf(claimed);
+  eq('a claim link works once', (await req('POST', `/social/account/claim/${claimTok}`, { body: { email: 'x@example.com', password: 'another password' } })).status, 404);
+
+  const meWeb = await req('GET', '/social/account/me', { cookie: eveCookie });
+  eq('the cookie says who is signed in', meWeb.json.email, 'eve@example.com');
+  const cardWeb = await req('GET', '/social/profile/me', { cookie: eveCookie });
+  eq('and opens the very same card the install holds', cardWeb.json.profile.code, evePub.code);
+  ok('no password hash in any answer', !/s1\$/.test(cardWeb.raw + meWeb.raw + claimed.raw));
+  eq('status now reports a website sign-in', (await tool(eve, 'terse_social_status')).out.has_website_login, true);
+
+  eq('a wrong password is refused', (await req('POST', '/social/account/login', { body: { email: 'eve@example.com', password: 'nope nope nope' } })).status, 401);
+  eq('an unknown e-mail gets the same answer', (await req('POST', '/social/account/login', { body: { email: 'ghost@example.com', password: 'nope nope nope' } })).status, 401);
+  const login = await req('POST', '/social/account/login', { body: { email: 'EVE@example.com', password: 'correct horse battery' } });
+  eq('the right one signs in', login.status, 200);
+
+  await publishAs(finn, 'Finn Ode', { handle: `finn_${uniq}`, skills: ['Rust', 'go'], stack: ['tauri', 'docker'], location: 'berlin' });
+  const finnLink = (await req('POST', '/social/account/claim-link', { identity: finn, human: true })).json.url;
+  const finnTok = new URL(finnLink).searchParams.get('t');
+  eq('one e-mail cannot sign in to two cards', (await req('POST', `/social/account/claim/${finnTok}`, { body: { email: 'eve@example.com', password: 'finn password 1' } })).status, 409);
+
+  const reset = new URL((await tool(eve, 'terse_social_account_link')).out.url).searchParams.get('t');
+  eq('a second link for the same card is a reset', (await req('GET', `/social/account/claim/${reset}`)).json.has_account, true);
+  const resetDone = await req('POST', `/social/account/claim/${reset}`, { body: { email: 'eve@example.com', password: 'a brand new password' } });
+  eq('and resetting works', resetDone.json.reset, true);
+  eq('which signs every old browser out', (await req('GET', '/social/account/me', { cookie: eveCookie })).status, 401);
+  eveCookie = cookieOf(resetDone);
+  eq('the old password is dead', (await req('POST', '/social/account/login', { body: { email: 'eve@example.com', password: 'correct horse battery' } })).status, 401);
+
+  console.log('\n── the wall: an agent writes, the owner approves ──');
+  const agentPost = await tool(eve, 'terse_social_post', { body: 'Shipped a particle town that holds 60fps with 12M points.' });
+  eq('an agent post lands as a draft', agentPost.out.status, 'draft');
+  eq('and is not visible yet', agentPost.out.visible_to_others, false);
+  const wall0 = await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn });
+  eq('a draft is on nobody else\'s screen', wall0.json.posts.length, 0);
+  eq('the agent cannot approve its own draft', (await req('POST', `/social/posts/${agentPost.out.post_id}/publish`, { identity: eve })).status, 403);
+  eq('the agent cannot switch its posts to automatic', (await req('PATCH', '/social/profile/me', { identity: eve, body: { agent_post_mode: 'auto' } })).status, 403);
+  eq('status counts drafts waiting on the owner', (await tool(eve, 'terse_social_status')).out.draft_posts_waiting_for_owner, 1);
+  const approved = await req('POST', `/social/posts/${agentPost.out.post_id}/publish`, { cookie: eveCookie });
+  eq('the owner approves it from the website', approved.json.post.status, 'published');
+  eq('and it says an agent wrote it', approved.json.post.author_kind, 'agent');
+  eq('now it is on the wall', (await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn })).json.posts.length, 1);
+
+  const friendsOnly = await req('POST', '/social/posts', { cookie: eveCookie, body: { body: 'Friends only: looking for a WebGL reviewer.', visibility: 'friends' } });
+  eq('a human post goes straight out', friendsOnly.json.post.status, 'published');
+  eq('friends-only is hidden from a stranger', (await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn })).json.posts.length, 1);
+  eq('and a stranger cannot comment on it', (await req('POST', `/social/posts/${friendsOnly.json.post.id}/comments`, { identity: finn, body: { body: 'hi' } })).status, 404);
+  eq('illegal goods are refused', (await req('POST', '/social/posts', { cookie: eveCookie, body: { body: '出售仿真枪 货源充足' } })).status, 422);
+
+  await req('PATCH', '/social/profile/me', { cookie: eveCookie, body: { agent_post_mode: 'auto' } });
+  eq('once the owner says so, agent posts go straight out', (await tool(eve, 'terse_social_post', { body: 'Release notes are up.' })).out.status, 'published');
+
+  console.log('\n── agents that make friends ──');
+  const sugg = await tool(finn, 'terse_social_suggest', { limit: 30 });
+  const eveSugg = (sugg.out.suggestions || []).find((c) => c.code === evePub.code);
+  ok('suggestions find the person with the same stack', !!eveSugg);
+  ok('and say why', eveSugg && eveSugg.shared.map((x) => x.toLowerCase()).includes('rust'));
+  ok('without leaking an identity', !JSON.stringify(sugg.out).includes(eve));
+  const agentKnock = await tool(finn, 'terse_social_connect', { code: evePub.code, note: 'We both build on Tauri + Rust' });
+  eq('the agent sends the request', agentKnock.out.connection.status, 'pending');
+  eq('and it is marked as sent by an agent', agentKnock.out.connection.from_kind, 'agent');
+  ok('someone you already asked is not suggested again', !((await tool(finn, 'terse_social_suggest', { limit: 30 })).out.suggestions || []).some((c) => c.code === evePub.code));
+  const eveIncoming = (await req('GET', '/social/connections', { cookie: eveCookie })).json.connections.find((c) => c.id === agentKnock.out.connection.id);
+  eq('the owner sees who knocked, and that it was an agent', eveIncoming.from_kind, 'agent');
+  await req('POST', `/social/connections/${agentKnock.out.connection.id}/respond`, { cookie: eveCookie, body: { action: 'accept' } });
+  eq('once accepted, friends-only posts show up', (await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn })).json.posts.length, 3);
+  const feed = await tool(finn, 'terse_social_feed', {});
+  ok('and the friend\'s posts are in the feed', (feed.out.posts || []).some((x) => x.id === friendsOnly.json.post.id));
+  const like = await tool(finn, 'terse_social_like', { post_id: friendsOnly.json.post.id });
+  eq('a like counts', like.out.likes, 1);
+  eq('a second call unlikes', (await tool(finn, 'terse_social_like', { post_id: friendsOnly.json.post.id })).out.likes, 0);
+  const cmt = await tool(finn, 'terse_social_comment', { post_id: friendsOnly.json.post.id, body: 'Happy to review the shader side.' });
+  eq('a comment is labelled as the agent\'s', cmt.out.comment.author_kind, 'agent');
+  eq('and counted on the post', (await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn })).json.posts.find((x) => x.id === friendsOnly.json.post.id).comments, 1);
+  ok('the public feed carries public posts only', !((await req('GET', '/social/feed?scope=public')).json.posts || []).some((x) => x.visibility === 'friends'));
+
+  await publishAs(gus, 'Gus Lee');
+  const targets = [];
+  for (let i = 0; i < 21; i++) targets.push((await publishAs(id('t' + i), `Target ${i}`)).code);
+  let agentOk = 0;
+  for (let i = 0; i < 20; i++) if ((await tool(gus, 'terse_social_connect', { code: targets[i], note: 'hi' })).out.connection) agentOk++;
+  eq('an agent can send 20 requests a day', agentOk, 20);
+  const over = await tool(gus, 'terse_social_connect', { code: targets[20], note: 'hi' });
+  ok('the 21st is refused, and says why', /daily limit for agents/.test(over.out.error || ''));
+  const byHand = await req('POST', '/social/connect', { identity: gus, human: true, body: { code: targets[20], note: 'hello' } });
+  eq('the owner can still add people by hand', byHand.json.connection.from_kind, 'human');
+
+  console.log('\n── the activity log ──');
+  const act = (await req('GET', '/social/activity', { cookie: eveCookie })).json.activity;
+  ok('it shows the agent drafting a post', act.some((a) => a.action === 'post.draft' && a.actor === 'agent'));
+  ok('and the owner approving it', act.some((a) => a.action === 'post.approve' && a.actor === 'human'));
+  ok('and the friend accepted', act.some((a) => a.action === 'friend.accept'));
+
+  console.log('\n── going away takes everything with it ──');
+  await req('POST', '/social/profile/unpublish', { cookie: eveCookie });
+  eq('an unpublished card\'s wall is gone', (await req('GET', `/social/card/${evePub.code}/posts`, { identity: finn })).status, 404);
+  eq('and its posts are out of the feed', ((await req('GET', '/social/feed', { identity: finn })).json.posts || []).filter((x) => x.author && x.author.display_name === 'Eve Park').length, 0);
+  await req('DELETE', '/social/profile/me', { identity: eve });
+  eq('deleting the card deletes the sign-in', (await req('POST', '/social/account/login', { body: { email: 'eve@example.com', password: 'a brand new password' } })).status, 401);
+  eq('and the session with it', (await req('GET', '/social/account/me', { cookie: eveCookie })).status, 401);
+  await req('POST', '/social/account/logout', { cookie: login.headers['set-cookie'] ? cookieOf(login) : '' });
 
   console.log('\n── deleting ──');
   const del = await req('DELETE', '/social/profile/me', { identity: dana });

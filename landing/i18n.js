@@ -4185,7 +4185,7 @@
      and English visitors should not download 10 languages they will not read.
      A MutationObserver translates what the demos write, as they write it; it only
      runs while a non-English language is showing. */
-  var TT = {}, tLoading = {}, tpl = [], tplReady = false, mo = null, TVER = '4';
+  var TT = {}, tLoading = {}, tpl = [], tplReady = false, mo = null, TVER = '5';
   var TSKIP = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, CODE: 1, PRE: 1, KBD: 1, SAMP: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1, CANVAS: 1, svg: 1, SVG: 1, TEMPLATE: 1 };
   function skipped(el){
     return !el || el.nodeType !== 1 || !!(el.closest && el.closest('[data-i18n],[data-i18n-html],[data-no-i18n],code,pre,kbd,samp,svg,script,style,textarea,noscript'));

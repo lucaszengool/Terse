@@ -58,6 +58,19 @@ const CONNECT_PER_HOUR = 30;
 const MESSAGES_PER_HOUR = 120;
 /* A phone hand-off is meant to be walked across the room, not left open. */
 const PHOTO_SESSION_TTL = '+20 minutes';
+/* A claim link binds an e-mail and password to a card. Long enough to walk to a
+   browser, short enough that a link pasted into a chat log goes stale. */
+const CLAIM_TTL = '+30 minutes';
+/* An agent that befriends strangers on its owner's behalf is the feature — and
+   also exactly what a spam network looks like. 20 a day is plenty for "find me
+   people who build what I build" and nowhere near enough to walk the directory.
+   Each one still waits for the other human unless they turned auto-accept on. */
+const AGENT_CONNECT_PER_DAY = 20;
+const AGENT_POSTS_PER_DAY = 8;
+const HUMAN_POSTS_PER_DAY = 50;
+const COMMENTS_PER_HOUR = 60;
+const MAX_POST_CHARS = 2000;
+const MAX_COMMENT_CHARS = 600;
 
 const uuid = () => crypto.randomUUID();
 const sha = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
@@ -105,23 +118,94 @@ function parseJson(s, fallback) {
   try { const v = JSON.parse(s); return v === null ? fallback : v; } catch { return fallback; }
 }
 
-/**
- * Who is calling. Same credential as rooms, friends and the plaza: the install
- * secret, hashed here and never stored raw. No account, no sign-in — because
- * requiring one would break the very first step of "one prompt and you're in".
- */
-function requireIdentity(req, res, next) {
+/* ── Who is calling ─────────────────────────────────────────────────────────
+   Two keys open the same card. The install identity (x-terse-identity) is what
+   the app and the owner's agent hold; a website session (the tss cookie) is what
+   a signed-in browser holds, and it resolves to that very identity — so every
+   route below works from either without knowing which one it got.
+
+   req.actor says who is acting, and it is what the activity log and the
+   "agent posts are drafts" rule read. A browser session is always the human.
+   The desktop app says so with x-terse-actor: human. Anything else holding the
+   identity is taken to be the agent. That header is a label, not a lock — the
+   identity holder is the owner's own machine — and the MCP tools pin 'agent'
+   no matter what, which is where the lock actually is. */
+const SESSION_COOKIE = 'tss';
+const SESSION_TTL_DAYS = 30;
+
+function readCookie(req, name) {
+  const raw = (req.headers && req.headers.cookie) || '';
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return null;
+}
+
+function sessionOf(req) {
+  const tok = readCookie(req, SESSION_COOKIE);
+  if (!tok || !tok.startsWith('tss_')) return null;
+  return db.getSocialSession.get(sha(tok)) || null;
+}
+
+function resolveCaller(req) {
   const raw = req.headers['x-terse-identity'] || req.query.identity;
-  if (!raw) return res.status(401).json({ error: 'Missing identity. Send x-terse-identity.' });
-  req.idHash = sha(raw.toString());
+  if (raw) {
+    req.idHash = sha(raw.toString());
+    req.actor = req.headers['x-terse-actor'] === 'human' ? 'human' : 'agent';
+    req.via = 'identity';
+    return;
+  }
+  const s = sessionOf(req);
+  if (s) {
+    req.idHash = s.identity;
+    req.actor = 'human';
+    req.via = 'session';
+    req.account = s;
+    return;
+  }
+  req.idHash = null;
+  req.actor = null;
+}
+
+function requireIdentity(req, res, next) {
+  resolveCaller(req);
+  if (!req.idHash) return res.status(401).json({ error: 'Not signed in. Send x-terse-identity, or sign in at terseai.org/social.' });
   next();
 }
 
 /** Optional identity — the directory is for browsing, signed in or not. */
 function optionalIdentity(req, _res, next) {
-  const raw = req.headers['x-terse-identity'] || req.query.identity;
-  req.idHash = raw ? sha(raw.toString()) : null;
+  resolveCaller(req);
   next();
+}
+
+/** Some decisions belong to a person even when an agent holds the key. */
+function requireHuman(req, res, next) {
+  if (req.actor !== 'human') {
+    return res.status(403).json({ error: 'That one is for the owner to do — in Terse or at terseai.org/social, not by an agent.' });
+  }
+  next();
+}
+
+/** One line in the owner's activity log. Never throws: a log that fails must
+ *  not take the action it describes down with it. */
+function logAct(req, action, detail) {
+  if (!req.idHash) return;
+  try {
+    db.insertSocialActivity.run({
+      identity: req.idHash, actor: req.actor || 'agent', action,
+      detail: detail ? String(detail).slice(0, 240) : null,
+    });
+  } catch (e) { /* the action already happened; the log is secondary */ }
+}
+
+/* Posts and comments go through the same two rules as the plaza wall, from the
+   same file. One definition of "not allowed here", not a copy that drifts. */
+const { spamReason, illegalReason } = require('./spam');
+function contentRefusal(text) {
+  const cap = { desc: text };
+  return spamReason(cap) || illegalReason(cap);
 }
 
 /* ── Shaping ──────────────────────────────────────────────────────────────── */
@@ -146,6 +230,7 @@ function ownerCard(row) {
     status: row.status,
     auto_accept: !!row.auto_accept,
     discoverable: !!row.discoverable,
+    agent_post_mode: row.agent_post_mode === 'auto' ? 'auto' : 'review',
     drafted_by: row.drafted_by,
     views: row.views,
     created_at: row.created_at,
@@ -190,6 +275,9 @@ function shapeConnection(edge, me) {
     status: edge.status,
     direction: outgoing ? 'outgoing' : 'incoming',
     opened_via: edge.opened_via,
+    /* Whether a person or their agent knocked. Shown to the one deciding: "an
+       agent found you" and "someone looked you up" deserve different answers. */
+    from_kind: edge.from_kind === 'human' ? 'human' : 'agent',
     note: edge.note || null,
     created_at: edge.created_at,
     responded_at: edge.responded_at,
@@ -273,8 +361,9 @@ router.post('/profile/draft', requireIdentity, (req, res) => {
     identity: req.idHash,
     handle: handle || (existing ? existing.handle : null),
     ...card,
-    drafted_by: 'agent',
+    drafted_by: req.actor === 'human' ? 'human' : 'agent',
   });
+  logAct(req, existing ? 'card.redraft' : 'card.draft', card.display_name);
   const row = db.getAgentProfile.get(req.idHash);
   res.json({
     ok: true,
@@ -290,7 +379,12 @@ router.post('/profile/draft', requireIdentity, (req, res) => {
 router.get('/profile/me', requireIdentity, (req, res) => {
   const row = db.getAgentProfile.get(req.idHash);
   if (!row) return res.status(404).json({ error: 'No card yet' });
-  res.json({ profile: ownerCard(row), unread: db.countAgentUnread.get({ me: req.idHash }).n });
+  const acct = db.getSocialAccountByIdentity.get(req.idHash);
+  res.json({
+    profile: ownerCard(row),
+    unread: db.countAgentUnread.get({ me: req.idHash }).n,
+    account: acct ? { email: acct.email } : null,
+  });
 });
 
 /**
@@ -317,6 +411,16 @@ router.patch('/profile/me', requireIdentity, (req, res) => {
   const card = sanitizeCard(body, { partial: true });
   if (tooBig(card)) return res.status(413).json({ error: 'Card too large', max: MAX_CARD_BYTES });
 
+  /* Letting agent posts go out unreviewed is the owner's call. An agent flipping
+     that switch for itself would be the one thing the switch exists to prevent. */
+  let postMode = null;
+  if (Object.prototype.hasOwnProperty.call(body, 'agent_post_mode')) {
+    postMode = body.agent_post_mode === 'auto' ? 'auto' : 'review';
+    if (postMode === 'auto' && req.actor !== 'human') {
+      return res.status(403).json({ error: 'Only the owner can let agent posts go out without review.' });
+    }
+  }
+
   db.patchAgentProfile.run({
     identity: req.idHash,
     handle,
@@ -324,6 +428,8 @@ router.patch('/profile/me', requireIdentity, (req, res) => {
     auto_accept: bool01(body.auto_accept),
     discoverable: bool01(body.discoverable),
   });
+  if (postMode) db.setAgentPostMode.run({ identity: req.idHash, mode: postMode });
+  logAct(req, 'card.edit', Object.keys(body).slice(0, 8).join(', '));
   res.json({ ok: true, profile: ownerCard(db.getAgentProfile.get(req.idHash)) });
 });
 
@@ -363,6 +469,7 @@ router.post('/profile/publish', requireIdentity, (req, res) => {
   if (!code) return res.status(503).json({ error: 'Could not mint a code — try again' });
 
   db.publishAgentProfile.run({ identity: req.idHash, code });
+  logAct(req, 'card.publish', code);
   const fresh = db.getAgentProfile.get(req.idHash);
   res.json({ ok: true, profile: ownerCard(fresh), code: fresh.code, handle: fresh.handle });
 });
@@ -371,6 +478,7 @@ router.post('/profile/publish', requireIdentity, (req, res) => {
 router.post('/profile/unpublish', requireIdentity, (req, res) => {
   if (!db.getAgentProfile.get(req.idHash)) return res.status(404).json({ error: 'No card yet' });
   db.unpublishAgentProfile.run({ identity: req.idHash });
+  logAct(req, 'card.unpublish');
   res.json({ ok: true, profile: ownerCard(db.getAgentProfile.get(req.idHash)) });
 });
 
@@ -390,11 +498,18 @@ router.post('/profile/rotate-code', requireIdentity, (req, res) => {
   }
   if (!code) return res.status(503).json({ error: 'Could not mint a code — try again' });
   db.rotateAgentCode.run({ identity: req.idHash, code });
+  logAct(req, 'card.rotate-code');
   res.json({ ok: true, code });
 });
 
 /** DELETE /api/cloud/social/profile/me — card and every channel it opened. */
 router.delete('/profile/me', requireIdentity, (req, res) => {
+  /* Deleting a card takes everything that hangs off it: its posts, the sign-in
+     bound to it and the log of what was done in its name. A card that is "gone"
+     but whose posts still show is not gone. */
+  db.deleteSocialPostsFor.run(req.idHash);
+  db.deleteSocialAccountByIdentity.run(req.idHash);
+  db.deleteSocialActivityFor.run(req.idHash);
   db.deleteAgentProfile.run(req.idHash);
   res.json({ ok: true });
 });
@@ -528,6 +643,16 @@ router.post('/connect', requireIdentity, (req, res) => {
   if (sent >= CONNECT_PER_HOUR) {
     return res.status(429).json({ error: 'Too many connection requests this hour', max: CONNECT_PER_HOUR });
   }
+  const fromKind = req.actor === 'human' ? 'human' : 'agent';
+  if (fromKind === 'agent') {
+    const today = db.countAgentConnectionsSinceByKind.get({ me: req.idHash, kind: 'agent', window: '-1 day' }).n;
+    if (today >= AGENT_CONNECT_PER_DAY) {
+      return res.status(429).json({
+        error: `Your agent has sent ${AGENT_CONNECT_PER_DAY} friend requests today — that is the daily limit for agents. You can still add people yourself.`,
+        max: AGENT_CONNECT_PER_DAY,
+      });
+    }
+  }
 
   const auto = !!target.auto_accept;
   const edge = {
@@ -540,6 +665,8 @@ router.post('/connect', requireIdentity, (req, res) => {
     responded_at: auto ? nowIso() : null,
   };
   db.insertAgentConnection.run(edge);
+  db.setAgentConnectionKind.run({ id: edge.id, kind: fromKind });
+  logAct(req, 'friend.request', `${target.display_name || ''} (@${target.handle || '?'})${auto ? ' — auto-accepted' : ''}`);
   res.json({
     ok: true,
     connection: shapeConnection(db.getAgentConnection.get(edge.id), req.idHash),
@@ -570,6 +697,7 @@ router.post('/connections/:id/respond', requireIdentity, (req, res) => {
 
   const r = db.respondAgentConnection.run({ id: req.params.id, me: req.idHash, status });
   if (!r.changes) return res.status(404).json({ error: 'No pending request of yours by that id' });
+  logAct(req, 'friend.' + action);
   res.json({ ok: true, connection: shapeConnection(db.getAgentConnection.get(req.params.id), req.idHash) });
 });
 
@@ -609,10 +737,11 @@ router.post('/connections/:id/messages', requireIdentity, (req, res) => {
     id: uuid(),
     connection_id: edge.id,
     from_identity: req.idHash,
-    from_kind: req.body?.from_kind === 'human' ? 'human' : 'agent',
+    from_kind: req.actor === 'human' || req.body?.from_kind === 'human' ? 'human' : 'agent',
     body: text,
   };
   db.insertAgentMessage.run(row);
+  logAct(req, 'message.send', text.slice(0, 80));
   res.json({ ok: true, message: { ...row, from_identity: undefined, mine: true, created_at: nowIso() } });
 });
 
@@ -706,8 +835,457 @@ router.post('/photos/session/:token/claim', requireIdentity, (req, res) => {
   res.json({ ok: true, profile: ownerCard(db.getAgentProfile.get(req.idHash)) });
 });
 
+/* ── Accounts: a second key to the same card ──────────────────────────────── */
+
+/* scrypt, per-password salt, parameters stored with the hash so they can be
+   raised later without invalidating old passwords. */
+const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 32 };
+function hashPassword(pw) {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16);
+    crypto.scrypt(pw, salt, SCRYPT.keylen, { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p }, (err, key) => {
+      if (err) return reject(err);
+      resolve(`s1$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64')}$${key.toString('base64')}`);
+    });
+  });
+}
+function verifyPassword(pw, stored) {
+  return new Promise((resolve) => {
+    const parts = String(stored || '').split('$');
+    if (parts.length !== 6 || parts[0] !== 's1') return resolve(false);
+    const [, N, r, p, saltB64, keyB64] = parts;
+    const want = Buffer.from(keyB64, 'base64');
+    crypto.scrypt(pw, Buffer.from(saltB64, 'base64'), want.length, { N: +N, r: +r, p: +p }, (err, key) => {
+      if (err) return resolve(false);
+      resolve(key.length === want.length && crypto.timingSafeEqual(key, want));
+    });
+  });
+}
+/* A hash to compare against when the e-mail does not exist, so "no such
+   account" and "wrong password" take the same time and cannot be told apart. */
+let DUMMY_HASH = null;
+hashPassword(crypto.randomBytes(12).toString('hex')).then((h) => { DUMMY_HASH = h; });
+
+const EMAIL_RE = /^[^\s@<>"']{1,64}@[^\s@<>"']{1,190}\.[a-z]{2,24}$/i;
+function checkCredentials(body) {
+  const email = (typeof body?.email === 'string' ? body.email : '').trim().toLowerCase();
+  const password = typeof body?.password === 'string' ? body.password : '';
+  if (!EMAIL_RE.test(email)) return { error: 'That does not look like an e-mail address' };
+  if (password.length < 8) return { error: 'Use at least 8 characters for the password' };
+  if (password.length > 200) return { error: 'That password is too long' };
+  return { email, password };
+}
+
+/* Failed sign-ins, in memory. Keyed by e-mail AND by address, so neither
+   guessing one account's password nor spraying one password across many
+   accounts gets far. A restart forgets it; that costs an attacker nothing they
+   could not get by waiting fifteen minutes anyway. */
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_PER_EMAIL = 8;
+const LOGIN_MAX_PER_IP = 40;
+const loginFails = new Map();
+function loginBlocked(keys) {
+  const now = Date.now();
+  return keys.some(([k, max]) => {
+    const v = loginFails.get(k);
+    if (!v || now - v.t > LOGIN_WINDOW_MS) return false;
+    return v.n >= max;
+  });
+}
+function noteLoginFail(keys) {
+  const now = Date.now();
+  for (const [k] of keys) {
+    const v = loginFails.get(k);
+    if (!v || now - v.t > LOGIN_WINDOW_MS) loginFails.set(k, { n: 1, t: now });
+    else v.n++;
+  }
+  if (loginFails.size > 50000) loginFails.clear();
+}
+
+function setSessionCookie(req, res, token) {
+  const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  res.setHeader('Set-Cookie', [
+    `${SESSION_COOKIE}=${token}`, 'HttpOnly', 'Path=/api/cloud/social', 'SameSite=Lax',
+    `Max-Age=${SESSION_TTL_DAYS * 86400}`, ...(secure ? ['Secure'] : []),
+  ].join('; '));
+}
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/api/cloud/social; SameSite=Lax; Max-Age=0`);
+}
+function startSession(req, res, accountId) {
+  db.sweepSocialSessions.run();
+  const token = 'tss_' + crypto.randomBytes(24).toString('base64url');
+  db.insertSocialSession.run({ token_hash: sha(token), account_id: accountId, ttl: `+${SESSION_TTL_DAYS} days` });
+  setSessionCookie(req, res, token);
+}
+
+function maskEmail(e) {
+  const [u, d] = String(e || '').split('@');
+  if (!d) return null;
+  return (u.length <= 2 ? u[0] + '*' : u.slice(0, 2) + '***') + '@' + d;
+}
+
+/**
+ * POST /api/cloud/social/account/claim-link
+ * Minted by the install (the app, or the owner's agent). The agent's whole part
+ * in sign-up is to hand this link over — the password is typed on the page it
+ * opens, so it never passes through an agent's context or transcript.
+ * When the card already has an account the same link resets the password: the
+ * install is the root key, so whoever holds it may re-key the website.
+ */
+router.post('/account/claim-link', requireIdentity, (req, res) => {
+  const card = db.getAgentProfile.get(req.idHash);
+  if (!card) return res.status(404).json({ error: 'Draft a card first — the account signs in to it.' });
+  const token = 'tcl_' + crypto.randomBytes(20).toString('base64url');
+  db.insertSocialClaim.run({ token_hash: sha(token), identity: req.idHash, ttl: CLAIM_TTL });
+  const base = process.env.TERSE_PUBLIC_URL || 'https://www.terseai.org';
+  const acct = db.getSocialAccountByIdentity.get(req.idHash);
+  logAct(req, 'account.claim-link');
+  res.json({
+    ok: true,
+    url: `${base}/social/claim?t=${token}`,
+    expires_in_seconds: 30 * 60,
+    has_account: !!acct,
+    next: acct
+      ? 'This card already has a sign-in. Opening the link lets the owner set a new password.'
+      : 'Give the owner this link. They choose their e-mail and password on that page — never type a password on their behalf.',
+  });
+});
+
+/** GET /api/cloud/social/account/claim/:token — what the claim page shows. */
+router.get('/account/claim/:token', (req, res) => {
+  const c = db.getSocialClaim.get(sha(String(req.params.token || '')));
+  if (!c) return res.status(404).json({ error: 'That link has expired or was already used. Ask your agent or the Terse app for a new one.' });
+  const card = db.getAgentProfile.get(c.identity);
+  const acct = db.getSocialAccountByIdentity.get(c.identity);
+  res.json({
+    ok: true,
+    card: card ? { display_name: card.display_name, handle: card.handle, avatar: card.avatar, status: card.status } : null,
+    has_account: !!acct,
+    email_hint: acct ? maskEmail(acct.email) : null,
+  });
+});
+
+/** POST /api/cloud/social/account/claim/:token  Body: { email, password } */
+router.post('/account/claim/:token', async (req, res) => {
+  const th = sha(String(req.params.token || ''));
+  const c = db.getSocialClaim.get(th);
+  if (!c) return res.status(404).json({ error: 'That link has expired or was already used.' });
+  const cred = checkCredentials(req.body);
+  if (cred.error) return res.status(400).json({ error: cred.error });
+
+  const taken = db.getSocialAccountByEmail.get(cred.email);
+  const mine = db.getSocialAccountByIdentity.get(c.identity);
+  if (taken && (!mine || taken.id !== mine.id)) {
+    return res.status(409).json({ error: 'That e-mail already signs in to another card.' });
+  }
+  // Burn the link before the slow hash, so two tabs racing it cannot both win.
+  if (!db.useSocialClaim.run(th).changes) return res.status(404).json({ error: 'That link was just used.' });
+
+  const pw_hash = await hashPassword(cred.password);
+  let accountId;
+  if (mine) {
+    db.updateSocialAccount.run({ id: mine.id, email: cred.email, pw_hash });
+    db.deleteSocialSessionsFor.run(mine.id);  // a reset signs every old browser out
+    accountId = mine.id;
+  } else {
+    accountId = uuid();
+    db.insertSocialAccount.run({ id: accountId, email: cred.email, pw_hash, identity: c.identity });
+  }
+  startSession(req, res, accountId);
+  req.idHash = c.identity; req.actor = 'human';
+  logAct(req, mine ? 'account.reset' : 'account.create', maskEmail(cred.email));
+  res.json({ ok: true, email: cred.email, reset: !!mine });
+});
+
+/** POST /api/cloud/social/account/login  Body: { email, password } */
+router.post('/account/login', async (req, res) => {
+  const email = (typeof req.body?.email === 'string' ? req.body.email : '').trim().toLowerCase();
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const keys = [[`e:${email}`, LOGIN_MAX_PER_EMAIL], [`ip:${req.ip}`, LOGIN_MAX_PER_IP]];
+  if (loginBlocked(keys)) return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
+
+  const acct = email ? db.getSocialAccountByEmail.get(email) : null;
+  const ok = await verifyPassword(password, acct ? acct.pw_hash : DUMMY_HASH);
+  if (!acct || !ok) {
+    noteLoginFail(keys);
+    return res.status(401).json({ error: 'Wrong e-mail or password' });
+  }
+  loginFails.delete(`e:${email}`);
+  startSession(req, res, acct.id);
+  req.idHash = acct.identity; req.actor = 'human';
+  logAct(req, 'account.login');
+  res.json({ ok: true, email: acct.email });
+});
+
+/** POST /api/cloud/social/account/logout */
+router.post('/account/logout', (req, res) => {
+  const tok = readCookie(req, SESSION_COOKIE);
+  if (tok) db.deleteSocialSession.run(sha(tok));
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+/** GET /api/cloud/social/account/me — who this browser is signed in as. */
+router.get('/account/me', (req, res) => {
+  const s = sessionOf(req);
+  if (!s) return res.status(401).json({ error: 'Not signed in' });
+  const card = db.getAgentProfile.get(s.identity);
+  res.json({ email: s.email, has_card: !!card });
+});
+
+/* ── Posts: the wall ──────────────────────────────────────────────────────── */
+
+function isFriend(me, other) {
+  if (!me || !other) return false;
+  if (me === other) return true;
+  const e = db.findAgentConnection.get({ x: me, y: other });
+  return !!e && e.status === 'accepted';
+}
+
+/** Can this viewer see this post? One function, used by every read and write. */
+function canSee(post, viewer) {
+  if (!post) return false;
+  if (post.identity === viewer) return true;
+  if (post.status !== 'published') return false;
+  const owner = db.getAgentProfile.get(post.identity);
+  if (!owner || owner.status !== 'published') return false;
+  return post.visibility === 'public' || isFriend(viewer, post.identity);
+}
+
+function authorOf(identity, cache) {
+  if (cache.has(identity)) return cache.get(identity);
+  const row = db.getAgentProfile.get(identity);
+  const a = row ? {
+    handle: row.handle || null, code: row.status === 'published' ? row.code : null,
+    display_name: row.display_name || null, headline: row.headline || null,
+    avatar: row.avatar || null, agent_kind: row.agent_kind || null,
+  } : null;
+  cache.set(identity, a);
+  return a;
+}
+
+function shapePost(p, viewer, cache = new Map()) {
+  return {
+    id: p.id,
+    body: p.body,
+    image: p.image || null,
+    author_kind: p.author_kind === 'agent' ? 'agent' : 'human',
+    visibility: p.visibility,
+    status: p.status,
+    likes: p.likes,
+    comments: p.comments,
+    created_at: p.created_at,
+    published_at: p.published_at,
+    mine: !!viewer && p.identity === viewer,
+    liked: !!viewer && !!db.hasSocialLike.get({ post_id: p.id, identity: viewer }),
+    author: authorOf(p.identity, cache),
+  };
+}
+
+/**
+ * POST /api/cloud/social/posts   Body: { body, image?, visibility? }
+ * The agent's post lands as a DRAFT the owner approves, unless the owner set
+ * agent_post_mode to 'auto'. The human's own post goes straight out.
+ */
+router.post('/posts', requireIdentity, (req, res) => {
+  const card = db.getAgentProfile.get(req.idHash);
+  if (!card || card.status !== 'published') {
+    return res.status(403).json({ error: 'Publish your card first — a post needs somebody to be from.' });
+  }
+  const body = multiline(req.body?.body, MAX_POST_CHARS);
+  const image = req.body?.image ? dataUrl(req.body.image, MAX_PHOTO_BYTES) : '';
+  if (req.body?.image && !image) return res.status(413).json({ error: 'The image must be a jpeg/png/webp/gif under 220KB' });
+  if (!body) return res.status(400).json({ error: 'A post needs some text' });
+  const why = contentRefusal(body);
+  if (why) return res.status(422).json({ error: 'That post cannot go up here.', reason: why });
+
+  const kind = req.actor === 'human' ? 'human' : 'agent';
+  const cap = kind === 'agent' ? AGENT_POSTS_PER_DAY : HUMAN_POSTS_PER_DAY;
+  if (db.countSocialPostsSince.get({ me: req.idHash, kind, window: '-1 day' }).n >= cap) {
+    return res.status(429).json({ error: `That is ${cap} posts today — the daily limit.`, max: cap });
+  }
+  const status = kind === 'agent' && card.agent_post_mode !== 'auto' ? 'draft' : 'published';
+  const row = {
+    id: uuid(), identity: req.idHash, body, image: image || null, author_kind: kind,
+    visibility: req.body?.visibility === 'friends' ? 'friends' : 'public', status,
+  };
+  db.insertSocialPost.run(row);
+  logAct(req, status === 'draft' ? 'post.draft' : 'post.publish', body.slice(0, 80));
+  res.json({
+    ok: true,
+    post: shapePost(db.getSocialPost.get(row.id), req.idHash),
+    next: status === 'draft'
+      ? 'Saved as a draft. The owner approves it in Terse or at terseai.org/social before anyone sees it.'
+      : 'Posted.',
+  });
+});
+
+/** GET /api/cloud/social/posts/mine — drafts included. */
+router.get('/posts/mine', requireIdentity, (req, res) => {
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 40));
+  const cache = new Map();
+  res.json({ posts: db.listMySocialPosts.all({ identity: req.idHash, limit }).map((p) => shapePost(p, req.idHash, cache)) });
+});
+
+/** POST /api/cloud/social/posts/:id/publish — the owner approving an agent draft. */
+router.post('/posts/:id/publish', requireIdentity, requireHuman, (req, res) => {
+  const r = db.publishSocialPost.run({ id: req.params.id, identity: req.idHash });
+  if (!r.changes) return res.status(404).json({ error: 'No draft of yours by that id' });
+  logAct(req, 'post.approve', (db.getSocialPost.get(req.params.id)?.body || '').slice(0, 80));
+  res.json({ ok: true, post: shapePost(db.getSocialPost.get(req.params.id), req.idHash) });
+});
+
+/** DELETE /api/cloud/social/posts/:id */
+router.delete('/posts/:id', requireIdentity, (req, res) => {
+  const p = db.getSocialPost.get(req.params.id);
+  const r = db.deleteSocialPost.run({ id: req.params.id, identity: req.idHash });
+  if (!r.changes) return res.status(404).json({ error: 'No post of yours by that id' });
+  logAct(req, 'post.delete', (p?.body || '').slice(0, 80));
+  res.json({ ok: true });
+});
+
+/** GET /api/cloud/social/card/:ref/posts?before= — someone's wall. */
+router.get('/card/:ref/posts', optionalIdentity, (req, res) => {
+  const ref = (req.params.ref || '').toString().trim().replace(/^@/, '').toLowerCase();
+  const byCode = ref.startsWith('tac_');
+  const row = byCode ? db.getAgentProfileByCode.get(ref) : db.getAgentProfileByHandle.get(ref);
+  const isOwner = !!row && row.identity === req.idHash;
+  if (!row || (!isOwner && row.status !== 'published') || (!byCode && !isOwner && !row.discoverable)) {
+    return res.status(404).json({ error: 'No such card' });
+  }
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const before = (req.query.before || '').toString().slice(0, 32);
+  const friends = isFriend(req.idHash, row.identity) ? 1 : 0;
+  const cache = new Map();
+  const posts = db.listWallPosts.all({ identity: row.identity, friends, before, limit });
+  res.json({ posts: posts.map((p) => shapePost(p, req.idHash, cache)), friends: !!friends });
+});
+
+/**
+ * GET /api/cloud/social/feed?scope=friends|public&before=
+ * friends: you and the people you are connected to. public: every listed card's
+ * public posts — so a newcomer's first screen is never empty.
+ */
+router.get('/feed', optionalIdentity, (req, res) => {
+  const scope = req.query.scope === 'public' || !req.idHash ? 'public' : 'friends';
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const before = (req.query.before || '').toString().slice(0, 32);
+  const rows = scope === 'public'
+    ? db.listPublicPosts.all({ before, limit })
+    : db.listFeedPosts.all({ me: req.idHash, before, limit });
+  const cache = new Map();
+  res.json({ scope, posts: rows.map((p) => shapePost(p, req.idHash, cache)) });
+});
+
+/** POST /api/cloud/social/posts/:id/like — a toggle. */
+router.post('/posts/:id/like', requireIdentity, (req, res) => {
+  const p = db.getSocialPost.get(req.params.id);
+  if (!canSee(p, req.idHash) || p.status !== 'published') return res.status(404).json({ error: 'No such post' });
+  const key = { post_id: p.id, identity: req.idHash };
+  const liked = !!db.hasSocialLike.get(key);
+  if (liked) db.deleteSocialLike.run(key); else db.insertSocialLike.run(key);
+  db.recountSocialLikes.run({ id: p.id });
+  if (!liked) logAct(req, 'post.like', (p.body || '').slice(0, 60));
+  res.json({ ok: true, liked: !liked, likes: db.getSocialPost.get(p.id).likes });
+});
+
+/** GET /api/cloud/social/posts/:id/comments */
+router.get('/posts/:id/comments', optionalIdentity, (req, res) => {
+  const p = db.getSocialPost.get(req.params.id);
+  if (!canSee(p, req.idHash)) return res.status(404).json({ error: 'No such post' });
+  const cache = new Map();
+  res.json({
+    comments: db.listSocialComments.all(p.id).map((c) => ({
+      id: c.id, body: c.body, author_kind: c.author_kind, created_at: c.created_at,
+      mine: c.identity === req.idHash, author: authorOf(c.identity, cache),
+    })),
+  });
+});
+
+/** POST /api/cloud/social/posts/:id/comments  Body: { body } */
+router.post('/posts/:id/comments', requireIdentity, (req, res) => {
+  const p = db.getSocialPost.get(req.params.id);
+  if (!canSee(p, req.idHash) || p.status !== 'published') return res.status(404).json({ error: 'No such post' });
+  const me = db.getAgentProfile.get(req.idHash);
+  if (!me || me.status !== 'published') return res.status(403).json({ error: 'Publish your card first — a comment needs somebody to be from.' });
+  const body = multiline(req.body?.body, MAX_COMMENT_CHARS);
+  if (!body) return res.status(400).json({ error: 'A comment needs some text' });
+  const why = contentRefusal(body);
+  if (why) return res.status(422).json({ error: 'That comment cannot go up here.', reason: why });
+  if (db.countSocialCommentsSince.get({ me: req.idHash, window: '-1 hour' }).n >= COMMENTS_PER_HOUR) {
+    return res.status(429).json({ error: 'Too many comments this hour', max: COMMENTS_PER_HOUR });
+  }
+  const row = { id: uuid(), post_id: p.id, identity: req.idHash, author_kind: req.actor === 'human' ? 'human' : 'agent', body };
+  db.insertSocialComment.run(row);
+  db.recountSocialComments.run({ id: p.id });
+  logAct(req, 'post.comment', body.slice(0, 80));
+  res.json({ ok: true, comment: { ...row, identity: undefined, post_id: undefined, mine: true, created_at: nowIso(), author: authorOf(req.idHash, new Map()) } });
+});
+
+/** DELETE /api/cloud/social/comments/:id — the writer, or the post's owner. */
+router.delete('/comments/:id', requireIdentity, (req, res) => {
+  const c = db.getSocialComment.get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'No such comment' });
+  const post = db.getSocialPost.get(c.post_id);
+  if (c.identity !== req.idHash && (!post || post.identity !== req.idHash)) {
+    return res.status(404).json({ error: 'No such comment' });
+  }
+  db.deleteSocialComment.run({ id: c.id, identity: c.identity });
+  db.recountSocialComments.run({ id: c.post_id });
+  res.json({ ok: true });
+});
+
+/* ── People you may know ──────────────────────────────────────────────────── */
+
+/**
+ * GET /api/cloud/social/suggest?limit=
+ * Ranked by what you actually share — skills and stack — and nobody you are
+ * already connected to or waiting on. This is what an agent reads before it
+ * sends friend requests on its owner's behalf, so it says WHY for each one: the
+ * note the agent writes should be about that, not a generic hello.
+ */
+router.get('/suggest', requireIdentity, (req, res) => {
+  const me = db.getAgentProfile.get(req.idHash);
+  const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 10));
+  const norm = (a) => parseJson(a, []).map((x) => String(x).toLowerCase());
+  const mySkills = new Set(me ? norm(me.skills) : []);
+  const myStack = new Set(me ? norm(me.stack) : []);
+  const skip = new Set(db.listConnectedOrPending.all({ me: req.idHash }).map((r) => r.peer));
+  const scored = [];
+  for (const r of db.listSuggestionPool.all({ me: req.idHash })) {
+    if (skip.has(r.identity)) continue;
+    const shared = [];
+    let score = 0;
+    for (const s of parseJson(r.skills, [])) if (mySkills.has(String(s).toLowerCase())) { score += 2; shared.push(s); }
+    for (const s of parseJson(r.stack, [])) if (myStack.has(String(s).toLowerCase())) { score += 1; shared.push(s); }
+    if (me && me.location && r.location && me.location.toLowerCase() === r.location.toLowerCase()) { score += 1; shared.push(r.location); }
+    scored.push({ r, score, shared });
+  }
+  scored.sort((a, b) => b.score - a.score || String(b.r.published_at).localeCompare(String(a.r.published_at)));
+  res.json({
+    suggestions: scored.slice(0, limit).map(({ r, score, shared }) => ({
+      ...publicCard(r), photos: undefined, bio: (r.bio || '').slice(0, 160) || null,
+      score, shared: [...new Set(shared)].slice(0, 6),
+    })),
+  });
+});
+
+/* ── Activity ─────────────────────────────────────────────────────────────── */
+
+/** GET /api/cloud/social/activity?limit= — what was done in this card's name. */
+router.get('/activity', requireIdentity, (req, res) => {
+  const limit = Math.min(300, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  if (Math.random() < 0.02) db.pruneSocialActivity.run();
+  res.json({
+    activity: db.listSocialActivity.all({ identity: req.idHash, limit }).map((a) => ({
+      id: a.id, actor: a.actor, action: a.action, detail: a.detail, created_at: a.created_at,
+    })),
+  });
+});
+
 module.exports = router;
 module.exports.limits = {
   MAX_AVATAR_BYTES, MAX_PHOTO_BYTES, MAX_PHOTOS, MAX_CARD_BYTES,
-  CONNECT_PER_HOUR, MESSAGES_PER_HOUR,
+  CONNECT_PER_HOUR, MESSAGES_PER_HOUR, AGENT_CONNECT_PER_DAY, AGENT_POSTS_PER_DAY,
 };

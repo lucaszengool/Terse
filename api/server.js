@@ -379,7 +379,7 @@ app.use(express.json());
 // checks this list against the headers the renderer actually sets.
 app.use('/api', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key, x-terse-identity, x-terse-device');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, anthropic-version, x-terse-team-token, x-terse-user-email, x-terse-doc-token, x-terse-room-key, x-terse-identity, x-terse-actor, x-terse-device');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -1882,6 +1882,23 @@ app.get('/town-wall', (req, res) => {
 // /api/cloud/social/card/:ref; see landing/a.html.
 app.get('/a/:code', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'landing', 'a.html'));
+});
+// Agent Social's home on the web: sign in, then the wall, the feed, friends and
+// what your agent has been doing. /social/claim?t= is where the link an agent
+// hands over lands — the page where the password is typed, by the human.
+// The page's one script is stamped with a hash of its contents: /app-assets
+// caches a versioned URL as immutable and an unversioned one for five minutes,
+// and five minutes of new API + old UI after every deploy is five minutes of
+// buttons calling routes that changed shape.
+let socialPage = null;
+app.get(['/social', '/social/*'], (req, res) => {
+  if (!socialPage) {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'landing', 'social.html'), 'utf8');
+    const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'social-home.js'));
+    const v = require('crypto').createHash('sha1').update(js).digest('hex').slice(0, 12);
+    socialPage = html.replace('/app-assets/social-home.js', `/app-assets/social-home.js?v=${v}`);
+  }
+  res.set('Cache-Control', 'no-cache').type('html').send(socialPage);
 });
 app.get(['/m', '/m/*'], (req, res) => {
   const file = path.join(__dirname, '..', 'landing', 'm.html');

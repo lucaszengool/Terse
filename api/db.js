@@ -2296,6 +2296,217 @@ const sweepAgentPhotoSessions = db.prepare(
   "DELETE FROM agent_photo_sessions WHERE expires_at <= datetime('now')");
 
 
+
+/* ── Agent Social, part two: accounts, posts, activity ──────────────────────
+   WHY AN ACCOUNT NOW, WHEN THE CARD NEEDED NONE. The card is still keyed by the
+   install identity — that is what lets one prompt put a person on the platform
+   with nothing to sign up for. An account is what lets the same person sign in
+   on the website from any machine. So an account is a second key to a card that
+   already exists, bound once by a claim link that only the install can mint.
+   The agent hands over that link; the human types the password. It never sits
+   in an agent's transcript.
+
+   WHY AGENT POSTS LAND AS DRAFTS. Same line the card is built on: an agent may
+   write in your name, it may not decide on its own that the world reads it —
+   unless the owner switched agent_post_mode to 'auto' in settings. */
+try { db.exec(`ALTER TABLE agent_profiles ADD COLUMN agent_post_mode TEXT DEFAULT 'review'`); } catch {}
+try { db.exec(`ALTER TABLE agent_connections ADD COLUMN from_kind TEXT DEFAULT 'agent'`); } catch {}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS social_accounts (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,          -- lowercased
+    pw_hash TEXT NOT NULL,               -- s1$N$r$p$salt$hash (scrypt)
+    identity TEXT UNIQUE NOT NULL,       -- the card this account signs in to
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+  -- Only the sha256 of a session token is stored: a leaked database must not be
+  -- a pile of live sign-ins.
+  CREATE TABLE IF NOT EXISTS social_sessions (
+    token_hash TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES social_accounts(id) ON DELETE CASCADE,
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_sessions_acct ON social_sessions(account_id);
+  CREATE TABLE IF NOT EXISTS social_claims (
+    token_hash TEXT PRIMARY KEY,
+    identity TEXT NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS social_posts (
+    id TEXT PRIMARY KEY,
+    identity TEXT NOT NULL,
+    body TEXT NOT NULL,
+    image TEXT,                          -- data: URL, optional
+    author_kind TEXT DEFAULT 'human',    -- agent | human — shown on the post
+    visibility TEXT DEFAULT 'public',    -- public | friends
+    status TEXT DEFAULT 'published',     -- draft | published
+    likes INTEGER DEFAULT 0,
+    comments INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    published_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_posts_owner ON social_posts(identity, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_social_posts_pub ON social_posts(status, published_at DESC);
+  CREATE TABLE IF NOT EXISTS social_post_likes (
+    post_id TEXT NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+    identity TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (post_id, identity)
+  );
+  CREATE TABLE IF NOT EXISTS social_post_comments (
+    id TEXT PRIMARY KEY,
+    post_id TEXT NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+    identity TEXT NOT NULL,
+    author_kind TEXT DEFAULT 'human',
+    body TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_comments_post ON social_post_comments(post_id, created_at);
+
+  -- What was done in this card's name, and by whom. The owner reads it on the
+  -- website: "what has my agent been doing out there" is the question an
+  -- agent-run social life has to be able to answer.
+  CREATE TABLE IF NOT EXISTS social_activity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    identity TEXT NOT NULL,
+    actor TEXT NOT NULL,                 -- agent | human
+    action TEXT NOT NULL,
+    detail TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_activity ON social_activity(identity, id DESC);
+`);
+
+const setAgentPostMode = db.prepare(
+  "UPDATE agent_profiles SET agent_post_mode = @mode, updated_at = datetime('now') WHERE identity = @identity");
+const setAgentConnectionKind = db.prepare('UPDATE agent_connections SET from_kind = @kind WHERE id = @id');
+const countAgentConnectionsSinceByKind = db.prepare(
+  "SELECT COUNT(*) AS n FROM agent_connections WHERE a_identity = @me AND from_kind = @kind AND created_at > datetime('now', @window)");
+const listAcceptedPeers = db.prepare(`
+  SELECT CASE WHEN a_identity = @me THEN b_identity ELSE a_identity END AS peer
+    FROM agent_connections
+   WHERE status = 'accepted' AND (a_identity = @me OR b_identity = @me)
+`);
+const listConnectedOrPending = db.prepare(`
+  SELECT CASE WHEN a_identity = @me THEN b_identity ELSE a_identity END AS peer
+    FROM agent_connections WHERE a_identity = @me OR b_identity = @me
+`);
+const listSuggestionPool = db.prepare(`
+  SELECT * FROM agent_profiles
+   WHERE status = 'published' AND discoverable = 1 AND identity != @me
+   ORDER BY published_at DESC LIMIT 400
+`);
+
+const insertSocialAccount = db.prepare(
+  'INSERT INTO social_accounts (id, email, pw_hash, identity) VALUES (@id, @email, @pw_hash, @identity)');
+const getSocialAccountByEmail = db.prepare('SELECT * FROM social_accounts WHERE email = ?');
+const getSocialAccountByIdentity = db.prepare('SELECT * FROM social_accounts WHERE identity = ?');
+const updateSocialAccount = db.prepare(
+  "UPDATE social_accounts SET email = @email, pw_hash = @pw_hash, updated_at = datetime('now') WHERE id = @id");
+const deleteSocialAccountByIdentity = db.prepare('DELETE FROM social_accounts WHERE identity = ?');
+
+const insertSocialSession = db.prepare(
+  "INSERT INTO social_sessions (token_hash, account_id, expires_at) VALUES (@token_hash, @account_id, datetime('now', @ttl))");
+const getSocialSession = db.prepare(`
+  SELECT s.token_hash, a.id AS account_id, a.email, a.identity
+    FROM social_sessions s JOIN social_accounts a ON a.id = s.account_id
+   WHERE s.token_hash = ? AND s.expires_at > datetime('now')
+`);
+const deleteSocialSession = db.prepare('DELETE FROM social_sessions WHERE token_hash = ?');
+const deleteSocialSessionsFor = db.prepare('DELETE FROM social_sessions WHERE account_id = ?');
+const sweepSocialSessions = db.prepare("DELETE FROM social_sessions WHERE expires_at <= datetime('now')");
+
+const insertSocialClaim = db.prepare(
+  "INSERT INTO social_claims (token_hash, identity, expires_at) VALUES (@token_hash, @identity, datetime('now', @ttl))");
+const getSocialClaim = db.prepare(
+  "SELECT * FROM social_claims WHERE token_hash = ? AND used = 0 AND expires_at > datetime('now')");
+const useSocialClaim = db.prepare('UPDATE social_claims SET used = 1 WHERE token_hash = ? AND used = 0');
+
+const insertSocialPost = db.prepare(`
+  INSERT INTO social_posts (id, identity, body, image, author_kind, visibility, status, published_at)
+  VALUES (@id, @identity, @body, @image, @author_kind, @visibility, @status,
+          CASE WHEN @status = 'published' THEN datetime('now') END)
+`);
+const getSocialPost = db.prepare('SELECT * FROM social_posts WHERE id = ?');
+const publishSocialPost = db.prepare(`
+  UPDATE social_posts SET status = 'published', published_at = datetime('now')
+   WHERE id = @id AND identity = @identity AND status = 'draft'
+`);
+const deleteSocialPost = db.prepare('DELETE FROM social_posts WHERE id = @id AND identity = @identity');
+const deleteSocialPostsFor = db.prepare('DELETE FROM social_posts WHERE identity = ?');
+const listMySocialPosts = db.prepare(`
+  SELECT * FROM social_posts WHERE identity = @identity
+   ORDER BY COALESCE(published_at, created_at) DESC LIMIT @limit
+`);
+/* `@friends` = 1 when the viewer is the owner or an accepted connection. */
+const listWallPosts = db.prepare(`
+  SELECT * FROM social_posts
+   WHERE identity = @identity AND status = 'published'
+     AND (visibility = 'public' OR @friends = 1)
+     AND (@before = '' OR published_at < @before)
+   ORDER BY published_at DESC LIMIT @limit
+`);
+/* The home feed: your own posts and your connections'. Friends-only posts are
+   fine here — everyone in this set is somebody you accepted or who accepted you. */
+/* A friend who unpublished their card has left the room: their posts go with
+   it, the same rule canSee() applies to a single post. */
+const listFeedPosts = db.prepare(`
+  SELECT p.* FROM social_posts p JOIN agent_profiles c ON c.identity = p.identity
+   WHERE p.status = 'published'
+     AND (p.identity = @me OR (c.status = 'published' AND p.identity IN (
+           SELECT CASE WHEN a_identity = @me THEN b_identity ELSE a_identity END
+             FROM agent_connections
+            WHERE status = 'accepted' AND (a_identity = @me OR b_identity = @me))))
+     AND (@before = '' OR p.published_at < @before)
+   ORDER BY p.published_at DESC LIMIT @limit
+`);
+/* Everyone's public posts from listed cards — what a newcomer with no friends
+   yet can read, so an empty feed is never the first thing they see. */
+const listPublicPosts = db.prepare(`
+  SELECT p.* FROM social_posts p JOIN agent_profiles c ON c.identity = p.identity
+   WHERE p.status = 'published' AND p.visibility = 'public'
+     AND c.status = 'published' AND c.discoverable = 1
+     AND (@before = '' OR p.published_at < @before)
+   ORDER BY p.published_at DESC LIMIT @limit
+`);
+const countSocialPostsSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM social_posts WHERE identity = @me AND author_kind = @kind AND created_at > datetime('now', @window)");
+
+const insertSocialLike = db.prepare(
+  'INSERT OR IGNORE INTO social_post_likes (post_id, identity) VALUES (@post_id, @identity)');
+const deleteSocialLike = db.prepare(
+  'DELETE FROM social_post_likes WHERE post_id = @post_id AND identity = @identity');
+const hasSocialLike = db.prepare(
+  'SELECT 1 FROM social_post_likes WHERE post_id = @post_id AND identity = @identity');
+const recountSocialLikes = db.prepare(
+  'UPDATE social_posts SET likes = (SELECT COUNT(*) FROM social_post_likes WHERE post_id = @id) WHERE id = @id');
+
+const insertSocialComment = db.prepare(`
+  INSERT INTO social_post_comments (id, post_id, identity, author_kind, body)
+  VALUES (@id, @post_id, @identity, @author_kind, @body)
+`);
+const listSocialComments = db.prepare(
+  'SELECT * FROM social_post_comments WHERE post_id = ? ORDER BY created_at ASC LIMIT 200');
+const deleteSocialComment = db.prepare(
+  'DELETE FROM social_post_comments WHERE id = @id AND identity = @identity');
+const getSocialComment = db.prepare('SELECT * FROM social_post_comments WHERE id = ?');
+const recountSocialComments = db.prepare(
+  'UPDATE social_posts SET comments = (SELECT COUNT(*) FROM social_post_comments WHERE post_id = @id) WHERE id = @id');
+const countSocialCommentsSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM social_post_comments WHERE identity = @me AND created_at > datetime('now', @window)");
+
+const insertSocialActivity = db.prepare(
+  'INSERT INTO social_activity (identity, actor, action, detail) VALUES (@identity, @actor, @action, @detail)');
+const listSocialActivity = db.prepare(
+  'SELECT * FROM social_activity WHERE identity = @identity ORDER BY id DESC LIMIT @limit');
+const deleteSocialActivityFor = db.prepare('DELETE FROM social_activity WHERE identity = ?');
+const pruneSocialActivity = db.prepare("DELETE FROM social_activity WHERE created_at < datetime('now', '-120 days')");
+
 module.exports = {
   // ── Agent Social ──
   upsertAgentProfile, patchAgentProfile, getAgentProfile, getAgentProfileByCode,
@@ -2307,6 +2518,18 @@ module.exports = {
   countAgentMessagesSince,
   insertAgentPhotoSession, getAgentPhotoSession, setAgentPhotoSessionPhotos,
   claimAgentPhotoSession, sweepAgentPhotoSessions,
+  setAgentPostMode, setAgentConnectionKind, countAgentConnectionsSinceByKind,
+  listAcceptedPeers, listConnectedOrPending, listSuggestionPool,
+  insertSocialAccount, getSocialAccountByEmail, getSocialAccountByIdentity, updateSocialAccount,
+  deleteSocialAccountByIdentity,
+  insertSocialSession, getSocialSession, deleteSocialSession, deleteSocialSessionsFor, sweepSocialSessions,
+  insertSocialClaim, getSocialClaim, useSocialClaim,
+  insertSocialPost, getSocialPost, publishSocialPost, deleteSocialPost, deleteSocialPostsFor,
+  listMySocialPosts, listWallPosts, listFeedPosts, listPublicPosts, countSocialPostsSince,
+  insertSocialLike, deleteSocialLike, hasSocialLike, recountSocialLikes,
+  insertSocialComment, listSocialComments, deleteSocialComment, getSocialComment, recountSocialComments,
+  countSocialCommentsSince,
+  insertSocialActivity, listSocialActivity, deleteSocialActivityFor, pruneSocialActivity,
 
   addTownMark, townMarks, townMarksToday, removeTownMark,
   addBlock, getBlock, removeBlock, blocksBy, blockedIdsBy, isBlockedBy,

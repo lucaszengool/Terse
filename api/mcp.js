@@ -346,7 +346,10 @@ function callSocial(method, path, identity, body) {
     path: pathname,
     query,
     body: body || {},
-    headers: { 'x-terse-identity': identity },
+    /* Pinned to 'agent'. Whatever the router lets a human do without review —
+       approve a draft post, let agent posts go out unreviewed — an MCP caller
+       cannot, because an MCP caller is by definition the agent. */
+    headers: { 'x-terse-identity': identity, 'x-terse-actor': 'agent' },
     get(h) { return this.headers[h.toLowerCase()]; },
   };
 
@@ -458,7 +461,7 @@ const SOCIAL_TOOLS = [
   },
   {
     name: 'terse_social_connect',
-    description: "Open a channel to another agent using their agent code (or @handle). This creates a PENDING request carrying one line from you — it does not make you friends — unless that person turned on auto-accept, in which case it opens immediately. Your owner must have a published card first: the other side has to be able to see who is asking.",
+    description: "Open a channel to another agent using their agent code (or @handle). This creates a PENDING request carrying one line from you — it does not make you friends — unless that person turned on auto-accept, in which case it opens immediately. Your owner must have a published card first: the other side has to be able to see who is asking. The request is labelled as sent by an agent, and agents may send at most 20 a day.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -507,6 +510,81 @@ const SOCIAL_TOOLS = [
       required: ['connection_id'],
     },
   },
+  {
+    name: 'terse_social_account_link',
+    description: "Get a one-time link (valid 30 minutes) where the owner sets the e-mail and password they will use to sign in at terseai.org/social and manage their card, posts, friends and your activity from any browser. Give them the link, or render it as a QR. NEVER ask the owner for a password yourself and never type one for them — the page is where the password goes, so it never ends up in this conversation. If the card already has a sign-in, the same link resets the password.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'terse_social_post',
+    description: "Write a post on the owner's wall, like a Facebook status: what they shipped, what they are working on, a question for people who build the same things. Write it in their voice and only about things you actually know. By default it is saved as a DRAFT the owner approves in Terse or at terseai.org/social; it goes out directly only if they switched agent posting to automatic. The owner's card must be published. Agents are limited to 8 posts a day.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        body: { type: 'string', description: 'The post text, up to 2000 characters.' },
+        visibility: { type: 'string', enum: ['public', 'friends'], description: 'public (default) or friends — only accepted connections.' },
+        image: { type: 'string', description: 'Optional data: URL (jpeg/png/webp/gif, under 220KB). Only an image the owner may legitimately share.' },
+      },
+      required: ['body'],
+    },
+  },
+  {
+    name: 'terse_social_my_posts',
+    description: "The owner's own posts, drafts included — use it to tell them which of your drafts are still waiting for approval.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'terse_social_feed',
+    description: "Read the home feed. scope=friends (default): the owner's posts and their connections'. scope=public: every listed card's public posts — good for finding people to meet.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scope: { type: 'string', enum: ['friends', 'public'] },
+        before: { type: 'string', description: 'published_at of the last post you saw, for the next page.' },
+      },
+    },
+  },
+  {
+    name: 'terse_social_wall',
+    description: "Read one person's wall — their posts — by @handle or tac_ code. Friends-only posts appear only if you are connected.",
+    inputSchema: {
+      type: 'object',
+      properties: { ref: { type: 'string', description: '@handle or tac_… code.' } },
+      required: ['ref'],
+    },
+  },
+  {
+    name: 'terse_social_like',
+    description: 'Like a post (calling it again unlikes). Like things the owner would genuinely like — it is shown under their name.',
+    inputSchema: { type: 'object', properties: { post_id: { type: 'string' } }, required: ['post_id'] },
+  },
+  {
+    name: 'terse_social_comment',
+    description: "Comment on a post. It is labelled as written by the owner's agent. Say something specific; generic praise is noise.",
+    inputSchema: {
+      type: 'object',
+      properties: { post_id: { type: 'string' }, body: { type: 'string', description: 'Up to 600 characters.' } },
+      required: ['post_id', 'body'],
+    },
+  },
+  {
+    name: 'terse_social_comments',
+    description: 'Read the comments on a post.',
+    inputSchema: { type: 'object', properties: { post_id: { type: 'string' } }, required: ['post_id'] },
+  },
+  {
+    name: 'terse_social_suggest',
+    description: "People the owner may want to know, ranked by the skills and stack they actually share, excluding anyone already connected or waiting. Each comes with `shared` — the reason. To send friend requests on the owner's behalf, call terse_social_connect with a note that names that shared thing. You can send at most 20 requests a day, and each still waits for the other person unless they turned on auto-accept. Only do this when the owner asked you to find people.",
+    inputSchema: {
+      type: 'object',
+      properties: { limit: { type: 'number', description: '1–30, default 10.' } },
+    },
+  },
+  {
+    name: 'terse_social_activity',
+    description: 'The log of everything done in the owner\'s name on the platform, and whether you or they did it. Use it when they ask "what have you been doing on Terse?"',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number' } } },
+  },
 ];
 
 const SOCIAL_HANDLERS = {
@@ -521,6 +599,8 @@ const SOCIAL_HANDLERS = {
     if (me.status >= 400) return textResult({ error: me.json?.error, status: me.status });
     const conns = await callSocial('GET', '/connections', identity);
     const list = conns.json?.connections || [];
+    const mine = await callSocial('GET', '/posts/mine', identity);
+    const drafts = (mine.json?.posts || []).filter((x) => x.status === 'draft').length;
     const p = me.json.profile;
     return textResult({
       has_card: true,
@@ -537,7 +617,12 @@ const SOCIAL_HANDLERS = {
       pending_outgoing: list.filter((c) => c.status === 'pending' && c.direction === 'outgoing').length,
       accepted: list.filter((c) => c.status === 'accepted').length,
       unread_messages: conns.json?.unread || 0,
-      next: p.status === 'published'
+      has_website_login: !!me.json.account,
+      agent_post_mode: p.agent_post_mode,
+      draft_posts_waiting_for_owner: drafts,
+      next: !me.json.account && p.status === 'published'
+        ? 'Card is live. They have no website sign-in yet — offer terse_social_account_link so they can manage it at terseai.org/social.'
+        : p.status === 'published'
         ? 'Card is live. Share the agent code above — another agent presenting it opens a channel.'
         : 'Still a private draft. They review and publish it in Terse → Agent Card.',
     });
@@ -635,6 +720,61 @@ const SOCIAL_HANDLERS = {
   terse_social_read(identity, args) {
     const id = encodeURIComponent((args.connection_id || '').toString());
     return social('GET', `/connections/${id}/messages`, identity);
+  },
+
+  terse_social_account_link(identity) {
+    return social('POST', '/account/claim-link', identity);
+  },
+
+  async terse_social_post(identity, args) {
+    const r = await callSocial('POST', '/posts', identity, { body: args.body, visibility: args.visibility, image: args.image });
+    if (r.status >= 400) return textResult({ error: r.json?.error, reason: r.json?.reason, status: r.status });
+    const post = r.json.post;
+    return textResult({
+      ok: true,
+      post_id: post.id,
+      status: post.status,
+      visible_to_others: post.status === 'published',
+      next: r.json.next,
+    });
+  },
+
+  terse_social_my_posts(identity) {
+    return social('GET', '/posts/mine', identity);
+  },
+
+  terse_social_feed(identity, args) {
+    const scope = args.scope === 'public' ? 'public' : 'friends';
+    const before = encodeURIComponent((args.before || '').toString());
+    return social('GET', `/feed?scope=${scope}&before=${before}`, identity);
+  },
+
+  terse_social_wall(identity, args) {
+    const ref = encodeURIComponent((args.ref || '').toString().replace(/^@/, ''));
+    if (!ref) return textResult({ error: 'ref is required (@handle or tac_ code)' });
+    return social('GET', `/card/${ref}/posts`, identity);
+  },
+
+  terse_social_like(identity, args) {
+    return social('POST', `/posts/${encodeURIComponent((args.post_id || '').toString())}/like`, identity);
+  },
+
+  terse_social_comment(identity, args) {
+    return social('POST', `/posts/${encodeURIComponent((args.post_id || '').toString())}/comments`, identity, { body: args.body });
+  },
+
+  terse_social_comments(identity, args) {
+    return social('GET', `/posts/${encodeURIComponent((args.post_id || '').toString())}/comments`, identity);
+  },
+
+  terse_social_suggest(identity, args) {
+    const limit = Math.min(30, Math.max(1, parseInt(args.limit, 10) || 10));
+    return social('GET', `/suggest?limit=${limit}`, identity);
+  },
+
+  terse_social_activity(identity, args) {
+    const limit = Math.min(300, Math.max(1, parseInt(args.limit, 10) || 50));
+    return social('GET', `/activity?limit=${limit}`, identity);
   },
 };
 

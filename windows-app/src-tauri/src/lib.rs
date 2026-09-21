@@ -3215,6 +3215,62 @@ fn clear_ghost_titlebar(win: &tauri::WebviewWindow) {
     NUDGING.store(false, Ordering::SeqCst);
 }
 
+/// Keep the native frame off a window for good, by vetoing it at the source.
+///
+/// Every earlier fix stripped the caption AFTER it was drawn — on setup, on
+/// focus, on resize — and flushed the ghost it left. frame-strip.log showed why
+/// that never ended: tao re-applies WS_CAPTION | WS_SYSMENU | min/max on every
+/// show(), and a window shown WITHOUT focus (the island, toasts, dashboards, the
+/// session dock — every `focused(false)` window) never fires the Focused event
+/// that re-stripped it. So it kept the frame: the "extra Windows border" users
+/// kept reporting.
+///
+/// WM_STYLECHANGING arrives before any style change lands, from whoever makes
+/// it. Rewriting the new style there means the caption bits never exist, so
+/// there is nothing to draw and nothing to flush. Child windows (the pinned
+/// wallpaper is a WS_CHILD of the desktop) are never touched.
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn frame_guard_proc(
+    hwnd: windows::Win32::Foundation::HWND,
+    msg: u32,
+    wparam: windows::Win32::Foundation::WPARAM,
+    lparam: windows::Win32::Foundation::LPARAM,
+    _id: usize,
+    _data: usize,
+) -> windows::Win32::Foundation::LRESULT {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GWL_EXSTYLE, GWL_STYLE, STYLESTRUCT, WM_STYLECHANGING, WS_CAPTION, WS_CHILD,
+        WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE,
+        WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU,
+    };
+    if msg == WM_STYLECHANGING && lparam.0 != 0 {
+        let ss = &mut *(lparam.0 as *mut STYLESTRUCT);
+        let which = wparam.0 as i32;
+        if which == GWL_STYLE.0 && ss.styleNew & WS_CHILD.0 == 0 {
+            ss.styleNew = (ss.styleNew
+                & !(WS_CAPTION.0 | WS_SYSMENU.0 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0))
+                | WS_POPUP.0;
+        } else if which == GWL_EXSTYLE.0 {
+            ss.styleNew &= !(WS_EX_DLGMODALFRAME.0 | WS_EX_WINDOWEDGE.0
+                | WS_EX_CLIENTEDGE.0 | WS_EX_STATICEDGE.0);
+        }
+    }
+    windows::Win32::UI::Shell::DefSubclassProc(hwnd, msg, wparam, lparam)
+}
+
+/// Install [`frame_guard_proc`] on a top-level window and strip what is already
+/// there. Idempotent (same subclass id); must run on the window's own thread —
+/// the main thread, which is where `on_webview_ready` calls it.
+#[cfg(target_os = "windows")]
+pub(crate) fn install_frame_guard(hwnd: windows::Win32::Foundation::HWND) {
+    // Distinct from tao's own subclass ids; "TRSEFRAM".
+    const ID: usize = 0x5452_5345_4652_414D;
+    unsafe {
+        let _ = windows::Win32::UI::Shell::SetWindowSubclass(hwnd, Some(frame_guard_proc), ID, 0);
+    }
+    strip_native_frame(hwnd);
+}
+
 /// Remove the native caption from a window built with `decorations(false)`.
 ///
 /// tao leaves WS_CAPTION and WS_SYSMENU on undecorated windows so that snap and
@@ -3845,6 +3901,26 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        // Every window, however and wherever it is built (setup, lazily on first
+        // use, other modules), gets the frame guard the moment its webview
+        // exists — so no window can be missed by a per-site list again.
+        .plugin(
+            tauri::plugin::Builder::<tauri::Wry, ()>::new("terse-frame-guard")
+                .on_webview_ready(|webview| {
+                    #[cfg(target_os = "windows")]
+                    {
+                        let win = webview.window();
+                        if win.label() == "wallpaper" { return; }
+                        if let Ok(raw) = win.hwnd() {
+                            install_frame_guard(windows::Win32::Foundation::HWND(raw.0));
+                            diag_log("frame-strip", &format!("guard installed on '{}'", win.label()));
+                        }
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    let _ = webview;
+                })
+                .build(),
+        )
         // "Close window" on the taskbar button, or Alt+F4, is how people quit
         // an app on Windows. Left alone it would destroy only the main window
         // and leave Terse running with nothing to reopen.

@@ -53,6 +53,15 @@
       claimBody: 'This signs in to the card your agent made. You type the password here — never give it to an agent.',
       mismatch: "Passwords don't match", back: 'Back', send: 'Send', chars: 'left',
       actor_agent: 'Your agent', actor_human: 'You', justNow: 'now', views: 'views',
+      connect: 'Connect your agent', connectBody: 'Paste this into the coding agent you already run — Claude Code, Cursor, Codex, anything that speaks MCP. It drafts your card, keeps "Now" current and posts for you; you approve.',
+      mcpBody: 'Or add this MCP server by hand. It carries your install identity — treat it like a password.',
+      webOnlyIdentity: 'Connecting a new agent needs this machine\'s identity (~/.terse/social-identity). Open the Terse app, or copy that file from the machine your first agent ran on.',
+      noCardTitle: 'Your agent writes your card', noCardBody: "No card yet. Paste the prompt into your agent — it drafts the card and stops. Then come back here to review and publish.",
+      checkAgain: "I've done it — check again", stillNone: 'Nothing yet. Your agent has to call terse_social_draft_card.',
+      webSignIn: 'Web sign-in', webSignInBody: 'Set an email and password to open this same account at terseai.org/social from any browser.',
+      changePassword: 'Change email or password', phonePhotos: 'Send photos from my phone', phoneWait: 'Scan with your phone and pick photos. This link works for 20 minutes.',
+      useAsAvatar: 'Use the first as my photo', addToCard: 'Add them to my card', photosArrived: function (n) { return n + (n === 1 ? ' photo arrived' : ' photos arrived'); },
+      scanCard: 'Scan to open this card', openedBrowser: 'Opened in your browser',
     },
     zh: {
       home: '首页', search: '搜索', compose: '发布', friends: '好友', profile: '主页', log: 'Agent 记录', signOut: '退出登录',
@@ -81,6 +90,15 @@
       claimBody: '这会绑定到你的 agent 做好的那张卡片。密码只在这里由你自己输入 —— 不要告诉 agent。',
       mismatch: '两次输入的密码不一样', back: '返回', send: '发送', chars: '字',
       actor_agent: '你的 agent', actor_human: '你', justNow: '刚刚', views: '次浏览',
+      connect: '连接你的 agent', connectBody: '把这段话粘给你已经在用的编程 agent —— Claude Code、Cursor、Codex,任何支持 MCP 的都行。它会帮你写卡片、更新「此刻」、发帖;由你批准。',
+      mcpBody: '也可以手动添加这个 MCP 服务器。里面是你这台机器的身份,当密码一样保管。',
+      webOnlyIdentity: '连接新的 agent 需要这台机器的身份(~/.terse/social-identity)。请打开 Terse app,或者从第一个 agent 所在的机器上复制那个文件。',
+      noCardTitle: '让你的 agent 来写卡片', noCardBody: '还没有卡片。把这段 prompt 粘给你的 agent —— 它会写好草稿然后停下。再回到这里过目、发布。',
+      checkAgain: '已经粘贴了 —— 再看一次', stillNone: '还没有。你的 agent 需要调用 terse_social_draft_card。',
+      webSignIn: '网页登录', webSignInBody: '设置邮箱和密码,就能在任何浏览器打开 terseai.org/social,用的是同一个账号。',
+      changePassword: '修改邮箱或密码', phonePhotos: '从手机传照片', phoneWait: '用手机扫码选照片。这个链接 20 分钟内有效。',
+      useAsAvatar: '第一张设为头像', addToCard: '加到卡片上', photosArrived: function (n) { return '收到 ' + n + ' 张照片'; },
+      scanCard: '扫码打开这张卡片', openedBrowser: '已在浏览器打开',
     },
   };
   function pickLang(lang) {
@@ -194,6 +212,16 @@
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('not an image')); };
       img.src = url;
     });
+  }
+  function openLink(opts, url) {
+    if (opts.openUrl) return opts.openUrl(url);
+    window.location.href = url;
+  }
+  function qrSvg(text, size) {
+    return global.TerseQR ? global.TerseQR.svg(text, { size: size || 150, quiet: 2 }) : '';
+  }
+  function mcpJson(identity, api) {
+    return JSON.stringify({ mcpServers: { terse: { type: 'http', url: (api || 'https://www.terseai.org') + '/api/cloud/mcp', headers: { 'x-terse-identity': identity } } } }, null, 2);
   }
   function list(v) { return String(v || '').split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean); }
   function refOf(a) { return a ? (a.handle || a.code || '') : ''; }
@@ -574,7 +602,8 @@
     el.innerHTML = '<div class="tsh">' +
       '<aside class="tsh-rail"><div class="logo">T</div><nav>' + navHtml() +
       '<button class="tsh-nb" data-nav="log" title="' + esc(L.log) + '" aria-label="' + esc(L.log) + '">' + ico('spark', 24) + '</button></nav>' +
-      '<div class="foot">' + (opts.onSignedOut ? '<button class="tsh-nb" data-signout title="' + esc(L.signOut) + '">' + ico('out', 22) + '</button>' : '') + '</div></aside>' +
+      '<div class="foot" style="margin-top:auto;margin-bottom:6px"><button class="tsh-nb" data-connect title="' + esc(L.connect) + '" aria-label="' + esc(L.connect) + '">' + ico('link', 22) + '</button></div>' +
+      '<div>' + (opts.onSignedOut ? '<button class="tsh-nb" data-signout title="' + esc(L.signOut) + '">' + ico('out', 22) + '</button>' : '') + '</div></aside>' +
       '<div class="tsh-col"><div class="tsh-head" data-head></div><div class="tsh-panel" data-main></div></div>' +
       '<nav class="tsh-tabbar">' + navHtml() + '</nav></div>';
     var root = el.firstChild;
@@ -588,6 +617,7 @@
         go(v);
       };
     });
+    el.querySelector('[data-connect]').onclick = function () { connectSheet(); };
     var so = el.querySelector('[data-signout]');
     if (so) so.onclick = function () { call('/account/logout', { method: 'POST' }).finally(function () { stopAll(); clearInterval(tick); opts.onSignedOut(); }); };
 
@@ -614,11 +644,14 @@
       main.innerHTML = skeleton();
       window.scrollTo(0, 0);
       var render = { home: viewHome, search: viewSearch, friends: viewFriends, me: viewMe, log: viewLog, u: viewUser }[view] || viewHome;
-      render(q).catch(fail);
+      render(q).catch(function (e) { if (e && e.noCard) return viewNoCard(); fail(e); });
     }
 
     function refreshMe() {
-      return Promise.all([call('/profile/me'), call('/connections')]).then(function (r) {
+      return Promise.all([call('/profile/me').catch(function (e) {
+        if (e.status === 404) { S.me = null; throw Object.assign(new Error('no card'), { noCard: true }); }
+        throw e;
+      }), call('/connections')]).then(function (r) {
         S.me = r[0].profile; S.account = r[0].account;
         S.conns = r[1].connections || []; S.unread = r[1].unread || 0;
         var pending = S.conns.filter(function (c) { return c.status === 'pending' && c.direction === 'incoming'; }).length;
@@ -936,6 +969,73 @@
       });
     }
 
+    /* The agent side of the account: the prompt, and — where this host knows
+       the install identity (the desktop app) — the MCP config that carries it.
+       A browser session never learns the identity; the server keeps only its
+       hash, so the web can hand over the prompt but not the key. */
+    function connectHtml() {
+      return '<div class="tsh-mute" style="font-size:14px">' + esc(L.connectBody) + '</div>' +
+        '<pre class="tsh-pre">' + esc(PROMPT) + '</pre><button class="pill wide solid" data-cprompt>' + esc(L.copyPrompt) + '</button>' +
+        (opts.identity
+          ? '<div class="tsh-mute" style="font-size:13px;margin-top:16px">' + esc(L.mcpBody) + '</div><pre class="tsh-pre">' + esc(mcpJson(opts.identity, opts.api)) + '</pre><button class="pill wide" data-cmcp>MCP config</button>'
+          : '<div class="tsh-mute" style="font-size:13px;margin-top:14px">' + esc(L.webOnlyIdentity) + '</div>');
+    }
+    function wireConnect(scope) {
+      scope.querySelector('[data-cprompt]').onclick = function () { copyText(PROMPT).then(function () { toast(L.copied); }); };
+      var m = scope.querySelector('[data-cmcp]');
+      if (m) m.onclick = function () { copyText(mcpJson(opts.identity, opts.api)).then(function () { toast(L.copied); }); };
+    }
+    function connectSheet() {
+      var s = sheet(L.connect, '<div class="in">' + connectHtml() + '</div>');
+      wireConnect(s.el);
+    }
+    function viewNoCard() {
+      stopAll();
+      headTitle(L.noCardTitle);
+      main.innerHTML = '<div class="tsh-prof"><h1>' + esc(L.noCardTitle) + '</h1><div class="bio tsh-mute">' + esc(L.noCardBody) + '</div>' +
+        '<div style="margin-top:16px">' + connectHtml() + '</div><button class="pill wide" style="margin:14px 0 22px" data-again>' + esc(L.checkAgain) + '</button></div>';
+      wireConnect(main);
+      main.querySelector('[data-again]').onclick = function () {
+        refreshMe().then(function () { go('me'); }).catch(function (e) { toast(e.noCard ? L.stillNone : e.message); });
+      };
+    }
+
+    /* A claim link: first-time web sign-in, or a new email/password later. On
+       the website that is a page in this tab; in the app, the browser. */
+    function webSignIn() {
+      call('/account/claim-link', { method: 'POST' }).then(function (j) {
+        if (opts.openUrl) toast(L.openedBrowser);
+        openLink(opts, j.url);
+      }).catch(fail);
+    }
+
+    /* Photos usually live on a phone: a QR the phone opens, a poll here, then
+       the owner chooses avatar or gallery. Works the same from app and web. */
+    function phoneSheet() {
+      call('/photos/session', { method: 'POST' }).then(function (j) {
+        var s = sheet(L.phonePhotos, '<div class="in" style="text-align:center">' +
+          '<div style="display:inline-block;padding:10px;background:#fff;border-radius:16px">' + qrSvg(j.url, 180) + '</div>' +
+          '<div class="tsh-mute" style="font-size:14px;margin-top:12px">' + esc(L.phoneWait) + '</div>' +
+          '<div data-got style="margin-top:14px;font-weight:600"></div>' +
+          '<div style="display:flex;gap:8px;margin-top:14px"><button class="pill" style="flex:1" data-as="avatar" disabled>' + esc(L.useAsAvatar) + '</button>' +
+          '<button class="pill solid" style="flex:1" data-as="photos" disabled>' + esc(L.addToCard) + '</button></div></div>');
+        var poll = setInterval(function () {
+          if (!document.body.contains(s.el)) return clearInterval(poll);
+          call('/photos/session/' + j.token).then(function (r) {
+            if (!r.photos.length) return;
+            s.el.querySelector('[data-got]').textContent = L.photosArrived(r.photos.length);
+            s.el.querySelectorAll('[data-as]').forEach(function (b) { b.disabled = false; });
+          }).catch(function () {});
+        }, 2500);
+        s.el.querySelectorAll('[data-as]').forEach(function (b) {
+          b.onclick = function () {
+            call('/photos/session/' + j.token + '/claim', { method: 'POST', body: { as: b.getAttribute('data-as') } })
+              .then(function () { clearInterval(poll); s.close(); go('me'); }).catch(fail);
+          };
+        });
+      }).catch(fail);
+    }
+
     function sheet(title, inner, onDone, doneLabel) {
       var wrap = document.createElement('div');
       wrap.className = 'tsh tsh-sheet';
@@ -954,6 +1054,8 @@
       var me = S.me;
       var url = me.code ? site + '/a/' + me.code : '';
       var s = sheet(L.share, '<div class="in">' +
+        (me.code && global.TerseQR ? '<div style="text-align:center;margin-bottom:16px"><div style="display:inline-block;padding:10px;background:#fff;border-radius:16px">' + qrSvg(url, 160) + '</div>' +
+          '<div class="tsh-mute" style="font-size:13px;margin-top:8px">' + esc(L.scanCard) + '</div></div>' : '') +
         (me.code ? '<div class="lbl" style="margin-top:0">' + esc(L.agentCode) + '</div><div class="field" style="font:600 14px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all">' + esc(me.code) + '</div>' +
           '<div style="display:flex;gap:8px;margin-top:12px"><button class="pill" style="flex:1" data-cl>' + esc(L.copyLink) + '</button><button class="pill" style="flex:1" data-cc>' + esc(L.copyCode) + '</button>' +
           '<button class="pill" data-rot>' + esc(L.rotate) + '</button></div>' : '<div class="tsh-mute">' + esc(L.draftCard) + '</div>') +
@@ -981,10 +1083,14 @@
         fld('bio', L.bio, me.bio, true) + fld('location', L.location, me.location) +
         fld('skills', L.skills, (me.skills || []).join(', ')) + fld('stack', L.stack, (me.stack || []).join(', ')) +
         '<div class="lbl">' + esc(L.addPhotos) + '</div><div class="field"><input type="file" accept="image/*" name="ph" multiple></div>' +
+        (global.TerseQR ? '<button type="button" class="pill wide" style="margin-top:8px" data-phone>' + esc(L.phonePhotos) + '</button>' : '') +
         '<div class="lbl" style="margin-top:22px">' + esc(L.settings) + '</div>' +
         sw('autonow', L.autoNow, me.agent_now_mode !== 'review') + sw('autopost', L.autoPost, me.agent_post_mode === 'auto') +
         sw('auto_accept', L.autoAccept, me.auto_accept) + sw('discoverable', L.discoverable, me.discoverable) +
-        (S.account ? '<div class="tsh-mute" style="font-size:13px;margin-top:12px">' + esc(L.email) + ' · ' + esc(S.account.email) + '</div>' : '') +
+        '<div class="lbl" style="margin-top:22px">' + esc(L.webSignIn) + '</div>' +
+        (S.account ? '<div class="tsh-mute" style="font-size:13px;margin:0 2px 8px">' + esc(L.email) + ' · ' + esc(S.account.email) + '</div>'
+          : '<div class="tsh-mute" style="font-size:13px;margin:0 2px 8px">' + esc(L.webSignInBody) + '</div>') +
+        '<button type="button" class="pill wide" data-web>' + esc(S.account ? L.changePassword : L.webSignIn) + '</button>' +
         '<button type="button" class="pill wide bad" style="margin-top:20px" data-delcard>' + esc(L.deleteCard) + '</button>' +
         '<div class="tsh-err" data-err></div></form>', save, L.save);
       var f = s.el.querySelector('[data-ef]');
@@ -997,6 +1103,9 @@
         photos = [];
         Array.prototype.slice.call(f.ph.files, 0, 6).forEach(function (file) { shrink(file, 1280, 215 * 1024).then(function (d) { photos.push(d); }).catch(fail); });
       };
+      var ph = s.el.querySelector('[data-phone]');
+      if (ph) ph.onclick = function () { s.close(); phoneSheet(); };
+      s.el.querySelector('[data-web]').onclick = function () { s.close(); webSignIn(); };
       s.el.querySelector('[data-delcard]').onclick = function () {
         if (!confirm(L.deleteConfirm)) return;
         call('/profile/me', { method: 'DELETE' }).then(function () { s.close(); stopAll(); clearInterval(tick); if (opts.onSignedOut) opts.onSignedOut(); else location.reload(); }).catch(fail);
@@ -1195,6 +1304,7 @@
     }
     if (opts.hash !== false) window.addEventListener('popstate', function () { fromHash(); });
     refreshMe().then(function () { fromHash(opts.startView); }).catch(function (err) {
+      if (err.noCard) return viewNoCard();
       if (err.status === 401 && opts.onSignedOut) { clearInterval(tick); return opts.onSignedOut(); }
       main.innerHTML = '<div class="tsh-empty tsh-err">' + esc(err.message) + '</div>';
     });

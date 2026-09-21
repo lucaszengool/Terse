@@ -16,7 +16,7 @@ const CLAUDE_CODE_DEFAULT_TOOLS: &[&str] = &[
 // ── Agent Definitions ──
 
 #[derive(Debug, Clone)]
-struct AgentDef {
+pub(crate) struct AgentDef {
     name: &'static str,
     icon: &'static str,
     process_names: &'static [&'static str],
@@ -157,9 +157,30 @@ pub(crate) fn agent_working_dirs() -> Vec<String> {
     out
 }
 
-/// Get CWDs of all running claude processes on Windows.
-/// Returns Vec<(pid, cwd)>.
+/// Get CWDs of all running claude processes on Windows, cached for 30 s.
+///
+/// Uncached, this cost 1 + N PowerShell launches (a whole-process-table
+/// Get-CimInstance, then one more per claude process) — and agent_defs() ran it
+/// on EVERY 5 s scanner tick, under the monitor lock. CI measured the lock held
+/// 20-29 s at a time and get_agent_sessions (a sync command, i.e. the main
+/// thread) stuck behind it for up to 92 s: every Terse window frozen, plus a
+/// PowerShell every few seconds forever. macOS does the same with a fast `ps`,
+/// which is why it never showed there. Claude processes come and go on the
+/// scale of minutes, so 30 s of staleness costs nothing.
 fn get_claude_pid_cwds() -> Vec<(u32, String)> {
+    use std::sync::Mutex;
+    static CACHE: Mutex<Option<(std::time::Instant, Vec<(u32, String)>)>> = Mutex::new(None);
+    if let Some((t, v)) = CACHE.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+        if t.elapsed() < Duration::from_secs(30) {
+            return v.clone();
+        }
+    }
+    let v = get_claude_pid_cwds_uncached();
+    *CACHE.lock().unwrap_or_else(|e| e.into_inner()) = Some((std::time::Instant::now(), v.clone()));
+    v
+}
+
+fn get_claude_pid_cwds_uncached() -> Vec<(u32, String)> {
     // Use PowerShell to find all claude processes and their command lines
     let output = crate::hidden_command("powershell")
         .args([
@@ -2220,20 +2241,24 @@ impl AgentMonitor {
 
     /// Scan for running agent processes. Returns (new_detections, lost_agent_types)
     pub fn scan(&mut self) -> (Vec<(&'static str, PendingDetection)>, Vec<String>) {
-        self.scan_with(list_processes())
+        self.scan_with(list_processes(), agent_defs())
     }
 
     /// scan() with the process list taken by the caller. `tasklist` is slow on
     /// Windows, and start_scanning used to run it while holding the monitor
     /// lock — so every sync command that reads a session (get_agent_sessions,
     /// record_optimization_usage, ...) blocked the main thread behind it.
-    pub fn scan_with(&mut self, procs: Option<Vec<ProcessInfo>>) -> (Vec<(&'static str, PendingDetection)>, Vec<String>) {
+    /// `defs` too: agent_defs() resolves Claude's project dir through PowerShell.
+    pub fn scan_with(
+        &mut self,
+        procs: Option<Vec<ProcessInfo>>,
+        defs: Vec<(&'static str, AgentDef)>,
+    ) -> (Vec<(&'static str, PendingDetection)>, Vec<String>) {
         let procs = match procs {
             Some(p) => p,
             None => return (Vec::new(), Vec::new()),
         };
 
-        let defs = agent_defs();
         let mut now_detected = std::collections::HashSet::new();
         let mut new_detections = Vec::new();
 
@@ -2765,9 +2790,11 @@ pub fn start_scanning(app: AppHandle) {
         // Scan for new agents. The process list is taken BEFORE the lock.
         let procs = list_processes();
         phase("list_processes (unlocked)");
+        let defs = agent_defs();
+        phase("agent_defs (unlocked)");
         let (new_detections, lost_types) = {
             let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
-            monitor.scan_with(procs)
+            monitor.scan_with(procs, defs)
         };
         phase("scan (locked)");
 

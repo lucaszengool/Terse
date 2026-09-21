@@ -4825,6 +4825,8 @@ pub fn run() {
             project_remove_image,
             project_capsule,
             navigate_to_projects,
+            navigate_to_social,
+            social_identity,
             list_open_windows,
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
@@ -7878,6 +7880,53 @@ fn project_capsule(id: String) -> Result<serde_json::Value, String> {
 #[tauri::command]
 fn navigate_to_projects(app: AppHandle) {
     navigate_main(&app, "projects.html");
+}
+
+/// 打开「社交卡片」那一页。Through navigate_main for the same reason as the line
+/// above: a "tauri://localhost/…" URL parses on Windows and then points at a
+/// scheme WebView2 does not serve, so the navigation quietly does nothing.
+#[tauri::command]
+fn navigate_to_social(app: AppHandle) {
+    navigate_main(&app, "social.html");
+}
+
+/// This install's Terse social identity — the one credential an agent card hangs
+/// off. Read it if it is there, mint it if it is not.
+///
+/// WHY IT LIVES IN A FILE AND NOT IN THE APP'S OWN SETTINGS. Two processes have
+/// to agree on it: this app, where the human reviews and publishes the card, and
+/// whichever coding agent they pasted the setup prompt into, which reaches Terse
+/// over MCP with `x-terse-identity`. A value only the app knew would mean the
+/// card the agent drafted and the card this app shows are two different cards.
+/// ~/.terse/social-identity is the handshake, and the setup prompt writes the
+/// very same file when the agent gets there first — on every platform, which is
+/// why the path is built from the home directory rather than anything per-OS.
+///
+/// The 0600 the macOS build applies has no Windows equivalent here; the file
+/// sits under the user's own profile directory, which is the protection NTFS
+/// actually offers for this.
+#[tauri::command]
+fn social_identity() -> Result<String, String> {
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let dir = home.join(".terse");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create ~/.terse: {}", e))?;
+    let path = dir.join("social-identity");
+
+    // A truncated or hand-edited file is worse than no file: it would silently
+    // become a DIFFERENT identity from the agent's, and the human would be
+    // looking at an empty page while their agent insists it just wrote a card.
+    if let Ok(existing) = std::fs::read_to_string(&path) {
+        let t = existing.trim().to_string();
+        if t.len() == 64 && t.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Ok(t);
+        }
+    }
+
+    let mut bytes = [0u8; 32];
+    getrandom::getrandom(&mut bytes).map_err(|e| format!("Failed to generate identity: {}", e))?;
+    let id: String = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    std::fs::write(&path, &id).map_err(|e| format!("Failed to write identity: {}", e))?;
+    Ok(id)
 }
 
 /// The windows the user actually has open right now: app name, position, size.

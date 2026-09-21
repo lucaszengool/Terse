@@ -77,6 +77,15 @@ const MAX_NOW_CHARS = 140;
 const AGENT_NOW_PER_DAY = 24;
 const HUMAN_NOW_PER_DAY = 60;
 const NOW_KINDS = ['working', 'shipped', 'learning', 'exploring'];
+/* A file is something to hand over — a snippet, a config, a screenshot, a
+   small PDF — not a place to host media. */
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const FILES_PER_DAY = 60;
+const FOLLOWS_PER_DAY = 200;
+const GREETINGS_PER_DAY = 40;
+const THREAD_MSGS_PER_HOUR = 120;
+const MAX_AGENT_BIO = 300;
+const MAX_AUTOREPLY = 280;
 
 const uuid = () => crypto.randomUUID();
 const sha = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
@@ -238,6 +247,9 @@ function ownerCard(row) {
     discoverable: !!row.discoverable,
     agent_post_mode: row.agent_post_mode === 'auto' ? 'auto' : 'review',
     agent_now_mode: row.agent_now_mode === 'review' ? 'review' : 'auto',
+    agent_bio: row.agent_bio || null,
+    agent_greet_mode: row.agent_greet_mode === 'off' ? 'off' : 'auto',
+    agent_autoreply: row.agent_autoreply || null,
     drafted_by: row.drafted_by,
     views: row.views,
     created_at: row.created_at,
@@ -267,6 +279,10 @@ function publicCard(row) {
     agent_name: row.agent_name || null,
     avatar: row.avatar || null,
     photos: parseJson(row.photos, []),
+    agent_bio: row.agent_bio || null,
+    /* Whether this card's agent takes greetings — shown so a visitor knows to
+       write to the owner instead, before they spend a message finding out. */
+    agent_greet_mode: row.agent_greet_mode === 'off' ? 'off' : 'auto',
     views: row.views,
     published_at: row.published_at,
   };
@@ -370,6 +386,9 @@ router.post('/profile/draft', requireIdentity, (req, res) => {
     ...card,
     drafted_by: req.actor === 'human' ? 'human' : 'agent',
   });
+  if (typeof body.agent_bio === 'string') {
+    db.setAgentMeta.run({ identity: req.idHash, agent_bio: multiline(body.agent_bio, MAX_AGENT_BIO) || null, agent_greet_mode: null, agent_autoreply: null, clear_autoreply: 0 });
+  }
   logAct(req, existing ? 'card.redraft' : 'card.draft', card.display_name);
   const row = db.getAgentProfile.get(req.idHash);
   res.json({
@@ -391,6 +410,8 @@ router.get('/profile/me', requireIdentity, (req, res) => {
     profile: ownerCard(row),
     unread: db.countAgentUnread.get({ me: req.idHash }).n,
     account: acct ? { email: acct.email } : null,
+    followers: db.countFollowers.get(req.idHash).n,
+    following: db.countFollowing.get(req.idHash).n,
   });
 });
 
@@ -444,6 +465,22 @@ router.patch('/profile/me', requireIdentity, (req, res) => {
   });
   if (postMode) db.setAgentPostMode.run({ identity: req.idHash, mode: postMode });
   if (nowMode) db.setAgentNowMode.run({ identity: req.idHash, mode: nowMode });
+  const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
+  if (has('agent_bio') || has('agent_greet_mode') || has('agent_autoreply')) {
+    /* Whether your agent answers strangers spends your tokens — the owner's
+       call, like the other "on its own" switches. */
+    if (has('agent_greet_mode') && req.actor !== 'human') {
+      return res.status(403).json({ error: 'Only the owner decides whether the agent takes greetings.' });
+    }
+    const auto = has('agent_autoreply') ? str(body.agent_autoreply, MAX_AUTOREPLY) : null;
+    db.setAgentMeta.run({
+      identity: req.idHash,
+      agent_bio: has('agent_bio') ? (multiline(body.agent_bio, MAX_AGENT_BIO) || '') : null,
+      agent_greet_mode: has('agent_greet_mode') ? (body.agent_greet_mode === 'off' ? 'off' : 'auto') : null,
+      agent_autoreply: auto || null,
+      clear_autoreply: has('agent_autoreply') && !auto ? 1 : 0,
+    });
+  }
   logAct(req, 'card.edit', Object.keys(body).slice(0, 8).join(', '));
   res.json({ ok: true, profile: ownerCard(db.getAgentProfile.get(req.idHash)) });
 });
@@ -524,6 +561,9 @@ router.delete('/profile/me', requireIdentity, (req, res) => {
      but whose posts still show is not gone. */
   db.deleteSocialPostsFor.run(req.idHash);
   db.deleteSocialNowFor.run(req.idHash);
+  db.deleteFollowsFor.run(req.idHash, req.idHash);
+  db.deleteThreadsFor.run(req.idHash, req.idHash);
+  db.deleteFilesFor.run(req.idHash);
   db.deleteSocialAccountByIdentity.run(req.idHash);
   db.deleteSocialActivityFor.run(req.idHash);
   db.deleteAgentProfile.run(req.idHash);
@@ -556,7 +596,8 @@ router.get('/card/:ref', optionalIdentity, (req, res) => {
   }
   const nowRow = db.listLiveNow.get({ identity: row.identity, window: '-14 days', limit: 1 });
   res.json({
-    card: publicCard(row),
+    card: { ...publicCard(row), followers: db.countFollowers.get(row.identity).n },
+    is_following: !!req.idHash && !!db.isFollowing.get({ follower: req.idHash, followee: row.identity }),
     now: nowRow ? shapeNow(nowRow) : null,
     is_me: !!req.idHash && req.idHash === row.identity,
     accepts_agents: !!row.auto_accept,
@@ -744,7 +785,9 @@ router.post('/connections/:id/messages', requireIdentity, (req, res) => {
   if (!edge) return res.status(404).json({ error: 'No such connection' });
   if (edge.status !== 'accepted') return res.status(403).json({ error: 'That channel is not open yet' });
 
-  const text = multiline(req.body?.body, 4000);
+  const f = takeFile(req, req.body?.file);
+  if (f.error) return res.status(f.status || 400).json({ error: f.error });
+  const text = multiline(req.body?.body, 4000) || (f.id ? f.name : '');
   if (!text) return res.status(400).json({ error: 'body is required' });
   const sent = db.countAgentMessagesSince.get({ me: req.idHash, window: '-1 hour' }).n;
   if (sent >= MESSAGES_PER_HOUR) {
@@ -759,8 +802,9 @@ router.post('/connections/:id/messages', requireIdentity, (req, res) => {
     body: text,
   };
   db.insertAgentMessage.run(row);
+  if (f.id) setMsgFile.run(f.id, row.id);
   logAct(req, 'message.send', text.slice(0, 80));
-  res.json({ ok: true, message: { ...row, from_identity: undefined, mine: true, created_at: nowIso() } });
+  res.json({ ok: true, message: { ...row, from_identity: undefined, mine: true, created_at: nowIso(), file: f.id ? fileMeta(f.id) : null } });
 });
 
 /** GET /api/cloud/social/connections/:id/messages — and marks them read. */
@@ -774,6 +818,7 @@ router.get('/connections/:id/messages', requireIdentity, (req, res) => {
     messages: rows.map((m) => ({
       id: m.id, body: m.body, from_kind: m.from_kind,
       mine: m.from_identity === req.idHash, created_at: m.created_at,
+      file: m.file_id ? fileMeta(m.file_id) : null,
     })),
   });
 });
@@ -1357,6 +1402,272 @@ router.get('/feed/now', optionalIdentity, (req, res) => {
   res.json({ scope, now: rows.map((n) => shapeNow(n, cache)) });
 });
 
+/* ── Files ────────────────────────────────────────────────────────────────── */
+
+const setMsgFile = db.db.prepare('UPDATE agent_messages SET file_id = ? WHERE id = ?');
+
+/**
+ * Accept a file riding on a message: { name, mime?, data (base64 or data: URL) }
+ * or { name, text } for plain text an agent wants to hand over. Returns
+ * { id, name } once stored, {} when there is no file, or { error, status }.
+ */
+function takeFile(req, f) {
+  if (!f) return {};
+  if (typeof f !== 'object') return { error: 'file must be an object' };
+  const name = str(f.name, 120).replace(/[\\/]/g, '_') || 'file';
+  let mime = str(f.mime, 100).toLowerCase();
+  let b64 = null;
+  if (typeof f.text === 'string') {
+    b64 = Buffer.from(f.text, 'utf8').toString('base64');
+    mime = mime || 'text/plain';
+  } else if (typeof f.data === 'string') {
+    const m = f.data.match(/^data:([\w.+/-]+);base64,(.*)$/s);
+    if (m) { mime = mime || m[1].toLowerCase(); b64 = m[2]; } else b64 = f.data;
+    b64 = b64.replace(/\s+/g, '');
+    if (!/^[A-Za-z0-9+/=]*$/.test(b64)) return { error: 'file data must be base64' };
+  } else {
+    return { error: 'send file.data (base64) or file.text' };
+  }
+  const size = Math.floor(b64.length * 3 / 4) - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
+  if (!size) return { error: 'the file is empty' };
+  if (size > MAX_FILE_BYTES) return { error: 'Files are limited to 2MB', status: 413 };
+  if (!/^[\w.+-]+\/[\w.+-]+$/.test(mime)) mime = 'application/octet-stream';
+  if (db.countFilesSince.get({ me: req.idHash, window: '-1 day' }).n >= FILES_PER_DAY) {
+    return { error: `That is ${FILES_PER_DAY} files today — the daily limit.`, status: 429 };
+  }
+  const id = uuid();
+  db.insertSocialFile.run({ id, owner: req.idHash, name, mime, size, data: b64 });
+  return { id, name };
+}
+
+function fileMeta(id) {
+  const f = db.getSocialFile.get(id);
+  return f ? { id: f.id, name: f.name, mime: f.mime, size: f.size } : null;
+}
+
+/**
+ * GET /api/cloud/social/files/:id — only for someone on either side of a
+ * conversation the file was sent in. ?format=text returns UTF-8 text for text
+ * files, which is what an agent reading a snippet wants.
+ */
+router.get('/files/:id', requireIdentity, (req, res) => {
+  const f = db.getSocialFile.get(String(req.params.id || ''));
+  const seen = f && db.fileAudience.all({ id: f.id }).some((r) => r.x === req.idHash || r.y === req.idHash);
+  if (!f || !seen) return res.status(404).json({ error: 'No such file' });
+  const isText = /^text\/|json|xml|javascript|yaml|csv|markdown/.test(f.mime);
+  res.json({
+    id: f.id, name: f.name, mime: f.mime, size: f.size,
+    ...(req.query.format === 'text' && isText
+      ? { text: Buffer.from(f.data, 'base64').toString('utf8') }
+      : { data: f.data }),
+  });
+});
+
+/* ── Follows and likes ────────────────────────────────────────────────────── */
+
+function cardByRef(ref) {
+  const r = String(ref || '').trim().replace(/^@/, '').toLowerCase();
+  const byCode = r.startsWith('tac_');
+  const row = byCode ? db.getAgentProfileByCode.get(r) : db.getAgentProfileByHandle.get(r);
+  if (!row || row.status !== 'published' || (!byCode && !row.discoverable)) return null;
+  return row;
+}
+
+/** POST /api/cloud/social/follow  Body: { ref, on? } — follow (or on:false to unfollow). */
+router.post('/follow', requireIdentity, (req, res) => {
+  const row = cardByRef(req.body?.ref || req.body?.code || req.body?.handle);
+  if (!row) return res.status(404).json({ error: 'No such card' });
+  if (row.identity === req.idHash) return res.status(400).json({ error: 'That is your own card' });
+  const key = { follower: req.idHash, followee: row.identity };
+  if (req.body?.on === false) {
+    db.deleteFollow.run(key);
+    logAct(req, 'follow.off', `@${row.handle || '?'}`);
+  } else {
+    if (db.countFollowsSince.get({ me: req.idHash, window: '-1 day' }).n >= FOLLOWS_PER_DAY) {
+      return res.status(429).json({ error: 'Too many follows today', max: FOLLOWS_PER_DAY });
+    }
+    if (db.insertFollow.run(key).changes) logAct(req, 'follow.on', `@${row.handle || '?'}`);
+  }
+  res.json({
+    ok: true,
+    following: !!db.isFollowing.get(key),
+    followers: db.countFollowers.get(row.identity).n,
+  });
+});
+
+/** GET /api/cloud/social/posts/liked — what you liked, newest like first. */
+router.get('/posts/liked', requireIdentity, (req, res) => {
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 40));
+  const cache = new Map();
+  res.json({
+    posts: db.listLikedPosts.all({ me: req.idHash, limit })
+      .filter((p) => canSee(p, req.idHash))
+      .map((p) => shapePost(p, req.idHash, cache)),
+  });
+});
+
+/* ── Greetings: conversations that need no friendship ─────────────────────── */
+
+function shapeThread(t, me, cache) {
+  const iOpened = t.a_identity === me;
+  const peer = iOpened ? t.b_identity : t.a_identity;
+  return {
+    id: t.id,
+    target: t.target,
+    direction: iOpened ? 'sent' : 'received',
+    /* Who on MY side is in this conversation: the opener is whoever opened it;
+       on the receiving side, the target. */
+    my_side: iOpened ? null : t.target,
+    peer: authorOf(peer, cache),
+    last_body: t.last_body ? String(t.last_body).slice(0, 140) : null,
+    last_kind: t.last_kind || null,
+    unread: t.unread || 0,
+    last_at: t.last_at,
+    created_at: t.created_at,
+  };
+}
+
+function shapeThreadMsg(m, me) {
+  return {
+    id: m.id, body: m.body, from_kind: m.from_kind, mine: m.from_identity === me,
+    created_at: m.created_at, file: m.file_id ? fileMeta(m.file_id) : null,
+  };
+}
+
+/**
+ * Post into a thread, holding the rules in one place:
+ *   · a thread FOR a person is people-only, on both sides;
+ *   · until the other side has answered (the canned auto-reply does not
+ *     count), the opener gets two messages, not a mailbox.
+ */
+function postToThread(req, res, t, body, fileIn) {
+  const iOpened = t.a_identity === req.idHash;
+  if (!iOpened && t.b_identity !== req.idHash) return res.status(404).json({ error: 'No such conversation' });
+  if (t.target === 'human' && req.actor !== 'human') {
+    return res.status(403).json({ error: 'That conversation is between people — an agent cannot write in it.' });
+  }
+  if (iOpened) {
+    const answered = db.countThreadMsgsFrom.get({ id: t.id, who: t.b_identity }).n > 0;
+    if (!answered && db.countThreadMsgsFrom.get({ id: t.id, who: t.a_identity }).n >= 2) {
+      return res.status(429).json({ error: 'Wait for a reply — two messages is the limit until they answer.' });
+    }
+  }
+  if (db.countThreadMsgsSince.get({ me: req.idHash, window: '-1 hour' }).n >= THREAD_MSGS_PER_HOUR) {
+    return res.status(429).json({ error: 'Too many messages this hour', max: THREAD_MSGS_PER_HOUR });
+  }
+  const f = takeFile(req, fileIn);
+  if (f.error) return res.status(f.status || 400).json({ error: f.error });
+  const text = multiline(body, 4000) || (f.id ? f.name : '');
+  if (!text) return res.status(400).json({ error: 'body is required' });
+  const why = contentRefusal(text);
+  if (why) return res.status(422).json({ error: 'That message cannot be sent here.', reason: why });
+  const row = {
+    id: uuid(), thread_id: t.id, from_identity: req.idHash,
+    from_kind: req.actor === 'human' ? 'human' : 'agent', body: text, file_id: f.id || null,
+  };
+  db.insertThreadMsg.run(row);
+  db.touchThread.run(t.id);
+  return row;
+}
+
+/**
+ * POST /api/cloud/social/greet   Body: { ref, to: 'agent'|'human', body, file? }
+ * Say hello without being friends. An agent may only greet an agent; a person
+ * may greet a person or their agent. Greeting an agent whose owner switched
+ * greetings off is refused with where to go instead.
+ */
+router.post('/greet', requireIdentity, (req, res) => {
+  const to = req.body?.to === 'human' ? 'human' : 'agent';
+  const target = cardByRef(req.body?.ref || req.body?.code || req.body?.handle);
+  if (!target) return res.status(404).json({ error: 'No such card' });
+  if (target.identity === req.idHash) return res.status(400).json({ error: 'That is your own card' });
+  if (to === 'human' && req.actor !== 'human') {
+    return res.status(403).json({ error: 'An agent can only greet another agent. Greet their agent instead (to: "agent").' });
+  }
+  const mine = db.getAgentProfile.get(req.idHash);
+  if (!mine || mine.status !== 'published') {
+    return res.status(403).json({ error: 'Publish your own card first — the other side has to see who is saying hello.' });
+  }
+  let t = db.findThread.get({ a: req.idHash, b: target.identity, target: to });
+  let created = false;
+  if (!t) {
+    if (to === 'agent' && target.agent_greet_mode === 'off') {
+      return res.status(403).json({
+        error: 'Their agent does not take greetings. Write to the owner instead (to: "human").',
+        agent_greet_mode: 'off',
+      });
+    }
+    if (db.countThreadsOpenedSince.get({ me: req.idHash, window: '-1 day' }).n >= GREETINGS_PER_DAY) {
+      return res.status(429).json({ error: 'Too many new conversations today', max: GREETINGS_PER_DAY });
+    }
+    const id = uuid();
+    db.insertThread.run({ id, a: req.idHash, b: target.identity, target: to });
+    t = db.getThread.get(id);
+    created = true;
+  }
+  const row = postToThread(req, res, t, req.body?.body, req.body?.file);
+  if (!row || !row.id) {
+    // Refused (and already answered): a new conversation with nothing in it is not kept.
+    if (created) db.db.prepare('DELETE FROM social_threads WHERE id = ?').run(t.id);
+    return;
+  }
+  /* The owner's canned reply, sent at once — it costs no tokens and tells the
+     visitor what to expect before any agent has looked. Once per thread. */
+  let autoreply = null;
+  if (to === 'agent' && target.agent_autoreply) {
+    const already = db.db.prepare("SELECT 1 FROM social_thread_msgs WHERE thread_id = ? AND from_kind = 'auto'").get(t.id);
+    if (!already) {
+      autoreply = { id: uuid(), thread_id: t.id, from_identity: target.identity, from_kind: 'auto', body: target.agent_autoreply, file_id: null };
+      db.insertThreadMsg.run(autoreply);
+    }
+  }
+  logAct(req, 'greet.' + to, `@${target.handle || '?'}: ${String(req.body?.body || '').slice(0, 60)}`);
+  res.json({
+    ok: true,
+    thread: shapeThread({ ...db.getThread.get(t.id), unread: 0 }, req.idHash, new Map()),
+    message: shapeThreadMsg({ ...row, created_at: nowIso() }, req.idHash),
+    autoreply: autoreply ? shapeThreadMsg({ ...autoreply, created_at: nowIso() }, req.idHash) : null,
+    next: to === 'agent'
+      ? 'Sent to their agent. It answers when it next checks in — the owner decides whether it does.'
+      : 'Sent to them.',
+  });
+});
+
+/**
+ * GET /api/cloud/social/threads?for=agent|human
+ * Conversations you are in. for=agent: the ones an agent should handle — sent
+ * to your agent, or opened by your agent. for=human: the rest.
+ */
+router.get('/threads', requireIdentity, (req, res) => {
+  const cache = new Map();
+  let rows = db.listThreadsFor.all({ me: req.idHash }).map((t) => shapeThread(t, req.idHash, cache));
+  if (req.query.for === 'agent') rows = rows.filter((t) => t.target === 'agent');
+  if (req.query.for === 'human') rows = rows.filter((t) => t.target === 'human' || t.direction === 'sent');
+  res.json({ threads: rows, unread: rows.reduce((n, t) => n + t.unread, 0) });
+});
+
+/** GET /api/cloud/social/threads/:id — and marks it read. */
+router.get('/threads/:id', requireIdentity, (req, res) => {
+  const t = db.getThread.get(String(req.params.id || ''));
+  if (!t || (t.a_identity !== req.idHash && t.b_identity !== req.idHash)) return res.status(404).json({ error: 'No such conversation' });
+  const msgs = db.listThreadMsgs.all(t.id);
+  db.markThreadRead.run({ id: t.id, me: req.idHash });
+  res.json({
+    thread: shapeThread({ ...t, unread: 0 }, req.idHash, new Map()),
+    messages: msgs.map((m) => shapeThreadMsg(m, req.idHash)),
+  });
+});
+
+/** POST /api/cloud/social/threads/:id/messages  Body: { body, file? } */
+router.post('/threads/:id/messages', requireIdentity, (req, res) => {
+  const t = db.getThread.get(String(req.params.id || ''));
+  if (!t || (t.a_identity !== req.idHash && t.b_identity !== req.idHash)) return res.status(404).json({ error: 'No such conversation' });
+  const row = postToThread(req, res, t, req.body?.body, req.body?.file);
+  if (!row || !row.id) return;
+  logAct(req, 'thread.reply', String(req.body?.body || '').slice(0, 80));
+  res.json({ ok: true, message: shapeThreadMsg({ ...row, created_at: nowIso() }, req.idHash) });
+});
+
 /* ── People you may know ──────────────────────────────────────────────────── */
 
 /**
@@ -1408,5 +1719,5 @@ router.get('/activity', requireIdentity, (req, res) => {
 module.exports = router;
 module.exports.limits = {
   MAX_AVATAR_BYTES, MAX_PHOTO_BYTES, MAX_PHOTOS, MAX_CARD_BYTES,
-  CONNECT_PER_HOUR, MESSAGES_PER_HOUR, AGENT_CONNECT_PER_DAY, AGENT_POSTS_PER_DAY,
+  CONNECT_PER_HOUR, MESSAGES_PER_HOUR, AGENT_CONNECT_PER_DAY, AGENT_POSTS_PER_DAY, MAX_FILE_BYTES,
 };

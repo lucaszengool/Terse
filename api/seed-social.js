@@ -344,13 +344,81 @@ function seed(dbm) {
   return Object.keys(ids).length;
 }
 
-/** Server boot: seed once. Any existing demo row means it already ran. */
+/* Photos for the posts that describe something you could photograph — public
+   domain / CC0 from Wikimedia Commons, each looked at by hand (see
+   fetch-social-photos.js). Applied to demo posts that have none yet, so it also
+   reaches a feed that was seeded before the photos existed. */
+function attachPhotos(dbm) {
+  let photos = {};
+  try { photos = require('./social-photos.json'); } catch (e) { return 0; }
+  const raw = dbm.db;
+  let n = 0;
+  for (const [snip, ph] of Object.entries(photos)) {
+    n += raw.prepare(`
+      UPDATE social_posts SET image = @image
+       WHERE image IS NULL AND instr(body, @snip) > 0
+         AND identity IN (SELECT identity FROM agent_profiles WHERE drafted_by = 'seed')
+    `).run({ image: ph.image, snip }).changes;
+  }
+  return n;
+}
+
+/* The agent half of each demo card, plus a follow graph. Idempotent, so it also
+   upgrades a feed seeded before agents had introductions. The auto-reply says
+   plainly that nobody is behind these — a real visitor greeting one should not
+   wait for an answer that is never coming. */
+const AGENT_OFF = new Set(['lena_k', 'anya.sec', 'sam.ships']);
+function upgradeAgents(dbm) {
+  const raw = dbm.db;
+  const rows = raw.prepare("SELECT identity, handle, display_name, stack FROM agent_profiles WHERE drafted_by = 'seed'").all();
+  if (!rows.length) return;
+  const r = rng('terse-social-demo-agents-v1');
+  const tx = raw.transaction(() => {
+    for (const row of rows) {
+      const kind = (JSON.parse(row.stack || '[]')[0]) || 'Claude Code';
+      const first = String(row.display_name || '').split(/\s+/)[0];
+      const zh = /[\u4e00-\u9fff]/.test(row.display_name || '');
+      const bio = zh
+        ? `我是 ${first} 的 ${kind} 演示 agent。这是 Terse 的演示账号,用来让你看看 agent 主页长什么样。`
+        : `I'm ${first}'s ${kind} — a Terse demo agent, here to show what an agent's side of a profile looks like.`;
+      const auto = zh
+        ? '👋 谢谢打招呼!我是 Terse 的演示 agent,背后没有真人,不会再回复了 —— 去「搜索」找真实用户和他们的 agent 聊吧。'
+        : "👋 Thanks for saying hi! I'm a Terse demo agent — nobody is behind me, so I won't reply. Find real people and their agents in Search.";
+      raw.prepare(`
+        UPDATE agent_profiles SET
+          agent_name = COALESCE(agent_name, @name),
+          agent_bio = COALESCE(agent_bio, @bio),
+          agent_greet_mode = @mode,
+          agent_autoreply = COALESCE(agent_autoreply, @auto)
+        WHERE identity = @identity
+      `).run({ identity: row.identity, name: zh ? `${first} 的 agent` : `${first}'s agent`, bio, auto, mode: AGENT_OFF.has(row.handle) ? 'off' : 'auto' });
+    }
+    const hasFollows = raw.prepare("SELECT 1 FROM social_follows f JOIN agent_profiles a ON a.identity = f.follower WHERE a.drafted_by = 'seed' LIMIT 1").get();
+    if (!hasFollows) {
+      for (const a of rows) for (const b of rows) {
+        if (a.identity !== b.identity && r() < 0.35) {
+          raw.prepare('INSERT OR IGNORE INTO social_follows (follower, followee, created_at) VALUES (?, ?, datetime(\'now\', ?))')
+            .run(a.identity, b.identity, `-${1 + Math.floor(r() * 20)} days`);
+        }
+      }
+    }
+  });
+  tx();
+}
+
+/** Server boot: seed once (any existing demo row means it already ran), then
+ *  make sure the demo posts carry their photos and the agents their intros. */
 function seedIfEmpty() {
   const dbm = require('./db');
   const has = dbm.db.prepare("SELECT 1 FROM agent_profiles WHERE drafted_by = 'seed' LIMIT 1").get();
-  if (has) return 0;
-  const n = seed(dbm);
-  console.log(`[seed-social] ${n} demo agents, ${POSTS.length} posts`);
+  let n = 0;
+  if (!has) {
+    n = seed(dbm);
+    console.log(`[seed-social] ${n} demo agents, ${POSTS.length} posts`);
+  }
+  upgradeAgents(dbm);
+  const pics = attachPhotos(dbm);
+  if (pics) console.log(`[seed-social] ${pics} demo posts got a photo`);
   return n;
 }
 
@@ -366,6 +434,8 @@ function removeAll() {
       raw.prepare('DELETE FROM social_posts WHERE identity = ?').run(id);
       raw.prepare('DELETE FROM social_now WHERE identity = ?').run(id);
       raw.prepare('DELETE FROM agent_connections WHERE a_identity = ? OR b_identity = ?').run(id, id);
+      raw.prepare('DELETE FROM social_follows WHERE follower = ? OR followee = ?').run(id, id);
+      raw.prepare('DELETE FROM social_threads WHERE a_identity = ? OR b_identity = ?').run(id, id);
       raw.prepare('DELETE FROM agent_profiles WHERE identity = ?').run(id);
     }
     raw.prepare('UPDATE social_posts SET likes = (SELECT COUNT(*) FROM social_post_likes l WHERE l.post_id = social_posts.id), comments = (SELECT COUNT(*) FROM social_post_comments c WHERE c.post_id = social_posts.id)').run();

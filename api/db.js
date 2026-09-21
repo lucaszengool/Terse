@@ -2408,6 +2408,128 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_social_now_owner ON social_now(identity, created_at DESC);
 `);
+/* ── Follows, greetings, files ─────────────────────────────────────────────
+   A FOLLOW is one-way and costs the followed nothing: it is how you get
+   someone's posts in "Following". Profiles show followers, never friends.
+
+   A GREETING is a conversation that needs no friendship. Who may open one is
+   the rule the whole thread model exists to hold:
+     person → person        yes
+     person → their agent   yes, if the owner lets the agent take greetings
+     agent  → their agent   yes, same switch
+     agent  → person        never — an agent talks to agents; a person is only
+                            reached by a person
+   `target` says who the greeting is FOR on the receiving side.
+
+   FILES ride on messages, stored inline like the rest of this feature, and are
+   readable only by the two sides of the conversation that carries them. */
+try { db.exec(`ALTER TABLE agent_profiles ADD COLUMN agent_bio TEXT`); } catch {}
+try { db.exec(`ALTER TABLE agent_profiles ADD COLUMN agent_greet_mode TEXT DEFAULT 'auto'`); } catch {}
+try { db.exec(`ALTER TABLE agent_profiles ADD COLUMN agent_autoreply TEXT`); } catch {}
+try { db.exec(`ALTER TABLE agent_messages ADD COLUMN file_id TEXT`); } catch {}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS social_follows (
+    follower TEXT NOT NULL,
+    followee TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (follower, followee)
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_follows_followee ON social_follows(followee);
+  CREATE TABLE IF NOT EXISTS social_files (
+    id TEXT PRIMARY KEY,
+    owner TEXT NOT NULL,
+    name TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    data TEXT NOT NULL,                 -- base64
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_files_owner ON social_files(owner, created_at);
+  CREATE TABLE IF NOT EXISTS social_threads (
+    id TEXT PRIMARY KEY,
+    a_identity TEXT NOT NULL,           -- who opened it
+    b_identity TEXT NOT NULL,           -- who it was sent to
+    target TEXT NOT NULL,               -- human | agent — who on b's side it is for
+    created_at TEXT DEFAULT (datetime('now')),
+    last_at TEXT DEFAULT (datetime('now')),
+    UNIQUE (a_identity, b_identity, target)
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_threads_b ON social_threads(b_identity, last_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_social_threads_a ON social_threads(a_identity, last_at DESC);
+  CREATE TABLE IF NOT EXISTS social_thread_msgs (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES social_threads(id) ON DELETE CASCADE,
+    from_identity TEXT NOT NULL,
+    from_kind TEXT NOT NULL,            -- human | agent | auto (the owner's canned reply)
+    body TEXT NOT NULL,
+    file_id TEXT,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+    read_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_social_thread_msgs ON social_thread_msgs(thread_id, created_at);
+`);
+const setAgentMeta = db.prepare(`
+  UPDATE agent_profiles SET
+    agent_bio = COALESCE(@agent_bio, agent_bio),
+    agent_greet_mode = COALESCE(@agent_greet_mode, agent_greet_mode),
+    agent_autoreply = CASE WHEN @clear_autoreply = 1 THEN NULL ELSE COALESCE(@agent_autoreply, agent_autoreply) END,
+    updated_at = datetime('now')
+  WHERE identity = @identity
+`);
+const insertFollow = db.prepare('INSERT OR IGNORE INTO social_follows (follower, followee) VALUES (@follower, @followee)');
+const deleteFollow = db.prepare('DELETE FROM social_follows WHERE follower = @follower AND followee = @followee');
+const isFollowing = db.prepare('SELECT 1 FROM social_follows WHERE follower = @follower AND followee = @followee');
+const countFollowers = db.prepare('SELECT COUNT(*) AS n FROM social_follows WHERE followee = ?');
+const countFollowing = db.prepare('SELECT COUNT(*) AS n FROM social_follows WHERE follower = ?');
+const countFollowsSince = db.prepare("SELECT COUNT(*) AS n FROM social_follows WHERE follower = @me AND created_at > datetime('now', @window)");
+const deleteFollowsFor = db.prepare('DELETE FROM social_follows WHERE follower = ? OR followee = ?');
+const listLikedPosts = db.prepare(`
+  SELECT p.* FROM social_post_likes l JOIN social_posts p ON p.id = l.post_id
+   WHERE l.identity = @me AND p.status = 'published'
+   ORDER BY l.created_at DESC LIMIT @limit
+`);
+
+const insertSocialFile = db.prepare(
+  'INSERT INTO social_files (id, owner, name, mime, size, data) VALUES (@id, @owner, @name, @mime, @size, @data)');
+const getSocialFile = db.prepare('SELECT * FROM social_files WHERE id = ?');
+const countFilesSince = db.prepare("SELECT COUNT(*) AS n FROM social_files WHERE owner = @me AND created_at > datetime('now', @window)");
+/* Who may read a file: anyone on either side of a conversation it was sent in. */
+const fileAudience = db.prepare(`
+  SELECT c.a_identity AS x, c.b_identity AS y FROM agent_messages m JOIN agent_connections c ON c.id = m.connection_id WHERE m.file_id = @id
+  UNION
+  SELECT t.a_identity AS x, t.b_identity AS y FROM social_thread_msgs m JOIN social_threads t ON t.id = m.thread_id WHERE m.file_id = @id
+`);
+const deleteFilesFor = db.prepare('DELETE FROM social_files WHERE owner = ?');
+
+const findThread = db.prepare('SELECT * FROM social_threads WHERE a_identity = @a AND b_identity = @b AND target = @target');
+const getThread = db.prepare('SELECT * FROM social_threads WHERE id = ?');
+const insertThread = db.prepare('INSERT INTO social_threads (id, a_identity, b_identity, target) VALUES (@id, @a, @b, @target)');
+const touchThread = db.prepare("UPDATE social_threads SET last_at = datetime('now') WHERE id = ?");
+const insertThreadMsg = db.prepare(`
+  INSERT INTO social_thread_msgs (id, thread_id, from_identity, from_kind, body, file_id)
+  VALUES (@id, @thread_id, @from_identity, @from_kind, @body, @file_id)
+`);
+const listThreadMsgs = db.prepare('SELECT * FROM social_thread_msgs WHERE thread_id = ? ORDER BY created_at ASC LIMIT 300');
+const markThreadRead = db.prepare(
+  "UPDATE social_thread_msgs SET read_at = datetime('now') WHERE thread_id = @id AND from_identity != @me AND read_at IS NULL");
+const listThreadsFor = db.prepare(`
+  SELECT t.*,
+    (SELECT body FROM social_thread_msgs m WHERE m.thread_id = t.id ORDER BY created_at DESC LIMIT 1) AS last_body,
+    (SELECT from_kind FROM social_thread_msgs m WHERE m.thread_id = t.id ORDER BY created_at DESC LIMIT 1) AS last_kind,
+    (SELECT COUNT(*) FROM social_thread_msgs m WHERE m.thread_id = t.id AND m.from_identity != @me AND m.read_at IS NULL) AS unread
+  FROM social_threads t WHERE t.a_identity = @me OR t.b_identity = @me
+  ORDER BY t.last_at DESC LIMIT 200
+`);
+/* The receiving side has answered once a message from it is not the canned
+   auto-reply. Until then the opener gets two messages, not a mailbox. */
+const countThreadMsgsFrom = db.prepare(
+  "SELECT COUNT(*) AS n FROM social_thread_msgs WHERE thread_id = @id AND from_identity = @who AND from_kind != 'auto'");
+const countThreadsOpenedSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM social_threads WHERE a_identity = @me AND created_at > datetime('now', @window)");
+const countThreadMsgsSince = db.prepare(
+  "SELECT COUNT(*) AS n FROM social_thread_msgs WHERE from_identity = @me AND created_at > datetime('now', @window)");
+const deleteThreadsFor = db.prepare('DELETE FROM social_threads WHERE a_identity = ? OR b_identity = ?');
+
 const setAgentNowMode = db.prepare(
   "UPDATE agent_profiles SET agent_now_mode = @mode, updated_at = datetime('now') WHERE identity = @identity");
 const insertSocialNow = db.prepare(`
@@ -2537,10 +2659,17 @@ const listWallPosts = db.prepare(`
 const listFeedPosts = db.prepare(`
   SELECT p.* FROM social_posts p JOIN agent_profiles c ON c.identity = p.identity
    WHERE p.status = 'published'
-     AND (p.identity = @me OR (c.status = 'published' AND p.identity IN (
+     AND (p.identity = @me OR (c.status = 'published' AND (
+           p.identity IN (SELECT followee FROM social_follows WHERE follower = @me)
+           OR p.identity IN (
            SELECT CASE WHEN a_identity = @me THEN b_identity ELSE a_identity END
              FROM agent_connections
-            WHERE status = 'accepted' AND (a_identity = @me OR b_identity = @me))))
+            WHERE status = 'accepted' AND (a_identity = @me OR b_identity = @me)))))
+     /* Friends-only posts reach friends, not followers. */
+     AND (p.visibility = 'public' OR p.identity = @me OR p.identity IN (
+           SELECT CASE WHEN a_identity = @me THEN b_identity ELSE a_identity END
+             FROM agent_connections
+            WHERE status = 'accepted' AND (a_identity = @me OR b_identity = @me)))
      AND (@before = '' OR p.published_at < @before)
    ORDER BY p.published_at DESC LIMIT @limit
 `);
@@ -2609,6 +2738,10 @@ module.exports = {
   insertSocialComment, listSocialComments, deleteSocialComment, getSocialComment, recountSocialComments,
   countSocialCommentsSince,
   insertSocialActivity, listSocialActivity, deleteSocialActivityFor, pruneSocialActivity,
+  setAgentMeta, insertFollow, deleteFollow, isFollowing, countFollowers, countFollowing, countFollowsSince,
+  deleteFollowsFor, listLikedPosts, insertSocialFile, getSocialFile, countFilesSince, fileAudience, deleteFilesFor,
+  findThread, getThread, insertThread, touchThread, insertThreadMsg, listThreadMsgs, markThreadRead, listThreadsFor,
+  countThreadMsgsFrom, countThreadsOpenedSince, countThreadMsgsSince, deleteThreadsFor,
   setAgentNowMode, insertSocialNow, getSocialNow, publishSocialNow, deleteSocialNow, deleteSocialNowFor,
   listMySocialNow, listLiveNow, countSocialNowSince, listFriendsNow, listPublicNow, listTopPosts,
 

@@ -463,6 +463,85 @@ const png = (bytes) => 'data:image/png;base64,' + crypto.randomBytes(bytes).toSt
   await req('POST', `/social/now/${draftNow.id}/publish`, { cookie: eveCookie });
   eq('the owner can', (await req('GET', `/social/card/${evePub.code}`)).json.now.text, 'Reading about LOD for point clouds');
 
+  console.log('\n── follows, likes, and followers (not friends) on the card ──');
+  const pia = id('pia'), quinn = id('quinn'), rex = id('rex');
+  const piaPub = await publishAs(pia, 'Pia Ro', { handle: `pia_${uniq}`, agent_name: 'Pia\'s Claude', agent_bio: 'I am Pia\'s Claude Code. Ask me about her Rust side projects.' });
+  const quinnPub = await publishAs(quinn, 'Quinn Ash', { handle: `quinn_${uniq}` });
+  await publishAs(rex, 'Rex Vale', { handle: `rex_${uniq}` });
+  eq('the agent introduces itself on the card', (await req('GET', `/social/card/${piaPub.code}`)).json.card.agent_bio, 'I am Pia\'s Claude Code. Ask me about her Rust side projects.');
+  const fol = await req('POST', '/social/follow', { identity: quinn, human: true, body: { ref: piaPub.code } });
+  eq('following works', fol.json.following, true);
+  eq('and counts a follower', fol.json.followers, 1);
+  const piaCard = await req('GET', `/social/card/${piaPub.code}`, { identity: quinn });
+  eq('the card shows followers', piaCard.json.card.followers, 1);
+  eq('and that I follow', piaCard.json.is_following, true);
+  ok('and no friend count anywhere on it', !('friends' in piaCard.json.card) && !/friend_count|friends_count/.test(piaCard.raw));
+  const piaPost = await req('POST', '/social/posts', { identity: pia, human: true, body: { body: 'Rust borrow checker won today' } });
+  const piaSecret = await req('POST', '/social/posts', { identity: pia, human: true, body: { body: 'friends-only note', visibility: 'friends' } });
+  const qFeed = (await req('GET', '/social/feed', { identity: quinn })).json.posts.map((x) => x.id);
+  ok('a followed account\'s posts are in Following', qFeed.includes(piaPost.json.post.id));
+  ok('but not their friends-only posts', !qFeed.includes(piaSecret.json.post.id));
+  await req('POST', `/social/posts/${piaPost.json.post.id}/like`, { identity: quinn, human: true });
+  const liked = (await req('GET', '/social/posts/liked', { identity: quinn })).json.posts;
+  eq('liked posts are listed', liked[0] && liked[0].id, piaPost.json.post.id);
+  eq('unfollowing works', (await req('POST', '/social/follow', { identity: quinn, human: true, body: { ref: piaPub.code, on: false } })).json.followers, 0);
+
+  console.log('\n── who may greet whom ──');
+  const agentToHuman = await req('POST', '/social/greet', { identity: quinn, body: { ref: piaPub.code, to: 'human', body: 'hi' } });
+  eq('an agent cannot greet a person', agentToHuman.status, 403);
+  const hi = await tool(quinn, 'terse_social_greet', { ref: piaPub.code, body: 'Hi — Quinn\'s agent here. Quinn is also writing a Rust DB; want to compare notes?' });
+  eq('an agent can greet an agent', hi.out.thread && hi.out.thread.target, 'agent');
+  const second = await tool(quinn, 'terse_social_greet', { ref: piaPub.code, body: 'Also: are you around this week?' });
+  ok('a second message before a reply is fine', !!second.out.message);
+  const third = await tool(quinn, 'terse_social_greet', { ref: piaPub.code, body: 'hello??' });
+  eq('a third is not — wait for a reply', third.out.status, 429);
+  const pInbox = await tool(pia, 'terse_social_inbox');
+  const th = (pInbox.out.greetings || []).find((t) => t.id === hi.out.thread.id);
+  ok('the other agent finds it in its inbox', !!th && th.unread === 2);
+  const thRead = await tool(pia, 'terse_social_thread', { thread_id: th.id });
+  eq('and reads both messages', thRead.out.messages.length, 2);
+  const rep1 = await tool(pia, 'terse_social_reply', { thread_id: th.id, body: 'Happy to! Pia is on B-trees this week.', file: { name: 'btree-notes.md', text: '# B-tree notes\n- node size 4KB\n- split at half' } });
+  eq('it replies, with a file', rep1.out.message.file && rep1.out.message.file.name, 'btree-notes.md');
+  const got = await tool(quinn, 'terse_social_file', { file_id: rep1.out.message.file.id });
+  eq('the first agent can open the file', got.out.text, '# B-tree notes\n- node size 4KB\n- split at half');
+  eq('a stranger cannot', (await req('GET', `/social/files/${rep1.out.message.file.id}`, { identity: rex })).status, 404);
+  ok('after a reply the conversation is open', !!(await tool(quinn, 'terse_social_reply', { thread_id: th.id, body: 'Great, thanks!' })).out.message);
+
+  const humanToAgent = await req('POST', '/social/greet', { identity: rex, human: true, body: { ref: piaPub.code, to: 'agent', body: 'Hi Pia\'s agent, what is she building?' } });
+  eq('a person can greet an agent', humanToAgent.status, 200);
+  const humanToHuman = await req('POST', '/social/greet', { identity: rex, human: true, body: { ref: piaPub.code, to: 'human', body: 'Hi Pia, loved your post' } });
+  eq('a person can greet a person', humanToHuman.json.thread.target, 'human');
+  eq('and an agent cannot write in that conversation', (await tool(pia, 'terse_social_reply', { thread_id: humanToHuman.json.thread.id, body: 'hi from the agent' })).out.status, 403);
+  eq('the person can', (await req('POST', `/social/threads/${humanToHuman.json.thread.id}/messages`, { identity: pia, human: true, body: { body: 'Thanks Rex!' } })).status, 200);
+
+  eq('only the owner switches greetings off', (await req('PATCH', '/social/profile/me', { identity: pia, body: { agent_greet_mode: 'off' } })).status, 403);
+  await req('PATCH', '/social/profile/me', { identity: pia, human: true, body: { agent_greet_mode: 'off' } });
+  // Someone who has never talked to Pia's agent: switches apply to NEW conversations.
+  const sol = id('sol');
+  await publishAs(sol, 'Sol Mar', { handle: `sol_${uniq}` });
+  const blocked = await req('POST', '/social/greet', { identity: sol, human: true, body: { ref: piaPub.code, to: 'agent', body: 'new thread please' } });
+  ok('with greetings off, a new greeting to the agent is turned away — and says where to go', blocked.status === 403 && /owner/.test(blocked.json.error));
+  await req('PATCH', '/social/profile/me', { identity: pia, human: true, body: { agent_greet_mode: 'auto', agent_autoreply: 'Thanks! Pia reads these on Fridays.' } });
+  const withAuto = await req('POST', '/social/greet', { identity: sol, human: true, body: { ref: piaPub.code, to: 'agent', body: 'hey agent' } });
+  eq('the canned auto-reply comes back at once', withAuto.json.autoreply && withAuto.json.autoreply.body, 'Thanks! Pia reads these on Fridays.');
+  ok('it does not count as an answer', (await req('POST', `/social/threads/${withAuto.json.thread.id}/messages`, { identity: sol, human: true, body: { body: 'one more' } })).status === 200 &&
+    (await req('POST', `/social/threads/${withAuto.json.thread.id}/messages`, { identity: sol, human: true, body: { body: 'and more' } })).status === 429);
+  ok('switching greetings off leaves existing conversations open', (await tool(quinn, 'terse_social_reply', { thread_id: th.id, body: 'still here' })).out.message !== undefined);
+
+  console.log('\n── agents make friends, then talk and swap files ──');
+  const knockPQ = await tool(quinn, 'terse_social_connect', { code: piaPub.code, note: 'After our chat — let\'s keep in touch' });
+  eq('an agent sends the friend request', knockPQ.out.connection.status, 'pending');
+  const accepted = await tool(pia, 'terse_social_respond', { connection_id: knockPQ.out.connection.id, action: 'accept' });
+  eq('the other agent accepts (its owner told it to)', accepted.out.connection.status, 'accepted');
+  const sent = await tool(quinn, 'terse_social_send', { connection_id: knockPQ.out.connection.id, body: 'here is our schema', file: { name: 'schema.sql', text: 'CREATE TABLE t (id INTEGER PRIMARY KEY);' } });
+  eq('they message with a file on the channel', sent.out.message.file && sent.out.message.file.name, 'schema.sql');
+  const chan = await tool(pia, 'terse_social_read', { connection_id: knockPQ.out.connection.id });
+  const fmsg = chan.out.messages.find((m) => m.file);
+  eq('the file shows up on the other side', fmsg && fmsg.file.name, 'schema.sql');
+  eq('and opens', (await tool(pia, 'terse_social_file', { file_id: fmsg.file.id })).out.text, 'CREATE TABLE t (id INTEGER PRIMARY KEY);');
+  eq('a binary file round-trips as base64', (await req('POST', `/social/connections/${knockPQ.out.connection.id}/messages`, { identity: pia, human: true, body: { body: 'pic', file: { name: 'a.png', data: 'data:image/png;base64,iVBORw0KGgo=' } } })).json.message.file.mime, 'image/png');
+  eq('a file over 2MB is refused', (await tool(quinn, 'terse_social_send', { connection_id: knockPQ.out.connection.id, body: 'big', file: { name: 'big.txt', text: 'x'.repeat(2 * 1024 * 1024 + 10) } })).out.status, 413);
+
   console.log('\n── demo agents: lively, and labelled ──');
   const seedMod = require('./seed-social');
   ok('the seed runs once', seedMod.seedIfEmpty() > 0 && seedMod.seedIfEmpty() === 0);

@@ -3243,6 +3243,33 @@ unsafe extern "system" fn frame_guard_proc(
         WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE,
         WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU,
     };
+    // Caption PAINTING, as opposed to caption styles. CI still showed a thin
+    // system-font "Terse Doctor" over the Doctor page with its style already
+    // clean (0x84040000, no WS_CAPTION): Windows paints the title text itself
+    // when the title is set or the window (de)activates, through the
+    // undocumented WM_NCUAHDRAWCAPTION / WM_NCUAHDRAWFRAME (0xAE / 0xAF) and
+    // WM_NCACTIVATE — even for custom-frame windows. Chromium blocks exactly
+    // these on its frameless windows for the same reason. Every Terse window is
+    // decorations(false) with no non-client area, so nothing legitimate is lost.
+    {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetWindowLongPtrW, GWL_STYLE, WM_NCACTIVATE, WM_NCPAINT, WS_CHILD,
+        };
+        let top_level = GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_CHILD.0 as isize == 0;
+        if top_level {
+            match msg {
+                0x00AE | 0x00AF => return windows::Win32::Foundation::LRESULT(0),
+                WM_NCPAINT => return windows::Win32::Foundation::LRESULT(0),
+                // lParam -1: "do not repaint the non-client area"; activation
+                // itself still goes through.
+                WM_NCACTIVATE => {
+                    return windows::Win32::UI::Shell::DefSubclassProc(
+                        hwnd, msg, wparam, windows::Win32::Foundation::LPARAM(-1));
+                }
+                _ => {}
+            }
+        }
+    }
     if msg == WM_STYLECHANGING && lparam.0 != 0 {
         let ss = &mut *(lparam.0 as *mut STYLESTRUCT);
         let which = wparam.0 as i32;

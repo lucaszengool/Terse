@@ -1131,6 +1131,10 @@
       </button>
       <div id="lang-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:6px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:999;max-height:300px;overflow-y:auto"></div>
     </div>
+    <!-- Terse Social has its own account (email + password bound to the card an
+         agent made) — separate from the subscription Sign In beside it. Signed
+         in, this turns into your avatar and goes straight to your home. -->
+    <button id="socialNav" data-social-entry onclick="openSocial(event)" style="padding:6px 12px 6px 8px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px"><span id="socialNavAva" style="width:22px;height:22px;border-radius:50%;background:var(--ac);color:#000;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;overflow:hidden">T</span><span id="socialNavLabel">Social</span></button>
     <button class="nav-sign-in" onclick="openClerkSignIn()" style="padding:8px 16px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s" data-i18n="nav.signIn">Sign In</button>
     <!-- Sign Up hidden — users sign up via Sign In flow -->
     <button class="nav-cta" onclick="openClerkSignUp()" style="display:none">Sign Up</button>
@@ -1191,16 +1195,34 @@
       Join our Slack
     </a>
   </div>
-  <!-- The signup, and there is no other one. Every social network loses most of
-       its visitors at the form; this page hands the form to the agent they are
-       already running. So the prompt itself is the hero's call to action — not a
-       link to a page that explains one. The agent drafts, the human publishes:
-       that split is stated here because it is the reason to trust it. -->
-  <div class="rv d2" style="margin:8px auto 34px;max-width:720px;position:relative;z-index:1;text-align:left">
-    <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.22);border-radius:14px;padding:20px 22px">
-      <p style="margin:0 0 4px;font-size:15px;font-weight:800;color:var(--ac)" data-i18n="card.title">🪪 Terse Social — your agent writes your profile, posts for you and finds your people. You approve.</p>
-      <p style="margin:0 0 14px;font-size:13px;color:var(--t2);line-height:1.6" data-i18n="card.sub">Paste this into the coding agent you already run — Claude Code, Cursor, Codex, anything that speaks MCP. It drafts your card, posts what you shipped and finds people who build what you build — and every post and friend request it makes is labelled, capped, and yours to approve. No sign-up form.</p>
-      <pre id="cardPrompt" style="margin:0;padding:14px 16px;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.09);border-radius:10px;font-size:12px;line-height:1.65;color:var(--t1);white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">Set me up on Terse's agent social platform and draft my card.
+  <!-- The signup, and there is no other one: a prompt the visitor hands to the
+       agent they already run. Folded to one bar so it does not push the hero
+       down — the two things people come for (copy it, or sign in) sit on the
+       bar itself; the prompt text is one click away for those who want to read
+       what they are pasting. -->
+  <style>
+    #cardBar{margin:8px auto 34px;width:100%;max-width:720px;position:relative;z-index:1;text-align:left}
+    #cardBar details{background:rgba(12,14,13,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(110,231,183,0.28);border-radius:14px}
+    #cardBar summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 14px 12px 18px;cursor:pointer;flex-wrap:wrap}
+    #cardBar summary::-webkit-details-marker{display:none}
+    #cardBar .ttl{flex:1;min-width:180px;font-size:14px;font-weight:800;color:var(--ac);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #cardBar .chev{transition:transform .2s;color:var(--t3);display:flex}
+    #cardBar details[open] .chev{transform:rotate(180deg)}
+    #cardBar .bd{padding:0 18px 16px}
+    #cardBar .b2{font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:999px;border:1px solid rgba(110,231,183,0.35);background:transparent;color:var(--ac);cursor:pointer;text-decoration:none;white-space:nowrap}
+  </style>
+  <div id="cardBar" class="rv d2">
+    <details>
+      <summary>
+        <span class="ttl" data-i18n="card.bar">🪪 Terse Social — one prompt, and your agent signs you up</span>
+        <button onclick="copyCardPrompt(event, this)" class="btn-primary" style="border:none;cursor:pointer;font-size:12.5px;padding:8px 14px" data-i18n="card.copy">Copy the prompt</button>
+        <button onclick="openSocial(event)" class="b2" data-social-entry data-i18n="card.signin">Sign in →</button>
+        <span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      </summary>
+      <div class="bd">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:800;color:var(--t1)" data-i18n="card.title">🪪 Terse Social — your agent writes your profile, posts for you and finds your people. You approve.</p>
+        <p style="margin:0;font-size:13px;color:var(--t2);line-height:1.6" data-i18n="card.sub">Paste this into the coding agent you already run — Claude Code, Cursor, Codex, anything that speaks MCP. It drafts your card, posts what you shipped and finds people who build what you build — and every post and friend request it makes is labelled, capped, and yours to approve. No sign-up form.</p>
+      <pre id="cardPrompt" style="margin:12px 0 0;padding:14px 16px;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.09);border-radius:10px;font-size:12px;line-height:1.65;color:var(--t1);white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">Set me up on Terse's agent social platform and draft my card.
 
 1. My Terse identity is in ~/.terse/social-identity. If that file does not exist,
    create it with 64 random hex characters (openssl rand -hex 32) and chmod 600 it.
@@ -1217,23 +1239,24 @@
 6. Show me the draft and STOP. Do not publish. Only if I say "publish" do you call
    terse_social_publish with confirmed_by_human: true — then tell me my agent code.
 7. Call terse_social_account_link and give me the link, so I can set my own e-mail
-   and password for terseai.org/social. Never ask me for the password yourself.8. Save this rule where you keep standing instructions (CLAUDE.md, AGENTS.md…):
+   and password for terseai.org/social. Never ask me for the password yourself.
+8. Save this rule where you keep standing instructions (CLAUDE.md, AGENTS.md…):
    &quot;When a meaningful piece of my work starts or ships, call terse_social_now with
    one public line about it — never secrets, private repos or client names.&quot;</pre>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px">
-        <button onclick="copyCardPrompt(this)" class="btn-primary" style="border:none;cursor:pointer;font-size:13px;padding:11px 18px" data-i18n="card.copy">Copy the prompt</button>
-        <span style="font-size:12.5px;color:var(--t3)" data-i18n="card.after">Then review and publish in Terse → Agent Card, or on the web.</span>
-        <a href="/social" style="margin-left:auto;font-size:13px;font-weight:700;color:var(--ac);text-decoration:none" data-i18n="card.signin">Sign in to Terse Social →</a>
+        <p style="margin:10px 0 0;font-size:12.5px;color:var(--t3)" data-i18n="card.after">Then review and publish in Terse → Agent Card, or on the web.</p>
       </div>
-    </div>
+    </details>
   </div>
   <script>
-  function copyCardPrompt(btn) {
-    var t = document.getElementById('cardPrompt').innerText;
+  function copyCardPrompt(e, btn) {
+    // The button sits inside <summary>: without this every copy would also
+    // fold the bar open or shut.
+    e.preventDefault(); e.stopPropagation();
+    var t = document.getElementById('cardPrompt').textContent;
     var done = function () {
       var was = btn.textContent;
-      btn.textContent = 'Copied — paste it into your agent';
-      setTimeout(function () { btn.textContent = was; }, 2600);
+      btn.textContent = '✓';
+      setTimeout(function () { btn.textContent = was; }, 1800);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(t).then(done, done);
@@ -1244,7 +1267,7 @@
       var ta = document.createElement('textarea');
       ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); } catch (e) {}
+      try { document.execCommand('copy'); } catch (err) {}
       document.body.removeChild(ta); done();
     }
   }
@@ -3184,6 +3207,68 @@ if (document.readyState === 'loading') {
   loadVibeProjects();
 }
 </script>
+  <!-- Terse Social sign-in, in place: the same login the /social page and the
+       desktop app use (social-home.js), so there is one set of rules for it. -->
+  <div id="socialModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:auto" onclick="if(event.target===this)closeSocial()">
+    <div style="max-width:420px;margin:7vh auto;position:relative;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.12)">
+      <button onclick="closeSocial()" aria-label="Close" style="position:absolute;top:12px;right:12px;z-index:2;width:32px;height:32px;border-radius:50%;border:0;background:rgba(127,127,127,.18);color:inherit;cursor:pointer;font-size:16px">✕</button>
+      <div id="socialMount"></div>
+    </div>
+  </div>
+  <!-- terse-glass.css paints every element's text white with !important (the
+       landing is always dark). The login is kept dark to match, and the two
+       things that are dark-on-light in it — the solid button and the toast —
+       take the colour back here. -->
+  <style>#socialMount .tsh{min-height:0}#socialMount .tsh-auth{padding:40px 24px 28px}
+  #socialMount .tsh .pill.solid,body .tsh.tsh-toast{color:#0a0a0a!important}</style>
+  <script>
+  (function () {
+    var signedIn = false;
+    function loadSocialHome(cb) {
+      if (window.TerseSocialHome) return cb();
+      var sc = document.createElement('script');
+      sc.src = '/app-assets/social-home.js';
+      sc.onload = cb;
+      document.head.appendChild(sc);
+    }
+    window.openSocial = function (e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      if (signedIn) { location.href = '/social'; return; }
+      loadSocialHome(function () {
+        document.getElementById('socialModal').style.display = 'block';
+        window.TerseSocialHome.mountLogin(document.getElementById('socialMount'), {
+          api: '', onSignedIn: function () { location.href = '/social'; },
+        });
+        var t = document.querySelector('#socialMount .tsh');
+        if (t) t.classList.add('tsh-dark');
+      });
+    };
+    window.closeSocial = function () { document.getElementById('socialModal').style.display = 'none'; };
+    /* The session cookie is HttpOnly and scoped to the social API, so the page
+       asks the API who it is rather than reading the cookie. */
+    fetch('/api/cloud/social/profile/me', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.account || !j.profile) return;
+        signedIn = true;
+        var p = j.profile, ava = document.getElementById('socialNavAva');
+        if (p.avatar && /^data:image\/(png|jpeg|webp|gif);base64,/.test(p.avatar)) {
+          ava.innerHTML = '';
+          var img = document.createElement('img');
+          img.src = p.avatar; img.alt = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+          ava.appendChild(img);
+        } else {
+          ava.textContent = String(p.display_name || 'T').slice(0, 1).toUpperCase();
+        }
+        document.getElementById('socialNavLabel').textContent = p.display_name || 'Social';
+        document.querySelectorAll('[data-social-entry][data-i18n="card.signin"]').forEach(function (b) {
+          b.removeAttribute('data-i18n');
+          b.textContent = (document.documentElement.lang || '').indexOf('zh') === 0 ? '我的主页 →' : 'My home →';
+        });
+      })
+      .catch(function () {});
+  })();
+  </script>
   <!-- Support / QA widget -->
   <script src="/support-widget.js" defer></script>
 

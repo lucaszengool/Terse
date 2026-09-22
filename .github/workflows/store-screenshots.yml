@@ -36,10 +36,10 @@ permissions:
   contents: read
 
 env:
-  # The build run whose Terse.msix goes to the Store. Point this at the 1.3.5.0
-  # run (Pals removed from the Store build) before capturing — screenshots must
-  # come from the package that is actually submitted.
-  MSIX_RUN_ID: '35336138438'
+  # The build run whose Terse.msix goes to the Store — screenshots must come from
+  # the package that is actually submitted. This is 1.3.5.0 (Pals out of the Store
+  # build, the main-thread window deadlock fixed).
+  MSIX_RUN_ID: '35683909201'
 
 jobs:
   shots:
@@ -113,14 +113,19 @@ jobs:
           }
           # Poll: right after launch the WebView's accessibility tree isn't
           # there yet. "Start free trial" is deliberately NOT in the pattern.
-          function Onboard([int]$waitSec = 40) {
+          # Walk the onboarding to the end. "Run Scan" is in the pattern because
+          # the first screen scans before it offers Continue, and v6 sat on that
+          # screen for the whole run pressing nothing. "Start free trial" is
+          # deliberately NOT in the pattern.
+          function Onboard([int]$waitSec = 150) {
             $deadline = (Get-Date).AddSeconds($waitSec); $pressed = 0
-            while ((Get-Date) -lt $deadline -and $pressed -lt 6) {
-              if (Press '^(Continue|Done|Got it|Skip|Watch these agents|Let.s go)') { $pressed++; Start-Sleep -Seconds 4 }
-              elseif ($pressed -gt 0) { break }
-              else { Start-Sleep -Seconds 3 }
+            while ((Get-Date) -lt $deadline -and $pressed -lt 12) {
+              if (Press '^(Run Scan|PREVIEW ISSUES|Continue|Done|Got it|Skip|Finish|Watch these agents|Let.s go)') {
+                $pressed++; Start-Sleep -Seconds 8
+              } else { Start-Sleep -Seconds 4 }
             }
             Write-Host "onboard: pressed $pressed"
+            Dump 'after-onboard'
           }
           # Bring the main window forward and put it where the shot wants it.
           # Cert 09-21 failed the listing again under 10.1.1.3: v5 minimized every
@@ -183,6 +188,19 @@ jobs:
               view3d = @{ on = $view3d; az = 0.55; el = 0.28; dist = 1.0; dim = $false }
               theme = 'neon'; quality = 56; angle = 55; intensity = 1.0
             } | ConvertTo-Json -Depth 4 | Set-Content "$home2\wallpaper.json" -Encoding UTF8
+          }
+          # A signed-in machine, the way a signed-in machine looks: the app reads
+          # ~/.terse/auth.json at boot (license.rs AuthState::load). Without it the
+          # app stops at the sign-in gate, which is why v5 could only photograph
+          # the wallpaper — v6 proved it, its ui-names.log shows the onboarding
+          # screen and nothing else for every page it tried to open. graceStart is
+          # the app's own 15-minute "try it first" window, so the paywall stays out
+          # of the frame the same way it would for a new user.
+          function Auth {
+            @{ clerkUserId = 'user_store_capture'; email = 'store-capture@terseai.org'
+               firstName = 'Terse'; imageUrl = $null; signedIn = $true
+               graceStart = (Get-Date).ToUniversalTime().ToString('o') } |
+              ConvertTo-Json -Depth 4 | Set-Content "$home2\auth.json" -Encoding UTF8
           }
           function License([bool]$pro) {
             if ($pro) {
@@ -268,22 +286,22 @@ jobs:
           # A sample agent session runs throughout, so the windows hold real
           # numbers instead of zeros.
           DemoSession
+          Auth
           License $true
           Wallpaper 'cinematic' 'vortex' $true
           Launch 35
-          Onboard 30
-          Dump 'after-onboard'
+          Onboard
           Front | Out-Null
-          Start-Sleep -Seconds 6
+          Start-Sleep -Seconds 8
           Snap '10-app-overview'
-          # Sidebar names come from the UI's own labels; the regex covers the
-          # English strings, and ui-names.log shows what was really there.
-          Page '11-app-doctor'    'Doctor'        10
-          Page '12-app-wallpaper' 'Wallpaper|Live wallpaper'
-          Page '13-app-observe'   'Observe|Sessions|Monitor'
-          Page '14-app-stats'     'Statistics|Stats'
-          Page '15-app-boost'     'Boost|Optimize|Optimizer'
-          Page '16-app-settings'  'Settings'
+          # The sidebar is translated at runtime, so each pattern carries the
+          # English label and the Chinese one from i18n.js.
+          Page '11-app-doctor'    'Doctor|体检'                 14
+          Page '12-app-wallpaper' 'Wallpaper|壁纸'
+          Page '13-app-town'      'Code Town|代码小镇'
+          Page '14-app-boost'     'Boost|Speed|加速'
+          Page '15-app-monitor'   'Observe|Monitor|观察|监控'
+          Page '16-app-settings'  'Settings|设置'
           Quit
 
           # ── The live wallpaper, with the app window in frame ───────────────
@@ -294,7 +312,7 @@ jobs:
             Wallpaper $sc[0] $sc[1] $sc[2]
             if ($sc[0] -eq 'mineradio') { License $false }
             Launch 35
-            Onboard 30
+            Onboard 60
             Front 980 120 | Out-Null
             Start-Sleep -Seconds 6
             $tag = "$($sc[0])-$($sc[1])" + $(if ($sc[2]) { '-3d' } else { '' })
@@ -311,7 +329,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v6
+          name: Terse-Store-Screenshots-v7
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

@@ -71,6 +71,11 @@ windows = { version = "0.58", features = [
     "Win32_System_LibraryLoader",
     "Win32_System_ProcessStatus",
     "Win32_System_Diagnostics_ToolHelp",
+    # agent_monitor reads a process's command line and working directory from the
+    # kernel (NtQueryInformationProcess + the PEB) instead of launching PowerShell
+    # for each question on a 5 s timer.
+    "Wdk_System_Threading",
+    "Win32_System_Kernel",
     # desktop_icon_rects reads Explorer's icon ListView, which lives in another
     # process: the RECT it fills has to be allocated inside explorer.exe and read
     # back out. VirtualAllocEx/VirtualFreeEx come from Memory,

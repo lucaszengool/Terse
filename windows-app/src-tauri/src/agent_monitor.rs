@@ -29,75 +29,163 @@ pub(crate) struct AgentDef {
 
 /// Get the CWD of a Windows process by PID using PowerShell Get-CimInstance.
 /// Returns the working directory if available from the CommandLine field.
-fn get_process_cwd_by_pid(pid: u32) -> Option<String> {
-    // On Windows, there's no direct equivalent of lsof -d cwd.
-    // We use PowerShell to query the process CommandLine and ExecutablePath,
-    // then try to extract the CWD from common patterns.
-    let output = crate::hidden_command("powershell")
-        .args([
-            "-NoProfile", "-NonInteractive", "-Command",
-            &format!(
-                "Get-CimInstance Win32_Process -Filter \"ProcessId={}\" | Select-Object ExecutablePath,CommandLine | ConvertTo-Json",
-                pid
-            ),
-        ])
-        .output()
-        .ok()?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let obj: serde_json::Value = serde_json::from_str(stdout.trim()).ok()?;
-
-    // Try to extract CWD from command line arguments
-    // Claude Code typically runs as: node ... --cwd <path> or is launched from a directory
-    let cmd_line = obj["CommandLine"].as_str().unwrap_or("");
-
-    // Check for --cwd argument
-    if let Some(idx) = cmd_line.find("--cwd") {
-        let rest = &cmd_line[idx + 5..];
-        let trimmed = rest.trim_start();
-        // Could be --cwd=<path> or --cwd <path>
-        let path = if trimmed.starts_with('=') {
-            trimmed[1..].trim_start()
-        } else {
-            trimmed
-        };
-        // Extract path (may be quoted)
-        let cwd = if path.starts_with('"') {
-            path[1..].split('"').next().unwrap_or("")
-        } else {
-            path.split_whitespace().next().unwrap_or("")
-        };
-        if !cwd.is_empty() {
-            return Some(cwd.to_string());
+/// A process's command line, from the kernel rather than from PowerShell.
+///
+/// `Get-CimInstance Win32_Process` answers this too, but it costs a PowerShell
+/// launch per question and the scanner asks constantly.
+fn process_command_line(pid: u32) -> Option<String> {
+    use windows::Wdk::System::Threading::{NtQueryInformationProcess, ProcessCommandLineInformation};
+    use windows::Win32::Foundation::{CloseHandle, UNICODE_STRING};
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+    unsafe {
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        // First call asks how much room the answer needs.
+        let mut len: u32 = 0;
+        let _ = NtQueryInformationProcess(
+            h, ProcessCommandLineInformation, std::ptr::null_mut(), 0, &mut len);
+        if len == 0 || len > 1 << 20 {
+            let _ = CloseHandle(h);
+            return None;
         }
+        let mut buf = vec![0u8; len as usize];
+        let st = NtQueryInformationProcess(
+            h,
+            ProcessCommandLineInformation,
+            buf.as_mut_ptr() as *mut core::ffi::c_void,
+            len,
+            &mut len,
+        );
+        let _ = CloseHandle(h);
+        if st.is_err() {
+            return None;
+        }
+        let us = &*(buf.as_ptr() as *const UNICODE_STRING);
+        if us.Buffer.is_null() || us.Length == 0 {
+            return None;
+        }
+        let chars = std::slice::from_raw_parts(us.Buffer.0, (us.Length / 2) as usize);
+        Some(String::from_utf16_lossy(chars))
     }
+}
 
-    // Fallback: try to get the process's current directory via PowerShell
-    // This uses a .NET call that may require elevation
-    let cwd_output = crate::hidden_command("powershell")
-        .args([
-            "-NoProfile", "-NonInteractive", "-Command",
-            &format!(
-                "try {{ (Get-Process -Id {}).StartInfo.WorkingDirectory }} catch {{ '' }}",
-                pid
-            ),
-        ])
-        .output()
-        .ok()?;
+/// A process's REAL working directory, read out of its PEB.
+///
+/// Windows has no `lsof -d cwd`, and the PowerShell this used to try —
+/// `(Get-Process -Id N).StartInfo.WorkingDirectory` — is always empty for a
+/// process you did not start yourself, so it cost a launch and could never
+/// answer. Every process does carry its current directory in
+/// RTL_USER_PROCESS_PARAMETERS, which is readable with the rights we already
+/// have over the user's own processes.
+///
+/// The two offsets are the documented x64 layout (PEB.ProcessParameters at
+/// 0x20, CurrentDirectory.DosPath at 0x38). A 32-bit target has a different
+/// layout, so this returns None there and the caller falls back to the command
+/// line — which is what Windows had before this existed.
+fn process_cwd_from_peb(pid: u32) -> Option<String> {
+    use windows::Wdk::System::Threading::{NtQueryInformationProcess, ProcessBasicInformation};
+    use windows::Win32::Foundation::{CloseHandle, UNICODE_STRING};
+    use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
+    use windows::Win32::System::Threading::{
+        OpenProcess, PROCESS_BASIC_INFORMATION, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
+    };
+    const PEB_PROCESS_PARAMETERS: usize = 0x20;
+    const PARAMS_CURRENT_DIRECTORY: usize = 0x38;
+    unsafe {
+        let h = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid).ok()?;
+        let read = |addr: usize, dst: *mut core::ffi::c_void, n: usize| -> bool {
+            !addr.is_null_like() && ReadProcessMemory(h, addr as *const core::ffi::c_void, dst, n, None).is_ok()
+        };
+        let mut pbi = PROCESS_BASIC_INFORMATION::default();
+        let mut len: u32 = 0;
+        let st = NtQueryInformationProcess(
+            h,
+            ProcessBasicInformation,
+            &mut pbi as *mut _ as *mut core::ffi::c_void,
+            std::mem::size_of::<PROCESS_BASIC_INFORMATION>() as u32,
+            &mut len,
+        );
+        let mut out = None;
+        if st.is_ok() && !pbi.PebBaseAddress.is_null() {
+            let mut params: usize = 0;
+            if read(
+                pbi.PebBaseAddress as usize + PEB_PROCESS_PARAMETERS,
+                &mut params as *mut _ as *mut core::ffi::c_void,
+                std::mem::size_of::<usize>(),
+            ) && params != 0
+            {
+                let mut us = UNICODE_STRING::default();
+                if read(
+                    params + PARAMS_CURRENT_DIRECTORY,
+                    &mut us as *mut _ as *mut core::ffi::c_void,
+                    std::mem::size_of::<UNICODE_STRING>(),
+                ) && us.Length > 0
+                    && !us.Buffer.is_null()
+                {
+                    let mut chars = vec![0u16; (us.Length / 2) as usize];
+                    if read(
+                        us.Buffer.0 as usize,
+                        chars.as_mut_ptr() as *mut core::ffi::c_void,
+                        us.Length as usize,
+                    ) {
+                        let s = String::from_utf16_lossy(&chars);
+                        let s = s.trim_end_matches('\\').to_string();
+                        if !s.is_empty() {
+                            out = Some(s);
+                        }
+                    }
+                }
+            }
+        }
+        let _ = CloseHandle(h);
+        out
+    }
+}
 
-    let cwd = String::from_utf8_lossy(&cwd_output.stdout).trim().to_string();
-    if !cwd.is_empty() {
+trait NullLike { fn is_null_like(&self) -> bool; }
+impl NullLike for usize { fn is_null_like(&self) -> bool { *self == 0 } }
+
+/// Where a process is working, best effort and without launching anything.
+///
+/// In order: its real current directory; then `--cwd` off its command line (how
+/// agents are often started); then the directory its .exe sits in, which is at
+/// least a stable label.
+fn get_process_cwd_by_pid(pid: u32) -> Option<String> {
+    if let Some(cwd) = process_cwd_from_peb(pid) {
         return Some(cwd);
     }
-
-    // Last resort: derive from executable path (go up from bin dir)
-    if let Some(exe_path) = obj["ExecutablePath"].as_str() {
-        if let Some(parent) = Path::new(exe_path).parent() {
-            return Some(parent.to_string_lossy().to_string());
+    if let Some(cmd) = process_command_line(pid) {
+        if let Some(idx) = cmd.find("--cwd") {
+            let rest = cmd[idx + 5..].trim_start();
+            let path = rest.strip_prefix('=').unwrap_or(rest).trim_start();
+            let cwd = if let Some(q) = path.strip_prefix('"') {
+                q.split('"').next().unwrap_or("")
+            } else {
+                path.split_whitespace().next().unwrap_or("")
+            };
+            if !cwd.is_empty() {
+                return Some(cwd.to_string());
+            }
         }
     }
-
-    None
+    // Last resort: where the executable lives.
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    unsafe {
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = [0u16; 512];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(
+            h, PROCESS_NAME_WIN32, windows::core::PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
+        let _ = CloseHandle(h);
+        if !ok || len == 0 {
+            return None;
+        }
+        let full = String::from_utf16_lossy(&buf[..len as usize]);
+        Path::new(&full).parent().map(|p| p.to_string_lossy().to_string())
+    }
 }
 
 /// Where zstd lives, for Codex Desktop's compressed .jsonl.zst rollouts.
@@ -124,32 +212,16 @@ pub(crate) fn zstd_binary() -> Option<PathBuf> {
 /// get_process_cwd_by_pid — the same path the agent attribution already uses,
 /// deliberately, so the two cannot disagree about which folder an agent is in.
 pub(crate) fn agent_working_dirs() -> Vec<String> {
-    let output = crate::hidden_command("powershell")
-        .args([
-            "-NoProfile", "-NonInteractive", "-Command",
-            "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*claude*' -or $_.Name -like '*codex*' -or $_.Name -like '*cursor*' } | Select-Object ProcessId | ConvertTo-Json -Compress",
-        ])
-        .output();
-    let Ok(output) = output else { return Vec::new() };
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let trimmed = stdout.trim();
-    if trimmed.is_empty() { return Vec::new(); }
-    // PowerShell emits a bare object rather than a one-element array when a
-    // single process matches — the same shape the claude path already handles.
-    let entries: Vec<serde_json::Value> = if trimmed.starts_with('[') {
-        serde_json::from_str(trimmed).unwrap_or_default()
-    } else {
-        match serde_json::from_str::<serde_json::Value>(trimmed) {
-            Ok(v) => vec![v],
-            Err(_) => Vec::new(),
+    const AGENTS: [&str; 3] = ["claude", "codex", "cursor"];
+    let Some(procs) = list_processes() else { return Vec::new() };
+    let mut out: Vec<String> = Vec::new();
+    for p in procs {
+        let name = p.comm.to_ascii_lowercase();
+        if !AGENTS.iter().any(|a| name.contains(a)) {
+            continue;
         }
-    };
-    let mut out = Vec::new();
-    for entry in &entries {
-        let pid = entry["ProcessId"].as_u64().unwrap_or(0) as u32;
-        if pid == 0 { continue; }
-        if let Some(cwd) = get_process_cwd_by_pid(pid) {
-            if !cwd.is_empty() && !out.iter().any(|x: &String| *x == cwd) {
+        if let Some(cwd) = get_process_cwd_by_pid(p.pid) {
+            if !cwd.is_empty() && !out.iter().any(|x| *x == cwd) {
                 out.push(cwd);
             }
         }
@@ -181,47 +253,18 @@ fn get_claude_pid_cwds() -> Vec<(u32, String)> {
 }
 
 fn get_claude_pid_cwds_uncached() -> Vec<(u32, String)> {
-    // Use PowerShell to find all claude processes and their command lines
-    let output = crate::hidden_command("powershell")
-        .args([
-            "-NoProfile", "-NonInteractive", "-Command",
-            "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*claude*' } | Select-Object ProcessId,CommandLine,ExecutablePath | ConvertTo-Json",
-        ])
-        .output();
-
-    let output = match output {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let trimmed = stdout.trim();
-    if trimmed.is_empty() { return Vec::new(); }
-
-    // PowerShell returns a single object (not array) if only one result
-    let entries: Vec<serde_json::Value> = if trimmed.starts_with('[') {
-        serde_json::from_str(trimmed).unwrap_or_default()
-    } else {
-        match serde_json::from_str::<serde_json::Value>(trimmed) {
-            Ok(v) => vec![v],
-            Err(_) => Vec::new(),
-        }
-    };
-
-    let mut pid_cwds = Vec::new();
-    for entry in &entries {
-        let pid = entry["ProcessId"].as_u64().unwrap_or(0) as u32;
-        if pid == 0 { continue; }
-
-        // Try to get CWD from command line or other methods
-        if let Some(cwd) = get_process_cwd_by_pid(pid) {
-            if !cwd.is_empty() {
-                pid_cwds.push((pid, cwd));
-            }
-        }
-    }
-
-    pid_cwds
+    // The process table we already read for the scanner, filtered by name —
+    // this used to be a PowerShell launch (Get-CimInstance over every process,
+    // then one more launch per match) on a 5 s timer.
+    let Some(procs) = list_processes() else { return Vec::new() };
+    procs
+        .iter()
+        .filter(|p| p.comm.to_ascii_lowercase().contains("claude"))
+        .filter_map(|p| {
+            let cwd = get_process_cwd_by_pid(p.pid)?;
+            (!cwd.is_empty()).then(|| (p.pid, cwd))
+        })
+        .collect()
 }
 
 /// Find the best Claude Code session across ALL running claude processes.
@@ -335,26 +378,46 @@ fn resolve_claude_log_dir(pid: u32) -> Option<PathBuf> {
         }
     }
 
-    // Fallback: try parent process (claude may be spawned by npm/node)
-    let parent_output = crate::hidden_command("powershell")
-        .args([
-            "-NoProfile", "-NonInteractive", "-Command",
-            &format!(
-                "(Get-CimInstance Win32_Process -Filter \"ProcessId={}\").ParentProcessId",
-                pid
-            ),
-        ])
-        .output()
-        .ok();
-
-    if let Some(output) = parent_output {
-        if let Ok(ppid) = String::from_utf8_lossy(&output.stdout).trim().parse::<u32>() {
-            if ppid > 1 {
-                return resolve_claude_log_dir(ppid);
-            }
+    // Fallback: try parent process (claude may be spawned by npm/node). The
+    // snapshot already carries every process's parent, so this costs nothing
+    // where it used to cost a PowerShell launch per hop.
+    if let Some(ppid) = parent_pid(pid) {
+        if ppid > 1 {
+            return resolve_claude_log_dir(ppid);
         }
     }
     None
+}
+
+/// The parent of a process, from the same snapshot list_processes reads.
+fn parent_pid(pid: u32) -> Option<u32> {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).ok()?;
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut found = None;
+        if Process32FirstW(snap, &mut entry).is_ok() {
+            loop {
+                if entry.th32ProcessID == pid {
+                    found = Some(entry.th32ParentProcessID);
+                    break;
+                }
+                entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+                if Process32NextW(snap, &mut entry).is_err() {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(snap);
+        found
+    }
 }
 
 /// Find the Claude Code project directory by reading CWD of running claude processes
@@ -2244,8 +2307,8 @@ impl AgentMonitor {
         self.scan_with(list_processes(), agent_defs())
     }
 
-    /// scan() with the process list taken by the caller. `tasklist` is slow on
-    /// Windows, and start_scanning used to run it while holding the monitor
+    /// scan() with the process list taken by the caller. Listing processes used
+    /// to be slow on Windows, and start_scanning ran it while holding the monitor
     /// lock — so every sync command that reads a session (get_agent_sessions,
     /// record_optimization_usage, ...) blocked the main thread behind it.
     /// `defs` too: agent_defs() resolves Claude's project dir through PowerShell.
@@ -2742,27 +2805,50 @@ fn codex_home_dirs(home: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// List all running processes on Windows using `tasklist /FO CSV /NH`.
+/// Every running process, from the kernel's own snapshot.
+///
+/// This used to shell out to `tasklist /FO CSV` — a process launch, a console
+/// host, a CSV parse — and the scanner does it every 5 s for the life of the
+/// app. CI measured that phase at 42 s on a loaded machine, and on a laptop it
+/// is a spawn every five seconds forever. macOS never noticed the pattern
+/// because `ps` is cheap; on Windows the cheap equivalent is not a command at
+/// all, it is CreateToolhelp32Snapshot, which reads the same table in-process.
+///
+/// Returns None only if the snapshot itself fails, so the caller can tell "no
+/// agents are running" from "I could not look".
 fn list_processes() -> Option<Vec<ProcessInfo>> {
-    let output = crate::hidden_command("tasklist")
-        .args(["/FO", "CSV", "/NH"])
-        .output()
-        .ok()?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let procs: Vec<ProcessInfo> = stdout.lines().filter_map(|line| {
-        // tasklist CSV format: "Image Name","PID","Session Name","Session#","Mem Usage"
-        let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
-        let fields: Vec<&str> = trimmed.split(',').collect();
-        if fields.len() < 2 { return None; }
-        // Strip surrounding quotes
-        let comm = fields[0].trim_matches('"').to_string();
-        let pid_str = fields[1].trim_matches('"');
-        let pid: u32 = pid_str.trim().parse().ok()?;
-        Some(ProcessInfo { pid, comm })
-    }).collect();
-    Some(procs)
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).ok()?;
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut procs = Vec::with_capacity(256);
+        if Process32FirstW(snap, &mut entry).is_ok() {
+            loop {
+                let end = entry
+                    .szExeFile
+                    .iter()
+                    .position(|&c| c == 0)
+                    .unwrap_or(entry.szExeFile.len());
+                let comm = String::from_utf16_lossy(&entry.szExeFile[..end]);
+                if !comm.is_empty() {
+                    procs.push(ProcessInfo { pid: entry.th32ProcessID, comm });
+                }
+                entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+                if Process32NextW(snap, &mut entry).is_err() {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(snap);
+        Some(procs)
+    }
 }
 
 /// Background scanning thread

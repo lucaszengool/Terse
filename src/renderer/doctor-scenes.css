@@ -408,7 +408,7 @@
     /* ── context ─────────────────────────────────────────── */
     .sc-context{position:relative;width:100%;height:100%;box-sizing:border-box;
     padding:18px 18px 14px;display:flex;flex-direction:column;justify-content:center;
-    gap:11px;overflow:hidden;font:600 11px/1.2 -apple-system,system-ui,sans-serif}
+    gap:11px;overflow:hidden;font:600 11px/1.2 -apple-system,'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif}
     .sc-context::before{content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(120% 90% at 88% 50%,rgba(244,67,54,.10),transparent 60%);
     opacity:0;transition:opacity .3s}

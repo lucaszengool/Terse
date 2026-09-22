@@ -35,7 +35,7 @@ window.addEventListener('error', (e) => dlog('error ' + e.message + ' @' + e.lin
 window.addEventListener('unhandledrejection', (e) => dlog('rejection ' + String(e.reason).slice(0, 200)));
 
 /* ── 字体、颜色 ─────────────────────────────────────────────────────────── */
-const SANS = '-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif';
+const SANS = '-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Segoe UI","Microsoft YaHei UI",sans-serif';
 const MONO = '"SF Mono",Menlo,ui-monospace,monospace';
 const F = (px, w = 600, mono) => `${w} ${px}px ${mono ? MONO : SANS}`;
 /* 用户能在粒子页改的颜色(键名和旧版一致,粒子页不用改)。透明窗口上次要文字默认亮一档。 */

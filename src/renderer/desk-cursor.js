@@ -19,7 +19,7 @@ window.addEventListener('error', (e) => dlog('error ' + e.message + ' @' + e.lin
 window.addEventListener('unhandledrejection', (e) => dlog('rejection ' + String(e.reason).slice(0, 200)));
 const call = (cmd) => invoke('desk_call', { cmd }).catch((e) => ({ ok: false, error: String(e) }));
 
-const SANS = '-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif';
+const SANS = '-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Segoe UI","Microsoft YaHei UI",sans-serif';
 const K = { lime: '#C9F03D', amber: '#FFC24B', blue: '#7FB2FF', white: '#FFFFFF', red: '#FF6B6B' };
 const rgb = (hex) => [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255];
 function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }

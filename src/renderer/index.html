@@ -1544,6 +1544,10 @@
     // i18n — load after everything, purely additive (no changes to existing code)
     var i18nScript = document.createElement('script');
     i18nScript.src = 'i18n.js';
+    // Shortcut hints are written as ⌘K in the source HTML. i18n translates the
+    // words around them; the KEY has to be translated too, and only after i18n
+    // has re-rendered those rows — on Windows ⌘ is a key nobody has.
+    i18nScript.onload = function () { setTimeout(function () { try { window.localizeKbd && window.localizeKbd(); } catch (e) {} }, 0); };
     document.body.appendChild(i18nScript);
 
     // Language picker — uses stopPropagation to avoid drag region issues

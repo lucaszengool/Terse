@@ -12,7 +12,7 @@
     /* 项目粒子。这一页要回答三个问题:哪些项目、长什么样、给谁看。
        所以它只有三块:正在干活的(可以一键加进来)、我的项目、广场。 */
     body{margin:0;background:var(--bg);color:var(--t1);
-      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC',system-ui,sans-serif}
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC','Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',system-ui,sans-serif}
     .header{display:flex;align-items:center;gap:10px;padding:14px 16px 6px}
     .header h1{font-size:16px;font-weight:800;margin:0}
     .header .cn{font-size:11px;color:var(--t3,#7A8194);font-weight:600;margin-left:6px}
@@ -177,6 +177,14 @@
       animation:axp 1.2s ease-in-out infinite}
     .ax .st.ok .dot{animation:none}
     @keyframes axp{0%,100%{opacity:1}50%{opacity:.25}}
+  
+    /* WebView2 draws a wide silver scrollbar on a dark page; the rest of the app
+       uses this thin one (styles.css). macOS never needed it — its overlay
+       scrollbars are invisible until you scroll. */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); }
   </style>
 </head>
 <body>

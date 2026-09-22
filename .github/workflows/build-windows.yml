@@ -2077,6 +2077,63 @@ jobs:
           Write-Host "GHOST BAR OK: no pale band and no caption style on any Terse window"
 
 
+      # Snapping, Win+arrows and the taskbar menu — the Windows half of "as
+      # smooth as the Mac". Every Terse window has its caption stripped to keep
+      # Windows from painting a title bar, and that strip takes WS_MAXIMIZEBOX /
+      # WS_MINIMIZEBOX with it. Those bits are not decoration: Windows consults
+      # them for Aero Snap, Win+↑/↓/←/→ and the Alt+Space / taskbar window menu.
+      # This measures what the main window can actually do, rather than assuming.
+      - name: Measure what the main window can do (snap, Win+arrows)
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class S{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte sc,uint f,UIntPtr e);[DllImport("user32.dll")]public static extern bool GetWindowPlacement(IntPtr h,ref WP p);public struct R{public int L,T,Rr,B;}public struct P{public int X,Y;}public struct WP{public int len,flags,show;public P min,max;public R norm;}
+            public static void Win(byte vk){keybd_event(0x5B,0,0,UIntPtr.Zero);keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(60);keybd_event(vk,0,2,UIntPtr.Zero);keybd_event(0x5B,0,2,UIntPtr.Zero);}}'
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 40
+          $script:main = [IntPtr]::Zero
+          $cb = [S+Cb]{ param($h,$l)
+            if ([S]::IsWindowVisible($h)) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][S]::GetWindowTextW($h, $sb, 256)
+              if ($sb.ToString() -eq 'Terse') { $script:main = $h; return $false }
+            }
+            return $true }
+          [void][S]::EnumWindows($cb, [IntPtr]::Zero)
+          if ($script:main -eq [IntPtr]::Zero) { throw "SNAP: no main window to measure" }
+          $h = $script:main
+          $style = [S]::GetWindowLongPtrW($h, -16)
+          $maxbox = ($style -band 0x10000) -ne 0
+          $minbox = ($style -band 0x20000) -ne 0
+          $sysmenu = ($style -band 0x80000) -ne 0
+          $thick = ($style -band 0x40000) -ne 0
+          Write-Host ("main style=0x{0:X8} MAXIMIZEBOX={1} MINIMIZEBOX={2} SYSMENU={3} THICKFRAME={4}" -f $style, $maxbox, $minbox, $sysmenu, $thick)
+          function Rect { $r = New-Object S+R; [void][S]::GetWindowRect($h, [ref]$r); return "$($r.L),$($r.T) $($r.Rr - $r.L)x$($r.B - $r.T)" }
+          function Show { $p = New-Object S+WP; $p.len = 44; [void][S]::GetWindowPlacement($h, [ref]$p); return $p.show }  # 1 normal 2 min 3 max
+          [void][S]::SetForegroundWindow($h); Start-Sleep -Milliseconds 600
+          $before = Rect
+          [S]::Win(0x26); Start-Sleep -Seconds 2          # Win + Up
+          $afterUp = Rect; $showUp = Show
+          Write-Host "Win+Up   : $before -> $afterUp (showCmd=$showUp)"
+          [S]::Win(0x28); Start-Sleep -Seconds 2          # Win + Down (restore)
+          Write-Host "Win+Down : $(Rect) (showCmd=$(Show))"
+          [void][S]::SetForegroundWindow($h); Start-Sleep -Milliseconds 400
+          [S]::Win(0x25); Start-Sleep -Seconds 2          # Win + Left (snap half)
+          $afterLeft = Rect
+          Write-Host "Win+Left : $afterLeft"
+          $work = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+          Write-Host "work area: $($work.X),$($work.Y) $($work.Width)x$($work.Height)"
+          $maximized = ($showUp -eq 3)
+          $snapped = $afterLeft -ne $before -and $afterLeft -ne $afterUp
+          if (-not $maxbox) { Write-Warning "SNAP: WS_MAXIMIZEBOX is stripped — Windows will refuse Aero Snap and Win+arrows on this window" }
+          if (-not $maximized) { Write-Warning "SNAP FAIL: Win+Up did not maximize the window" }
+          if (-not $snapped) { Write-Warning "SNAP FAIL: Win+Left did not snap the window to a half" }
+          if ($maximized -and $snapped) { Write-Host "SNAP OK: the main window maximizes and snaps like a native window" }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

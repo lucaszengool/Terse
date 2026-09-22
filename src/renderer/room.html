@@ -26,7 +26,7 @@
        wallpaper and unreadable over a bright one, and the wallpaper underneath
        is a moving particle field, which is the worst case for contrast. */
     html, body { height: 100%; background: transparent; color: var(--t1); overflow: hidden;
-      font: 13px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", system-ui, sans-serif; }
+      font: 13px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif; }
     /* The blur lives on a fixed BACKDROP layer, not on the body element.
 
        backdrop-filter on the element that also holds the scrolling log and the
@@ -209,6 +209,14 @@
     #btnLock.warn { border-color: rgba(242,184,75,.6); color: #F2B84B }
     #abBudget { font: 600 10.5px ui-monospace, Menlo, monospace; color: var(--t2) }
     #abBudget.over { color: #FF8A7A }
+  
+    /* WebView2 draws a wide silver scrollbar on a dark page; the rest of the app
+       uses this thin one (styles.css). macOS never needed it — its overlay
+       scrollbars are invisible until you scroll. */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); }
   </style>
 </head>
 <body>
@@ -313,6 +321,10 @@
   <script src="tauri-bridge.js"></script>
   <script src="rooms.js"></script>
   <script>
+  // Finder is a Mac app. On Windows the same button opens File Explorer, and
+  // saying "Finder" there is a small, constant reminder that this was ported.
+  var REVEAL_LABEL = /Windows/i.test(navigator.userAgent) ? 'Show in Explorer' : 'Show in Finder';
+
   (function () {
     'use strict';
     var R = window.TerseRooms;
@@ -980,7 +992,7 @@
             '<span>Saved to the quarantine folder — marked as downloaded, not opened, not unpacked.</span>' +
             '<span class="path">' + esc(f.path) + '</span>' +
             (f.warnings || []).map(function (w) { return '<span class="warn">⚠ ' + esc(L('ra_w_' + w, w)) + '</span>'; }).join('') +
-            '<span><button class="chip" data-reveal="' + esc(f.path) + '">Show in Finder</button></span>';
+            '<span><button class="chip" data-reveal="' + esc(f.path) + '">' + REVEAL_LABEL + '</button></span>';
         }, function (err) {
           box.querySelectorAll('button').forEach(function (x) { x.disabled = false; });
           box.querySelector('.fr').innerHTML = '<span class="warn">' + esc(String(err && err.message || err)) + '</span>';

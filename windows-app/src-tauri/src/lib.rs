@@ -3298,6 +3298,66 @@ pub(crate) fn install_frame_guard(hwnd: windows::Win32::Foundation::HWND) {
     strip_native_frame(hwnd);
 }
 
+/// Make a WebView2 stop behaving like a browser inside the app.
+///
+/// macOS gets this for free: WKWebView has no browser chrome to leak. WebView2
+/// brings Edge's with it, and every one of these is a place where Terse stops
+/// feeling like an app on Windows and nowhere else:
+///
+///   · **Right-click** opens Edge's menu — Refresh, Save as, Print, Inspect —
+///     over the app's own UI. Fields keep their own editing menu (cut/copy/
+///     paste/undo are a different menu and are not affected by this flag).
+///   · **The status bar**: hovering anything link-shaped pops a grey URL bubble
+///     into the bottom-left corner of the window, over the app's content.
+///   · **Ctrl + wheel** zooms the whole interface, and there is no visible way
+///     back — a common way for a Tauri window on Windows to end up looking
+///     broken at 150% with the user unsure what they pressed.
+///   · **Browser accelerators**: F5 and Ctrl+R reload the page (the app blinks
+///     back to its first screen), Ctrl+P opens a print dialog, F12 and
+///     Ctrl+Shift+I open DevTools. Kept in debug builds, where they are how you
+///     work; dropped in release. Ctrl+C / Ctrl+V are NOT browser accelerators
+///     and keep working.
+///
+/// Best-effort by design: each setting lives on a different revision of
+/// ICoreWebView2Settings, so on an older runtime a cast simply fails and that
+/// one flag stays at its default rather than costing the window its webview.
+#[cfg(target_os = "windows")]
+pub(crate) fn polish_webview(webview: &tauri::Webview) {
+    let label = webview.label().to_string();
+    let _ = webview.with_webview(move |pw| {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            ICoreWebView2Settings3, ICoreWebView2Settings6,
+        };
+        use windows::core::Interface;
+        unsafe {
+            let Ok(core) = pw.controller().CoreWebView2() else { return };
+            let Ok(settings) = core.Settings() else { return };
+            let ctx = settings.SetAreDefaultContextMenusEnabled(false).is_ok();
+            let bar = settings.SetIsStatusBarEnabled(false).is_ok();
+            let zoom = settings.SetIsZoomControlEnabled(false).is_ok();
+            // Debug builds keep F12/Ctrl+R — that is how the page is worked on.
+            let keys = if cfg!(debug_assertions) {
+                true
+            } else {
+                settings
+                    .cast::<ICoreWebView2Settings3>()
+                    .and_then(|s3| s3.SetAreBrowserAcceleratorKeysEnabled(false))
+                    .is_ok()
+            };
+            // Two-finger sideways on a precision trackpad is "go back" in a
+            // browser. In a single-page app that is a blank window.
+            let swipe = settings
+                .cast::<ICoreWebView2Settings6>()
+                .and_then(|s6| s6.SetIsSwipeNavigationEnabled(false))
+                .is_ok();
+            diag_log(
+                "webview-polish",
+                &format!("'{label}' ctx={ctx} statusbar={bar} zoom={zoom} accel_keys={keys} swipe={swipe}"),
+            );
+        }
+    });
+}
+
 /// Remove the native caption from a window built with `decorations(false)`.
 ///
 /// tao leaves WS_CAPTION and WS_SYSMENU on undecorated windows so that snap and
@@ -3936,6 +3996,10 @@ pub fn run() {
                 .on_webview_ready(|webview| {
                     #[cfg(target_os = "windows")]
                     {
+                        // Every webview, wallpaper included: these are webview
+                        // settings, not window styles, so the child-window
+                        // reasons that exclude the wallpaper below do not apply.
+                        polish_webview(&webview);
                         let win = webview.window();
                         if win.label() == "wallpaper" { return; }
                         if let Ok(raw) = win.hwnd() {

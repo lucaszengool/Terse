@@ -793,7 +793,9 @@ $('#btnManualOpt').addEventListener('click', async () => {
   }
 });
 $('#manualInput').addEventListener('keydown', e => {
-  if (e.metaKey && e.key === 'Enter') { e.preventDefault(); $('#btnManualOpt').click(); }
+  // Ctrl+Enter on Windows, ⌘Enter on macOS — metaKey alone left Windows with no
+  // way to fire the button its own hint advertises.
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); $('#btnManualOpt').click(); }
 });
 
 $('#btnBackToSessions').addEventListener('click', () => show('sessions'));
@@ -831,6 +833,28 @@ $('#btnMinimize').addEventListener('click', () => T.minimizeWindow());
 // then can't find the way out. Give them a visible ⏻, Ctrl+Q, and say once
 // where Terse went when ✕ hides it.
 const IS_WIN = /Windows/i.test(navigator.userAgent);
+
+// Shortcut hints in this app are written the Mac way (⌘K, ⌘↵). On Windows those
+// glyphs mean nothing — there is no ⌘ key to press — and the shortcut itself has
+// always been Ctrl (the handler takes metaKey || ctrlKey). So the LABELS are
+// translated at the point they are shown, in the palette and in every <kbd>.
+const KEY_GLYPHS = [['⌘', 'Ctrl+'], ['⇧', 'Shift+'], ['⌥', 'Alt+'], ['⌃', 'Ctrl+'], ['↵', 'Enter'], ['⌫', 'Backspace']];
+function kbdLabel(s) {
+  if (!IS_WIN || !s) return s;
+  let out = String(s);
+  for (const [mac, win] of KEY_GLYPHS) out = out.split(mac).join(win);
+  return out.replace(/\+\+/g, '+');
+}
+// Static hints live in index.html; rewrite them once the page is up, and again
+// after a language switch re-renders them.
+function localizeKbd(root) {
+  if (!IS_WIN) return;
+  (root || document).querySelectorAll('kbd').forEach(el => {
+    const t = kbdLabel(el.textContent);
+    if (t !== el.textContent) el.textContent = t;
+  });
+}
+window.localizeKbd = localizeKbd;
 const QUIT_EN = { quit_btn: 'Quit Terse', hide_to_tray: 'Hide to tray',
   tray_hint: 'Terse is still running in the tray (bottom-right, maybe under ^). To quit: ⏻ in the title bar, Ctrl+Q, or right-click the tray icon.' };
 const quitT = (k) => { try { const v = window.i18n.t(k); if (v && v !== k) return v; } catch {} return QUIT_EN[k]; };
@@ -1420,9 +1444,9 @@ const CMD_DEFS = [
   { ic: '👥', label: 'Open Team', key: 'cmd_open_team', run: () => T.navigateToCowork() },
   { ic: '🌾', label: 'Open Farm', key: 'cmd_open_farm', run: () => T.showFarmWindow() },
   { ic: '🐾', label: 'Open Pals', key: 'cmd_open_pals', run: () => $('#btnPalsTitle')?.click() },
-  { ic: '＋', label: 'Connect a window', key: 'cmd_connect_window', kbd: '⌘N', run: () => $('#btnAddSession').click() },
-  { ic: '⚙', label: 'Open Settings', key: 'cmd_open_settings', kbd: '⌘,', run: () => show('settings') },
-  { ic: '✂', label: 'Optimize pasted text', key: 'cmd_optimize_text', kbd: '⌘↵', run: () => { show('sessions'); $('#manualInput').focus(); } },
+  { ic: '＋', label: 'Connect a window', key: 'cmd_connect_window', kbd: kbdLabel('⌘N'), run: () => $('#btnAddSession').click() },
+  { ic: '⚙', label: 'Open Settings', key: 'cmd_open_settings', kbd: kbdLabel('⌘,'), run: () => show('settings') },
+  { ic: '✂', label: 'Optimize pasted text', key: 'cmd_optimize_text', kbd: kbdLabel('⌘↵'), run: () => { show('sessions'); $('#manualInput').focus(); } },
   { ic: '🪶', label: 'Aggressiveness: Light', key: 'cmd_aggr_light', run: () => setAggrLevel('light') },
   { ic: '⚖', label: 'Aggressiveness: Balanced', key: 'cmd_aggr_balanced', run: () => setAggrLevel('balanced') },
   { ic: '🔥', label: 'Aggressiveness: Aggressive', key: 'cmd_aggr_aggressive', run: () => setAggrLevel('aggressive') },
@@ -1432,7 +1456,7 @@ const CMD_DEFS = [
     key: 'cmd_theme_' + name,
     run: () => setTheme(name),
   })),
-  { ic: '⌨', label: 'Keyboard Shortcuts', key: 'cmd_shortcuts', kbd: '⌘/', run: () => toggleSheet(true) },
+  { ic: '⌨', label: 'Keyboard Shortcuts', key: 'cmd_shortcuts', kbd: kbdLabel('⌘/'), run: () => toggleSheet(true) },
   { ic: '💳', label: 'Manage subscription', key: 'cmd_manage_sub', run: () => $('#btnUpgrade').click() },
 ];
 
@@ -4308,3 +4332,6 @@ function pmPaintState() {
 $('#pmRefresh')?.addEventListener('click', () => pmInit());
 $('#pmStop')?.addEventListener('click', () => pmOff());
 
+// Windows sees Ctrl+K where the source HTML says ⌘K. Runs once here for the
+// case where i18n never loads; index.html calls it again after i18n renders.
+try { localizeKbd(); document.addEventListener('DOMContentLoaded', () => localizeKbd()); } catch (e) {}

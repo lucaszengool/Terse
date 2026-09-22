@@ -192,11 +192,10 @@ jobs:
                 $wp = $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
                 $wp.SetWindowVisualState([System.Windows.Automation.WindowVisualState]::Normal)
                 $tp = $w.GetCurrentPattern([System.Windows.Automation.TransformPattern]::Pattern)
-                # Fill more of the screen. At its default 996x659 on a 1920x1080
-                # desktop, a third of every cropped frame was empty desktop —
-                # the listing wants the product, and upscaling a small window
-                # would only blur it.
-                if ($tp.Current.CanResize) { $tp.Resize(1560, 920); Start-Sleep -Seconds 2 }
+                # NOT resized. Growing the window to 1560x920 left the webview
+                # painting at its old size with a white band beside it, in every
+                # frame of that run. The window keeps the size a user gets, and
+                # the crop takes a little of the dark desktop with it.
                 if ($tp.Current.CanMove) {
                   # Keep it wholly on screen: v6 moved a 1400px-wide window to
                   # x=980 and half of the app hung off the right edge.

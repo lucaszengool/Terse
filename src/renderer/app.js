@@ -2380,45 +2380,51 @@ function goToPage(page) {
   setTimeout(renderProPreviewBanner, 0);
 }
 
-// 打开一个分类的落地页:先把这一类的按钮铺成网格,再点亮那个分类按钮。
+// The landing page for one section: lay this section's buttons out as a grid,
+// then light up the section button itself.
+//
+// English is the source text and every string carries its key, so the language
+// switcher reaches this table like the rest of the UI. It used to be Chinese
+// literals, which is what an English Store listing photographed (cert 09-21).
+const CT = (key, en) => { try { const v = window.i18n && window.i18n.t(key); return v && v !== key ? v : en; } catch { return en; } };
 const CATEGORIES = {
-  monitor: { label: '监控', sub: '实时盯着每个 agent', items: [
-    { page: 'particles',  label: '粒子', emoji: '✦', pro: true, d: '把 agent 窗口变成桌面粒子' },
-    { page: 'observe',    label: '观察', emoji: '👁', d: '逐步追踪当前会话' },
-    { page: 'msgs',       label: '聊天', emoji: '💬', d: '房间 · 私信 · 好友申请 · 各 app 消息' },
-    { page: 'stats',      label: '统计', emoji: '📊', pro: true, d: 'token 花在哪儿' },
-    { page: 'connection', label: '连接', emoji: '📶', pro: true, d: '连接体检与自动修复' },
+  monitor: { label: 'Monitor', k: 'grp_monitor', sub: 'Watch every agent live', subk: 'cat_monitor_sub', items: [
+    { page: 'particles',  label: 'Particles', k: 'nav_particles',  emoji: '✦', pro: true, d: 'Turn agent windows into desktop particles', dk: 'cat_particles_d' },
+    { page: 'observe',    label: 'Observe',   k: 'nav_observe',    emoji: '👁', d: 'Follow the current session step by step', dk: 'cat_observe_d' },
+    { page: 'msgs',       label: 'Chat',      k: 'nav_msgs',       emoji: '💬', d: 'Rooms · DMs · friend requests · app messages', dk: 'cat_msgs_d' },
+    { page: 'stats',      label: 'Stats',     k: 'nav_stats',      emoji: '📊', pro: true, d: 'Where the tokens went', dk: 'cat_stats_d' },
+    { page: 'connection', label: 'Connection',k: 'nav_connection', emoji: '📶', pro: true, d: 'Check a connection and fix it', dk: 'cat_connection_d' },
   ] },
-  optimize: { label: '优化', sub: '把浪费省下来', items: [
-    { page: 'doctor',  label: '体检', emoji: '🩺', d: '一键检查 agent 健康' },
-    { page: 'cleanup', label: '清理', emoji: '🧹', pro: true, d: '回收浪费的 token 和磁盘' },
-    { page: 'rules',   label: '规则', emoji: '📏', d: '压缩与改写规则' },
+  optimize: { label: 'Optimize', k: 'grp_optimize', sub: 'Stop the waste', subk: 'cat_optimize_sub', items: [
+    { page: 'doctor',  label: 'Doctor',  k: 'nav_doctor',  emoji: '🩺', d: 'Check your agents in one click', dk: 'cat_doctor_d' },
+    { page: 'cleanup', label: 'Cleanup', k: 'nav_cleanup', emoji: '🧹', pro: true, d: 'Reclaim wasted tokens and disk', dk: 'cat_cleanup_d' },
+    { page: 'rules',   label: 'Rules',   k: 'nav_rules',   emoji: '📏', d: 'Compression and rewrite rules', dk: 'cat_rules_d' },
   ] },
-  secure: { label: '安全', sub: '看住权限与告警', items: [
-    { page: 'mcp',    label: 'MCP',  emoji: '🛡', d: 'MCP 服务器与工具' },
-    { page: 'alerts', label: '提醒', emoji: '🔔', d: '告警与通知' },
+  secure: { label: 'Secure', k: 'grp_secure', sub: 'Keep an eye on access and alerts', subk: 'cat_secure_sub', items: [
+    { page: 'mcp',    label: 'MCP',    k: 'nav_mcp',    emoji: '🛡', d: 'MCP servers and tools', dk: 'cat_mcp_d' },
+    { page: 'alerts', label: 'Alerts', k: 'nav_alerts', emoji: '🔔', d: 'Alerts and notifications', dk: 'cat_alerts_d' },
   ] },
-  library: { label: '资料', sub: '提示词 · 图谱 · 历史 · 团队', items: [
-    { page: 'prompts', label: '提示词', emoji: '📝', d: '提示词库' },
-    { page: 'graph',   label: 'Graph', emoji: '🕸', d: '知识图谱' },
-    { page: 'history', label: '历史', emoji: '🕘', d: '历史会话' },
-    { page: 'team',    label: '团队', emoji: '🤝', pro: true, d: '团队协作台' },
-    { page: 'farm',    label: '农场', emoji: '🌾', d: 'Terse 农场' },
+  library: { label: 'Library', k: 'grp_library', sub: 'Prompts · graph · history · team', subk: 'cat_library_sub', items: [
+    { page: 'prompts', label: 'Prompts', k: 'nav_prompts', emoji: '📝', d: 'Your prompt library', dk: 'cat_prompts_d' },
+    { page: 'graph',   label: 'Graph',   k: 'nav_graph',   emoji: '🕸', d: 'Knowledge graph', dk: 'cat_graph_d' },
+    { page: 'history', label: 'History', k: 'nav_history', emoji: '🕘', d: 'Past sessions', dk: 'cat_history_d' },
+    { page: 'team',    label: 'Team',    k: 'nav_team',    emoji: '🤝', pro: true, d: 'The team dashboard', dk: 'cat_team_d' },
+    { page: 'farm',    label: 'Farm',    k: 'nav_farm',    emoji: '🌾', d: 'The Terse farm', dk: 'cat_farm_d' },
   ] },
 };
 function openCategory(cat) {
   const c = CATEGORIES[cat];
   if (!c) return;
   const title = $('#catTitle');
-  if (title && title.firstChild) title.firstChild.textContent = c.label + ' ';
-  const sub = $('#catSub'); if (sub) sub.textContent = c.sub;
+  if (title && title.firstChild) title.firstChild.textContent = CT(c.k, c.label) + ' ';
+  const sub = $('#catSub'); if (sub) sub.textContent = CT(c.subk, c.sub);
   const grid = $('#catGrid');
   if (grid) {
     grid.innerHTML = c.items.map(it => `
       <button class="cat-tile" data-page="${it.page}">
         <span class="cat-tile-ic">${it.emoji}</span>
-        <span class="cat-tile-t">${it.label}${it.pro ? ' <span class="cat-tile-pro">PRO</span>' : ''}</span>
-        <span class="cat-tile-d">${it.d}</span>
+        <span class="cat-tile-t">${CT(it.k, it.label)}${it.pro ? ' <span class="cat-tile-pro">PRO</span>' : ''}</span>
+        <span class="cat-tile-d">${CT(it.dk, it.d)}</span>
       </button>`).join('');
   }
   show('category');

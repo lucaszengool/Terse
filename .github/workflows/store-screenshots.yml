@@ -150,6 +150,12 @@ jobs:
             foreach ($i in 1..4) {
               if (Press 'Start using Terse') { Start-Sleep -Seconds 6 } else { break }
             }
+            # The 7-step guided tour starts the moment the shell appears and
+            # parks a card over the middle of the window — v9 caught it in every
+            # frame. Skip dismisses it for good (it only ever runs once).
+            foreach ($i in 1..3) {
+              if (Press '^Skip$') { Start-Sleep -Seconds 4 } else { break }
+            }
             Write-Host "onboard: pressed $pressed"
             Dump 'after-onboard'
           }
@@ -224,8 +230,15 @@ jobs:
 
           # Open a page from the sidebar, let it settle, photograph it.
           function Page([string]$file, [string]$rx, [int]$settle = 8) {
+            # Some pages (Wallpaper, Code Town) take over the whole window and
+            # leave only "Back" — v9 shot the wallpaper page and then had no
+            # sidebar to press for the four pages after it.
+            foreach ($i in 1..2) {
+              if (Press '^Back$') { Start-Sleep -Seconds 3 } else { break }
+            }
             if (-not (Press $rx)) { Write-Host "::warning::no button matched '$rx'"; Dump "miss-$file"; return }
             Start-Sleep -Seconds $settle
+            Press '^Skip$' | Out-Null
             CloseStrays
             Front | Out-Null
             Start-Sleep -Seconds 2

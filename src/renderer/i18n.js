@@ -2154,7 +2154,7 @@ if (typeof EN_PLACEHOLDER_MAP === 'object') EN_PLACEHOLDER_MAP['ENTER CODE'] = '
     pj_publish: "Publish",
     pj_published: "In the plaza",
     tw_t: "Code Town, on your desktop",
-    tw_d: "The plaza's first-person particle town becomes your wallpaper — every published project is a villa, its owner lives there, and other people walk the streets. The “Control town” switch next to the Dynamic Island decides who gets the keyboard and mouse: on, they steer the town; off, your Mac works exactly as usual.",
+    tw_d: "The plaza's first-person particle town becomes your wallpaper — every published project is a villa, its owner lives there, and other people walk the streets. The “Control town” switch next to the Dynamic Island decides who gets the keyboard and mouse: on, they steer the town; off, your computer works exactly as usual.",
     tw_k_walk: "WASD · walk",
     tw_k_look: "drag, Q / R or ← → · turn",
     tw_k_door: "E at a door · enter the villa",

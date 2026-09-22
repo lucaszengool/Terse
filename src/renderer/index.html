@@ -120,46 +120,46 @@
         </button>
         <button class="sb-item active" data-page="overview">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-          <span>概览</span>
+          <span data-i18n="nav_overview">Overview</span>
         </button>
         <!-- 协同办公 —— 一个门户页,把散在各处的 好友/房间/广场/团队 收进一处:
              顶部一个大按钮直接开协同房间并给出邀请链接+二维码,好友连上各自
              本地的 agent 就在同一个 working session 里。 -->
-        <button class="sb-item sb-cowork" data-page="collab" title="邀请好友，各自连上本地 agent，开一个协同工作房间">
+        <button class="sb-item sb-cowork" data-page="collab" title="Invite people, each connects their own local agent, and you share one working room">
           <span class="sb-emoji">🤝</span>
-          <span>协同办公</span>
+          <span data-i18n="nav_cowork">Cowork</span>
         </button>
         <!-- 连接手机 —— 从原来的「扫码」单独拎出来做常驻入口。页面里有一张直达
              Terse 手机版的二维码,拿手机相机扫一下就打开,agent 状态随身看。 -->
-        <button class="sb-item" data-page="pair" title="用手机扫码连接，agent 状态随身看">
+        <button class="sb-item" data-page="pair" title="Scan a code with your phone and watch your agents from anywhere">
           <span class="sb-emoji">📱</span>
-          <span>连接手机</span>
+          <span data-i18n="nav_pair">Phone</span>
           <span class="sb-badge hidden" id="sbPairBadge">●</span>
         </button>
 
-        <div class="sb-group-label">分类</div>
+        <div class="sb-group-label" data-i18n="nav_groups">Sections</div>
         <button class="sb-item sb-cat" data-cat="monitor">
           <span class="sb-emoji">👁</span>
-          <span>监控</span>
+          <span data-i18n="grp_monitor">Monitor</span>
           <span class="sb-badge hidden" id="sbMsgBadge">0</span>
           <span class="sb-pill hidden" id="sbConnPill">!</span>
           <span class="sb-cat-chev">›</span>
         </button>
         <button class="sb-item sb-cat" data-cat="optimize">
           <span class="sb-emoji">⚡</span>
-          <span>优化</span>
+          <span data-i18n="grp_optimize">Optimize</span>
           <span class="sb-cat-chev">›</span>
         </button>
         <button class="sb-item sb-cat" data-cat="secure">
           <span class="sb-emoji">🛡</span>
-          <span>安全</span>
+          <span data-i18n="grp_secure">Secure</span>
           <span class="sb-pill hidden" id="sbMcpPill">0</span>
           <span class="sb-pill hidden" id="sbAlertPill">0</span>
           <span class="sb-cat-chev">›</span>
         </button>
         <button class="sb-item sb-cat" data-cat="library">
           <span class="sb-emoji">📚</span>
-          <span>资料</span>
+          <span data-i18n="grp_library">Library</span>
           <span class="sb-cat-chev">›</span>
         </button>
       </nav>
@@ -217,7 +217,7 @@
         <button class="sb-item" data-page="island"
                 title="Answer Claude's permission prompts on the Dynamic Island">
           <span class="sb-emoji">🛡</span>
-          <span>灵动岛授权</span>
+          <span data-i18n="nav_island_perm">Island access</span>
           <span id="sbIslandPermState" style="margin-left:auto;font-size:9px;font-weight:800;
             letter-spacing:.06em;padding:1px 6px;border-radius:9999px;
             background:var(--sf);color:var(--t3)">OFF</span>

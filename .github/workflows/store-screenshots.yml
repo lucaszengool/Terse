@@ -74,6 +74,8 @@ jobs:
           using System; using System.Runtime.InteropServices;
           public static class W {
             [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+            public static extern bool SystemParametersInfoW(uint a, uint b, string c, uint d);
           }
           "@
 
@@ -83,8 +85,26 @@ jobs:
           New-Item -ItemType Directory -Force -Path $home2 | Out-Null
           $app = (Resolve-Path app).Path
 
+          # Where the app's own window was when the shutter went. The frames are
+          # full-screen, and the listing wants the product filling them, so the
+          # crop happens afterwards from these numbers — guessing the window out
+          # of the pixels does not work when the UI is glass over a wallpaper.
+          function MainRect {
+            $A = [System.Windows.Automation.AutomationElement]
+            $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+              if ($procs -notcontains $w.Current.ProcessId) { continue }
+              if ($w.Current.Name -match 'Island|Pill|Wallpaper') { continue }
+              $r = $w.Current.BoundingRectangle
+              if ($r.Width -gt 200 -and $r.Height -gt 150) { return $r }
+            }
+            return $null
+          }
+
           function Snap([string]$name) {
             [W]::SetCursorPos(1919, 1079) | Out-Null
+            $mr = MainRect
+            if ($mr) { "$name,$([int]$mr.X),$([int]$mr.Y),$([int]$mr.Width),$([int]$mr.Height)" | Add-Content "$out\rects.csv" -Encoding UTF8 }
             $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
             $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
             $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -127,6 +147,23 @@ jobs:
             Write-Host "onboard: pressed $pressed"
             Dump 'after-onboard'
           }
+          # Windows' own dialogs must not be in the frame. The runner pops
+          # "System Properties — Windows created a temporary paging file" a
+          # minute or two in, and v6 photographed it sitting on top of the app.
+          function CloseStrays {
+            $A = [System.Windows.Automation.AutomationElement]
+            $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+              if ($procs -contains $w.Current.ProcessId) { continue }
+              $n = $w.Current.Name
+              if ($n -notmatch 'System Properties|Error|Warning|paging file|\.exe') { continue }
+              try {
+                $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
+                Write-Host "closed stray: '$n'"
+              } catch { Write-Host "  stray '$n': $_" }
+            }
+          }
+
           # Bring the main window forward and put it where the shot wants it.
           # Cert 09-21 failed the listing again under 10.1.1.3: v5 minimized every
           # window and photographed the wallpaper, so the frames read as a Windows
@@ -143,7 +180,14 @@ jobs:
                 $wp = $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
                 $wp.SetWindowVisualState([System.Windows.Automation.WindowVisualState]::Normal)
                 $tp = $w.GetCurrentPattern([System.Windows.Automation.TransformPattern]::Pattern)
-                if ($tp.Current.CanMove) { $tp.Move($x, $y) }
+                if ($tp.Current.CanMove) {
+                  # Keep it wholly on screen: v6 moved a 1400px-wide window to
+                  # x=980 and half of the app hung off the right edge.
+                  $r0 = $w.Current.BoundingRectangle
+                  $x = [Math]::Max(0, [Math]::Min($x, 1920 - [int]$r0.Width - 16))
+                  $y = [Math]::Max(0, [Math]::Min($y, 1040 - [int]$r0.Height - 16))
+                  $tp.Move($x, $y)
+                }
                 $w.SetFocus()
                 $r = $w.Current.BoundingRectangle
                 Write-Host "front: '$n' at $([int]$r.X),$([int]$r.Y) $([int]$r.Width)x$([int]$r.Height)"
@@ -176,12 +220,16 @@ jobs:
           function Page([string]$file, [string]$rx, [int]$settle = 8) {
             if (-not (Press $rx)) { Write-Host "::warning::no button matched '$rx'"; Dump "miss-$file"; return }
             Start-Sleep -Seconds $settle
+            CloseStrays
             Front | Out-Null
             Start-Sleep -Seconds 2
             Snap $file
             Dump $file
           }
 
+          function WallpaperOff {
+            @{ enabled = $false } | ConvertTo-Json | Set-Content "$home2\wallpaper.json" -Encoding UTF8
+          }
           function Wallpaper([string]$engine, [string]$style, [bool]$view3d) {
             @{
               enabled = $true; engine = $engine; style = $style
@@ -273,9 +321,23 @@ jobs:
             if ($script:claudeProc) { Stop-Process -Id $script:claudeProc.Id -Force -ErrorAction SilentlyContinue }
           }
 
+          # A plain dark desktop. Terse's Windows theme ("horizon") is clear
+          # glass by design, so whatever is behind the window reads through it —
+          # and over the stock bright-blue Windows wallpaper the app's own text
+          # washed out, which is the opposite of the clean interface the listing
+          # is supposed to show. A solid dark desktop is a normal Windows setting
+          # and nothing is retouched: the glass simply has something dark behind
+          # it. SPI_SETDESKWALLPAPER = 0x0014, update + notify = 0x03.
+          function DarkDesktop {
+            Set-ItemProperty 'HKCU:\Control Panel\Colors' -Name Background -Value '16 18 28'
+            Set-ItemProperty 'HKCU:\Control Panel\Desktop' -Name Wallpaper -Value ''
+            [W]::SystemParametersInfoW(0x0014, 0, '', 0x03) | Out-Null
+          }
+
           # ── Clear the stage ────────────────────────────────────────────────
           @{ baselined = $true; auto_add = $false; sources = @{}; baselined_kinds = @('notif','system','window','media') } |
             ConvertTo-Json -Depth 4 | Set-Content "$home2\feeds.json" -Encoding UTF8
+          DarkDesktop
           Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name HideIcons -Value 1
           Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue   # restarts on its own with icons hidden
           Start-Sleep -Seconds 8
@@ -288,9 +350,12 @@ jobs:
           DemoSession
           Auth
           License $true
-          Wallpaper 'cinematic' 'vortex' $true
+          # The live wallpaper gets its own shots below; for the UI pass the
+          # desktop stays plain so the interface is what the frame is about.
+          WallpaperOff
           Launch 35
           Onboard
+          CloseStrays
           Front | Out-Null
           Start-Sleep -Seconds 8
           Snap '10-app-overview'
@@ -313,10 +378,11 @@ jobs:
             if ($sc[0] -eq 'mineradio') { License $false }
             Launch 35
             Onboard 60
+            CloseStrays
             Front 980 120 | Out-Null
             Start-Sleep -Seconds 6
             $tag = "$($sc[0])-$($sc[1])" + $(if ($sc[2]) { '-3d' } else { '' })
-            foreach ($i in 1..4) { Snap ("{0}-wall-{1}-{2:d2}" -f $n, $tag, $i); Start-Sleep -Seconds 6 }
+            foreach ($i in 1..2) { Snap ("{0}-wall-{1}-{2:d2}" -f $n, $tag, $i); Start-Sleep -Seconds 8 }
             Dump "wall-$tag"
             Quit
             $n++

@@ -3073,8 +3073,7 @@ pub(crate) fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::Webvi
     // Store builds ship without Pals (see `is_store_build`), so the desktop pet
     // window is never built there — not even if an old pet_store.json still has
     // a pet equipped from a sideloaded build.
-    #[cfg(feature = "msstore")]
-    if label == "pet" {
+    if cfg!(feature = "msstore") && label == "pet" {
         return None;
     }
     if let Some(w) = app.get_webview_window(label) {

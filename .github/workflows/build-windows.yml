@@ -2134,6 +2134,57 @@ jobs:
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
 
 
+      # Smoothness, measured rather than felt. A SYNC Tauri command runs on the
+      # main thread, and while it runs every Terse window is frozen — the island
+      # stops, clicks queue, the wallpaper stalls. The app already times itself
+      # (slow-cmd.log names the command, main-thread.log times a no-op every 2 s);
+      # this reads those back after the smoke steps have exercised the app, so a
+      # command that starts doing disk work on the main thread fails the build
+      # instead of being discovered on a user's machine.
+      - name: The main thread must not freeze
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $mt = Join-Path $dir "main-thread.log"
+          $sc = Join-Path $dir "slow-cmd.log"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          foreach ($p in @($mt, $sc)) { if (Test-Path $p) { Copy-Item $p artifacts/ } }
+          $blocks = @()
+          if (Test-Path $mt) {
+            Get-Content $mt | ForEach-Object {
+              if ($_ -match 'blocked ~(\d+) ms') { $blocks += [int]$Matches[1] }
+            }
+          }
+          $cmds = @{}
+          if (Test-Path $sc) {
+            Get-Content $sc | ForEach-Object {
+              if ($_ -match '^\[.*?\]\s+(\w+) held the main thread for (\d+) ms') {
+                $n = $Matches[1]; $ms = [int]$Matches[2]
+                if (-not $cmds.ContainsKey($n) -or $cmds[$n] -lt $ms) { $cmds[$n] = $ms }
+              }
+            }
+          }
+          if ($blocks.Count -eq 0) { Write-Host "main thread: no freeze over 1 s recorded" }
+          else {
+            $worst = ($blocks | Measure-Object -Maximum).Maximum
+            Write-Host "main thread: $($blocks.Count) freeze(s) over 1 s, worst ${worst} ms"
+          }
+          if ($cmds.Count -gt 0) {
+            Write-Host "slowest commands on the main thread:"
+            $cmds.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 10 |
+              ForEach-Object { Write-Host ("  {0,-28} {1} ms" -f $_.Key, $_.Value) }
+          }
+          $worstBlock = if ($blocks.Count) { ($blocks | Measure-Object -Maximum).Maximum } else { 0 }
+          $worstCmd = if ($cmds.Count) { ($cmds.Values | Measure-Object -Maximum).Maximum } else { 0 }
+          $bad = $false
+          # A window being built on the main thread costs a few hundred ms and is
+          # unavoidable; seconds are not.
+          if ($worstBlock -gt 3000) { Write-Warning "FREEZE: the main thread stopped for ${worstBlock} ms — every window was dead that long"; $bad = $true }
+          if ($worstCmd -gt 1000) { Write-Warning "FREEZE: a single command held the main thread for ${worstCmd} ms; make it #[tauri::command(async)]"; $bad = $true }
+          if (-not $bad) { Write-Host "SMOOTH OK: no freeze over 3 s and no command over 1 s" }
+          else { throw "the main thread froze" }
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

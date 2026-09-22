@@ -780,7 +780,7 @@ fn get_agent_detections(state: tauri::State<'_, AppState>) -> Vec<serde_json::Va
     d
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Value> {
     let monitor = lock_or_recover(&state.agent_monitor);
     let sessions = monitor.get_connected_sessions();
@@ -1101,7 +1101,7 @@ fn deploy_hook_script(config: &AgentHookConfig) -> Result<std::path::PathBuf, St
 }
 
 /// Install Terse hook for any supported agent.
-#[tauri::command]
+#[tauri::command(async)]
 fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String> {
     let agent_id = agent.as_deref().unwrap_or("claude-code");
     let config = get_agent_hook_config(agent_id)?;
@@ -1283,7 +1283,7 @@ fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String
 }
 
 /// Check if the Terse hook is installed for a given agent (or all agents).
-#[tauri::command]
+#[tauri::command(async)]
 fn check_agent_hook(agent: Option<String>) -> serde_json::Value {
     let home = match dirs::home_dir() {
         Some(h) => h,
@@ -1372,7 +1372,7 @@ fn check_json_hook(settings_path: &std::path::Path, hook_event: &str) -> serde_j
 }
 
 /// Read compression stats from both hook tracking files and sync to stats_store
-#[tauri::command]
+#[tauri::command(async)]
 fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_json::Value {
     let tmp = std::env::temp_dir();
     let stats_files = [
@@ -1465,7 +1465,7 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
 
 // ── Stats Commands ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_stats(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     store.get_stats(&period)
@@ -3499,7 +3499,7 @@ fn navigate_to_doctor(app: AppHandle) {
 /// optional suffix under `/teams` (e.g. a team id); when absent we send the user
 /// to the create/connect flow (`?connect=app`) so the website can hand a token
 /// straight back via the `terse://` deep link.
-#[tauri::command]
+#[tauri::command(async)]
 fn open_cloud_teams(path: Option<String>, state: tauri::State<'_, AppState>) {
     const BASE: &str = "https://www.terseai.org";
     let url = match path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
@@ -3540,7 +3540,7 @@ fn open_dashboards(app: AppHandle) {
 
 /// Open an arbitrary http(s) URL in the user's default browser (e.g. Slack web,
 /// the webhook setup page). Restricted to http/https so it can't launch apps.
-#[tauri::command]
+#[tauri::command(async)]
 fn open_url(url: String) {
     let u = url.trim();
     if u.starts_with("http://") || u.starts_with("https://") {
@@ -5358,7 +5358,7 @@ fn build_replay_html(tl: &serde_json::Value) -> String {
 
 /// Export the current timeline as a self-contained HTML replay in ~/Downloads;
 /// returns the written file path.
-#[tauri::command]
+#[tauri::command(async)]
 fn export_session_replay(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> Result<String, String> {
     let at = agent_type.unwrap_or_default();
     let tl = {
@@ -5381,7 +5381,7 @@ fn export_session_replay(agent_type: Option<String>, state: tauri::State<'_, App
 
 // ── Rules / Memory Manager (Remember) — CLAUDE.md across projects ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_list() -> serde_json::Value {
     let home = dirs::home_dir().unwrap_or_default();
     let mut candidates: Vec<(std::path::PathBuf, &str)> = vec![
@@ -5416,12 +5416,12 @@ fn claude_md_list() -> serde_json::Value {
     serde_json::json!({ "files": files })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_read(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_write(path: String, content: String) -> Result<bool, String> {
     if let Some(dir) = std::path::Path::new(&path).parent() {
         let _ = std::fs::create_dir_all(dir);
@@ -6221,7 +6221,7 @@ fn graph_list(state: tauri::State<'_, AppState>) -> serde_json::Value {
 }
 
 /// Forget a repo (and delete its cached graph + overlay).
-#[tauri::command]
+#[tauri::command(async)]
 fn graph_remove(path: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let repo = std::path::PathBuf::from(path.trim());
     let hash = graph_store::repo_hash(&repo);
@@ -6568,7 +6568,7 @@ fn desktop_picture_source() -> Option<std::path::PathBuf> {
 /// macOS 用 `sips` 缩图;Windows 没有 sips,改用系统自带的 PowerShell + System.Drawing
 /// (Windows PowerShell 5.1 一定有),同样不引入图像处理依赖。
 /// 结果缓存在 ~/.terse/wallpaper-bg.jpg,壁纸窗口每次启动直接读缓存。
-#[tauri::command]
+#[tauri::command(async)]
 fn get_desktop_picture(force: Option<bool>) -> Option<String> {
     let cache = dirs::home_dir()?.join(".terse").join("wallpaper-bg.jpg");
     let fresh = std::fs::metadata(&cache)
@@ -7355,7 +7355,7 @@ fn set_wallpaper_enabled(on: bool, app: AppHandle) -> Result<(), String> {
 }
 
 /// Cheap token counter (today, in+out) that the wallpaper polls to drive pulses.
-#[tauri::command]
+#[tauri::command(async)]
 fn get_token_pulse(state: tauri::State<'_, AppState>) -> u64 {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).today_total_tokens()
 }
@@ -8344,7 +8344,7 @@ fn navigate_to_social(app: AppHandle) {
 /// The 0600 the macOS build applies has no Windows equivalent here; the file
 /// sits under the user's own profile directory, which is the protection NTFS
 /// actually offers for this.
-#[tauri::command]
+#[tauri::command(async)]
 fn social_identity() -> Result<String, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
     let dir = home.join(".terse");
@@ -8389,7 +8389,9 @@ fn social_identity() -> Result<String, String> {
 /// alpha has to be divided back out or every icon is dark where it is soft.
 /// Icons with no alpha channel at all (old exes) would come out fully
 /// transparent, so a zero alpha plane is treated as opaque.
-#[tauri::command]
+// Async: extracting and scaling an icon is disk work, and a sync command runs
+// on the main thread, where it would freeze every window for its duration.
+#[tauri::command(async)]
 fn app_icon(pid: u32, size: Option<u32>) -> Option<String> {
     use windows::Win32::Foundation::{CloseHandle, HWND};
     use windows::Win32::Graphics::Gdi::{

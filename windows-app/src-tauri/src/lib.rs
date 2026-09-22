@@ -5060,6 +5060,7 @@ pub fn run() {
             navigate_to_social,
             social_identity,
             list_open_windows,
+            app_icon,
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
             permission_control_status,
@@ -8375,6 +8376,132 @@ fn social_identity() -> Result<String, String> {
 /// then it is just a diagram. With this the same card draws the user's own
 /// Chrome, terminal and chat at their real relative positions, and flipping the
 /// switch shows the particles come forward over them.
+/// The icon of the app that owns `pid`, as a PNG data URL — the same string
+/// macOS returns from NSRunningApplication, so the pages that show it need no
+/// Windows branch.
+///
+/// Windows keeps an app's icon in its .exe rather than in a bundle, so this is:
+/// pid → exe path → the icon resource → a bitmap. DrawIconEx does the scaling,
+/// which matters because the extracted icon is whatever size the exe happens to
+/// carry (usually 32) while callers ask for 64.
+///
+/// The bitmap comes back as premultiplied BGRA; PNG wants straight RGBA, so the
+/// alpha has to be divided back out or every icon is dark where it is soft.
+/// Icons with no alpha channel at all (old exes) would come out fully
+/// transparent, so a zero alpha plane is treated as opaque.
+#[tauri::command]
+fn app_icon(pid: u32, size: Option<u32>) -> Option<String> {
+    use windows::Win32::Foundation::{CloseHandle, HWND};
+    use windows::Win32::Graphics::Gdi::{
+        CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO,
+        BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HBITMAP, HGDIOBJ,
+    };
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::Shell::ExtractIconExW;
+    use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, DI_NORMAL, HICON};
+
+    let px = size.unwrap_or(64).clamp(16, 256) as i32;
+    unsafe {
+        // 1. pid → exe path
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = [0u16; 512];
+        let mut len = buf.len() as u32;
+        let got = QueryFullProcessImageNameW(
+            h,
+            PROCESS_NAME_WIN32,
+            windows::core::PWSTR(buf.as_mut_ptr()),
+            &mut len,
+        )
+        .is_ok();
+        let _ = CloseHandle(h);
+        if !got || len == 0 {
+            return None;
+        }
+        let mut path: Vec<u16> = buf[..len as usize].to_vec();
+        path.push(0);
+
+        // 2. exe → HICON (large first; some exes only carry a small one)
+        let mut large = HICON::default();
+        let mut small = HICON::default();
+        let n = ExtractIconExW(
+            windows::core::PCWSTR(path.as_ptr()),
+            0,
+            Some(&mut large),
+            Some(&mut small),
+            1,
+        );
+        if n == 0 || n == u32::MAX {
+            return None;
+        }
+        let icon = if !large.is_invalid() { large } else { small };
+        if icon.is_invalid() {
+            if !small.is_invalid() { let _ = DestroyIcon(small); }
+            return None;
+        }
+
+        // 3. HICON → 32-bit top-down DIB at the requested size
+        let mut bmi = BITMAPINFO::default();
+        bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
+        bmi.bmiHeader.biWidth = px;
+        bmi.bmiHeader.biHeight = -px; // negative = rows top-down, as PNG wants
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB.0;
+        let mut bits: *mut core::ffi::c_void = std::ptr::null_mut();
+        let dc = CreateCompatibleDC(None);
+        let bmp: HBITMAP = CreateDIBSection(dc, &bmi, DIB_RGB_COLORS, &mut bits, None, 0).ok()?;
+        let old = SelectObject(dc, HGDIOBJ(bmp.0));
+        let drew = DrawIconEx(dc, 0, 0, icon, px, px, 0, None, DI_NORMAL).is_ok();
+        SelectObject(dc, old);
+
+        let mut rgba = Vec::new();
+        if drew && !bits.is_null() {
+            let n = (px * px) as usize;
+            let src = std::slice::from_raw_parts(bits as *const u8, n * 4);
+            let opaque = src.chunks_exact(4).all(|p| p[3] == 0); // no alpha plane at all
+            rgba.reserve(n * 4);
+            for p in src.chunks_exact(4) {
+                let (b, g, r, a) = (p[0], p[1], p[2], p[3]);
+                if opaque {
+                    rgba.extend_from_slice(&[r, g, b, 255]);
+                } else if a == 0 {
+                    rgba.extend_from_slice(&[0, 0, 0, 0]);
+                } else {
+                    // Un-premultiply, or soft edges come out muddy.
+                    let un = |c: u8| ((c as u32 * 255 + a as u32 / 2) / a as u32).min(255) as u8;
+                    rgba.extend_from_slice(&[un(r), un(g), un(b), a]);
+                }
+            }
+        }
+        let _ = DeleteObject(HGDIOBJ(bmp.0));
+        let _ = DeleteDC(dc);
+        if !large.is_invalid() { let _ = DestroyIcon(large); }
+        if !small.is_invalid() { let _ = DestroyIcon(small); }
+        let _ = HWND::default(); // keep the import list honest if DrawIconEx changes
+        if rgba.is_empty() {
+            return None;
+        }
+
+        // 4. RGBA → PNG → data URL
+        let mut png: Vec<u8> = Vec::new();
+        {
+            let mut enc = png::Encoder::new(&mut png, px as u32, px as u32);
+            enc.set_color(png::ColorType::Rgba);
+            enc.set_depth(png::BitDepth::Eight);
+            let mut w = enc.write_header().ok()?;
+            w.write_image_data(&rgba).ok()?;
+        }
+        use base64::Engine;
+        Some(format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(&png)
+        ))
+    }
+}
+
 ///
 /// EnumWindows already walks in z-order, front first, so the array order IS the
 /// stacking order the card relies on. Eight is plenty to draw.

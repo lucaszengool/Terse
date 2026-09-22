@@ -46,6 +46,8 @@ webview2-com = "0.38"
 # the macOS build — the two sides encrypt and decrypt each other's messages.
 aes-gcm = "0.10"
 base64 = "0.22"
+# app_icon encodes the extracted .exe icon as PNG (already in the tree via tauri).
+png = "0.17"
 regex = "1"
 # room_link fills its AES nonces straight from the OS CSPRNG.
 getrandom = "0.2"

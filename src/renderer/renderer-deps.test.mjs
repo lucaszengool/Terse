@@ -104,7 +104,6 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ['ax-status', 'macOS Accessibility authorisation; Windows has no equivalent state'],
   ]);
   const DEFERRED_CMDS = new Map([
-    ["app_icon", "assorted: app_icon (NSWorkspace), messages settings page"],
     ["desk_call", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
     ["desk_get_enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
     ["desk_open_ax_settings", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],

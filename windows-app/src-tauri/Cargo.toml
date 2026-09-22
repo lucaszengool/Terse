@@ -84,6 +84,10 @@ windows = { version = "0.58", features = [
     "Win32_System_Diagnostics_Debug",
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",
+    # 信息流「正在播放」reads the system media transport controls (WinRT), the
+    # same source as the volume flyout's media tile.
+    "Media_Control",
+    "Foundation",
 ] }
 
 [build-dependencies]

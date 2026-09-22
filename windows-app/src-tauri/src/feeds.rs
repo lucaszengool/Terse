@@ -4,16 +4,16 @@
 // same messages module (which reads Windows' Action Center here instead of
 // Notification Center), and window titles come from ax_read — a real
 // implementation on Windows rather than an Accessibility grant. The third,
-// "what is playing", is macOS MediaRemote and has no Windows implementation
-// yet; it says so once in the log instead of appearing as a source that never
-// produces anything.
+// "what is playing", comes from the system media transport controls — the
+// source behind the volume flyout's media tile — where macOS reads MediaRemote
+// through a JXA reader.
 //
 // The macOS-only helpers (mod mac, the JXA reader) are removed rather than
 // left behind cfg, so this file only contains code that runs here. The part
 // that decides WHAT to show — one new title per source per scan, forget a
 // window when it closes — is copied unchanged: that is what keeps the feed
 // readable, and it is not platform work.
-//! 信息流 —— everything Terse can see flowing past on this Mac, as one stream
+//! 信息流 —— everything Terse can see flowing past on this PC, as one stream
 //! for the wallpaper's big text.
 //!
 //! Three kinds of source, each read the cheapest way that needs no new grant:
@@ -501,13 +501,92 @@ struct NowPlaying {
 /// through one place.
 static MEDIA_SEEN: LazyLock<Mutex<Vec<(String, String)>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
+/// 正在播放 — what the machine is playing, from the system media transport
+/// controls (the same source as the volume flyout's media tile).
+///
+/// macOS reads this from MediaRemote through a JXA reader; Windows publishes it
+/// as a WinRT service, so this is a poll rather than a stream: the manager hands
+/// over the current session, the session hands over title/artist and whether it
+/// is actually playing. Spotify, browsers, players — anything that shows in that
+/// flyout shows here.
+///
+/// Polled, not subscribed, on purpose: the events are delivered on a WinRT
+/// apartment thread, and a poll every few seconds costs nothing measurable
+/// against holding a subscription alive for the life of the app. Nothing is
+/// pushed unless the title changed, so a track that plays for four minutes is
+/// one feed item, not eighty.
 fn start_media_reader() {
-    // macOS reads "what is playing" from MediaRemote through a long-lived JXA
-    // reader. Windows exposes the same thing through the system media transport
-    // controls, which is a real piece of work and is not done — so this source
-    // simply never appears, rather than appearing and staying empty. Said once,
-    // in the log, so the absence is findable.
-    crate::diag_log("feeds", "now-playing source is macOS-only for now; no media items will appear");
+    std::thread::spawn(|| {
+        use windows::Media::Control::{
+            GlobalSystemMediaTransportControlsSessionManager as Manager,
+            GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status,
+        };
+        let mut last = String::new();
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(4));
+            let Ok(op) = Manager::RequestAsync() else { continue };
+            let Ok(mgr) = op.get() else { continue };
+            let Ok(session) = mgr.GetCurrentSession() else {
+                last.clear();           // nothing is playing any more
+                continue;
+            };
+            // Paused counts as "not playing": the wallpaper should not keep
+            // announcing a track nobody is listening to.
+            let playing = session
+                .GetPlaybackInfo()
+                .and_then(|i| i.PlaybackStatus())
+                .map(|st| st == Status::Playing)
+                .unwrap_or(false);
+            if !playing {
+                last.clear();
+                continue;
+            }
+            let Ok(props_op) = session.TryGetMediaPropertiesAsync() else { continue };
+            let Ok(props) = props_op.get() else { continue };
+            let title = props.Title().map(|h| h.to_string_lossy()).unwrap_or_default();
+            if title.trim().is_empty() {
+                continue;
+            }
+            let artist = props.Artist().map(|h| h.to_string_lossy()).unwrap_or_default();
+            // The AUMID is the closest thing Windows has to a bundle id
+            // ("Spotify.exe", "Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic").
+            let aumid = session
+                .SourceAppUserModelId()
+                .map(|h| h.to_string_lossy())
+                .unwrap_or_default();
+            let key = format!("{aumid}\u{1}{title}\u{1}{artist}");
+            if key == last {
+                continue;
+            }
+            last = key;
+            let lower = aumid.to_ascii_lowercase();
+            let name = aumid
+                .rsplit('!')
+                .next()
+                .unwrap_or(&aumid)
+                .trim_end_matches(".exe")
+                .split('.')
+                .next_back()
+                .unwrap_or(&aumid)
+                .to_string();
+            let name = if name.is_empty() { aumid.clone() } else { name };
+            MEDIA_SEEN
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push((lower.clone(), name.clone()));
+            push_item(FeedItem {
+                id: String::new(),
+                source: format!("media:{lower}"),
+                kind: "media".into(),
+                app_id: lower,
+                app_name: name,
+                sender: title,
+                group: None,
+                body: artist,
+                ts: now(),
+            });
+        }
+    });
 }
 
 /* ══════════════ 权限 ══════════════

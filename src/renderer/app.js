@@ -985,6 +985,11 @@ function maybeRunOnboarding() {
 
 // ── Pet picker overlay ──────────────────────────────────────────────
 async function maybeShowPetPicker() {
+  // Store builds have no Pals at all — see tauri-bridge.js. The flag is set by
+  // a round trip to Rust, so wait for it rather than reading it too early: this
+  // runs right after sign-in, which is exactly when the picker used to appear.
+  try { await window.__TERSE_STORE_BUILD_READY__; } catch {}
+  if (window.__TERSE_STORE_BUILD__) { maybeStartTour(); return; }
   if (!T.getPetState || !window.TERSE_PALS) { maybeStartTour(); return; }
   let state;
   try { state = await T.getPetState(); } catch { maybeStartTour(); return; }
@@ -1014,6 +1019,7 @@ function maybeStartTour() {
 
 // ── Pals inventory (Phase 5) ─────────────────────────────────────
 function openPalsPage() {
+  if (window.__TERSE_STORE_BUILD__) return;
   const page = $('#palsPage');
   if (!page) return;
   page.style.display = 'flex';
@@ -1457,6 +1463,8 @@ function cmdDisplayLabel(def) {
 }
 function renderCmds(query) {
   cmdMatches = CMD_DEFS
+    // Store builds ship without Pals, so the palette must not offer it either.
+    .filter(def => !(window.__TERSE_STORE_BUILD__ && def.key === 'cmd_open_pals'))
     .map(def => ({ def, score: Math.max(fuzzyScore(query, def.label), fuzzyScore(query, cmdDisplayLabel(def))) }))
     .filter(m => m.score > 0)
     .sort((a, b) => b.score - a.score)
@@ -2324,7 +2332,7 @@ const SB_ACTIONS = {
   friends:  () => { show('friends'); friendsInit(); },
   room:     () => { show('room'); roomInit(); },
   plaza:    () => { show('plaza'); plazaInit(); },
-  pals:     () => $('#btnPalsTitle')?.click(),
+  pals:     () => { if (!window.__TERSE_STORE_BUILD__) $('#btnPalsTitle')?.click(); },
 };
 // Pro-only destinations. Clicking one on the free tier is the strongest upsell
 // moment ("hitting a wall") — we open the trial sheet framed by that feature's

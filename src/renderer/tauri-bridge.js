@@ -521,6 +521,25 @@ if (window.__TAURI__) {
   // Expose as window.terse for compatibility with existing app.js, popup.js
   window.terse = T;
 
+  // ── Microsoft Store build flag ──
+  // The Store build ships without Pals (pet picker, Pals page, sidebar entry,
+  // desktop pet): certification failed it on 09/21 as an unusable feature —
+  // the picker opened after sign-in and ignored clicks. The Mac app and the
+  // sideloaded Windows build share this renderer and keep Pals, so the build
+  // tells us which one we are. `is_store_build` only exists in the Windows
+  // backend; anywhere else the catch leaves the flag false.
+  //
+  // `store-build` on <html> does the hiding in CSS, so nothing can flash into
+  // view between here and the first paint of a Pals control.
+  window.__TERSE_STORE_BUILD__ = false;
+  window.__TERSE_STORE_BUILD_READY__ = invoke('is_store_build')
+    .then((v) => {
+      window.__TERSE_STORE_BUILD__ = !!v;
+      if (v) document.documentElement.classList.add('store-build');
+      return !!v;
+    })
+    .catch(() => false);
+
   // Forward console.log to Rust stderr for debugging
   const _origLog = console.log;
   const _origErr = console.error;

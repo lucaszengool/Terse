@@ -3070,6 +3070,13 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
 /// the on-demand windows. Sites that merely poke an already-open window still use
 /// get_webview_window, so nothing is created as a side effect of a status check.
 pub(crate) fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
+    // Store builds ship without Pals (see `is_store_build`), so the desktop pet
+    // window is never built there — not even if an old pet_store.json still has
+    // a pet equipped from a sideloaded build.
+    #[cfg(feature = "msstore")]
+    if label == "pet" {
+        return None;
+    }
     if let Some(w) = app.get_webview_window(label) {
         return Some(w);
     }
@@ -3596,6 +3603,18 @@ fn show_main_window(app: AppHandle) {
         let _ = win.show();
         let _ = win.set_focus();
     }
+}
+
+/// True in Microsoft Store builds (`--features msstore`).
+///
+/// The renderer is shared with the Mac app, so the Store build can't simply
+/// delete UI at build time. This is how it asks. Today it hides Pals — the pet
+/// picker, the Pals page, the sidebar entry and the desktop pet — which failed
+/// certification 10.1.2.10 on 09/21 as an "unusable feature": the picker came
+/// up after sign-in and ignored every click.
+#[tauri::command]
+fn is_store_build() -> bool {
+    cfg!(feature = "msstore")
 }
 
 #[tauri::command]
@@ -4740,6 +4759,7 @@ pub fn run() {
             farm_pool_clear,
             farm_add_fishing_coins,
             show_pet_window,
+            is_store_build,
             hide_pet_window,
             get_pet_state,
             pick_starter_pet,

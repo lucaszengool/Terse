@@ -1547,3 +1547,13 @@ html:not(.page-awake) .sc-mcp .reqdot {
 .cw-card-ic{font-size:18px;line-height:1}
 .cw-card-t{font-size:12.5px;font-weight:700}
 .cw-card-d{font-size:10px;color:var(--t3);line-height:1.5}
+
+/* Microsoft Store build: no Pals. Set by tauri-bridge.js from is_store_build.
+   Certification 10.1.2.10 (09/21) failed the pet picker as an unusable
+   feature, so the Store build has no pet picker, no Pals page and no Pals
+   entry in the sidebar. `display:none` here also keeps the picker's
+   click-through drag region off every Store screen. */
+html.store-build #petPicker,
+html.store-build #palsPage,
+html.store-build .sb-item[data-page="pals"],
+html.store-build #btnPalsTitle { display: none !important; }

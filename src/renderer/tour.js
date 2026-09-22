@@ -253,6 +253,18 @@
   }
 
   function start() {
+    // Store builds ship without Pals, so the tour must not point at a button
+    // that isn't there. Done here rather than at module load because the build
+    // flag arrives from Rust a moment after this file runs.
+    if (window.__TERSE_STORE_BUILD__) {
+      for (const s of STEPS) {
+        if (!s.list || !s.list.includes('pals')) continue;
+        const at = s.list.indexOf('pals');
+        s.list = s.list.filter(k => k !== 'pals');
+        s.spot = (s.spot || []).filter(k => k !== 'pals');
+        if (s.icons) s.icons = s.icons.filter((_, n) => n !== at);
+      }
+    }
     if (!root) build();
     i = 0;
     root.classList.add('show');

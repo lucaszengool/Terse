@@ -1,9 +1,14 @@
 name: Store screenshots (Windows)
 
-# Microsoft Store policy 10.1.1.3 (cert report 09-18): listing screenshots must
-# be direct captures of the product running on Windows. This takes the exact
-# Terse.msix built by "Build Windows Store package (MSIX)", unpacks it on a fresh
-# Windows runner, runs it, and photographs the desktop. Nothing is composited.
+# Microsoft Store policy 10.1.1.3 (cert reports 09-18 AND 09-21): listing
+# screenshots must be direct captures of the product running on Windows.
+# The 09-21 failure is why v6 exists: v5's frames were direct captures, but they
+# minimized every window to leave the wallpaper as the subject, so what a
+# reviewer saw was a Windows desktop. Every v6 frame shows the app's own UI.
+#
+# This takes the exact Terse.msix built by "Build Windows Store package (MSIX)",
+# unpacks it on a fresh Windows runner, runs it, and photographs the screen.
+# Nothing is composited.
 #
 # Staging, and nothing else:
 #  - the runner's own console is minimized and its desktop icons hidden;
@@ -20,13 +25,20 @@ on:
   push:
     branches: [store/submission-2]
     paths: ['.github/workflows/store-screenshots.yml']
+  workflow_dispatch:
+    inputs:
+      msix_run_id:
+        description: 'Build run whose Terse.msix to photograph (defaults to MSIX_RUN_ID)'
+        required: false
 
 permissions:
   actions: read
   contents: read
 
 env:
-  # The build run whose Terse.msix goes to the Store (1.3.4.0, 147fd98c).
+  # The build run whose Terse.msix goes to the Store. Point this at the 1.3.5.0
+  # run (Pals removed from the Store build) before capturing — screenshots must
+  # come from the package that is actually submitted.
   MSIX_RUN_ID: '35336138438'
 
 jobs:
@@ -41,7 +53,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Terse-MSIX
-          run-id: ${{ env.MSIX_RUN_ID }}
+          run-id: ${{ inputs.msix_run_id || env.MSIX_RUN_ID }}
           github-token: ${{ github.token }}
           path: msix
 
@@ -110,22 +122,59 @@ jobs:
             }
             Write-Host "onboard: pressed $pressed"
           }
-          # Leave the wallpaper as the subject: close the Doctor, minimize every
-          # other Terse window except the island. The wallpaper itself is a child
-          # of the desktop (WorkerW), not a top-level window, so it isn't touched.
-          function ClearWindows {
+          # Bring the main window forward and put it where the shot wants it.
+          # Cert 09-21 failed the listing again under 10.1.1.3: v5 minimized every
+          # window and photographed the wallpaper, so the frames read as a Windows
+          # desktop rather than as the product. Every v6 frame has the app's own
+          # window in it.
+          function Front([int]$x = 120, [int]$y = 90) {
             $A = [System.Windows.Automation.AutomationElement]
             $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
             foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
               if ($procs -notcontains $w.Current.ProcessId) { continue }
-              $n = $w.Current.Name; $r = $w.Current.BoundingRectangle
-              if ($n -match 'Island') { Write-Host "keep: '$n'"; continue }
+              $n = $w.Current.Name
+              if ($n -match 'Island|Pill|Wallpaper') { continue }
               try {
                 $wp = $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
-                if ($n -match 'Doctor') { $wp.Close(); Write-Host "closed: '$n'" }
-                else { $wp.SetWindowVisualState([System.Windows.Automation.WindowVisualState]::Minimized); Write-Host "minimized: '$n' $([int]$r.Width)x$([int]$r.Height)" }
-              } catch { Write-Host "  skip '$n': $_" }
+                $wp.SetWindowVisualState([System.Windows.Automation.WindowVisualState]::Normal)
+                $tp = $w.GetCurrentPattern([System.Windows.Automation.TransformPattern]::Pattern)
+                if ($tp.Current.CanMove) { $tp.Move($x, $y) }
+                $w.SetFocus()
+                $r = $w.Current.BoundingRectangle
+                Write-Host "front: '$n' at $([int]$r.X),$([int]$r.Y) $([int]$r.Width)x$([int]$r.Height)"
+                return $true
+              } catch { Write-Host "  front skip '$n': $_" }
             }
+            Write-Host "front: no main window found"
+            return $false
+          }
+
+          # Every button the app is showing right now, by accessible name. Two
+          # capture rounds were spent guessing at these; the log ends that.
+          function Dump([string]$tag) {
+            $A = [System.Windows.Automation.AutomationElement]
+            $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+            $cond = New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
+            $lines = @("== $tag ==")
+            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+              if ($procs -notcontains $w.Current.ProcessId) { continue }
+              $lines += "  window '$($w.Current.Name)'"
+              foreach ($b in $w.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)) {
+                if ($b.Current.IsOffscreen) { continue }
+                $lines += "    button '$($b.Current.Name)'"
+              }
+            }
+            $lines | Add-Content "$out\ui-names.log" -Encoding UTF8
+          }
+
+          # Open a page from the sidebar, let it settle, photograph it.
+          function Page([string]$file, [string]$rx, [int]$settle = 8) {
+            if (-not (Press $rx)) { Write-Host "::warning::no button matched '$rx'"; Dump "miss-$file"; return }
+            Start-Sleep -Seconds $settle
+            Front | Out-Null
+            Start-Sleep -Seconds 2
+            Snap $file
+            Dump $file
           }
 
           function Wallpaper([string]$engine, [string]$style, [bool]$view3d) {
@@ -215,18 +264,42 @@ jobs:
           (New-Object -ComObject Shell.Application).MinimizeAll()
           Start-Sleep -Seconds 3
 
-          # ── Agent text on the wallpaper, sample session running ────────────
+          # ── The app's own UI, page by page (the listing's main shots) ──────
+          # A sample agent session runs throughout, so the windows hold real
+          # numbers instead of zeros.
           DemoSession
           License $true
-          $n = 30
-          foreach ($sc in @(@('cinematic','vortex',$true), @('cinematic','neon',$false), @('cinematic','starfall',$false), @('mineradio','cinematic',$false))) {
+          Wallpaper 'cinematic' 'vortex' $true
+          Launch 35
+          Onboard 30
+          Dump 'after-onboard'
+          Front | Out-Null
+          Start-Sleep -Seconds 6
+          Snap '10-app-overview'
+          # Sidebar names come from the UI's own labels; the regex covers the
+          # English strings, and ui-names.log shows what was really there.
+          Page '11-app-doctor'    'Doctor'        10
+          Page '12-app-wallpaper' 'Wallpaper|Live wallpaper'
+          Page '13-app-observe'   'Observe|Sessions|Monitor'
+          Page '14-app-stats'     'Statistics|Stats'
+          Page '15-app-boost'     'Boost|Optimize|Optimizer'
+          Page '16-app-settings'  'Settings'
+          Quit
+
+          # ── The live wallpaper, with the app window in frame ───────────────
+          # These sell the wallpaper, but the product is visibly on screen: the
+          # window stays open in front of it, which is also how a user sees it.
+          $n = 20
+          foreach ($sc in @(@('cinematic','vortex',$true), @('cinematic','neon',$false), @('mineradio','cinematic',$false))) {
             Wallpaper $sc[0] $sc[1] $sc[2]
             if ($sc[0] -eq 'mineradio') { License $false }
             Launch 35
             Onboard 30
-            ClearWindows; Start-Sleep -Seconds 5
+            Front 980 120 | Out-Null
+            Start-Sleep -Seconds 6
             $tag = "$($sc[0])-$($sc[1])" + $(if ($sc[2]) { '-3d' } else { '' })
-            foreach ($i in 1..8) { Snap ("{0}-agent-{1}-{2:d2}" -f $n, $tag, $i); Start-Sleep -Seconds 5 }
+            foreach ($i in 1..4) { Snap ("{0}-wall-{1}-{2:d2}" -f $n, $tag, $i); Start-Sleep -Seconds 6 }
+            Dump "wall-$tag"
             Quit
             $n++
           }
@@ -238,7 +311,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v5
+          name: Terse-Store-Screenshots-v6
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

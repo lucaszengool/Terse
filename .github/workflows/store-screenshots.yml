@@ -39,7 +39,7 @@ env:
   # The build run whose Terse.msix goes to the Store — screenshots must come from
   # the package that is actually submitted. This is 1.3.5.0 (Pals out of the Store
   # build, the main-thread window deadlock fixed).
-  MSIX_RUN_ID: '35689313101'
+  MSIX_RUN_ID: '35696744115'
 
 jobs:
   shots:
@@ -159,21 +159,19 @@ jobs:
             Write-Host "onboard: pressed $pressed"
             Dump 'after-onboard'
           }
-          # Windows' own dialogs must not be in the frame. The runner pops
-          # "System Properties — Windows created a temporary paging file" a
-          # minute or two in, and v6 photographed it sitting on top of the app.
+          # Windows' own dialogs must not be in the frame. The runner throws one
+          # up every few minutes — "System Properties / paging file", then
+          # "Performance Options" — and matching them by title only ever catches
+          # the one seen last time. Anything with a visible main window that is
+          # neither the app nor the shell nor this script's own console is asked
+          # to close.
+          $KEEP = '^(Terse|explorer|pwsh|powershell|conhost|WindowsTerminal|OpenConsole|dotnet|Runner|node)$'
           function CloseStrays {
-            $A = [System.Windows.Automation.AutomationElement]
-            $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
-            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
-              if ($procs -contains $w.Current.ProcessId) { continue }
-              $n = $w.Current.Name
-              if ($n -notmatch 'System Properties|Error|Warning|paging file|\.exe') { continue }
-              try {
-                $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
-                Write-Host "closed stray: '$n'"
-              } catch { Write-Host "  stray '$n': $_" }
+            foreach ($p in Get-Process | Where-Object { $_.MainWindowTitle -and $_.ProcessName -notmatch $KEEP }) {
+              Write-Host "closing stray: $($p.ProcessName) '$($p.MainWindowTitle)'"
+              try { $p.CloseMainWindow() | Out-Null } catch { Write-Host "  close failed: $_" }
             }
+            Start-Sleep -Seconds 1
           }
 
           # Bring the main window forward and put it where the shot wants it.

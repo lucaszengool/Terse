@@ -766,6 +766,15 @@ fn resize_popup(h: f64, state: tauri::State<'_, AppState>, app: AppHandle) {
     if minimized { return; }
     if let Some(popup) = app.get_webview_window("popup") {
         let clamped = h.max(120.0).min(800.0);
+        // Skip a resize that changes nothing. The page calls this on every
+        // content-height change, and on Windows each call is a synchronous
+        // window resize plus a WebView2 relayout on the main thread — CI
+        // measured one at 1026 ms, the slowest command in the run.
+        if let (Ok(sz), Ok(sf)) = (popup.inner_size(), popup.scale_factor()) {
+            if ((sz.height as f64 / sf) - clamped).abs() < 1.0 {
+                return;
+            }
+        }
         let _ = popup.set_size(tauri::LogicalSize::new(540.0, clamped));
     }
 }
@@ -1822,25 +1831,37 @@ fn get_doctor_settings() -> doctor::DoctorSettings {
 fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
     #[cfg(target_os = "windows")]
     {
-        use window_vibrancy::{apply_mica, clear_mica};
+        use window_vibrancy::apply_mica;
         // Only the large rectangular surfaces, matching where `setup` rounds via
         // DWM. The island and toast are clipped to a shape with SetWindowRgn,
         // and DWM paints its backdrop over the whole rectangle ignoring that
         // region — mica on the island fills the pill's corners back in. They
         // stay plain transparent, which is also what Mac does with them.
-        // Remembered for windows that do not exist yet: build_lazy_window reads
-        // this so a Doctor opened after a theme change is not the one surface
-        // still wearing the old finish.
-        CLEAR_GLASS.store(enabled, std::sync::atomic::Ordering::Relaxed);
         for lbl in ["main", "doctor", "farm", "palette"] {
             if let Some(win) = app.get_webview_window(lbl) {
-                // Both error on pre-22000 builds, where the window is simply
-                // transparent already — a downgrade, not a breakage.
-                if enabled {
-                    let _ = clear_mica(&win);
-                } else {
-                    let _ = apply_mica(&win, Some(true));
-                }
+                // Mica either way — including "horizon", the clear-glass theme
+                // and the Windows default.
+                //
+                // Horizon is meant to read as glass over the desktop, and macOS
+                // gets that for free: a transparent WKWebView window lets the
+                // page's own backdrop-filter blur what is BEHIND the window.
+                // WebView2 cannot — backdrop-filter only ever samples the page —
+                // so the same theme on Windows left a window with no material at
+                // all, and the desktop and every window behind it read through
+                // crisply. Users reported it as "there is another window behind
+                // mine", and the screenshots are of Notepad and the Recycle Bin
+                // showing through Terse.
+                //
+                // Mica is the material that fixes exactly that: DWM derives it
+                // from the DESKTOP WALLPAPER, blurred and tinted, and
+                // deliberately does not sample other windows. So the desktop
+                // still tints the glass — which is the point of horizon — and
+                // other windows never bleed through it.
+                //
+                // Errors on pre-22000 builds, where the window is simply
+                // transparent already: a downgrade, not a breakage.
+                let _ = apply_mica(&win, Some(true));
+                let _ = enabled;
             }
         }
     }
@@ -2618,16 +2639,6 @@ fn island_set_expanded(expanded: bool, app: AppHandle) {
     }
 }
 
-/// Clip a frameless window to a rounded-rectangle region so it reads as a pill/card
-/// — the Windows equivalent of macOS's native island corner radius (22px). Windows 10
-/// does NOT round frameless windows (that's Win11 only), and the acrylic backdrop fills
-/// the whole rectangular window, so without this the island shows as a rectangle with a
-/// tinted halo instead of the Mac's clean rounded pill. A GDI region is fixed to the size
-/// it was built for, so this MUST be re-applied after every resize (pill <-> card).
-/// Whether the last `set_clear_glass` asked for bare glass (horizon) or a
-/// material. A window built after that call has to be told, or it would be the
-/// one surface on screen wearing the wrong finish.
-static CLEAR_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 
 /// Everything setup() used to do to these windows AFTER building them.
 ///
@@ -2664,10 +2675,10 @@ fn attach_lazy_chrome(w: &tauri::WebviewWindow, radius: f64) {
         }
     }
 
-    // Match the material the rest of the app is wearing right now.
-    if !CLEAR_GLASS.load(std::sync::atomic::Ordering::Relaxed) {
-        let _ = window_vibrancy::apply_mica(w, Some(true));
-    }
+    // The same material every other surface wears. Unconditional now: a window
+    // with no material lets whatever is behind Terse read through it, which is
+    // what users reported (see set_clear_glass).
+    let _ = window_vibrancy::apply_mica(w, Some(true));
 
     let w2 = w.clone();
     w.on_window_event(move |ev| {
@@ -3387,8 +3398,16 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         // WS_CAPTION is WS_BORDER|WS_DLGFRAME, so the title bar and its border
         // both go with it.
-        let drop_bits =
-            (WS_CAPTION.0 | WS_SYSMENU.0 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
+        // WS_MINIMIZEBOX / WS_MAXIMIZEBOX are NOT dropped, although they read
+        // like caption decoration. Windows consults them for Aero Snap,
+        // Win+↑/↓/←/→ and the taskbar's window menu, and with them gone the main
+        // window could not be snapped or maximized at all — measured on the CI
+        // runner, which is also what proves they draw nothing on their own:
+        // there is no caption for them to appear in (WS_CAPTION is dropped,
+        // WS_POPUP is set, DWM non-client rendering is disabled, and the frame
+        // guard swallows the caption-painting messages). The ghost-bar check
+        // that runs every build is what holds that claim honest.
+        let drop_bits = (WS_CAPTION.0 | WS_SYSMENU.0) as isize;
         // Adding WS_POPUP is what actually guarantees it: a popup window has no
         // caption by definition, so this holds even if something re-sets the
         // caption bit behind us. Clearing the bits alone left the classic grey
@@ -4211,22 +4230,29 @@ pub fn run() {
             // set_clear_glass, which is the same seam Mac swaps vibrancy on.
             #[cfg(target_os = "windows")]
             {
-                // NO backdrop material at startup — the Mac build's rule, ported.
+                // Mica from the first frame, including the default theme.
                 //
-                // src-tauri/src/lib.rs:4183 spells out why: "horizon" is the
-                // default theme and it is clear glass, so applying a native
-                // material underneath frosts the desktop into a flat slab, which
-                // is the exact look horizon exists to avoid. Mac therefore starts
-                // bare and lets the frontend call set_clear_glass(false) when the
-                // user picks any other theme. Mica was being applied here
-                // unconditionally, which is why every big Windows window read as
-                // frosted while the same theme on Mac read as clear glass.
+                // This was bare transparency, ported from the Mac rule: "horizon"
+                // is the default theme, it is clear glass, and a native material
+                // underneath frosts the desktop into a flat slab — the look
+                // horizon exists to avoid. It cost what the previous note here
+                // called the trade-off: with no material, windows behind Terse
+                // "show through sharply instead of dissolving into a wash". That
+                // is what users reported as a window sitting behind theirs, and
+                // it only happens on Windows, because macOS lets the page's own
+                // backdrop-filter blur what is behind the window and WebView2
+                // does not.
                 //
-                // Trade-off this re-opens, recorded so it isn't rediscovered a
-                // fourth time: bare transparency has no material, so windows
-                // behind Terse show through sharply instead of dissolving into a
-                // wash. Mica hid that by deriving its backdrop from the wallpaper
-                // only. It now comes back with the theme, via set_clear_glass.
+                // Mica settles it the other way: DWM derives it from the desktop
+                // WALLPAPER, so the desktop still tints the glass, and it never
+                // samples other windows, so nothing behind Terse reads through.
+                // Applied here as well as in set_clear_glass so the first frames
+                // are not the see-through ones.
+                for lbl in ["main", "doctor", "farm", "palette"] {
+                    if let Some(w) = app.get_webview_window(lbl) {
+                        let _ = window_vibrancy::apply_mica(&w, Some(true));
+                    }
+                }
                 for lbl in ["main", "doctor", "farm", "palette"] {
                     if let Some(w) = app.get_webview_window(lbl) {
                         // Round these through DWM rather than SetWindowRgn. The

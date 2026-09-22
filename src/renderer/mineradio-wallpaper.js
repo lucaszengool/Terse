@@ -31,6 +31,7 @@ import { getProStyle, resolveStyle, DEFAULT_STYLE_ID } from './wallpaper-styles.
 import { sanitizeView, orbitPosition, shortestArc,
          ORBIT_AZ_PER_PX, ORBIT_EL_PER_PX } from './wallpaper-view3d.js';
 import { ProjectLayer } from './wallpaper-project.js';
+import { SpindleLayer } from './wallpaper-spindle.js';
 
 /* ── Mineradio 原值 ── */
 const PLANE_SIZE = 4.8;        // 00-pointer-cover-particles.js:218
@@ -64,6 +65,9 @@ const RIPPLE_Z = 0.18;
 // 没有 DOM,所以是唯一能被测到的部分,而它正是"关掉 3D 必须逐位回到原样"的地方。
 /** 复用的投影暂存,避免命中测试每次 new 一个 Vector3(鼠标一动就是几十次)。 */
 const _V3 = new THREE.Vector3();
+const _Q = new THREE.Quaternion();
+/** 星轨炸环里每句字的大小(big 是 1.55)。字要压得住一整个炸开的环。 */
+const BEAT_TEXT_SCALE = 2.1;
 
 
 /* 数字的出场包络(毫秒)和 Pro 的多槽位调色板,都搬到 wallpaper-styles.js 去了 ——
@@ -214,6 +218,10 @@ uniform float uForm, uVis, uPixel, uPointScale, uTime, uBloomSize;
 // 独立的事 —— 原来它们共用同一条 uForm 曲线,所以字只会"怎么来的怎么回去"。
 uniform float uOut, uInMode, uOutMode, uStagger, uStaggerUv, uDispFade, uTwinkle, uSwirl;
 uniform vec2 uCenter, uSize, uDrift;
+// 星轨炸环:环的法线(= 光束方向,字形 Group 的本地坐标)。长度为 0 时退回 uDrift 给的倾角。
+uniform vec3 uRingN;
+// 每次成型重抽的随机种子 —— 烟花散开(mode 11)每一次都长得不一样
+uniform float uSeed;
 uniform vec3 uTint;
 // 手势(Pro):agent 日志 / 统计的粒子字也听手的。uHandG = (x, y, 半径, 强度 0..1),
 // uLensG = (x, y, 半径, 倍数;1 = 关)—— 都在字所在的 Group 本地坐标里。没有手时强度 0、倍数 1,下面两段不起作用
@@ -257,6 +265,79 @@ return vec3(dir * (u * (1.15 + aRand * 2.30)) + vec2(cos(a), sin(a)) * u * 0.45,
   } else if (mode < 7.5) {
 // 7 DRIFT —— 整句朝同一个方向流走。方向每次成型重抽,所以同一种手法不会看腻
 return vec3(uDrift * (u * 3.20) + vec2(0.0, sin(aRand * 23.0) * 0.30 * u), u * (aRand - 0.5) * 0.6);
+  } else if (mode > 10.5) {
+// 11 FIREWORK —— 星轨炸环的"散":像烟花一样炸开,一层层往外推(粒子涟漪),再慢慢飘落在
+//   光束周围熄灭。形状全由 uSeed 决定:几层壳、多快、往哪边飘、拧多少、贴不贴着环面 ——
+//   所以每一次都不一样,没有两次是同一朵。
+float sd = uSeed;
+float h1 = fract(sin((aRand + sd) * 91.7) * 43758.55);
+float h2 = fract(sin((aRand * 1.7 + sd) * 57.3) * 24634.63);
+float th = h1 * 6.2831, cph = 2.0 * h2 - 1.0, sph = sqrt(1.0 - cph * cph);
+vec3 dir = vec3(sph * cos(th), sph * sin(th), cph);
+// 一部分贴到环面上(和光束上的环融成一体),一部分自由地炸成球
+if (dot(uRingN, uRingN) > 0.25) {
+  vec3 n = normalize(uRingN);
+  // 大部分贴着环面:球壳从正面看是一块实心的圆饼,只有压扁成环才看得出一圈圈的涟漪
+  float flt = 0.72 + 0.24 * fract(sd * 5.3);
+  dir = normalize(mix(dir, dir - n * dot(dir, n), flt));
+}
+// 字自己的形状先往外撑开一点,笔画不是从一个点炸的
+dir = normalize(dir + vec3(rel * (0.08 + 0.14 * fract(sd * 2.9)), 0.0));
+// 涟漪:2~4 层壳,每层一个速度,层与层之间留空 —— 看上去是一圈圈往外推的波
+float nsh = 2.0 + floor(fract(sd * 7.1) * 2.99);
+float shell = floor(fract(aRand * 13.37) * nsh) / max(1.0, nsh - 1.0);
+// 每层壳很薄(抖动只有 0.06),所以看得出一圈圈清楚的波纹,而不是一团雾
+float spd = (1.2 + 2.2 * shell + fract(aRand * 5.71) * 0.06) * (0.85 + 0.55 * fract(sd * 3.3));
+// 阻力:先猛冲,再被"空气"拖慢
+// 阻力:头 0.25 秒就冲出六成 —— 拍子一到,旧字必须立刻碎掉,给新字让出尖头
+float dist = spd * (1.0 - exp(-7.0 * u)) / (1.0 - exp(-7.0));
+// 先一收:笔画在头 0.3 秒里向字心收拢,再从字心炸开 —— 烟花是从一个点炸的,
+// 不是整句字原地糊开(那样只会横着抹成一片)
+vec3 q = dir * dist - vec3(rel, 0.0) * 0.85 * smoothstep(0.0, 0.06, u);
+// 拧一下 + 往一个随机方向飘落(重力方向每次不同,但总体偏下)
+float sw = (fract(sd * 4.3) - 0.5) * 2.4 * u;
+q.xy = mat2(cos(sw), -sin(sw), sin(sw), cos(sw)) * q.xy;
+q.xy += (uDrift * 0.55 + vec2(0.0, -0.55)) * u * u * (0.6 + fract(sd * 9.1));
+// 最外层的火花拖出细小的抖动,像烟花的尾巴
+q += vec3(sin(u * 17.0 + aRand * 40.0), cos(u * 13.0 + aRand * 31.0), 0.0) * 0.05 * u * shell;
+return q;
+  } else if (mode > 9.5) {
+// 10 EMERGE —— 星轨炸环的"字拍":字心就是光束尖头,尖头炸开的那一团亮雾**就是**这句字。
+//   散开位置 = 挤在字心的一小团;聚的途中先冲过头一点(sin 那一项)再落回笔画上 ——
+//   看上去是字被炸出来的,不是飘过来的。
+vec3 j = vec3(cos(a), sin(a), fract(aRand * 7.7) - 0.5) * (0.03 + fract(aRand * 3.3) * 0.14);
+return (vec3(-rel, 0.0) + j) * u + vec3(rel, 0.0) * 0.22 * sin(u * 3.1416);
+  } else if (mode > 8.5) {
+// 9 ORBIT —— 星轨炸环(wallpaper-spindle.js):字的每颗粒子落在**一个斜着的环**上。
+//   聚 = 环从外面收拢成字;散 = 字沿着环的平面炸成一圈,边张开边拧、边折成马鞍 ——
+//   和纺锤体上同一时刻炸开的那个环是同一个动作。uDrift 给环的倾角(每次成型重抽)。
+float ang = atan(rel.y, rel.x + 1e-4) + u * uSwirl * (0.35 + aRand * 0.30);
+float R0 = length(rel);
+float e = 1.0 - pow(1.0 - u, 2.6);
+// 张开后的半径:和字本身的大小有关(长句炸出来的环更大),再按粒子散一点厚度
+// 环要**细**:散得太厚就成了一团雾,看不出是个环。四成粒子挤在主环上,其余拖成
+// 一内一外两圈更淡的影子 —— 和视频里"一圈亮点 + 一圈稀疏的碎屑"一样。
+float band = fract(aRand * 13.7);
+float lane = band < 0.5 ? 0.0 : band < 0.75 ? 0.10 : -0.09;
+// 半径按**整句**的宽度定,不按每颗粒子自己离字心多远 —— 否则左右两头的粒子落在
+// 不同半径上,环就被拉成一整片环带。
+float R = 0.95 + uSize.x * 0.30 + lane + (fract(aRand * 91.3) - 0.5) * 0.018;
+vec3 q;
+if (dot(uRingN, uRingN) > 0.25) {
+  // 和光束尖头炸的那个环**同一个平面**:环面垂直于光束方向
+  vec3 n = normalize(uRingN);
+  vec3 b1 = normalize(abs(n.z) < 0.95 ? cross(n, vec3(0.0, 0.0, 1.0)) : cross(n, vec3(0.0, 1.0, 0.0)));
+  vec3 b2 = cross(n, b1);
+  q = (b1 * cos(ang) + b2 * sin(ang)) * R;
+  q += n * sin(ang * 2.0 + uDrift.y * 3.0) * 0.38 * R * 0.42;  // 马鞍折,和光束上的环一样
+} else {
+  vec2 ring = vec2(cos(ang), sin(ang)) * R;
+  // 环面倾斜:y 压扁、z 拉出来 —— 屏幕上是一个斜着看的椭圆,不是一个正圆
+  float tilt = 0.55 + 0.35 * uDrift.x;
+  q = vec3(ring.x, ring.y * cos(tilt), ring.y * sin(tilt) * 1.6);
+  q.z += sin(ang * 2.0 + uDrift.y * 3.0) * 0.45;
+}
+return (q - vec3(rel, 0.0)) * e;
   }
 // 8 BELOW —— 散开的位置在画面下方(当 in 是浮起,当 out 是沉落)
   return vec3(vec2(sin(aRand * 19.0) * 0.28, -(0.95 + aRand * 1.75)) * u, u * (aRand - 0.5) * 0.6);
@@ -282,6 +363,11 @@ void main(){
   // uDispFade:散在外面时压暗。0 = 原版(粒子一路都亮着,是"飞"进来的);
   // 接近 1 = 只有落位的粒子才亮,字于是像在原地"显影"。
   vA = on * uVis * (0.62 + 0.38 * sin(uTime * uTwinkle + aRand * 21.0)) * (1.0 - u * uDispFade);
+  if (uOut > 0.0 && mode > 10.5) {
+    // 火花各自熄灭:外层的晚一点,每颗都在闪 —— 不是整朵一起淡掉
+    float die = 0.55 + 0.42 * fract(aRand * 3.17);
+    vA *= 1.9 * (1.0 - smoothstep(die, 1.0, u)) * (0.55 + 0.45 * sin(uTime * 14.0 + aRand * 60.0) * step(0.15, u) + 0.45 * (1.0 - step(0.15, u)));
+  }
   vec2 gp = target + d.xy;
   // 张开手掌:手周围的字被推开,手移走弹回原位
   if (uHandG.w > 0.01) {
@@ -297,7 +383,9 @@ void main(){
     gp = uLensG.xy + ld * glf;
   }
   vec4 mv = modelViewMatrix * vec4(gp, d.z, 1.0);
-  gl_PointSize = (2.5 + uForm * 1.5) * uPixel * uPointScale * uBloomSize * glf;
+  // 烟花的火花不跟着 uForm 缩小 —— 散开的时候反而要亮成一颗颗星
+  float fwk = (uOut > 0.0 && mode > 10.5) ? 1.0 : 0.0;
+  gl_PointSize = (2.5 + max(uForm, fwk * 0.9) * 1.5) * uPixel * uPointScale * uBloomSize * glf;
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -437,6 +525,7 @@ export default class MineradioWallpaper {
 
     this._buildLayers();
     this._buildGlyphLayer();
+    this._syncScene();               // 风格自带的场景层(星轨炸环的纺锤体);别的风格什么都不建
     this._applyView();               // 机位归位(关着的时候 = 原来的正对机位)
     this._loadPhoto(opts.photo);
 
@@ -564,6 +653,8 @@ export default class MineradioWallpaper {
       uStagger: { value: g.stagger }, uStaggerUv: { value: g.staggerUv },
       uDispFade: { value: g.dispFade }, uTwinkle: { value: g.twinkle },
       uSwirl: { value: g.swirl }, uDrift: { value: new THREE.Vector2(1, 0) },
+      uRingN: { value: new THREE.Vector3(0, 0, 0) },
+      uSeed: { value: 0 },
     };
     const styleBloom = g.bloomSize;
     // 辉光孪生:同一份几何再画一遍,点更大、核更软、加性叠加(和 Mineradio 一个套路)
@@ -1055,7 +1146,8 @@ export default class MineradioWallpaper {
     this._logNextAt = 0;
     // Preempt: a new line takes the centre now. Its life is cut short rather
     // than popped, so the one leaving fades instead of vanishing mid-frame.
-    for (const sl of (this._glyphSlots || [])) {
+    // 卡点模式不抢:换字只在炸环的拍子上发生(_updateGlyph),这里切掉会让字在拍子外消失
+    for (const sl of (this._beatMode() ? [] : (this._glyphSlots || []))) {
       if (sl.glyph && sl.glyph.size === 'big') {
         sl.glyph.life = Math.min(sl.glyph.life, (now - sl.glyph.t0) + 260);
       }
@@ -1192,7 +1284,11 @@ export default class MineradioWallpaper {
     const host = this.canvas && this.canvas.parentElement;
     if (!host || !this._bedCss || this._overlay) return;
     // 没打开"3D 时全黑"就一档都不压 —— 底下那张是用户自己的桌面壁纸。
-    const q = this._view.dim ? Math.round(amt * 20) / 20 : 0;   // 每 5% 一档,避免每帧改样式
+    let q = this._view.dim ? Math.round(amt * 20) / 20 : 0;   // 每 5% 一档,避免每帧改样式
+    // 星轨炸环要的是视频里那片**黑底**:纺锤体是冷白的点云,压在一张彩色照片上就看不出
+    // 轮廓了。这一路只在那个风格的场景层活着时才非 0,其余风格这里恒为 0。
+    const sd = this._spindle ? Math.round(this._spindle._vis * 0.9 * 20) / 20 : 0;
+    if (sd > q) q = sd;
     if (q === this._bedDim) return;
     this._bedDim = q;
     if (q <= 0) { host.style.background = this._bedCss; return; }
@@ -1499,6 +1595,20 @@ export default class MineradioWallpaper {
     // 牌堆是按上一种风格的列表洗的,留着会先发完一手旧手法才换过来。
     this._bags = null; this._lastPick = null;
     this.u.uDanceMode.value = next.field.idleDance;
+    this._syncScene();
+  }
+
+  /** 风格自带的场景层。目前只有「星轨炸环」有(wallpaper-spindle.js)。
+   *
+   *  **懒建、渐隐**:没选过这个风格的机器上一个对象都不 new,cinematic 那条路径因此
+   *  逐位不变;切走时不是立刻拆掉,而是淡出(target=0),淡完了才在 _update 里释放 ——
+   *  否则一换风格,整座纺锤体会"啪"地消失。 */
+  _syncScene() {
+    const want = this.pro && this._style.scene === 'spindle';
+    if (want && !this._spindle) {
+      this._spindle = new SpindleLayer({ pixel: this.renderer.getPixelRatio() });
+    }
+    if (this._spindle) this._spindle.target = want ? 1 : 0;
   }
   getStyle() { return this._style.id; }
 
@@ -1512,7 +1622,8 @@ export default class MineradioWallpaper {
     // words ("live", "cached"), which read as filler next to a real statistic
     // and made the Pro field look padded rather than richer. Each variant here
     // is derived from the same event, so nothing is invented.
-    const m = String(label).match(/[-+]?[\d.,]+/);
+    // 带上 K/M/B 后缀:"+3.9K tok" 的伴随行原来取成 "+3.9",小了一千倍
+    const m = String(label).match(/[-+]?[\d.,]+[KMB]?/);
     const n = m ? m[0] : '';
     const pick = (arr) => arr[(this._glyphIdx + arr.length) % arr.length];
     if (kind === 'saved') {
@@ -1638,11 +1749,13 @@ export default class MineradioWallpaper {
     // _pumpLog plays it on the next frame. Recording here and letting the pump
     // decide keeps ONE place that chooses what is on screen.
     this._logRot = this._logRecent.length - 1;
+    this._logFresh = true;                     // 卡点模式:下一拍就炸这句
     this._logNextAt = 0;
     // Preempt: a NEW line must take the centre now, not after the current one
     // finishes its ~12s life. Waiting is what made the headline feel like a
     // slideshow of old activity rather than a live readout.
-    for (const sl of (this._glyphSlots || [])) {
+    // 卡点模式不抢:换字只在炸环的拍子上发生(_updateGlyph),这里切掉会让字在拍子外消失
+    for (const sl of (this._beatMode() ? [] : (this._glyphSlots || []))) {
       if (sl.glyph && sl.glyph.size === 'big') {
         // Cut its life short instead of popping it, so it fades rather than
         // disappearing mid-frame.
@@ -1758,6 +1871,79 @@ export default class MineradioWallpaper {
 
     this._updateGlyph();
     if (this._projLayer) this._projLayer.update(this._time);
+    if (this._spindle) this._updateSpindle(dt);
+  }
+
+  /** 星轨炸环的场景层:推进、把背景压下去、淡完了就释放。 */
+  _updateSpindle(dt) {
+    const sp = this._spindle;
+    sp.update(dt);
+    // 大字那一块让出来:取正在显示的 big 那一条,把它的框投到屏幕上
+    let hole = 0, tgt = null;
+    const cam = this._silk && this._silk.cam;
+    const slots = this._glyphSlots || [];
+    for (const sl of slots) {
+      const g = sl.glyph;
+      if (!g || g.size !== 'big' || !cam) continue;
+      // 同屏几句字时只给最新的那句让位 —— 旧的正随环散开,光束该回来接住它
+      if (g.beat && slots.some(o => o.glyph && o.glyph.beat && o.glyph.t0 > g.t0)) continue;
+      const w = sl.u.uSize.value.x, h = sl.u.uSize.value.y;
+      const c = _V3.set(g.x, g.y, 0).project(cam);
+      const cx = c.x, cy = c.y;
+      const e = _V3.set(g.x + w / 2, g.y + h / 2, 0).project(cam);
+      // 只让到字**还聚着**的时候:字一散,纺锤体立刻回来接住那个炸环
+      hole = Math.max(hole, sl.u.uForm.value * sl.u.uVis.value * (sl.u.uOut.value > 0 ? 0.3 : 1));
+      // 光束提亮之后(09-22「很炫很亮」),白字压在白光束上读不出来:让位的椭圆放大到盖住整句
+      // (完全让开的内核 = 0.55 × 半宽,1.45 倍才盖到字的两头),让得也更深
+      tgt = [cx, cy, Math.abs(e.x - cx) * 1.45, Math.abs(e.y - cy) * 2.6];
+    }
+    // 让位区**平滑地**跟过去(09-22 用户:炸环时星轨不要任何闪动)。原来每一拍新字一出来,
+    // 让位区就从旧字那儿"跳"到尖头、深浅也跟着字的聚散一开一合 —— 尖头那一块光束每拍闪一下。
+    // 现在位置、大小、深浅都按 ~0.3 秒的时间常数滑过去。
+    const hs = this._holeS || (this._holeS = { x: 0, y: 0, w: 0.3, h: 0.1, a: 0 });
+    const k = 1 - Math.exp(-dt / 0.3);
+    if (tgt) { hs.x += (tgt[0] - hs.x) * k; hs.y += (tgt[1] - hs.y) * k; hs.w += (tgt[2] - hs.w) * k; hs.h += (tgt[3] - hs.h) * k; }
+    hs.a += (0.95 * hole - hs.a) * k;
+    sp.setHole(hs.x, hs.y, hs.w, hs.h, 0);
+    sp._holeAmt.value = hs.a;
+    // 字炸成的环和尖头的环共用一个平面:把光束方向换到字形 Group 的本地坐标里
+    const n = sp.ringNormal(_V3);
+    const grp = this._glyphLayer && this._glyphLayer.group;
+    if (grp) n.applyQuaternion(_Q.copy(grp.quaternion).invert());
+    const alive = sp.target > 0;
+    for (const sl of this._glyphSlots || []) {
+      if (alive) sl.u.uRingN.value.copy(n); else sl.u.uRingN.value.set(0, 0, 0);
+    }
+    const v = sp._vis;
+    // 极光那层(PULSE)在黑底上会变成一大片彩色雾,把纺锤体的冷白吃掉 —— 跟着压下去。
+    // 建层时它的 uAlpha 是 0.95(见 _buildLayers);淡出时原样还回去。
+    if (this._pulseL) this._pulseL.u.uAlpha.value = 0.95 * (1 - v);
+    // SILK 的门在 _update 里每帧重算,这里在它之后再压一次 —— 规则网格在黑底上格外扎眼
+    if (this._silk) this._silk.u.uAlpha.value *= 1 - v;
+    this._dimBed(this._viewCur ? this._viewCur.amt : 0);
+    if (sp.target === 0 && v === 0) {
+      sp.dispose(); this._spindle = null;
+      if (this._pulseL) this._pulseL.u.uAlpha.value = 0.95;
+      this._bedDim = null; this._dimBed(this._viewCur ? this._viewCur.amt : 0);
+    }
+  }
+
+  /** 星轨炸环的"卡点"模式:字的出现/炸开全部落在光束的炸环节拍上(见 _updateGlyph)。 */
+  _beatMode() { return !!(this.pro && this._spindle && this._spindle.target > 0); }
+
+  /** 卡点模式里这一拍炸哪句字。顺序:新来的信息流 → 新的 agent 日志 → 每第三拍插一条统计
+   *  → 其余时间轮播最近的日志(新 → 旧)。一句都没有就返回 null,这一拍只炸个小环。 */
+  _beatText() {
+    this._beatN = (this._beatN || 0) + 1;
+    if ((this._headQueue || []).length) return this._headQueue.shift().label;
+    const list = this._logRecent || [];
+    if (this._logFresh && list.length) { this._logFresh = false; this._logRot = list.length - 2; return list[list.length - 1]; }
+    if (this._glyphQueue.length && (this._beatN % 3 === 0 || !list.length)) return this._glyphQueue.shift().label;
+    if (!list.length) return null;
+    if (this._logRot == null || this._logRot < 0) this._logRot = list.length - 1;
+    const i = Math.min(this._logRot, list.length - 1);
+    this._logRot = i - 1;
+    return list[i];
   }
 
   /** Headline rotation: the newest log line first, then the four before it, and
@@ -1769,6 +1955,9 @@ export default class MineradioWallpaper {
     const queued = (this._headQueue || []).length;
     if (!list.length && !queued) return;
     // Never interrupt a headline that is still on screen.
+    // 卡点模式例外:当前这句已经停够了(minHold),就可以把下一句备好 —— 真正换字要等下一拍。
+    // 卡点模式不走这条路:每一拍自己挑字(_beatText)
+    if (this._beatMode()) return;
     if ((this._glyphSlots || []).some(sl => sl.glyph && sl.glyph.size === 'big')) return;
     if (now < (this._logNextAt || 0)) return;
     this._logNextAt = now + 700;               // brief gap between headlines
@@ -1811,6 +2000,34 @@ export default class MineradioWallpaper {
     const T = st.timing;
     const G_LIFE = T.in + T.hold + T.out;
     const FILL_GAP = this.pro ? st.field.fillGap : 1400;   // ms between successive formations
+
+    // ── 卡点:**每一次**炸环都带一句字 ──────────────────────────────────────
+    // 到拍时光束"举手"(beatPending)。这里每一拍都认领:挑下一句,尖头炸一个大环,
+    // 字从那团亮雾里炸出来 —— 然后字**跟着自己那个环**走:随环往后退、环张开时字也
+    // 摊到环上散掉(位置/大小每帧在下面的推进里更新)。同屏有几句字,就有几个环。
+    const beat = this._beatMode();
+    let beatNext = null;
+    const sp = beat ? this._spindle : null;
+    if (sp && sp.beatPending) {
+      const label = this._beatText();
+      if (label) {
+        sp.beatPending = false;
+        // 槽位:先找空的;满了就让最老的那句提前谢幕(它此时已经散得差不多了)
+        let slot = slots.find(sl => !sl.glyph);
+        if (!slot) {
+          slot = slots.reduce((o, sl) => (!o || sl.glyph.t0 < o.glyph.t0 ? sl : o), null);
+          if (slot) { slot.glyph = null; slot.u.uVis.value = 0; slot.uB.uVis.value = 0; }
+        }
+        if (slot) {
+          beatNext = { slot, next: { label, kind: 'log', size: 'big', beat: true,
+                                     act: this._pendingActBeat || null } };
+          const ring = sp.burst(1.25, 0.95 + 3.05 * BEAT_TEXT_SCALE * 0.30);
+          beatNext.ring = ring;
+          this._kick = Math.max(this._kick, 0.9);
+        }
+      }
+    }
+
     for (let si = 0; si < slots.length; si++) {
       const slot = slots[si];
       if (slot.glyph) continue;
@@ -1818,16 +2035,23 @@ export default class MineradioWallpaper {
       // it; the rest never touch the headline.
       const headlineSlot = si === 0 && slots.length > 1;
       let next;
-      if (headlineSlot) {
-        if (!this._logPending) continue;
+      let beatRing = -1;
+      if (beatNext && slot === beatNext.slot) {
+        next = beatNext.next; beatRing = beatNext.ring; beatNext = null;
+      } else if (beat) {
+        // 卡点模式下所有槽位都归炸环的字;统计数字排进 _beatText 的轮换里
+        continue;
+      } else if (headlineSlot) {
+        // 卡点模式下大字只走上面那条路(拍子上);这个槽位留给它,统计字不占
+        if (beat || !this._logPending) continue;
         next = this._logPending;
         this._logPending = null;
       } else {
-        if (!this._glyphQueue.length && !this._logPending) continue;
+        if (!this._glyphQueue.length && (beat || !this._logPending)) continue;
         if (now < this._nextFillAt) break;
         this._nextFillAt = now + FILL_GAP;
         // With one slot (free tier) the headline still takes precedence.
-        if (this._logPending) { next = this._logPending; this._logPending = null; }
+        if (this._logPending && !beat) { next = this._logPending; this._logPending = null; }
         else next = this._glyphQueue.shift();
       }
       // 左右交替、纵向游走 —— 避开屏幕正中(那儿通常是窗口和图标)
@@ -1865,6 +2089,14 @@ export default class MineradioWallpaper {
       // big line in the same band rota as the rest is what made the field look
       // like a list instead of a composition.
       if (tier === 'big') { gx = 0; gy = 0.15; }
+      // 星轨炸环:大字停在光束的尖头上 —— 尖头炸环的时候,字就从那里炸开
+      if (tier === 'big' && this._spindle && this._spindle.target > 0) {
+        const h = this._spindle.headPlane(cam);
+        const halfW = cam ? Math.tan(cam.fov * Math.PI / 360) * cam.position.length() * cam.aspect : 4;
+        const hw = 3.05 * 1.55 / 2;
+        gx = Math.max(-halfW + hw * 0.9, Math.min(halfW - hw * 0.9, h.x));
+        gy = h.y;
+      }
       slot.glyph = { label: next.label, kind: next.kind, act: next.act || null, t0: now, x: gx, y: gy,
                      size: tier, small: tier === 'small', col,
                      // Exactly one life, as in the film (GLYPH_LIFE). The old
@@ -1875,6 +2107,10 @@ export default class MineradioWallpaper {
                      // 1 - smoother(t) goes negative. Lines still stagger — they
                      // start at different times, which is how the film does it.
                      life: G_LIFE };
+      if (next.beat) {
+        // 这句字挂在它的环上:burst 已经在尖头炸了,散的那一帧别再炸
+        slot.glyph.beat = true; slot.glyph.burst = true; slot.glyph.ring = beatRing;
+      }
       this._drawGlyphLabel(slot, next.label, tier);
 
       // 每成一次型,单独发两张牌:这条字**怎么聚出来**、**怎么散回去**。两者是分开的,
@@ -1887,6 +2123,7 @@ export default class MineradioWallpaper {
       // DRIFT 那一路的流向每次重抽 —— 同一种手法换个朝向就是另一个样子。
       const dAng = Math.random() * Math.PI * 2;
       slot.u.uDrift.value.set(Math.cos(dAng), Math.sin(dAng));
+      slot.u.uSeed.value = Math.random() * 97.0;
 
       // ── 只有中间那句 big text 会让背景动 ──────────────────────────────
       // 统计数字(mid / small)照旧聚散,但不再碰背景。之前每条都会甩一组涟漪
@@ -1920,15 +2157,38 @@ export default class MineradioWallpaper {
       const age = now - g0.t0;
       if (age > g0.life) { slot.glyph = null; slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
       let form, vis, out;
-      if (age < T.in) { const t = age / T.in; form = smoother(t); vis = smoother(Math.min(1, t * 1.6)); out = 0; }
+      // burstEase(星轨炸环):出膛式 —— 第一帧就是全速,之后减速落定。smootherstep 是慢起的,
+      // 拿它来"炸"就会有 0.2 秒什么都没发生,正好错过拍子。没有这个字段的风格走原来的曲线。
+      const ease = st.glyph.burstEase ? (x) => 1 - Math.pow(1 - x, 3) : smoother;
+      // softIn(星轨炸环,09-22):入场缓进缓出、慢慢亮起来 —— 不要"一下炸出来"的那一顿
+      if (age < T.in) { const t = age / T.in;
+        if (st.glyph.softIn) { form = smoother(t); vis = smoother(Math.min(1, t * 1.4)); }
+        else { form = ease(t); vis = st.glyph.burstEase ? Math.min(1, t * 6) : smoother(Math.min(1, t * 1.6)); }
+        out = 0; }
       else if (age < T.in + T.hold) { form = 1; vis = 1; out = 0; }
       else {
         const t = (age - T.in - T.hold) / T.out;
         // outDepth = 散开的幅度。原版只散到 0.75 就整条淡没了(所以看着像"淡出+微散");
         // 调到 1.0 的风格会真的把字散尽,消散手法才看得清。
-        form = 1 - smoother(t) * st.glyph.outDepth; vis = 1 - smoother(t);
+        // burstEase 的"散"用线性时钟:烟花的减速由着色器里的阻力项负责,这里再套一层
+        // 出膛曲线会让火花在前 0.3 秒就烧完
+        form = 1 - (st.glyph.burstEase ? t : ease(t)) * st.glyph.outDepth;
+        // outHold:散的前一段先不暗 —— 星轨炸环要让字炸成的那个环**亮着张开**,
+        // 淡是后半段的事。没有这个字段的风格(包括 cinematic)这里恒为 0,逐位不变。
+        const oh = st.glyph.outHold || 0;
+        vis = 1 - smoother(oh > 0 ? Math.max(0, (t - oh) / (1 - oh)) : t);
         // >0 就是给 shader 的开关:从这一刻起改用 uOutMode 那套手法。
         out = Math.max(1e-4, t);
+        // 星轨炸环:字开始散的**那一帧**,纺锤体在同一个位置炸一个环 —— 字沿着环炸开,
+        // 环从纺锤体上甩出去,是同一个动作。每条字只炸一次。
+        if (!g0.burst && this._spindle && this._spindle.target > 0) {
+          g0.burst = true;
+          // 只有大字才炸大环(尖头上的那个);统计小字散的时候尖头照常自己炸小环
+          if (g0.size === 'big') {
+            this._spindle.burst(1.35, 0.95 + slot.u.uSize.value.x * 0.30);
+            this._kick = Math.max(this._kick, 0.9);
+          }
+        }
       }
 
       // No float. The film pins uCenter to the event's position for the whole
@@ -1936,6 +2196,13 @@ export default class MineradioWallpaper {
       // the text gathers and bursts IN PLACE. The rise-and-sway added here made
       // it read as floating text passing by rather than particles condensing out
       // of the field and blowing apart — which is the motion being matched.
+      // 炸环的字跟着自己的环走:环留在世界里、尖头飞走 → 字沿光束往后退;
+      // 远了就按透视缩小(persp),和环一起变小
+      if (g0.beat && this._spindle) {
+        const cam = this._silk && this._silk.cam;
+        const hp = this._spindle.ringPlane((now - g0.t0) / 1000, cam, g0.ring);
+        g0.x = hp.x; g0.y = hp.y; g0.persp = hp.k;
+      }
       const fx = g0.x, fy = g0.y;
 
       for (const u of [slot.u, slot.uB]) {
@@ -1951,7 +2218,9 @@ export default class MineradioWallpaper {
         // stats 0.58 (tokenstats.ts SMALL). 1.7 / 0.66 spread the same particle
         // budget over ~20% more area, which is part of why the letters read as
         // separate blobs instead of a dense glow.
-        const sc = g0.size === 'big' ? 1.55 : g0.size === 'small' ? 0.58 : 1;
+        let sc = g0.size === 'big' ? 1.55 : g0.size === 'small' ? 0.58 : 1;
+        // 跟着环一起张开:刚炸出来时小一圈,环张满时到全尺寸
+        if (g0.beat) sc = BEAT_TEXT_SCALE * (g0.persp || 1) * (0.78 + 0.22 * Math.min(1, (now - g0.t0) / 900));
         u.uSize.value.set(3.05 * sc, 0.52 * sc);
         u.uPointScale.value = 1;
       }
@@ -1984,6 +2253,8 @@ export default class MineradioWallpaper {
     const r = this.renderer;
     r.clear();
     for (const L of this.layers) r.render(L.scene, L.cam);
+    // 星轨炸环的纺锤体:和字共用 SILK 的相机(同一套平面坐标),画在字的下面
+    if (this._spindle && this._spindle.visible) r.render(this._spindle.scene, this._silk.cam);
     // 字形层用 SILK 的相机(同一套平面坐标),最后画,叠在最上面
     // Any live slot means the layer has something to draw.
     // 缩影和字挂在同一个 Group 下,所以只要有一样活着就得画这一层。
@@ -2003,6 +2274,7 @@ export default class MineradioWallpaper {
       this._disposeLayers();
       for (const sl of (this._glyphSlots || [])) { sl.geo.dispose(); sl.mat.dispose(); sl.matB.dispose(); }
       if (this._projLayer) { this._projLayer.dispose(); this._projLayer = null; }
+      if (this._spindle) { this._spindle.dispose(); this._spindle = null; }
       this._coverTex.dispose(); this._edgeTex.dispose(); this._rippleTex.dispose();
       this.renderer.dispose();
     } catch (e) {}

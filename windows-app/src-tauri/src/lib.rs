@@ -7177,7 +7177,10 @@ fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
 fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     let on = cfg.get("overlay").and_then(|v| v.as_bool()).unwrap_or(false);
     let engine = cfg.get("engine").and_then(|v| v.as_str()).unwrap_or("mineradio");
-    let particle = matches!(engine, "mineradio" | "cinematic");
+    // "orbit" (星轨炸环) is another scene of the mineradio renderer — same
+    // alpha:true canvas — so it lifts above other windows like the other two.
+    // Without it here, always-on-top is silently refused for that engine.
+    let particle = matches!(engine, "mineradio" | "cinematic" | "orbit");
     let pro = license::License::load().is_pro();
     // Logged, not inferred. Four diagnoses of the black-sheet overlay were wrong
     // because the inputs to this decision were never printed - a screenshot

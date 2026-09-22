@@ -344,6 +344,43 @@
           <span class="p3d-hint" id="p3dHint" data-i18n="wp_3d_grab">Grab it — this one is in 3D</span></div>
       </div>
 
+      <div class="card">
+        <div class="card-t" data-i18n="wp_engine">Engine</div>
+        <div class="engines" id="engines">
+          <div class="eng" data-e="mineradio">
+            <div class="et" data-i18n="wp_eng_mine_t">Your wallpaper · particle motion</div>
+            <div class="ed" data-i18n-html="wp_eng_mine_d">Uses <b>your current desktop wallpaper</b> as the bed:
+              particles take its colours and move over it, and agent activity and token counts
+              surface as numbers formed out of those particles.</div>
+          </div>
+          <!-- Pro tier. Free users may SELECT it to watch the live preview —
+               that preview is the pitch — but applying it to the desktop opens
+               the plan window instead. -->
+          <div class="eng eng-pro" data-e="cinematic" data-pro="1">
+            <div class="et"><span data-i18n="wp_eng_cine_t">Cinematic · particle typography</span> <span class="pro-tag">PRO</span></div>
+            <div class="ed" data-i18n-html="wp_eng_cine_d">A layer on top of the motion: tokens saved, cache hit
+              rate and spend surface the way a title sequence does — <b>assembled out of particles</b>.
+              Every time a line forms, the scattered field ripples in a way it has not before.
+              It also shows the agent's live log.</div>
+          </div>
+          <!-- 星轨炸环。它在内部仍旧是 mineradio 的一种 Pro 风格(scene:'spindle'),
+               但对用户来说它不是"同一张壁纸的另一种字体":黑底、纺锤体、炸环 ——
+               整张画面都换了。所以它站在引擎这一栏里,而不是风格格子里。 -->
+          <div class="eng eng-pro" data-e="orbit" data-pro="1">
+            <div class="et"><span data-i18n="wp_eng_orbit_t">Orbit Burst · rings on black</span> <span class="pro-tag">PRO</span></div>
+            <div class="ed" data-i18n-html="wp_eng_orbit_d">A scene of its own: your desktop picture fades to
+              near-black and a <b>point-cloud spindle</b> turns in it, throwing off rings studded with stars and
+              notes. Every ring is one beat of your agents' traffic, and the live log <b>bursts apart along it</b>.</div>
+          </div>
+          <div class="eng" data-e="topography">
+            <div class="et" data-i18n="wp_eng_topo_t">Spectrum · light-column terrain</div>
+            <div class="ed" data-i18n="wp_eng_topo_d">The original 3D column terrain: token flow raises ripples,
+              and a big spend drops a meteor.</div>
+          </div>
+        </div>
+      </div>
+
+
       <!-- 置顶(Pro)放在最上面 —— 这是这一页最需要一眼看懂的东西。
            真窗口的层级没法在预览里复现(预览就是一块 canvas,没有"层级"),
            所以这里给的是一个诚实的**示意图**:两个假窗口 + 一层粒子,
@@ -429,33 +466,6 @@
             <div class="ds">Pins the token-reactive field behind your desktop icons across all Spaces. Bulk tokens ripple; big spikes drop meteors.</div>
           </div>
           <input type="checkbox" class="sw" id="enable">
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-t" data-i18n="wp_engine">Engine</div>
-        <div class="engines" id="engines">
-          <div class="eng" data-e="mineradio">
-            <div class="et" data-i18n="wp_eng_mine_t">Your wallpaper · particle motion</div>
-            <div class="ed" data-i18n-html="wp_eng_mine_d">Uses <b>your current desktop wallpaper</b> as the bed:
-              particles take its colours and move over it, and agent activity and token counts
-              surface as numbers formed out of those particles.</div>
-          </div>
-          <!-- Pro tier. Free users may SELECT it to watch the live preview —
-               that preview is the pitch — but applying it to the desktop opens
-               the plan window instead. -->
-          <div class="eng eng-pro" data-e="cinematic" data-pro="1">
-            <div class="et"><span data-i18n="wp_eng_cine_t">Cinematic · particle typography</span> <span class="pro-tag">PRO</span></div>
-            <div class="ed" data-i18n-html="wp_eng_cine_d">A layer on top of the motion: tokens saved, cache hit
-              rate and spend surface the way a title sequence does — <b>assembled out of particles</b>.
-              Every time a line forms, the scattered field ripples in a way it has not before.
-              It also shows the agent's live log.</div>
-          </div>
-          <div class="eng" data-e="topography">
-            <div class="et" data-i18n="wp_eng_topo_t">Spectrum · light-column terrain</div>
-            <div class="ed" data-i18n="wp_eng_topo_d">The original 3D column terrain: token flow raises ripples,
-              and a big spend drops a meteor.</div>
-          </div>
         </div>
       </div>
 
@@ -557,7 +567,9 @@
     import { PRO_STYLES, DEFAULT_STYLE_ID, STYLE_SCHEMA, resolveStyle, readPath, writePath } from './wallpaper-styles.js';
     const T = window.terse;
     const ENGINES = { mineradio: MineradioWallpaper, cinematic: MineradioWallpaper,
-                      topography: TokenWallpaper3D };
+                      orbit: MineradioWallpaper, topography: TokenWallpaper3D };
+    /** 引擎自己就是一种风格的那些(选了它,风格格子就没有意义了)。 */
+    const ENGINE_STYLE = { orbit: 'orbit' };
     const $ = s => document.querySelector(s);
     const THEMES = [
       ['indigo','#4b3aa0','#8b6bff'],['ocean','#0a2a5e','#3aa0ff'],['ice','#1a5a7a','#7fe9ff'],
@@ -568,7 +580,11 @@
     let prev = null, prevPro = null, saveT = null, previewOnlyEngine = null;
     /** 免费用户点风格时,预览要跟着走但 cfg 不能被写脏 —— 和 previewOnlyEngine 同一个道理。 */
     let previewOnlyStyle = null;
-    const shownStyle = () => previewOnlyStyle || cfg.style || DEFAULT_STYLE_ID;
+    /** 正在演的引擎 —— 免费用户点 Pro 引擎时预览先走一步,cfg 还没动。 */
+    const shownEngine = () => previewOnlyEngine || cfg.engine || 'mineradio';
+    /* 引擎钉死风格时,它说了算:选了「星轨炸环」还去读 cfg.style 的话,画面会是
+       上一次选的那种字,而卡片上写的是炸环 —— 看到的和点的对不上。 */
+    const shownStyle = () => ENGINE_STYLE[shownEngine()] || previewOnlyStyle || cfg.style || DEFAULT_STYLE_ID;
 
     function save(){ clearTimeout(saveT); saveT = setTimeout(()=>{ T.setWallpaperConfig(cfg); }, 200); }
 
@@ -795,9 +811,11 @@
 
     function renderStyles(){
       // 光柱地形那个引擎根本没有粒子聚字,给它显示一排粒子风格是在承诺不存在的东西。
-      const eng = previewOnlyEngine || cfg.engine || 'mineradio';
+      const eng = shownEngine();
       const card = $('#styleCard');
-      if (card) card.style.display = (eng === 'topography') ? 'none' : '';
+      // 光柱地形没有粒子聚字;星轨炸环自己就是一种风格 —— 两种情况下这排格子
+      // 要么承诺不存在的东西,要么给出一个点了不算数的选择。
+      if (card) card.style.display = (eng === 'topography' || ENGINE_STYLE[eng]) ? 'none' : '';
       const cur = shownStyle();
       // 预览角标跟着选中的风格走,否则点了半天不知道右边这块正在演哪一种
       const meta = PRO_STYLES.find(s => s.id === cur) || PRO_STYLES[0];
@@ -1266,7 +1284,7 @@
     // 光谱引擎的画布本身不透明,抬到屏保层就是一整块盖住屏幕的地形。
     // 与其给一个按了没用的开关,不如说清楚为什么不能按。
     { const t = $('#wpTop'); const row = t && t.closest('.row');
-      const particle = cfg.engine === 'mineradio' || cfg.engine === 'cinematic';
+      const particle = cfg.engine === 'mineradio' || cfg.engine === 'cinematic' || cfg.engine === 'orbit';
       if (t) {
         t.checked = cfg.overlay === true && particle;
         // 只在"本来就关着"的时候禁用。如果 overlay 还留着 true(比如换引擎之前

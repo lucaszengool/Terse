@@ -259,7 +259,10 @@
                            intensity: cfg.intensity,
                            // 粒子风格。引擎自己会把非 Pro 一律钉回默认风格,所以这里
                            // 照传即可 —— 掉出 Pro 的用户会同时失去 Pro 的字和 Pro 的风格。
-                           style: cfg.style,
+                           // 「星轨炸环」是一台把风格钉死的引擎(见 wallpaper-control.html
+                           // 的 ENGINE_STYLE):它不是你桌面图上的另一种字,整张画面
+                           // 都是它的。照 cfg.style 走的话,选了炸环却画出上一次那种字。
+                           style: cfg.engine === 'orbit' ? 'orbit' : cfg.style,
                            // 用户自己调的那份差量,和 style 一起走同一条 Pro 闸门。
                            custom: cfg.customStyle || null,
                            // 保存下来的 3D 机位。引擎对非 Pro 一律把 on 与掉,
@@ -268,7 +271,7 @@
                            // 3D 按**许可**卖,不按引擎:付了钱但把引擎留在默认
                            // mineradio 的人,照样该能把桌面上的壁纸转起来。
                            proView: proOK !== false,
-                           pro: cfg.engine === 'cinematic' && proOK !== false });
+                           pro: (cfg.engine === 'cinematic' || cfg.engine === 'orbit') && proOK !== false });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
     }
@@ -291,7 +294,7 @@
     function overlayOK(c){
       const k = c || cfg;
       return k.overlay === true &&
-             (k.engine === 'mineradio' || k.engine === 'cinematic');
+             (k.engine === 'mineradio' || k.engine === 'cinematic' || k.engine === 'orbit');
     }
 
     /** 置顶模式的页面这一半:窗口层级由 Rust 改,这里只负责"别画背景"。 */
@@ -765,7 +768,7 @@
       setInterval(async () => {
         const was = proOK;
         await refreshEntitlement();
-        if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
+        if (was !== proOK && (cfg.engine === 'cinematic' || cfg.engine === 'orbit')) mountEngine();
         if (was !== proOK) apply3dMode();     // 掉出 Pro 就该把抬起来的这层放回去
         if (was !== proOK) {
           // 只请 Rust 重新判定,自己不下结论 —— 结果会由 wallpaper-overlay 事件推回来。

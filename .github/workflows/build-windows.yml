@@ -1896,6 +1896,89 @@ jobs:
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
           if ($ok) { Write-Host "TOWN OK: the pill takes WASD from the app in front and gives it back" } else { throw "Code Town check failed" }
 
+      # 星轨炸环 (the "orbit" engine) on Windows. The style is shared JS, so the
+      # question is never "is the code there" — it is whether it RENDERS on this
+      # platform: Windows draws WebGL through ANGLE/D3D11 rather than Metal, and
+      # a shader that compiles on a Mac can fail here and leave a black desktop
+      # with nothing in the log but a dead page. It also proves the one Rust line
+      # this engine needed: overlay_allowed must treat "orbit" as a particle
+      # engine, or always-on-top is silently refused for it.
+      - name: Prove the orbit wallpaper renders (ANGLE, not Metal)
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $wl = Join-Path $dir "wallpaper.log"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Remove-Item $wl -ErrorAction SilentlyContinue
+          '{"enabled":true,"engine":"orbit","style":"orbit","overlay":true,"theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 50
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class O{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr FindWindowExW(IntPtr p,IntPtr c,string cls,string t);public struct R{public int L,T,Rr,B;}}'
+          Add-Type -AssemblyName System.Drawing
+          $script:target = [IntPtr]::Zero
+          $script:scan = [O+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][O]::GetWindowTextW($h, $sb, 256)
+            if ($sb.ToString() -eq 'Terse Wallpaper') { $script:target = $h; return $false }
+            [void][O]::EnumChildWindows($h, $script:scan, [IntPtr]::Zero)
+            return $true }
+          [void][O]::EnumWindows($script:scan, [IntPtr]::Zero)
+          if ($script:target -eq [IntPtr]::Zero) {
+            # Pinned into the shell, so it is a child of Progman or a WorkerW and
+            # EnumWindows never reports it.
+            $hosts = @([O]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"Progman",$null))
+            $w = [O]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"WorkerW",$null)
+            while ($w -ne [IntPtr]::Zero) { $hosts += $w; $w = [O]::FindWindowExW([IntPtr]::Zero,$w,"WorkerW",$null) }
+            foreach ($hh in $hosts) { if ($script:target -ne [IntPtr]::Zero) { break }; [void][O]::EnumChildWindows($hh, $script:scan, [IntPtr]::Zero) }
+          }
+          $target = $script:target
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if ($target -eq [IntPtr]::Zero) { throw "ORBIT FAIL: no wallpaper window at all" }
+          $r = New-Object O+R
+          [void][O]::GetWindowRect($target, [ref]$r)
+          $w = $r.Rr - $r.L; $h2 = $r.B - $r.T
+          Write-Host "wallpaper window ${w}x${h2} at $($r.L),$($r.T)"
+          if ($w -le 0 -or $h2 -le 0) { throw "ORBIT FAIL: the wallpaper window has no size" }
+          # Six frames a second apart: the beam advances and rings open on a 0.8s
+          # beat, so identical frames mean a dead page, not a calm one.
+          $lit = @(); $names = @()
+          for ($i = 1; $i -le 6; $i++) {
+            $bmp = New-Object System.Drawing.Bitmap $w, $h2
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $hdc = $g.GetHdc(); $null = [O]::PrintWindow($target, $hdc, 2); $g.ReleaseHdc($hdc); $g.Dispose()
+            $n = "artifacts/orbit-frame-$i.png"; $bmp.Save($n); $names += $n
+            # How much of the frame is actually lit. The orbit bed is black by
+            # design, so "not black" is the wrong question — "are there bright
+            # particles" is the right one.
+            $c = 0
+            for ($y = 0; $y -lt $h2; $y += 8) {
+              for ($x = 0; $x -lt $w; $x += 8) {
+                $p = $bmp.GetPixel($x, $y)
+                if (($p.R + $p.G + $p.B) -gt 150) { $c++ }
+              }
+            }
+            $lit += $c
+            $bmp.Dispose()
+            Start-Sleep -Seconds 1
+          }
+          Write-Host "lit samples per frame: $($lit -join ', ')"
+          $hashes = $names | ForEach-Object { (Get-FileHash $_ -Algorithm MD5).Hash }
+          $distinct = ($hashes | Sort-Object -Unique).Count
+          Write-Host "distinct frames: $distinct of $($hashes.Count)"
+          $wt = if (Test-Path $wl) { Get-Content $wl -Raw } else { "" }
+          Write-Host "--- wallpaper.log (tail) ---"
+          if (Test-Path $wl) { Get-Content $wl -Tail 30 | ForEach-Object { Write-Host "  $_" }; Copy-Item $wl artifacts/wallpaper-orbit.log }
+          $ok = $true
+          if ($wt -match 'import .* FAILED') { Write-Warning "ORBIT FAIL: a module failed to import (wallpaper-spindle.js is a static import of the engine)"; $ok = $false }
+          if ($wt -notmatch 'engine=orbit particle=true') { Write-Warning "ORBIT FAIL: Rust did not treat orbit as a particle engine — always-on-top would be refused"; $ok = $false }
+          if ($distinct -le 1) { Write-Warning "ORBIT FAIL: every frame is identical — the page is not drawing"; $ok = $false }
+          if (($lit | Measure-Object -Maximum).Maximum -lt 20) { Write-Warning "ORBIT FAIL: the frames are essentially unlit — the beam and rings never drew (a shader that compiles on Metal can fail on ANGLE)"; $ok = $false }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($ok) { Write-Host "ORBIT OK: the star-trail wallpaper draws and animates on Windows" } else { throw "orbit wallpaper check failed" }
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

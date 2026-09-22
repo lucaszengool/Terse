@@ -30,6 +30,9 @@ export const GLYPH_MOVE = {
   SHATTER: 6,  // 沿着"离字心的方向"崩开 —— 字在原地裂开
   DRIFT: 7,    // 整句朝同一个随机方向流走(每次成型换向)
   BELOW: 8,    // 从下方升起 / 往下方沉落
+  ORBIT: 9,    // 从一个斜着的环上收拢 / 沿环的平面炸成一圈(星轨炸环)
+  EMERGE: 10,  // 从字心的一团亮雾里炸出来(星轨炸环的"字拍")
+  FIREWORK: 11, // 像烟花一样一层层炸开、飘落在四周熄灭(每次形状都不同)
 };
 
 /** 编舞编号 —— danceAt() 里的分支(0..5 是原有六段,6..9 是这次加的) */
@@ -201,6 +204,33 @@ export const PRO_STYLES = [
     glyph: { outDepth: 1.0, stagger: 0.66, dispFade: 0.60, twinkle: 0.9, bloomSize: 3.0 },
     field: { silkAlpha: 0.17, burst: 0.34, ripple: 0.12, tint: 0.22,
              idleDance: D.TIDE, idleAmt: 0.14, fillGap: 1400, trail: 0.3 },
+  }),
+
+  /* ── 8. 星轨炸环:照一段参考视频逐帧还原的。黑底上一根点云纺锤体慢慢转,身上不停地
+         炸开挂着星星/爱心/音符的圆环;每炸一个环,agent log 那句粒子字就沿着环炸开。
+         只有这一种风格带**场景层**(scene: 'spindle' → wallpaper-spindle.js),
+         其余风格没有这个字段,引擎就一个对象都不建。 ── */
+  merge({
+    id: 'orbit',
+    nameKey: 'wps_orbit_n', descKey: 'wps_orbit_d', en: 'Orbit Burst',
+    swatch: ['#EAF1FF', '#6F86FF'],
+    scene: 'spindle',
+    tints: ['#EEF3FF', '#B9C8FF', '#DCE6FF', '#9DB2FF', '#FFFFFF', '#C8D6FF'],
+    dance: [D.SWIRL, D.SPIRAL, D.RIPPLE],
+    // 卡点:字只在光束炸环的拍子上出现和炸开(引擎的 _beatMode)。in 要快 —— 视频里
+    // 一拍从亮雾到成环只有 ~0.4 秒;hold 是兜底上限,正常情况下下一个字拍会先到
+    // (最少停 minHold 毫秒,保证读得完)。
+    in: [M.EMERGE],
+    out: [M.FIREWORK],
+    // in + hold = 一拍(0.8s):下一句从尖头炸出来的同一帧,这一句像烟花一样炸开,
+    // 飘散在光束四周,约 2 秒后熄灭
+    // 字**缓缓聚出来**(09-22:不要一下一下炸开的感觉)—— softIn:入场改缓进缓出;散还是 burstEase 的线性时钟
+    timing: { in: 560, hold: 500, out: 1900 },
+    // stagger 必须是 0:烟花的每颗火花同一时钟,一层壳才是一圈清楚的环;错峰会把壳抹成一团雾
+    glyph: { outDepth: 1.0, stagger: 0, dispFade: 0.06, twinkle: 1.6, swirl: 2.4, bloomSize: 2.0,
+             outHold: 0.22, minHold: 2000, burstEase: true, softIn: true },
+    field: { silkAlpha: 0.08, burst: 0.40, ripple: 0.22, tint: 0.16,
+             idleDance: D.SWIRL, idleAmt: 0.08, fillGap: 900, trail: 0.5 },
   }),
 ];
 

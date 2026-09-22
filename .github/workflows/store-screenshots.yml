@@ -161,15 +161,34 @@ jobs:
           }
           # Windows' own dialogs must not be in the frame. The runner throws one
           # up every few minutes — "System Properties / paging file", then
-          # "Performance Options" — and matching them by title only ever catches
-          # the one seen last time. Anything with a visible main window that is
-          # neither the app nor the shell nor this script's own console is asked
-          # to close.
-          $KEEP = '^(Terse|explorer|pwsh|powershell|conhost|WindowsTerminal|OpenConsole|dotnet|Runner|node)$'
+          # "Performance Options". Matching them by title only caught the one
+          # seen last time, and closing by process missed them too: the owning
+          # process reports no main window at all, so Get-Process never listed
+          # them. They are found in the UI tree instead, and each one is asked to
+          # go in three ways: press its OK, close the window, and failing both,
+          # move it off the screen so the shutter cannot see it.
+          $KEEP_PROC = '^(pwsh|powershell|conhost|WindowsTerminal|OpenConsole|dotnet|Runner|node)$'
           function CloseStrays {
-            foreach ($p in Get-Process | Where-Object { $_.MainWindowTitle -and $_.ProcessName -notmatch $KEEP }) {
-              Write-Host "closing stray: $($p.ProcessName) '$($p.MainWindowTitle)'"
-              try { $p.CloseMainWindow() | Out-Null } catch { Write-Host "  close failed: $_" }
+            $A = [System.Windows.Automation.AutomationElement]
+            $mine = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+            $keep = @(Get-Process | Where-Object { $_.ProcessName -match $KEEP_PROC } | ForEach-Object Id)
+            $btn = New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
+            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+              $pid2 = $w.Current.ProcessId
+              if ($mine -contains $pid2 -or $keep -contains $pid2) { continue }
+              $n = $w.Current.Name
+              if (-not $n -or $n -match 'Program Manager|Taskbar|Search|Start') { continue }
+              Write-Host "stray: '$n'"
+              foreach ($b in $w.FindAll([System.Windows.Automation.TreeScope]::Descendants, $btn)) {
+                if ($b.Current.Name -match '^(OK|Close|Cancel)$') {
+                  try { $b.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Write-Host "  pressed $($b.Current.Name)" } catch {}
+                }
+              }
+              try { $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close(); Write-Host "  closed" } catch {}
+              try {
+                $tp = $w.GetCurrentPattern([System.Windows.Automation.TransformPattern]::Pattern)
+                if ($tp.Current.CanMove) { $tp.Move(2400, 1300); Write-Host "  moved off screen" }
+              } catch {}
             }
             Start-Sleep -Seconds 1
           }

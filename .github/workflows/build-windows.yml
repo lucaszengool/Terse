@@ -1979,6 +1979,104 @@ jobs:
           if ($ok) { Write-Host "ORBIT OK: the star-trail wallpaper draws and animates on Windows" } else { throw "orbit wallpaper check failed" }
 
 
+      # "There is another window behind mine" — reported by users, and visible in
+      # CI's own screenshots: a light band across the top of a Terse window with
+      # the title painted in it. Two different things can produce it, and only a
+      # SCREEN capture can tell them apart:
+      #   · Windows painting a caption on a frameless window (WM_NCUAHDRAWCAPTION
+      #     / WM_NCACTIVATE — the frame guard swallows these), or the WebView2
+      #     ghost titlebar (tauri#14764).
+      #   · Another window simply seen THROUGH ours: every Terse window is
+      #     transparent, so whatever sits behind shows in any area the page has
+      #     not painted.
+      # PrintWindow cannot answer it — it captures the client area and can miss
+      # what the system draws. So: blank the desktop to flat black (any light
+      # pixel inside a window is then ours), capture the screen, and measure the
+      # top rows of every visible Terse window.
+      - name: Prove no ghost title bar on any window
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class G{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetClassNameW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern bool SystemParametersInfoW(uint a,uint b,string c,uint d);[DllImport("user32.dll")]public static extern bool SetSysColors(int n,int[] idx,int[] col);public struct R{public int L,T,Rr,B;}}'
+          # A flat black desktop: with the picture gone, the desktop is the
+          # background COLOUR, so nothing light can leak through a transparent
+          # window and be mistaken for a caption.
+          $null = [G]::SystemParametersInfoW(20, 0, "", 3)
+          $null = [G]::SetSysColors(1, @(1), @(0))
+          Start-Sleep -Seconds 2
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          # Wallpaper OFF for this one: the engine draws its own bright pixels.
+          '{"enabled":false,"engine":"mineradio","theme":"neon","quality":44,"angle":42,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 45
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $shot = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($shot)
+          $g.CopyFromScreen($b.X, $b.Y, 0, 0, $shot.Size)
+          $g.Dispose()
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $shot.Save("artifacts/ghostbar-screen.png")
+          $script:wins = New-Object System.Collections.ArrayList
+          $cb = [G+Cb]{ param($h,$l)
+            if ([G]::IsWindowVisible($h)) {
+              $t = New-Object System.Text.StringBuilder 256
+              [void][G]::GetWindowTextW($h, $t, 256)
+              $c = New-Object System.Text.StringBuilder 256
+              [void][G]::GetClassNameW($h, $c, 256)
+              if ($c.ToString() -eq 'Tauri Window') {
+                $r = New-Object G+R
+                [void][G]::GetWindowRect($h, [ref]$r)
+                [void]$script:wins.Add([pscustomobject]@{ T = $t.ToString(); L = $r.L; Tp = $r.T; W = $r.Rr - $r.L; H = $r.B - $r.T; S = [G]::GetWindowLongPtrW($h, -16) })
+              }
+            }
+            return $true }
+          [void][G]::EnumWindows($cb, [IntPtr]::Zero)
+          $bad = @()
+          foreach ($w in $script:wins) {
+            Write-Host ("window '{0}' {1}x{2} at {3},{4} style=0x{5:X8} WS_CAPTION={6}" -f $w.T, $w.W, $w.H, $w.L, $w.Tp, $w.S, (($w.S -band 0xC00000) -eq 0xC00000))
+            if ($w.W -lt 300 -or $w.H -lt 200) { continue }   # pills and buttons have no caption to paint
+            # Fraction of each of the top 40 rows that is LIGHT. Terse's own
+            # chrome is near-black with green; a caption band is pale and spans
+            # the width.
+            $rows = @()
+            for ($y = 0; $y -lt 40; $y++) {
+              $sy = $w.Tp + $y
+              if ($sy -lt 0 -or $sy -ge $b.Height) { $rows += 0.0; continue }
+              $light = 0; $n = 0
+              for ($x = 8; $x -lt ($w.W - 8); $x += 6) {
+                $sx = $w.L + $x
+                if ($sx -lt 0 -or $sx -ge $b.Width) { continue }
+                $p = $shot.GetPixel($sx, $sy)
+                $n++
+                if ((($p.R + $p.G + $p.B) / 3) -gt 140 -and [Math]::Abs($p.R - $p.B) -lt 40) { $light++ }
+              }
+              $rows += $(if ($n -gt 0) { [Math]::Round($light / $n, 2) } else { 0.0 })
+            }
+            $band = 0; $run = 0
+            foreach ($f in $rows) { if ($f -ge 0.6) { $run++; if ($run -gt $band) { $band = $run } } else { $run = 0 } }
+            Write-Host ("  top-row light fraction: {0}" -f (($rows | Select-Object -First 40) -join ' '))
+            Write-Host ("  widest pale band: $band rows")
+            $crop = New-Object System.Drawing.Bitmap ([Math]::Min($w.W, $b.Width - [Math]::Max($w.L,0))), 60
+            $cg = [System.Drawing.Graphics]::FromImage($crop)
+            $cg.DrawImage($shot, (New-Object System.Drawing.Rectangle 0, 0, $crop.Width, 60), (New-Object System.Drawing.Rectangle ([Math]::Max($w.L,0)), ([Math]::Max($w.Tp,0)), $crop.Width, 60), [System.Drawing.GraphicsUnit]::Pixel)
+            $cg.Dispose()
+            $safe = ($w.T -replace '[^A-Za-z0-9]', '_')
+            $crop.Save("artifacts/ghostbar-$safe.png"); $crop.Dispose()
+            if ($band -ge 6) { $bad += ("'{0}' has a {1}-row pale band across its top" -f $w.T, $band) }
+            if ((($w.S -band 0xC00000) -eq 0xC00000)) { $bad += ("'{0}' carries WS_CAPTION" -f $w.T) }
+          }
+          $shot.Dispose()
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($bad.Count -gt 0) {
+            foreach ($x in $bad) { Write-Warning "GHOST BAR: $x" }
+            throw "a title bar is being painted on a Terse window"
+          }
+          Write-Host "GHOST BAR OK: no pale band and no caption style on any Terse window"
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

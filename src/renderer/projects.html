@@ -179,15 +179,16 @@
     @keyframes axp{0%,100%{opacity:1}50%{opacity:.25}}
   
     /* WebView2 draws a wide silver scrollbar on a dark page; the rest of the app
-       uses this thin one (styles.css). macOS never needed it — its overlay
-       scrollbars are invisible until you scroll. */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); }
+       uses this thin one (styles.css). Scoped to .win so macOS keeps its own
+       overlay scrollbars, which are invisible until you scroll. */
+    .win::-webkit-scrollbar, .win ::-webkit-scrollbar { width: 8px; height: 8px; }
+    .win::-webkit-scrollbar-track, .win ::-webkit-scrollbar-track { background: transparent; }
+    .win::-webkit-scrollbar-thumb, .win ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
+    .win::-webkit-scrollbar-thumb:hover, .win ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); }
   </style>
 </head>
 <body>
+  <script>try{ if(/Windows/i.test(navigator.userAgent)) document.documentElement.classList.add('win'); }catch(e){}</script>
   <div class="header">
     <button class="back-btn" id="btnBack" title="Back">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>

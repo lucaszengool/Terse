@@ -48,6 +48,11 @@ aes-gcm = "0.10"
 base64 = "0.22"
 # app_icon encodes the extracted .exe icon as PNG (already in the tree via tauri).
 png = "0.17"
+# webview2-com 0.38 is built against windows-core 0.61, NOT the 0.58 this crate
+# uses elsewhere — so ICoreWebView2Settings implements 0.61's Interface trait and
+# `windows::core::Interface` cannot see its `cast`. polish_webview needs the
+# matching trait to reach the newer settings interfaces.
+windows-core = "0.61"
 regex = "1"
 # room_link fills its AES nonces straight from the OS CSPRNG.
 getrandom = "0.2"

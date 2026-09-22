@@ -3328,7 +3328,9 @@ pub(crate) fn polish_webview(webview: &tauri::Webview) {
         use webview2_com::Microsoft::Web::WebView2::Win32::{
             ICoreWebView2Settings3, ICoreWebView2Settings6,
         };
-        use windows::core::Interface;
+        // 0.61's trait, not windows 0.58's: webview2-com is built against that
+        // one, and only it can see `cast` on these interfaces.
+        use windows_core::Interface;
         unsafe {
             let Ok(core) = pw.controller().CoreWebView2() else { return };
             let Ok(settings) = core.Settings() else { return };
@@ -8393,7 +8395,7 @@ fn social_identity() -> Result<String, String> {
 // on the main thread, where it would freeze every window for its duration.
 #[tauri::command(async)]
 fn app_icon(pid: u32, size: Option<u32>) -> Option<String> {
-    use windows::Win32::Foundation::{CloseHandle, HWND};
+    use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::Graphics::Gdi::{
         CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO,
         BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HBITMAP, HGDIOBJ,
@@ -8431,8 +8433,8 @@ fn app_icon(pid: u32, size: Option<u32>) -> Option<String> {
         let n = ExtractIconExW(
             windows::core::PCWSTR(path.as_ptr()),
             0,
-            Some(&mut large),
-            Some(&mut small),
+            Some(&mut large as *mut HICON),
+            Some(&mut small as *mut HICON),
             1,
         );
         if n == 0 || n == u32::MAX {
@@ -8482,7 +8484,6 @@ fn app_icon(pid: u32, size: Option<u32>) -> Option<String> {
         let _ = DeleteDC(dc);
         if !large.is_invalid() { let _ = DestroyIcon(large); }
         if !small.is_invalid() { let _ = DestroyIcon(small); }
-        let _ = HWND::default(); // keep the import list honest if DrawIconEx changes
         if rgba.is_empty() {
             return None;
         }

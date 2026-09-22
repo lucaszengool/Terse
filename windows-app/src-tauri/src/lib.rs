@@ -34,7 +34,11 @@ mod graph_extract;
 mod town_keys;
 
 use std::collections::HashMap;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard, OnceLock};
+
+/// The thread `setup()` ran on — see `ensure_window`, which must not wait on the
+/// main thread when it is already the main thread.
+static MAIN_THREAD: OnceLock<std::thread::ThreadId> = OnceLock::new();
 use serde::{Deserialize, Serialize};
 
 /// Lock a mutex, recovering from poison (prevents cascade crashes)
@@ -3079,6 +3083,24 @@ pub(crate) fn ensure_window(app: &AppHandle, label: &str) -> Option<tauri::Webvi
     if let Some(w) = app.get_webview_window(label) {
         return Some(w);
     }
+    // Already on the main thread? Then build it right here.
+    //
+    // The dispatch below waits for the main thread to do the work, so a caller
+    // that IS the main thread waits on itself — 10 seconds of frozen UI, then no
+    // window. Tauri runs `async fn` commands on a worker but SYNC ones on the
+    // main thread, so which one a call site gets depends only on whether someone
+    // wrote `async`. That is what certification hit on 09/21 (10.1.2.10): the pet
+    // picker's click called `pick_starter_pet`, a sync command, and the app
+    // stopped responding to the mouse — reported as "does not respond to mouse
+    // clicks". The same trap sits under every sync command that opens a window.
+    if MAIN_THREAD.get() == Some(&std::thread::current().id()) {
+        diag_log("lazy-window", &format!("ensure_window('{label}') — on the main thread, building inline"));
+        match build_lazy_window(app, label) {
+            Ok(()) => {}
+            Err(e) => diag_log("lazy-window", &format!("BUILD FAILED for '{label}': {e}")),
+        }
+        return app.get_webview_window(label);
+    }
     // Build on the MAIN thread, and wait for it.
     //
     // Every call site here is a #[tauri::command], which runs on a worker
@@ -3881,6 +3903,10 @@ pub fn run() {
         .manage(permission::PermissionHub::default())
         .manage(AppState::default())
         .setup(|app| {
+            // Which thread is the main one, so ensure_window can tell whether it
+            // is already on it. setup() runs on the main thread by definition.
+            let _ = MAIN_THREAD.set(std::thread::current().id());
+
             // The wallpaper page's settings, by EVENT. Its awaited invokes never
             // get a reply on Windows (requests arrive, responses do not — see
             // wallpaper.log "DID NOT ANSWER"), so at boot it asked for its

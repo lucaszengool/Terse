@@ -39,7 +39,7 @@ env:
   # The build run whose Terse.msix goes to the Store — screenshots must come from
   # the package that is actually submitted. This is 1.3.5.0 (Pals out of the Store
   # build, the main-thread window deadlock fixed).
-  MSIX_RUN_ID: '35683909201'
+  MSIX_RUN_ID: '35689313101'
 
 jobs:
   shots:
@@ -140,9 +140,15 @@ jobs:
           function Onboard([int]$waitSec = 150) {
             $deadline = (Get-Date).AddSeconds($waitSec); $pressed = 0
             while ((Get-Date) -lt $deadline -and $pressed -lt 12) {
-              if (Press '^(Run Scan|PREVIEW ISSUES|Continue|Done|Got it|Skip|Finish|Watch these agents|Let.s go)') {
+              if (Press '^(Run Scan|PREVIEW ISSUES|Continue|Done|Got it|Skip|Finish|Watch these agents|Let.s go|Clean up now|.. Clean up now|Start using Terse)') {
                 $pressed++; Start-Sleep -Seconds 8
               } else { Start-Sleep -Seconds 4 }
+            }
+            # The last card's button. Until it is pressed the whole flow sits on
+            # top of the app: v8 photographed "You're all set." over the
+            # dashboard, and every sidebar press after it missed.
+            foreach ($i in 1..4) {
+              if (Press 'Start using Terse') { Start-Sleep -Seconds 6 } else { break }
             }
             Write-Host "onboard: pressed $pressed"
             Dump 'after-onboard'
@@ -361,12 +367,15 @@ jobs:
           Snap '10-app-overview'
           # The sidebar is translated at runtime, so each pattern carries the
           # English label and the Chinese one from i18n.js.
-          Page '11-app-doctor'    'Doctor|体检'                 14
-          Page '12-app-wallpaper' 'Wallpaper|壁纸'
-          Page '13-app-town'      'Code Town|代码小镇'
-          Page '14-app-boost'     'Boost|Speed|加速'
-          Page '15-app-monitor'   'Observe|Monitor|观察|监控'
-          Page '16-app-settings'  'Settings|设置'
+          # The four category buttons open a landing page; the page itself is one
+          # more press from there. Both are worth a frame.
+          Page '11-app-optimize'  'Optimize ›'
+          Page '12-app-doctor'    '^Doctor|Agent Health'        14
+          Page '13-app-wallpaper' '^Wallpaper'
+          Page '14-app-town'      'Code Town'                   12
+          Page '15-app-monitor'   'Monitor ›'
+          Page '16-app-speedup'   '^Speed Up$'
+          Page '17-app-settings'  '^Settings$'
           Quit
 
           # ── The live wallpaper, with the app window in frame ───────────────
@@ -395,7 +404,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v7
+          name: Terse-Store-Screenshots-v8
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

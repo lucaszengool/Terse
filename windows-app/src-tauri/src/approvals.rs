@@ -253,14 +253,17 @@ pub fn parse_prompt(app: &str, window: &str, text: &str, surface: &str) -> Optio
 
 /// Apps worth polling, and whether they're a terminal or a GUI app surface.
 pub const HOSTS: &[(&str, &str)] = &[
-    ("Terminal", "terminal"),
-    ("iTerm2", "terminal"),
-    ("Ghostty", "terminal"),
-    ("WezTerm", "terminal"),
-    ("Alacritty", "terminal"),
-    ("kitty", "terminal"),
-    ("Warp", "terminal"),
+    // Windows process names, without .exe — the terminals and editors people
+    // actually run agents in here. macOS's list is Terminal/iTerm2/Ghostty.
+    ("WindowsTerminal", "terminal"),
+    ("powershell", "terminal"),
+    ("pwsh", "terminal"),
+    ("cmd", "terminal"),
+    ("conhost", "terminal"),
+    ("alacritty", "terminal"),
+    ("wezterm-gui", "terminal"),
     ("Hyper", "terminal"),
+    ("warp", "terminal"),
     ("Claude", "app"),
     ("Cursor", "app"),
     ("Code", "app"),
@@ -271,7 +274,6 @@ pub const HOSTS: &[(&str, &str)] = &[
 // ── Live scanning ────────────────────────────────────────────────────────────
 
 use std::collections::HashSet;
-use std::process::Command;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -286,24 +288,19 @@ static SEEN: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 /// `pgrep Claude` all miss the main process (plain pgrep matches only its helper
 /// processes, which own no windows). `ps -Ao pid,comm` reports it fine.
 fn host_pids() -> Vec<(u32, String, String)> {
+    // macOS reads `ps -Ao pid,comm` here. Windows has the process table in
+    // memory already — the scanner reads it every few seconds — so this asks
+    // for it rather than launching anything, and matches on the executable
+    // name Windows reports ("Claude.exe", "WindowsTerminal.exe").
+    let Some(procs) = crate::agent_monitor::list_processes() else { return Vec::new() };
     let mut out = Vec::new();
-    let output = match Command::new("ps").args(["-Ao", "pid=,comm="]).output() {
-        Ok(o) => o,
-        Err(_) => return out,
-    };
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
-        let line = line.trim();
-        let (pid_s, path) = match line.split_once(char::is_whitespace) {
-            Some(p) => p,
-            None => continue,
-        };
-        let pid: u32 = match pid_s.trim().parse() {
-            Ok(p) => p,
-            Err(_) => continue,
-        };
-        let base = path.trim().rsplit('/').next().unwrap_or("").trim();
-        if let Some((name, surface)) = HOSTS.iter().find(|(n, _)| *n == base) {
-            out.push((pid, name.to_string(), surface.to_string()));
+    for p in procs {
+        let base = p.comm.trim_end_matches(".exe");
+        if let Some((name, surface)) = HOSTS
+            .iter()
+            .find(|(n, _)| n.eq_ignore_ascii_case(base))
+        {
+            out.push((p.pid, name.to_string(), surface.to_string()));
         }
     }
     out

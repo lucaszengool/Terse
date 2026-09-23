@@ -166,7 +166,39 @@ fn check_vpn() -> ConnCheck {
 }
 #[cfg(not(target_os = "macos"))]
 fn check_vpn() -> ConnCheck {
-    ConnCheck::ok("vpn", "VPN", "Not checked on this platform".into())
+    // macOS asks scutil and looks for utun interfaces. The Windows equivalent
+    // is the adapter table: a tunnel adapter that is UP is the same signal, and
+    // it catches the clients people actually run (WireGuard, OpenVPN's TAP,
+    // NordLynx, Tailscale) because they all present one.
+    let mut names: Vec<String> = Vec::new();
+    let out = crate::hidden_command("netsh")
+        .args(["interface", "show", "interface"])
+        .output();
+    if let Ok(o) = out {
+        let text = String::from_utf8_lossy(&o.stdout).to_lowercase();
+        for line in text.lines() {
+            if !line.contains("connected") {
+                continue;
+            }
+            for needle in ["wireguard", "openvpn", "tap-", "nordlynx", "tailscale", "wintun", "vpn"] {
+                if line.contains(needle) {
+                    names.push(needle.to_string());
+                    break;
+                }
+            }
+        }
+    }
+    if names.is_empty() {
+        ConnCheck::ok("vpn", "VPN", "No active VPN detected".into())
+    } else {
+        ConnCheck::warn(
+            "vpn",
+            "VPN",
+            "A VPN/tunnel adapter is connected".into(),
+            false,
+            "VPNs frequently cause API timeouts or slowness. If Claude is failing, try disconnecting the VPN.".into(),
+        )
+    }
 }
 
 /// Claude Code OAuth token in the macOS Keychain.
@@ -186,7 +218,30 @@ fn check_auth() -> ConnCheck {
 }
 #[cfg(not(target_os = "macos"))]
 fn check_auth() -> ConnCheck {
-    ConnCheck::ok("auth", "Claude auth token", "Not checked on this platform".into())
+    // macOS looks in the Keychain. Claude Code on Windows keeps the same
+    // credentials in Credential Manager, which cmdkey lists without a prompt —
+    // only whether an entry EXISTS is needed, never its contents.
+    let listed = crate::hidden_command("cmdkey")
+        .arg("/list")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_lowercase())
+        .unwrap_or_default();
+    let has_cred = listed.contains("claude");
+    // The CLI also stores a token on disk; either is proof of a signed-in agent.
+    let on_disk = dirs::home_dir()
+        .map(|h| h.join(".claude").join(".credentials.json").exists())
+        .unwrap_or(false);
+    if has_cred || on_disk {
+        ConnCheck::ok("auth", "Claude auth token", "Signed in".into())
+    } else {
+        ConnCheck::warn(
+            "auth",
+            "Claude auth token",
+            "No Claude credentials found".into(),
+            false,
+            "Run `claude` once and sign in, or sign in from the Claude app.".into(),
+        )
+    }
 }
 
 /// Run every check. `stalled_agents` comes from the monitor (connected sessions
@@ -224,11 +279,9 @@ pub fn apply_fixes(checks: &[ConnCheck]) -> (Vec<String>, Vec<String>) {
 
     // 2. DNS / timeout → flush the resolver cache (no-sudo path).
     if failed_ids.contains("dns") || failed_ids.contains("api") {
-        #[cfg(target_os = "macos")]
-        {
-            let _ = Command::new("dscacheutil").arg("-flushcache").output();
-            actions.push("Flushed the DNS resolver cache".into());
-        }
+        // ipconfig /flushdns is the Windows dscacheutil, and needs no admin.
+        let _ = crate::hidden_command("ipconfig").arg("/flushdns").output();
+        actions.push("Flushed the DNS resolver cache".into());
     }
 
     (fixed, actions)

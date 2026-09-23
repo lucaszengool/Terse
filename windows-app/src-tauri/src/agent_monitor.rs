@@ -2794,8 +2794,8 @@ fn find_latest_session(log_dir: &Path) -> Option<PathBuf> {
 }
 
 pub(crate) struct ProcessInfo {
-    pid: u32,
-    comm: String,
+    pub(crate) pid: u32,
+    pub(crate) comm: String,
 }
 
 /// Everywhere Codex keeps session data on Windows, most specific first.
@@ -2837,7 +2837,7 @@ fn codex_home_dirs(home: &Path) -> Vec<PathBuf> {
 ///
 /// Returns None only if the snapshot itself fails, so the caller can tell "no
 /// agents are running" from "I could not look".
-fn list_processes() -> Option<Vec<ProcessInfo>> {
+pub(crate) fn list_processes() -> Option<Vec<ProcessInfo>> {
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,

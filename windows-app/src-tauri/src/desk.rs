@@ -390,6 +390,16 @@ pub fn desk_call(cmd: Value) -> Result<Value, String> {
 
 /// The visible window whose title contains `needle` (case-insensitive), or the
 /// first Claude window when the needle is empty.
+///
+/// Shared with the session dock, which uses it to refuse to type into a
+/// conversation it cannot positively identify.
+pub(crate) fn window_titled(needle: &str) -> Option<windows::Win32::Foundation::HWND> {
+    if needle.is_empty() {
+        return None;
+    }
+    find_window_titled(needle)
+}
+
 fn find_window_titled(needle: &str) -> Option<windows::Win32::Foundation::HWND> {
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM, TRUE};
     use windows::Win32::UI::WindowsAndMessaging::{

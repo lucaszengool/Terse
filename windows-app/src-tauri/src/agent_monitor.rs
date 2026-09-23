@@ -33,7 +33,7 @@ pub(crate) struct AgentDef {
 ///
 /// `Get-CimInstance Win32_Process` answers this too, but it costs a PowerShell
 /// launch per question and the scanner asks constantly.
-fn process_command_line(pid: u32) -> Option<String> {
+pub(crate) fn process_command_line(pid: u32) -> Option<String> {
     use windows::Wdk::System::Threading::{NtQueryInformationProcess, ProcessCommandLineInformation};
     use windows::Win32::Foundation::{CloseHandle, UNICODE_STRING};
     use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};

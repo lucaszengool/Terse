@@ -32,20 +32,51 @@ pub(crate) fn find_transcript(id: &str) -> Option<PathBuf> {
     None
 }
 
-/// Type a line into a Claude DESKTOP session by finding it in the sidebar.
+/// Type a line into a Claude DESKTOP conversation.
 ///
-/// macOS does this through the Accessibility tree. Windows has no equivalent
-/// wired up — the honest answer is to say so, because the alternative is
-/// sending a message into the wrong conversation, which room_link's own
-/// comment calls worse than not sending it at all. Everything else in the room
-/// channel is unaffected: Claude Code and Codex are reached through
-/// dock_hook's queue, OpenClaw through its CLI.
+/// macOS walks the Accessibility tree to find the row in Claude's sidebar and
+/// types into that conversation. Windows has no sidebar driver, so this does
+/// the one thing it can do honestly: find a Claude window whose TITLE is the
+/// conversation asked for, and paste there. Claude Desktop puts the open
+/// conversation in its window title, so a title match means the right
+/// conversation is in front.
+///
+/// If no window matches, nothing is sent — room_link's own comment applies:
+/// sending into the wrong conversation is worse than not sending at all.
+///
+/// Pasted rather than typed for the same reason 粒子模式 pastes: Claude Desktop
+/// is Electron, and text put into the box any other way never reaches React —
+/// the box shows it and Enter sends an empty message.
 #[tauri::command(async)]
 pub fn sd_send(title: String, text: String) -> Value {
-    let _ = text;
-    crate::diag_log("room", &format!(
-        "sd_send(\"{title}\") — driving the Claude Desktop window is macOS-only, not sent"));
-    json!({ "ok": false, "error": "Claude Desktop is not supported on Windows yet" })
+    let body = text.trim().to_string();
+    if body.is_empty() {
+        return json!({ "ok": false, "error": "empty" });
+    }
+    let want = title.trim();
+    if want.is_empty() {
+        return json!({ "ok": false, "error": "session_not_found" });
+    }
+    let Some(h) = crate::desk::window_titled(want) else {
+        crate::diag_log("dock", &format!("sd_send(\"{title}\") — no Claude window with that title; not sent"));
+        return json!({ "ok": false, "error": "session_not_found" });
+    };
+    let saved = crate::clipboard_get();
+    if let Err(e) = crate::clipboard_set(&body) {
+        return json!({ "ok": false, "error": e });
+    }
+    if !crate::activate_window(h) {
+        let _ = crate::clipboard_restore(saved);
+        return json!({ "ok": false, "error": "那个窗口没能激活" });
+    }
+    std::thread::sleep(std::time::Duration::from_millis(220));
+    crate::press_ctrl_v();
+    std::thread::sleep(std::time::Duration::from_millis(260));
+    crate::press_enter();
+    std::thread::sleep(std::time::Duration::from_millis(160));
+    let _ = crate::clipboard_restore(saved);
+    crate::diag_log("dock", &format!("sd_send(\"{title}\") -> pasted into the matching Claude window"));
+    json!({ "ok": true })
 }
 
 // ── sd_active and its closure, from the macOS file (call-graph closure, 21 items) ──
@@ -61,16 +92,17 @@ fn processes() -> Vec<(String, String)> {
     if let Some((t, v)) = c.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
         if t.elapsed().as_secs() < 8 { return v.clone(); }
     }
-    let out = crate::hidden_command("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command",
-               "Get-CimInstance Win32_Process | ForEach-Object { $_.Name + \"`t\" + $_.CommandLine }"])
-        .output();
-    let v: Vec<(String, String)> = match out {
-        Ok(o) => String::from_utf8_lossy(&o.stdout).lines()
-            .filter_map(|l| l.split_once('\t').map(|(n, c)| (n.trim().to_string(), c.trim().to_string())))
-            .collect(),
-        Err(_) => Vec::new(),
-    };
+    // Straight from the kernel. This was a PowerShell launch (Get-CimInstance
+    // over every process) behind an 8 s cache — a few hundred milliseconds and a
+    // process spawn every time the room's "connect" list refreshed.
+    let v: Vec<(String, String)> = crate::agent_monitor::list_processes()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| {
+            let cmd = crate::agent_monitor::process_command_line(p.pid).unwrap_or_default();
+            (p.comm, cmd)
+        })
+        .collect();
     *c.lock().unwrap_or_else(|e| e.into_inner()) = Some((std::time::Instant::now(), v.clone()));
     v
 }
@@ -881,8 +913,14 @@ pub fn sd_open_claude() -> Result<(), String> {
 /// macOS build does when the row is not found: bring Claude forward, and say so.
 #[tauri::command(async)]
 pub fn sd_jump(title: String) -> Value {
+    // Same rule as sd_send: only act on a window that IS the conversation.
+    if let Some(h) = crate::desk::window_titled(title.trim()) {
+        let ok = crate::activate_window(h);
+        crate::diag_log("dock", &format!("jump \"{title}\" -> raised the matching window ({ok})"));
+        return json!({ "ok": ok });
+    }
     let opened = sd_open_claude().is_ok();
-    crate::diag_log("dock", &format!("jump \"{title}\" -> opened Claude={opened} (no sidebar driver on Windows)"));
+    crate::diag_log("dock", &format!("jump \"{title}\" -> no window with that title; opened Claude={opened}"));
     json!({ "ok": false, "error": "session_not_found", "opened": opened })
 }
 
@@ -891,8 +929,17 @@ pub fn sd_jump(title: String) -> Value {
 /// whatever conversation Claude has open could stop the wrong one, so no.
 #[tauri::command(async)]
 pub fn sd_stop(title: String) -> Value {
-    crate::diag_log("dock", &format!("stop \"{title}\" — Claude Desktop is not drivable on Windows"));
-    json!({ "ok": false, "error": "Claude Desktop 在 Windows 上还不能从这里叫停 —— 请在 Claude 里按停止" })
+    // Esc into whatever Claude happens to have open could stop the wrong
+    // conversation, so this only presses it when a window IS the conversation.
+    let Some(h) = crate::desk::window_titled(title.trim()) else {
+        crate::diag_log("dock", &format!("stop \"{title}\" — no window with that title; not stopped"));
+        return json!({ "ok": false, "error": "session_not_found" });
+    };
+    crate::activate_window(h);
+    std::thread::sleep(std::time::Duration::from_millis(140));
+    crate::press_escape();
+    crate::diag_log("dock", &format!("stop \"{title}\" -> Esc into the matching window"));
+    json!({ "ok": true })
 }
 
 /// 会话状态变了:响一声 + 系统通知。macOS plays Glass/Basso/Hero; these are the

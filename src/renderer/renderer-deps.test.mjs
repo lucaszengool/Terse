@@ -110,11 +110,6 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ["desk_overlay_visible", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
     ["desk_set_enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
     ["desk_trust", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["messages_detected_apps", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["messages_notification_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["messages_open_permission_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["messages_open_settings", "assorted: app_icon (NSWorkspace), messages settings page"],
-    ["messages_permission_report", "assorted: app_icon (NSWorkspace), messages settings page"],
   ]);
   const DEFERRED_EVENTS = new Map([
     ["desk-enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],

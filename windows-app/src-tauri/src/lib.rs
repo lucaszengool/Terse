@@ -5125,6 +5125,11 @@ pub fn run() {
             permission_ack,
             permission_respond,
             messages_set_app_on_wallpaper,
+            messages_detected_apps,
+            messages_notification_settings,
+            messages_open_settings,
+            messages_open_permission_settings,
+            messages_permission_report,
             messages_open_chat,
             messages_send_open,
             messages_status,
@@ -9068,6 +9073,59 @@ async fn messages_open_chat(app_id: String, target: String) -> serde_json::Value
 #[tauri::command]
 async fn messages_send_open(app_id: String, text: String) -> serde_json::Value {
     serde_json::to_value(messages::send_to_open_chat(&app_id, &text).await).unwrap_or_default()
+}
+
+/// Social apps Terse has actually seen messages from, each with its wallpaper
+/// switch.
+#[tauri::command(async)]
+fn messages_detected_apps() -> Result<serde_json::Value, String> {
+    Ok(serde_json::to_value(messages::detected_apps()?).unwrap_or_default())
+}
+
+/// Which apps Windows lets notify, and whether their notifications stay in the
+/// centre — the page explains an empty feed with this.
+#[tauri::command(async)]
+fn messages_notification_settings() -> serde_json::Value {
+    serde_json::to_value(messages::notification_settings()).unwrap_or_default()
+}
+
+/// Open the Settings page that owns a switch the user needs.
+///
+/// macOS opens a System Settings pane per grant. Windows has no Full Disk
+/// Access and no Accessibility grant to give — the notification database is
+/// readable as the user — so the only page worth opening is Notifications,
+/// where an app that is switched off there can never reach Terse either.
+#[tauri::command(async)]
+fn messages_open_settings(which: String) -> Result<(), String> {
+    let uri = match which.as_str() {
+        "notifications" => "ms-settings:notifications",
+        "accessibility" => "ms-settings:easeofaccess",
+        _ => "ms-settings:privacy",
+    };
+    crate::hidden_command("cmd")
+        .args(["/C", "start", "", uri])
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command(async)]
+fn messages_open_permission_settings() -> Result<(), String> {
+    messages_open_settings("notifications".into())
+}
+
+/// What the feed can and cannot read right now.
+///
+/// `fullDiskAccess` keeps the macOS name because the page speaks it; on Windows
+/// it means "the notification database could be opened". `accessibility` is
+/// always true: window titles are read with ordinary Win32 calls here, with no
+/// grant behind them.
+#[tauri::command]
+fn messages_permission_report() -> serde_json::Value {
+    serde_json::json!({
+        "fullDiskAccess": messages::feed_status().available,
+        "accessibility": true,
+    })
 }
 
 /// Can the message feed be read? Drives the UI's "why is this empty" line.

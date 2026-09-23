@@ -85,6 +85,8 @@ windows = { version = "0.58", features = [
     "Win32_System_Memory",
     # 粒子模式 pastes into another app: the clipboard and SendInput.
     "Win32_System_DataExchange",
+    # Per-app notification switches live in the registry (messages.rs).
+    "Win32_System_Registry",
     "Win32_System_Diagnostics_Debug",
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",

@@ -390,7 +390,7 @@ fn resolve_claude_log_dir(pid: u32) -> Option<PathBuf> {
 }
 
 /// The parent of a process, from the same snapshot list_processes reads.
-fn parent_pid(pid: u32) -> Option<u32> {
+pub(crate) fn parent_pid(pid: u32) -> Option<u32> {
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,

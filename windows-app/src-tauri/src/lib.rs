@@ -32,6 +32,7 @@ mod session_history;
 mod graph_store;
 mod graph_extract;
 mod town_keys;
+mod particle_mode;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -4083,6 +4084,7 @@ pub fn run() {
         )
         .manage(permission::PermissionHub::default())
         .manage(AppState::default())
+        .manage(std::sync::Arc::new(particle_mode::Capture::default()))
         .setup(|app| {
             // The wallpaper page's settings, by EVENT. Its awaited invokes never
             // get a reply on Windows (requests arrive, responses do not — see
@@ -5092,6 +5094,18 @@ pub fn run() {
             social_identity,
             list_open_windows,
             app_icon,
+            particle_mode::pm_windows,
+            particle_mode::pm_window_rect,
+            particle_mode::pm_start,
+            particle_mode::pm_stop,
+            particle_mode::pm_status,
+            particle_mode::pm_has_permission,
+            particle_mode::pm_request_permission,
+            particle_mode::pl_send,
+            pm_overlay,
+            pm_overlay_hide,
+            pl_target,
+            pl_transcript,
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
             permission_control_status,
@@ -6520,6 +6534,311 @@ fn wallpaper_default_config() -> serde_json::Value {
 }
 
 /// 极简 base64(只为把一张 JPEG 塞进 data URL,不值得为它加一个依赖)
+/// What the particle panel is connected to right now.
+///
+/// Pushed AND stored, both on purpose: the first pm_overlay happens before the
+/// page has registered its listener, so the event is lost and the panel would
+/// sit there with interactive=false — drawn, but refusing to type. The page
+/// asks for this once it is up.
+static PM_TARGET: std::sync::Mutex<serde_json::Value> =
+    std::sync::Mutex::new(serde_json::Value::Null);
+
+#[tauri::command]
+fn pl_target() -> serde_json::Value {
+    PM_TARGET.lock().map(|v| v.clone()).unwrap_or_else(|e| e.into_inner().clone())
+}
+
+#[tauri::command(async)]
+async fn pl_transcript(
+    agent_type: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let monitor = lock_or_recover(&state.agent_monitor);
+    Ok(monitor.transcript(&agent_type, 80))
+}
+
+/// The click-through panel that the particles are drawn on, placed exactly over
+/// the window being captured.
+#[tauri::command]
+fn pm_overlay(app: AppHandle, x: f64, y: f64, w: f64, h: f64,
+              interactive: Option<bool>, pid: Option<u32>, label: Option<String>)
+    -> Result<(), String>
+{
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    let win = match app.get_webview_window("particles") {
+        Some(win) => win,
+        None => WebviewWindowBuilder::new(&app, "particles", WebviewUrl::App("particle-window.html".into()))
+            .title("Terse Particles")
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .shadow(false)
+            .skip_taskbar(true)
+            .focused(false)
+            .resizable(false)
+            .build()
+            .map_err(|e| e.to_string())?,
+    };
+    // Re-placed every time: the window underneath gets dragged and resized, and
+    // the overlay has to stay on it.
+    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+    let _ = win.set_size(tauri::LogicalSize::new(w.max(1.0), h.max(1.0)));
+    let _ = win.show();
+    let interactive = interactive.unwrap_or(false);
+    // Watching vs talking, the same split macOS makes. Watching: click-through,
+    // the panel is scenery and the mouse passes to the app underneath. Talking:
+    // it must take the mouse and the keyboard, or its input box is a picture of
+    // an input box.
+    #[cfg(target_os = "windows")]
+    if let Ok(raw) = win.hwnd() {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+            WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+        };
+        unsafe {
+            let hwnd = HWND(raw.0);
+            let mut ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let pass = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0) as isize;
+            ex = if interactive { ex & !pass } else { ex | pass };
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | (WS_EX_TOOLWINDOW.0 | WS_EX_LAYERED.0) as isize);
+        }
+    }
+    let _ = win.set_ignore_cursor_events(!interactive);
+    if interactive {
+        let _ = win.set_focus();
+    }
+    let target = serde_json::json!({
+        "pid": pid.unwrap_or(0),
+        "label": label.clone().unwrap_or_default(),
+        "interactive": interactive,
+    });
+    if let Ok(mut slot) = PM_TARGET.lock() {
+        *slot = target.clone();
+    }
+    let _ = app.emit("pm-target", target);
+    Ok(())
+}
+
+#[tauri::command]
+fn pm_overlay_hide(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("particles") {
+        let _ = win.hide();
+    }
+}
+
+/* ══════════════ small Win32 helpers shared by the ported features ══════════
+   Each of these is one line on macOS (NSRunningApplication, NSPasteboard, an
+   AX action) and a few Win32 calls here. They live together so the ports read
+   like the Mac originals instead of like Win32. */
+
+/// On another virtual desktop, or a suspended UWP frame: visible by style,
+/// not on screen.
+#[cfg(target_os = "windows")]
+pub(crate) fn is_cloaked(hwnd: windows::Win32::Foundation::HWND) -> bool {
+    use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+    let mut v: u32 = 0;
+    unsafe {
+        DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &mut v as *mut u32 as *mut core::ffi::c_void, 4)
+            .is_ok()
+            && v != 0
+    }
+}
+
+/// The executable behind a pid ("Cursor.exe"), which is what stands in for a
+/// bundle id here.
+#[cfg(target_os = "windows")]
+pub(crate) fn process_exe_name(pid: u32) -> Option<String> {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    unsafe {
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = [0u16; 512];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(
+            h, PROCESS_NAME_WIN32, windows::core::PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
+        let _ = CloseHandle(h);
+        if !ok || len == 0 { return None; }
+        let full = String::from_utf16_lossy(&buf[..len as usize]);
+        std::path::Path::new(&full).file_name().map(|f| f.to_string_lossy().to_string())
+    }
+}
+
+/// The visible window belonging to this agent — walking up parents if the
+/// process itself has none.
+///
+/// The reason macOS walks the process tree here holds on Windows too: a `claude`
+/// started in Windows Terminal owns no window at all, and its conversation is
+/// in the terminal's. Sending keys to a process with no window is shouting at
+/// something nobody can see.
+#[cfg(target_os = "windows")]
+pub(crate) fn ui_window_for_pid(pid: u32) -> Option<windows::Win32::Foundation::HWND> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM, TRUE};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindowTextLengthW, GetWindowThreadProcessId, IsWindowVisible,
+    };
+    struct Find { want: u32, hit: isize }
+    unsafe extern "system" fn scan(h: HWND, lp: LPARAM) -> BOOL {
+        let f = &mut *(lp.0 as *mut Find);
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(h, Some(&mut pid));
+        if pid == f.want && IsWindowVisible(h).as_bool() && GetWindowTextLengthW(h) > 0 {
+            f.hit = h.0 as isize;
+            return BOOL(0);
+        }
+        TRUE
+    }
+    let mut pid = pid;
+    for _ in 0..6 {
+        let mut f = Find { want: pid, hit: 0 };
+        unsafe { let _ = EnumWindows(Some(scan), LPARAM(&mut f as *mut Find as isize)); }
+        if f.hit != 0 {
+            return Some(HWND(f.hit as *mut core::ffi::c_void));
+        }
+        pid = crate::agent_monitor::parent_pid(pid)?;
+        if pid <= 1 { break; }
+    }
+    None
+}
+
+/// The clipboard, natively — the PowerShell round trip this used to take costs
+/// a process launch per character-free paste.
+#[cfg(target_os = "windows")]
+pub(crate) fn clipboard_get() -> Option<String> {
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::DataExchange::{CloseClipboard, GetClipboardData, OpenClipboard};
+    use windows::Win32::System::Memory::{GlobalLock, GlobalUnlock};
+    const CF_UNICODETEXT: u32 = 13;
+    unsafe {
+        if OpenClipboard(None).is_err() { return None; }
+        let out = (|| {
+            let h: HANDLE = GetClipboardData(CF_UNICODETEXT).ok()?;
+            let p = GlobalLock(windows::Win32::Foundation::HGLOBAL(h.0)) as *const u16;
+            if p.is_null() { return None; }
+            let mut n = 0usize;
+            while *p.add(n) != 0 && n < 1 << 22 { n += 1; }
+            let s = String::from_utf16_lossy(std::slice::from_raw_parts(p, n));
+            let _ = GlobalUnlock(windows::Win32::Foundation::HGLOBAL(h.0));
+            Some(s)
+        })();
+        let _ = CloseClipboard();
+        out
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn clipboard_set(text: &str) -> Result<(), String> {
+    use windows::Win32::Foundation::{HANDLE, HGLOBAL};
+    use windows::Win32::System::DataExchange::{
+        CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData,
+    };
+    use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+    const CF_UNICODETEXT: u32 = 13;
+    let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    unsafe {
+        OpenClipboard(None).map_err(|e| e.to_string())?;
+        let res = (|| -> Result<(), String> {
+            EmptyClipboard().map_err(|e| e.to_string())?;
+            let bytes = wide.len() * 2;
+            let mem: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, bytes).map_err(|e| e.to_string())?;
+            let p = GlobalLock(mem) as *mut u16;
+            if p.is_null() { return Err("clipboard alloc".into()); }
+            std::ptr::copy_nonoverlapping(wide.as_ptr(), p, wide.len());
+            let _ = GlobalUnlock(mem);
+            // The clipboard owns the block once this succeeds — do not free it.
+            SetClipboardData(CF_UNICODETEXT, HANDLE(mem.0)).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        let _ = CloseClipboard();
+        res
+    }
+}
+
+/// Put back whatever the user had. Empty means they had nothing, and clearing
+/// is the honest restore of that.
+#[cfg(target_os = "windows")]
+pub(crate) fn clipboard_restore(saved: Option<String>) -> Result<(), String> {
+    clipboard_set(saved.as_deref().unwrap_or(""))
+}
+
+/// Bring a window to the front, including from a background thread.
+///
+/// SetForegroundWindow alone is refused unless the caller owns the foreground —
+/// Windows added that rule to stop apps stealing focus. Attaching to the
+/// foreground thread's input queue for the moment of the call is the documented
+/// way around it, and it is what every remote-control tool does.
+#[cfg(target_os = "windows")]
+pub(crate) fn activate_window(hwnd: windows::Win32::Foundation::HWND) -> bool {
+    use windows::Win32::System::Threading::GetCurrentThreadId;
+    use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+    // AttachThreadInput is filed with the threading calls in this crate.
+    use windows::Win32::System::Threading::AttachThreadInput;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowThreadProcessId, IsIconic, SetForegroundWindow, ShowWindow,
+        SW_RESTORE,
+    };
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        let fg = GetForegroundWindow();
+        let me = GetCurrentThreadId();
+        let other = GetWindowThreadProcessId(fg, None);
+        let attached = other != 0 && other != me && AttachThreadInput(me, other, true).as_bool();
+        let ok = SetForegroundWindow(hwnd).as_bool();
+        let _ = SetFocus(hwnd);
+        if attached {
+            let _ = AttachThreadInput(me, other, false);
+        }
+        ok
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn tap(vk: u16, down: bool) {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
+        VIRTUAL_KEY,
+    };
+    let mut i = INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: VIRTUAL_KEY(vk),
+                wScan: 0,
+                dwFlags: if down { KEYBD_EVENT_FLAGS(0) } else { KEYEVENTF_KEYUP },
+                time: 0,
+                dwExtraInfo: 0,
+            },
+        },
+    };
+    unsafe {
+        SendInput(std::slice::from_mut(&mut i), std::mem::size_of::<INPUT>() as i32);
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn send_ctrl_v() {
+    const VK_CONTROL: u16 = 0x11;
+    const VK_V: u16 = 0x56;
+    tap(VK_CONTROL, true);
+    tap(VK_V, true);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    tap(VK_V, false);
+    tap(VK_CONTROL, false);
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn send_enter() {
+    const VK_RETURN: u16 = 0x0D;
+    tap(VK_RETURN, true);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    tap(VK_RETURN, false);
+}
+
 pub(crate) fn b64(data: &[u8]) -> String {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity((data.len() + 2) / 3 * 4);

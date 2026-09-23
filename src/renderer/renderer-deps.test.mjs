@@ -104,17 +104,8 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
     ['ax-status', 'macOS Accessibility authorisation; Windows has no equivalent state'],
   ]);
   const DEFERRED_CMDS = new Map([
-    ["desk_call", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["desk_get_enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["desk_open_ax_settings", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["desk_overlay_visible", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["desk_set_enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["desk_trust", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
   ]);
   const DEFERRED_EVENTS = new Map([
-    ["desk-enabled", "desk gesture control (\u684c\u9762\u624b\u52bf) \u2014 macOS Accessibility"],
-    ["terse-approval", "approvals \u2014 macOS Accessibility"],
-    ["terse-approval-cleared", "approvals \u2014 macOS Accessibility"],
     ["town-need-ax", "Code Town Accessibility guide \u2014 macOS only"],
   ]);
 

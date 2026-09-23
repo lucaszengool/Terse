@@ -430,9 +430,9 @@ pub fn pl_send(app: AppHandle, pid: u32, text: String) -> Result<String, String>
         return Err("那个窗口没能激活".into());
     }
     std::thread::sleep(Duration::from_millis(220));
-    crate::send_ctrl_v();
+    crate::press_ctrl_v();
     std::thread::sleep(Duration::from_millis(260));
-    crate::send_enter();
+    crate::press_enter();
     std::thread::sleep(Duration::from_millis(180));
     let _ = crate::clipboard_restore(saved);
     // Focus back to the particle panel: the target was raised to paste into it,

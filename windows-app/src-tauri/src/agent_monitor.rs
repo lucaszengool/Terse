@@ -2150,6 +2150,27 @@ impl AgentMonitor {
             .collect()
     }
 
+    /// The last few messages of a session, for the particle panel's transcript.
+    pub fn transcript(&self, agent_type: &str, limit: usize) -> Vec<serde_json::Value> {
+        let Some(s) = self.sessions.get(agent_type) else { return Vec::new() };
+        s.messages
+            .iter()
+            .rev()
+            .take(limit.clamp(1, 200))
+            .rev()
+            .map(|m| {
+                serde_json::json!({
+                    "role": m.role,
+                    "type": m.msg_type,
+                    "toolName": m.tool_name,
+                    "text": safe_truncate(&m.text, 1200),
+                    "tokens": m.tokens,
+                    "timestamp": m.timestamp,
+                })
+            })
+            .collect()
+    }
+
     pub fn get_session_snapshot(&self, agent_type: &str) -> Option<serde_json::Value> {
         self.sessions.get(agent_type).map(|s| s.get_snapshot())
     }

@@ -30,6 +30,103 @@ pub fn prompt_for_trust() -> bool {
 /// would announce a page the user closed an hour ago. Tool windows are skipped
 /// for the same reason the window census skips them — palettes and tray
 /// helpers are not what a person means by "my windows".
+pub struct WindowText {
+    pub title: String,
+    pub text: String,
+}
+
+/// Everything readable in each of this process's windows.
+///
+/// macOS walks the Accessibility tree for this and needs the grant that goes
+/// with it. Windows publishes the same thing through UI Automation, which any
+/// desktop app may read — so approval prompts are detected here without asking
+/// the user for anything.
+///
+/// Bounded per window: a browser's tree is enormous, this runs every 1.5 s, and
+/// the prompt being looked for is always near the top of a dialog.
+pub fn window_text(pid: u32, cap_chars: usize) -> Vec<WindowText> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_INPROC_SERVER,
+        COINIT_APARTMENTTHREADED,
+    };
+    use windows::Win32::UI::Accessibility::{
+        CUIAutomation, IUIAutomation, IUIAutomationElement, TreeScope_Subtree,
+    };
+    let mut out: Vec<WindowText> = Vec::new();
+    let hwnds = windows_of_pid(pid);
+    if hwnds.is_empty() {
+        return out;
+    }
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        if let Ok(uia) = CoCreateInstance::<_, IUIAutomation>(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
+            for h in hwnds {
+                let t0 = std::time::Instant::now();
+                let Ok(root): Result<IUIAutomationElement, _> =
+                    uia.ElementFromHandle(HWND(h as *mut core::ffi::c_void))
+                else {
+                    continue;
+                };
+                let title = root.CurrentName().map(|s| s.to_string()).unwrap_or_default();
+                let mut text = String::new();
+                if let Ok(cond) = uia.CreateTrueCondition() {
+                    if let Ok(all) = root.FindAll(TreeScope_Subtree, &cond) {
+                        let n = all.Length().unwrap_or(0);
+                        for i in 0..n {
+                            if text.len() >= cap_chars || t0.elapsed().as_millis() > 400 {
+                                break;
+                            }
+                            let Ok(el) = all.GetElement(i) else { continue };
+                            let Ok(name) = el.CurrentName() else { continue };
+                            let name = name.to_string();
+                            let line = name.trim();
+                            if line.is_empty() {
+                                continue;
+                            }
+                            // The same line repeated is a list of identical
+                            // controls, not more information.
+                            if !text.ends_with(line) {
+                                text.push_str(line);
+                                text.push('\n');
+                            }
+                        }
+                    }
+                }
+                out.push(WindowText { title, text });
+            }
+        }
+        CoUninitialize();
+    }
+    out
+}
+
+/// The visible top-level windows belonging to a process.
+fn windows_of_pid(pid: u32) -> Vec<isize> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM, TRUE};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindowThreadProcessId, IsWindowVisible,
+    };
+    struct Acc {
+        want: u32,
+        out: Vec<isize>,
+    }
+    unsafe extern "system" fn scan(h: HWND, lp: LPARAM) -> BOOL {
+        let a = &mut *(lp.0 as *mut Acc);
+        let mut p = 0u32;
+        GetWindowThreadProcessId(h, Some(&mut p));
+        if p == a.want && IsWindowVisible(h).as_bool() && a.out.len() < 8 {
+            a.out.push(h.0 as isize);
+        }
+        TRUE
+    }
+    let mut a = Acc { want: pid, out: Vec::new() };
+    unsafe {
+        let _ = EnumWindows(Some(scan), LPARAM(&mut a as *mut Acc as isize));
+    }
+    a.out
+}
+
 pub fn window_titles(pid: u32, max: usize) -> Vec<String> {
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM, TRUE};
     use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};

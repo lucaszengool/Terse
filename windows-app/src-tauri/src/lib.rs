@@ -33,6 +33,8 @@ mod graph_store;
 mod graph_extract;
 mod town_keys;
 mod particle_mode;
+mod desk;
+mod approvals;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -4834,6 +4836,12 @@ pub fn run() {
             // The session dock (会话栏): a 14px strip on the left edge that opens
             // when the cursor touches it — started at launch, as on macOS.
             session_dock::start(app.handle().clone());
+            // The cursor layer comes back for anyone who left it on, exactly as
+            // macOS does it.
+            desk::autostart(app.handle().clone());
+            // Approval prompts on screen ("allow / deny"), read through UI
+            // Automation — the island and the toast both rely on this.
+            approvals::spawn_scanner(app.handle().clone());
             // Main-thread latency probe: every 2 s, time a no-op on the main
             // thread. Anything over 1 s is a freeze the user feels in every
             // window at once; the log gives each one's start and length, to line
@@ -5106,6 +5114,12 @@ pub fn run() {
             pm_overlay_hide,
             pl_target,
             pl_transcript,
+            desk::desk_call,
+            desk::desk_get_enabled,
+            desk::desk_set_enabled,
+            desk::desk_trust,
+            desk::desk_open_ax_settings,
+            desk::desk_overlay_visible,
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
             permission_control_status,
@@ -6826,7 +6840,7 @@ fn tap(vk: u16, down: bool) {
 }
 
 #[cfg(target_os = "windows")]
-pub(crate) fn send_ctrl_v() {
+pub(crate) fn press_ctrl_v() {
     const VK_CONTROL: u16 = 0x11;
     const VK_V: u16 = 0x56;
     tap(VK_CONTROL, true);
@@ -6837,7 +6851,15 @@ pub(crate) fn send_ctrl_v() {
 }
 
 #[cfg(target_os = "windows")]
-pub(crate) fn send_enter() {
+pub(crate) fn press_escape() {
+    const VK_ESCAPE: u16 = 0x1B;
+    tap(VK_ESCAPE, true);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    tap(VK_ESCAPE, false);
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn press_enter() {
     const VK_RETURN: u16 = 0x0D;
     tap(VK_RETURN, true);
     std::thread::sleep(std::time::Duration::from_millis(30));

@@ -84,6 +84,8 @@ windows = { version = "0.58", features = [
     # Read/WriteProcessMemory from Diagnostics_Debug.
     "Win32_System_Memory",
     # 粒子模式 pastes into another app: the clipboard and SendInput.
+    # 粒子模式 captures a window with PrintWindow, which the crate files under Xps.
+    "Win32_Storage_Xps",
     "Win32_System_DataExchange",
     # Per-app notification switches live in the registry (messages.rs).
     "Win32_System_Registry",

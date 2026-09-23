@@ -215,7 +215,11 @@ export const PRO_STYLES = [
     nameKey: 'wps_orbit_n', descKey: 'wps_orbit_d', en: 'Orbit Burst',
     swatch: ['#EAF1FF', '#6F86FF'],
     scene: 'spindle',
-    tints: ['#EEF3FF', '#B9C8FF', '#DCE6FF', '#9DB2FF', '#FFFFFF', '#C8D6FF'],
+    // 用户 2026-09-23:「星轨还有粒子 text 要有颜色变化,颜色要很炫酷」。
+    // 原来这六档全是近白(#EEF3FF…#C8D6FF),所以字看着永远是白的 —— 换成和
+    // wallpaper-spindle.js 的 BURST_COLORS 同一套色。骑在环上的那句字不走这里,
+    // 它直接取所属环的颜色(ringColor),这张表管的是伴随小字和没有环时的兜底。
+    tints: ['#3FE8FF', '#FF4FD8', '#8A6BFF', '#FFB03A', '#70FF8C', '#5C99FF'],
     dance: [D.SWIRL, D.SPIRAL, D.RIPPLE],
     // 卡点:字只在光束炸环的拍子上出现和炸开(引擎的 _beatMode)。in 要快 —— 视频里
     // 一拍从亮雾到成环只有 ~0.4 秒;hold 是兜底上限,正常情况下下一个字拍会先到

@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- WebView2 cannot blur what is BEHIND a window, so a surface that relies on
+       backdrop-filter has to carry its own opacity here. -->
+  <script>try{if(/Windows/i.test(navigator.userAgent))document.documentElement.classList.add('win');}catch(e){}</script>
   <meta name="color-scheme" content="dark">
   <script>
     /* 取译文,取不到用英文兜底。取代原来散在各处的 `zh ? 中文 : English`

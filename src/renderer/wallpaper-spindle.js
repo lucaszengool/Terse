@@ -34,6 +34,23 @@ const BODY_POINTS = 320000;   // 空间站的细节(桁架、舷窗、翼板网�
  *  鼓包 → 细颈 → 一摞铜钱 → 台阶,周而复始,整段随世界往后流。 */
 const SEG = 2.6;
 const RING_SLOTS = 17;
+
+/* ── 炸环的配色(用户 2026-09-23:「星轨还有粒子 text 要有颜色变化,颜色要很炫酷」)──
+   一拍一个颜色,**环和它那句字同色**:环从尖头炸出来时领一个色,之后它带着这个色
+   一路漂回光束尾巴 —— 于是任一帧画面里,整条光束上是一串按时间排开的彩环,
+   而不是整屏一起变色(那种"全局调色"看着像加了个滤镜,不像每一次爆炸各有各的能量)。
+   ⚠️ 核心仍然烧到白:`vColor = mix(色, 白, hot)`。直接用纯色画会失掉"亮到过曝"的质感 ——
+      参考片里最亮的地方永远是白的,颜色只出现在边缘和余晖里。
+   ⚠️ 顺序是**排过的**,不是色轮均分:相邻两拍必须差得够远(青→品红→琥珀…),
+      按色相均匀走一圈的话,连着两个环看起来是同一个颜色。 */
+export const BURST_COLORS = [
+  [0.25, 0.91, 1.00],   // 电光青
+  [1.00, 0.31, 0.85],   // 品红
+  [0.55, 0.42, 1.00],   // 紫罗兰
+  [1.00, 0.69, 0.23],   // 琥珀
+  [0.44, 1.00, 0.55],   // 青柠
+  [0.36, 0.60, 1.00],   // 冰蓝
+];
 const RING_POINTS = 1500;   // 视频里的环是**虚线**:一颗颗看得清的点,不是一条实心亮带
 const LINE_COUNT = 10;
 const LINE_POINTS = 1400;
@@ -304,6 +321,7 @@ attribute float aW, aL, aR2;
 attribute vec2 aYZ;
 attribute vec3 aN;
 uniform float uTime, uFlow, uSpin, uPixel, uVis, uBloom, uBlast;
+uniform vec3 uHeadC;   // 此刻尖头的颜色(最近一次炸环领到的)
 ${GLSL_COMMON}
 varying vec3 vColor;
 varying float vA;
@@ -351,7 +369,17 @@ void main(){
   // 闪点:站身上细碎的高光一直在跳
   float spark = step(0.978, aR2) * pow(0.5 + 0.5 * sin(uTime * 5.0 + aR2 * 900.0), 4.0);
   lum += spark * 2.6;
-  vColor = mix(vec3(0.42, 0.56, 1.0), vec3(0.97, 0.99, 1.0), clamp(lum * 0.6 + aR2 * 0.15, 0.0, 1.0));
+  /* 尖头那一段染上当拍的颜色,往尾巴渐回冷蓝 —— 于是每炸一次环,光束的头部整个换一次色,
+     而身子还是那条稳定的冷色脊骨(用户 09-22 定过:炸环时星轨本身不许晃、不许闪)。 */
+  /* ⚠️ 第一版把染色**只**给尖头 2.4 个单位、而且白的那一档不封顶 —— 结果整条光束
+     还是白的:lum 在这具身体上大部分接近 1,mix 到白就吃掉了 0.75,颜色只剩 25%。
+     现在:整条都染(颜色是这一拍的身份),**但把白封在 0.62** —— 高光仍然烧白,
+     所以"像空间站那样精细发亮"没丢,底色却明确跟着每一拍换。 */
+  vec3 cool = mix(vec3(0.42, 0.56, 1.0), uHeadC, 0.86);
+  /* ⚠️ 0.62 还是太白:这一层是**加性**混合,320k 个点在身子上层层相叠,
+     和值本来就冲到白 —— 再让 62% 直接混白,颜色就只剩一层薄薄的色偏(实测第 330 帧)。
+     0.30 是"底色明确是这一拍的颜色、但棱和高光仍然发白"的那一档。 */
+  vColor = mix(cool, vec3(0.97, 0.99, 1.0), clamp(lum * 0.30 + aR2 * 0.08, 0.0, 0.30));
   vA = lum * uVis * 1.35;
   float sz = (1.35 + aR2 * 1.0) * (edge ? 1.1 : 1.0) * (1.0 + spark * 1.8);
   gl_PointSize = sz * uPixel * uBloom * (13.0 / max(2.0, -mv.z));
@@ -392,15 +420,16 @@ precision highp float;
 attribute float aRing, aAng, aRand, aSpr;
 uniform vec4 uRP[${RING_SLOTS}];
 uniform float uRD[${RING_SLOTS}];   // 这个环离尖头多远(CPU 按一格一格的推进算好)
+uniform vec3 uRC[${RING_SLOTS}];    // 这个环出生时领到的颜色(见 BURST_COLORS)
 uniform float uTime, uPixel, uVis, uBloom;
 ${GLSL_COMMON}
 varying float vA, vSpr, vRot;
 varying vec3 vColor;
 void main(){
   int ri = int(aRing + 0.5);
-  vec4 P = vec4(-1.0); float D = 0.0;
+  vec4 P = vec4(-1.0); float D = 0.0; vec3 C = vec3(0.55, 0.64, 1.0);
   // WebGL1 不能用变量下标取 uniform 数组 —— 展开一个常量循环挑出来
-  for (int k = 0; k < ${RING_SLOTS}; k++) { if (k == ri) { P = uRP[k]; D = uRD[k]; } }
+  for (int k = 0; k < ${RING_SLOTS}; k++) { if (k == ri) { P = uRP[k]; D = uRD[k]; C = uRC[k]; } }
   if (P.x < 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }
   float age = P.x, str = P.y, Rmax = P.z, seed = P.w;
   // 离尖头多远:环留在原地,尖头一格一格往前顶
@@ -435,7 +464,8 @@ void main(){
   vA = fade * flash * tw * uVis * (aSpr < 0.5 ? 0.75 : 1.15) * (0.75 + str * 0.40);
   vSpr = aSpr;
   vRot = aRand * 6.2831 + uTime * (aRand - 0.5) * 2.0;      // 挂件自己在翻
-  vColor = mix(vec3(0.55, 0.64, 1.0), vec3(0.95, 0.97, 1.0), 0.55 + 0.45 * aRand);
+  // 亮的那一档烧到白,暗的一档留住环自己的颜色 —— 颜色出现在边缘和余晖里
+  vColor = mix(C, vec3(1.0), 0.30 + 0.45 * aRand);
   float base = aSpr < 0.5 ? (1.5 + aRand * 1.0) : aSpr > 6.5 ? (6.0 + 13.0 * pow(tw, 6.0)) : (aSpr < 1.5 ? 13.0 : 7.5) + aRand * 2.0;
   gl_PointSize = base * uPixel * uBloom * (13.0 / max(2.0, -mv.z));
   gl_Position = projectionMatrix * mv;
@@ -511,6 +541,7 @@ const LINE_VS = `
 precision highp float;
 attribute float aLine, aU, aRand, aSpr;
 uniform float uTime, uPixel, uVis, uBloom, uGrow;
+uniform vec3 uHeadC;
 ${GLSL_COMMON}
 varying float vA, vSpr, vRot;
 varying vec3 vColor;
@@ -543,7 +574,7 @@ void main(){
   float mk = mark ? (0.85 + 0.15 * sin(uTime * 4.0 + aRand * 9.0)) * smoothstep(0.05, 0.15, u) * (1.0 - smoothstep(0.85, 1.0, u)) : 1.0;
   vA = uVis * grow * (taper + cap) * mk;
   vSpr = aSpr; vRot = mark ? (aRand - 0.5) * 0.6 + sin(uTime + aRand * 6.0) * 0.4 : 0.0;
-  vColor = vec3(0.86, 0.90, 1.0);
+  vColor = mix(vec3(0.86, 0.90, 1.0), uHeadC, 0.45);
   float sz = mark ? 10.0 + aRand * 2.5 : (cap > 0.1 ? 4.2 : 1.6);
   gl_PointSize = sz * uPixel * uBloom * (13.0 / max(2.0, -mv.z));
   gl_Position = projectionMatrix * mv;
@@ -623,7 +654,8 @@ export class SpindleLayer {
     };
 
     this._bodyGeo = buildBody();
-    const bodyU = { uFlow: { value: 0 }, uSpin: { value: 0 }, uBlast: { value: 0 } };
+    this._headC = new THREE.Vector3(0.55, 0.64, 1.0);
+    const bodyU = { uFlow: { value: 0 }, uSpin: { value: 0 }, uBlast: { value: 0 }, uHeadC: { value: this._headC } };
     this.bodyB = mk(this._bodyGeo, BODY_VS, DOT_FS, bodyU, true);
     this.body = mk(this._bodyGeo, BODY_VS, DOT_FS, bodyU, false);
 
@@ -631,13 +663,17 @@ export class SpindleLayer {
     this._rp = [];
     for (let i = 0; i < RING_SLOTS; i++) this._rp.push(new THREE.Vector4(-1, 0, 0, 0));
     this._rd = new Array(RING_SLOTS).fill(0);
+    /* 每个环出生时领到的颜色。初值给冷蓝 —— 第一帧还没有任何环炸过。 */
+    this._rc = [];
+    for (let i = 0; i < RING_SLOTS; i++) this._rc.push(new THREE.Vector3(0.55, 0.64, 1.0));
+    this._colIdx = 0;
     this._rf = new Float64Array(RING_SLOTS);   // 每个环出生时光束推到了哪(世界坐标)
-    const ringU = { uRP: { value: this._rp }, uRD: { value: this._rd } };
+    const ringU = { uRP: { value: this._rp }, uRD: { value: this._rd }, uRC: { value: this._rc } };
     this.ringB = mk(this._ringGeo, RING_VS, SPR_FS, ringU, true);
     this.ring = mk(this._ringGeo, RING_VS, SPR_FS, ringU, false);
 
     this._lineGeo = buildLines();
-    const lineU = { uGrow: { value: 1 } };
+    const lineU = { uGrow: { value: 1 }, uHeadC: { value: this._headC } };
     this.lineB = mk(this._lineGeo, LINE_VS, SPR_FS, lineU, true);
     this.line = mk(this._lineGeo, LINE_VS, SPR_FS, lineU, false);
 
@@ -720,12 +756,29 @@ export class SpindleLayer {
     const R = radius || (Math.random() < 0.6 ? 0.72 + Math.random() * 0.35 : 1.2 + Math.random() * 0.55) + strength * 0.2;
     this._rp[i].set(0, Math.min(1.5, strength), R, Math.random());
     this._rf[i] = this._flow;
+    /* 领一个颜色。⚠️ 按**顺序**发,不是随机挑 —— 随机会连着发到同一个色,
+       而这一层要的正是"每一拍都明显换了个颜色"。字那边用 ringColor(i) 取同一个色。 */
+    const c = BURST_COLORS[this._colIdx % BURST_COLORS.length];
+    this._colIdx++;
+    this._rc[i].set(c[0], c[1], c[2]);
+    this._headCol = c;
+    if (this._headC) this._headC.set(c[0], c[1], c[2]);
     if (strength > 0.9) {
       this._blast = Math.max(this._blast, strength);
       // 不再冲击镜头、不再重画尾迹流线 —— 炸环时星轨本身纹丝不动(09-22)
     }
     return i;
   }
+
+  /** 第 i 个环的颜色(十六进制字符串)—— 引擎拿它给骑在这个环上的那句粒子字上色,
+   *  于是"环和字同色"是字面为真,不是两边各调一次调像了。 */
+  ringColor(i) {
+    const v = this._rc[(i % RING_SLOTS + RING_SLOTS) % RING_SLOTS];
+    const h = (x) => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0');
+    return '#' + h(v.x) + h(v.y) + h(v.z);
+  }
+  /** 此刻尖头的颜色(最近一次炸环领到的) */
+  headColor() { return this._headCol || [0.55, 0.64, 1.0]; }
 
   update(dt) {
     this._time += dt;

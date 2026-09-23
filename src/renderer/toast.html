@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- WebView2 cannot blur what is BEHIND a window, so a surface that relies on
+       backdrop-filter has to carry its own opacity here. -->
+  <script>try{if(/Windows/i.test(navigator.userAgent))document.documentElement.classList.add('win');}catch(e){}</script>
   <meta name="color-scheme" content="dark">
   <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
@@ -17,6 +20,11 @@
       padding: 12px 13px 11px; box-shadow: inset 0 1px 0 var(--hl), var(--shadow-lg);
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       transform: translateX(120%); opacity: 0; transition: transform .42s var(--spring), opacity .3s ease; }
+    /* Windows: this card sits on a transparent window, and its 5.5%-white
+       surface only reads because macOS blurs the desktop behind it. WebView2
+       cannot, so the same rules leave a notification almost invisible over a
+       light wallpaper. Opaque card, same shape, same animation. */
+    html.win .tt { background: rgba(20,22,30,.97); backdrop-filter: none; -webkit-backdrop-filter: none; }
     .tt.in { transform: none; opacity: 1; }
     .tt.out { transform: translateX(120%); opacity: 0; transition: transform .3s var(--ease), opacity .22s ease; }
     /* The card body is the only clickable region — the rest of the window is pass-through. */

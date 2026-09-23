@@ -2081,9 +2081,14 @@ export default class MineradioWallpaper {
       // A peer's own colour wins over the palette — that is what makes whose
       // line it is readable at a glance.
       const pal = st.tints;
+      /* 星轨炸环:这句字骑在哪个环上,就用**那个环**的颜色(见 wallpaper-spindle 的 BURST_COLORS)。
+         ⚠️ 不能各自按调色板轮转:环按 _colIdx 走、字按 _glyphIdx 走,两个计数器不同步,
+            于是"青色的环配品红的字"。同色是这一层的全部意思,所以只有一个真相:环。 */
+      const ringCol = (this.pro && this._spindle && this._spindle.target > 0 && this._beatMode())
+        ? this._spindle.ringColor(this._spindle._ringNext - 1) : null;
       const col = next.col ? next.col
-                : (this.pro ? pal[(si + this._glyphIdx) % pal.length]
-                            : (STAT_TINT[next.kind] || STAT_TINT.saved));
+                : (ringCol || (this.pro ? pal[(si + this._glyphIdx) % pal.length]
+                            : (STAT_TINT[next.kind] || STAT_TINT.saved)));
       const tier = next.size || 'mid';
       // The headline owns the centre; statistics scatter around it. Putting the
       // big line in the same band rota as the rest is what made the field look

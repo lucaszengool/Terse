@@ -1860,8 +1860,8 @@ fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
                 //
                 // Errors on pre-22000 builds, where the window is simply
                 // transparent already: a downgrade, not a breakage.
-                let _ = apply_mica(&win, Some(true));
-                let _ = enabled;
+                let ok = apply_mica(&win, Some(true)).is_ok();
+                diag_log("vibrancy", &format!("mica on '{lbl}' -> {ok} (clear_glass_requested={enabled})"));
             }
         }
     }
@@ -3252,7 +3252,7 @@ unsafe extern "system" fn frame_guard_proc(
     use windows::Win32::UI::WindowsAndMessaging::{
         GWL_EXSTYLE, GWL_STYLE, STYLESTRUCT, WM_STYLECHANGING, WS_CAPTION, WS_CHILD,
         WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE,
-        WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU,
+        WS_POPUP, WS_SYSMENU,
     };
     // Caption PAINTING, as opposed to caption styles. CI still showed a thin
     // system-font "Terse Doctor" over the Doctor page with its style already
@@ -3285,9 +3285,12 @@ unsafe extern "system" fn frame_guard_proc(
         let ss = &mut *(lparam.0 as *mut STYLESTRUCT);
         let which = wparam.0 as i32;
         if which == GWL_STYLE.0 && ss.styleNew & WS_CHILD.0 == 0 {
-            ss.styleNew = (ss.styleNew
-                & !(WS_CAPTION.0 | WS_SYSMENU.0 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0))
-                | WS_POPUP.0;
+            // WS_MINIMIZEBOX / WS_MAXIMIZEBOX stay: Windows consults them for
+            // Aero Snap, Win+arrows and the taskbar menu, and this guard was
+            // quietly putting them back off after strip_native_frame left them
+            // on — CI measured Win+Up doing nothing with the fix already in.
+            // They draw nothing without a caption, and there is none.
+            ss.styleNew = (ss.styleNew & !(WS_CAPTION.0 | WS_SYSMENU.0)) | WS_POPUP.0;
         } else if which == GWL_EXSTYLE.0 {
             ss.styleNew &= !(WS_EX_DLGMODALFRAME.0 | WS_EX_WINDOWEDGE.0
                 | WS_EX_CLIENTEDGE.0 | WS_EX_STATICEDGE.0);
@@ -3387,8 +3390,7 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
     use windows::Win32::UI::WindowsAndMessaging::{
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED,
         SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_EX_CLIENTEDGE,
-        WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
-        WS_POPUP, WS_SYSMENU,
+        WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, WS_POPUP, WS_SYSMENU,
     };
     use windows::Win32::Graphics::Gdi::{
         RedrawWindow, RDW_ALLCHILDREN, RDW_FRAME, RDW_INVALIDATE, RDW_UPDATENOW,
@@ -4250,7 +4252,8 @@ pub fn run() {
                 // are not the see-through ones.
                 for lbl in ["main", "doctor", "farm", "palette"] {
                     if let Some(w) = app.get_webview_window(lbl) {
-                        let _ = window_vibrancy::apply_mica(&w, Some(true));
+                        let ok = window_vibrancy::apply_mica(&w, Some(true)).is_ok();
+                        diag_log("vibrancy", &format!("mica at startup on '{lbl}' -> {ok}"));
                     }
                 }
                 for lbl in ["main", "doctor", "farm", "palette"] {

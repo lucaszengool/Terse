@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Platform on <html>, before any stylesheet paints: WebView2 cannot frost
+       what is behind the window, so a few glass rules differ here. -->
+  <script>try{if(/Windows/i.test(navigator.userAgent))document.documentElement.classList.add('win');}catch(e){}</script>
   <meta name="color-scheme" content="dark">
   <meta charset="UTF-8">
   <title>Terse</title>

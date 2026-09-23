@@ -174,6 +174,27 @@ body { height: 100%; background: var(--bg); color: var(--t1);
 [data-theme="midnight"] body { background: rgba(11,11,13,0.94); }
 /* Horizon: the window IS the glass slab. Near-clear dark tint over the native
    vibrancy layer, with the film's white crystal rim on the window edge. */
+/* Windows only — the glass has to carry itself here.
+   macOS frosts the desktop through the window: a transparent WKWebView lets the
+   page's own backdrop-filter blur whatever is BEHIND it. WebView2's
+   backdrop-filter never samples outside the page, so the identical rules leave
+   the app see-through instead of frosted, and the window behind yours reads
+   right through it — which users reported as "there is another window behind
+   mine". Mica is applied natively underneath (set_clear_glass), and these
+   tokens make the page itself carry the tint, so the app is legible even where
+   DWM refuses the material (Windows 10, VMs, remote sessions).
+   The look is kept: same hues, same gradient, just enough alpha to be a window
+   rather than a pane of glass. */
+html.win[data-theme="horizon"] {
+  --bg: rgba(11,13,17,0.92);
+  --glass-top: rgba(15,17,22,0.93);
+  --glass-bot: rgba(7,9,13,0.96);
+}
+html.win[data-theme="horizon"] body {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 [data-theme="horizon"] body {
   background: linear-gradient(160deg, var(--glass-top), var(--glass-bot));
   backdrop-filter: var(--glass-filter);

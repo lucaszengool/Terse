@@ -2306,6 +2306,45 @@ jobs:
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
           $pct = [Math]::Round(100 * $diff / [Math]::Max($n,1), 1)
           Write-Host "pixels that changed when a white window was put behind Terse: $pct%"
+          # The main window is not the only one people look at: the room's chat,
+          # the Doctor and a notification card are all transparent windows whose
+          # legibility came from a blur that does nothing here. Any other Terse
+          # window that happens to be open gets measured the same way.
+          $others = New-Object System.Collections.ArrayList
+          $cb2 = [B+Cb]{ param($h,$l)
+            if ([B]::IsWindowVisible($h) -and $h -ne $script:main) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][B]::GetWindowTextW($h, $sb, 256)
+              $t = $sb.ToString()
+              if ($t -like "Terse*" -and $t -ne "Terse") {
+                $rr = New-Object B+R
+                [void][B]::GetWindowRect($h, [ref]$rr)
+                if (($rr.Rr - $rr.L) -ge 300 -and ($rr.B - $rr.T) -ge 200) {
+                  [void]$others.Add([pscustomobject]@{ T = $t; H = $h; R = $rr })
+                }
+              }
+            }
+            return $true }
+          [void][B]::EnumWindows($cb2, [IntPtr]::Zero)
+          foreach ($o in $others) {
+            $ow = $o.R.Rr - $o.R.L; $oh = $o.R.B - $o.R.T
+            $b1 = New-Object System.Drawing.Bitmap $ow, $oh
+            $g1 = [System.Drawing.Graphics]::FromImage($b1)
+            $g1.CopyFromScreen($o.R.L, $o.R.T, 0, 0, $b1.Size); $g1.Dispose()
+            # Nothing is moved behind it — this asks a simpler question: is the
+            # window mostly the app's own dark surface, or mostly wallpaper?
+            $lit = 0; $tot2 = 0
+            for ($y = 0; $y -lt $oh; $y += 8) {
+              for ($x = 0; $x -lt $ow; $x += 8) {
+                $p2 = $b1.GetPixel($x, $y); $tot2++
+                if (($p2.R + $p2.G + $p2.B) -gt 600) { $lit++ }
+              }
+            }
+            $b1.Save("artifacts/bleed-other-$(($o.T -replace '[^A-Za-z0-9]','_')).png")
+            $b1.Dispose()
+            $frac = [Math]::Round(100 * $lit / [Math]::Max($tot2,1), 1)
+            Write-Host ("other window '{0}' {1}x{2}: {3}% near-white" -f $o.T, $ow, $oh, $frac)
+          }
           # A few percent is the app's own animation between the two shots.
           if ($pct -gt 12) {
             Write-Warning "BLEED: $pct% of Terse's window changed — what is behind it is showing through"

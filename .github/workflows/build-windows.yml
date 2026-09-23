@@ -2268,11 +2268,31 @@ jobs:
           Start-Sleep -Seconds 4
           if ($np.MainWindowHandle -ne [IntPtr]::Zero) { [void][B]::ShowWindow($np.MainWindowHandle, 3) }  # SW_MAXIMIZE
           Start-Sleep -Seconds 2
-          # Terse back in front, Notepad behind it.
+          # Terse back in front, Notepad behind it. SetForegroundWindow alone is
+          # not enough — Windows refuses a focus steal from a background caller,
+          # and the first version of this check measured a screenshot of NOTEPAD
+          # and called the app see-through. HWND_TOPMOST does not ask.
+          [void][B]::SetWindowPos($script:main, [IntPtr](-1), 0, 0, 0, 0, 0x0003)  # HWND_TOPMOST, NOSIZE|NOMOVE
           [void][B]::SetForegroundWindow($script:main)
-          [void][B]::SetWindowPos($script:main, [IntPtr]::Zero, 0, 0, 0, 0, 0x0003)  # NOSIZE|NOMOVE, top of z-order
           Start-Sleep -Seconds 3
           $after = Shot "after"
+          [void][B]::SetWindowPos($script:main, [IntPtr](-2), 0, 0, 0, 0, 0x0003)  # HWND_NOTOPMOST
+          # Prove the picture is of Terse, not of whatever was in front: the app
+          # is dark, Notepad is white. A frame that is mostly white IS Notepad,
+          # and any conclusion from it would be about the wrong window.
+          $white = 0; $tot = 0
+          for ($y = 0; $y -lt $h2; $y += 8) {
+            for ($x = 0; $x -lt $w; $x += 8) {
+              $p = $after.GetPixel($x, $y); $tot++
+              if (($p.R + $p.G + $p.B) -gt 690) { $white++ }
+            }
+          }
+          if ($tot -gt 0 -and ($white / $tot) -gt 0.6) {
+            $after.Save("artifacts/bleed-wrong-window.png")
+            $before.Dispose(); $after.Dispose()
+            $np | Stop-Process -Force -ErrorAction SilentlyContinue
+            throw "TEST HARNESS: the second photograph is of Notepad, not of Terse — the app never came back to the front"
+          }
           $diff = 0; $n = 0
           for ($y = 0; $y -lt $h2; $y += 4) {
             for ($x = 0; $x -lt $w; $x += 4) {

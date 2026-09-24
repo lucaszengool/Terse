@@ -5,6 +5,10 @@ name: Store screenshots (Windows)
 # The 09-21 failure is why v6 exists: v5's frames were direct captures, but they
 # minimized every window to leave the wallpaper as the subject, so what a
 # reviewer saw was a Windows desktop. Every v6 frame shows the app's own UI.
+# The 09-24 failure is why v11 exists: v10's frames showed the UI, but the
+# listing cropped them to a small window standing in black, which reads as a
+# mockup. v11 photographs each page maximized as well, and those frames go to
+# the listing whole — screen, taskbar and all.
 #
 # This takes the exact Terse.msix built by "Build Windows Store package (MSIX)",
 # unpacks it on a fresh Windows runner, runs it, and photographs the screen.
@@ -101,7 +105,51 @@ jobs:
             return $null
           }
 
+          # Cert 09-24 failed 10.1.1.3 a THIRD time. v10's frames WERE direct
+          # captures, but the listing got them cropped to 1366x768 around a
+          # 996x659 window standing on a featureless black desktop: what a
+          # reviewer saw was a window floating in black inside a green glow,
+          # which reads as a rendered mockup. The whole-screen originals — with
+          # the taskbar, the clock and the Start button in them — read as a
+          # screen at a glance. So v11 keeps the screen, and fills it: every
+          # page is photographed windowed AND maximized, and the maximized frame
+          # goes to the listing uncropped (it also covers the Test Mode
+          # watermark in the bottom-right corner, which is why v10 cropped).
+          function Maximize([bool]$on) {
+            $A = [System.Windows.Automation.AutomationElement]
+            $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+            $state = if ($on) { [System.Windows.Automation.WindowVisualState]::Maximized }
+                     else     { [System.Windows.Automation.WindowVisualState]::Normal }
+            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+              if ($procs -notcontains $w.Current.ProcessId) { continue }
+              $n = $w.Current.Name
+              if ($n -match 'Island|Pill|Wallpaper') { continue }
+              try {
+                $wp = $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+                if ($on -and -not $wp.Current.CanMaximize) { Write-Host "  cannot maximize '$n'"; return $false }
+                $wp.SetWindowVisualState($state)
+                # The webview repaints on its own clock: v7 grew the window and
+                # photographed a white band where it had not caught up yet.
+                Start-Sleep -Seconds 5
+                $r = $w.Current.BoundingRectangle
+                Write-Host "maximize=$on '$n' -> $([int]$r.Width)x$([int]$r.Height)"
+                return $true
+              } catch { Write-Host "  maximize skip '$n': $_"; }
+            }
+            return $false
+          }
+
           function Snap([string]$name) {
+            Shutter $name
+            # Maximized second, so a webview that does not follow the resize
+            # cannot spoil the windowed frame taken a moment earlier.
+            if (Maximize $true) {
+              Shutter "$name-max"
+              Maximize $false | Out-Null
+            }
+          }
+
+          function Shutter([string]$name) {
             [W]::SetCursorPos(1919, 1079) | Out-Null
             $mr = MainRect
             if ($mr) { "$name,$([int]$mr.X),$([int]$mr.Y),$([int]$mr.Width),$([int]$mr.Height)" | Add-Content "$out\rects.csv" -Encoding UTF8 }
@@ -428,7 +476,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v10
+          name: Terse-Store-Screenshots-v11
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

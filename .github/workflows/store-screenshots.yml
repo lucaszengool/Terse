@@ -208,17 +208,18 @@ jobs:
             return $true
           }
 
-          function Snap([string]$name) {
-            Shutter $name
-            # Full-screen second, so a webview that does not follow the resize
-            # cannot spoil the windowed frame taken a moment earlier.
-            if (Grow $true) {
-              Shutter "$name-max"
-              Grow $false | Out-Null
-            }
-          }
+          # Grown once, before the first frame, and never moved again. Growing
+          # and shrinking around every shot left a hollow box on screen at each
+          # rect the window had just left — one more with every cycle, drawn over
+          # the app. It is not a window (EnumWindows over the process finds
+          # exactly one) and repainting the desktop did not clear it: it is the
+          # compositor keeping a stale surface for a layered, transparent window
+          # on a runner with no GPU. Nothing accumulates if nothing cycles, and
+          # the full-screen window covers the rect it started at.
+          function Snap([string]$name) { Shutter $name }
 
           function Shutter([string]$name) {
+            CloseStrays
             [W]::SetCursorPos(1919, 1079) | Out-Null
             $mr = MainRect
             if ($mr) { "$name,$([int]$mr.X),$([int]$mr.Y),$([int]$mr.Width),$([int]$mr.Height)" | Add-Content "$out\rects.csv" -Encoding UTF8 }
@@ -330,7 +331,7 @@ jobs:
                 # painting at its old size with a white band beside it, in every
                 # frame of that run. The window keeps the size a user gets, and
                 # the crop takes a little of the dark desktop with it.
-                if ($tp.Current.CanMove) {
+                if ($tp.Current.CanMove -and -not $script:grown) {
                   # Keep it wholly on screen: v6 moved a 1400px-wide window to
                   # x=980 and half of the app hung off the right edge.
                   $r0 = $w.Current.BoundingRectangle
@@ -518,6 +519,17 @@ jobs:
           Onboard
           CloseStrays
           Front | Out-Null
+          Start-Sleep -Seconds 3
+          # Fill the screen for good. A 996x659 window on a bare desktop, cropped
+          # to the listing's 1366x768, is what certification read as a mockup
+          # three times: the product has to BE the frame.
+          Grow $true | Out-Null
+          $script:grown = $true
+          # The shell redraws the desktop and the taskbar from scratch, which is
+          # the one thing that clears what the resize left behind.
+          Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 10
+          Front | Out-Null
           Start-Sleep -Seconds 8
           Snap '10-app-overview'
           # The sidebar is translated at runtime, so each pattern carries the
@@ -545,7 +557,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v11e
+          name: Terse-Store-Screenshots-v12
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

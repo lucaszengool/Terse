@@ -82,6 +82,36 @@ jobs:
             public static extern bool SystemParametersInfoW(uint a, uint b, string c, uint d);
             [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int t, bool repaint);
             [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+            [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, System.Text.StringBuilder s, int n);
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, System.Text.StringBuilder s, int n);
+            [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint cmd);
+            [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr p);
+            [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+            delegate bool EnumProc(IntPtr h, IntPtr p);
+            public struct RECT { public int L, T, R, B; }
+
+            // UIA does not report every window this process owns — the one that
+            // stayed behind when the main window grew was never in its tree.
+            // EnumWindows sees what the screen sees, front to back.
+            public static IntPtr[] TopLevel(int pid) {
+              var list = new System.Collections.Generic.List<IntPtr>();
+              EnumWindows((h, p) => {
+                uint wp; GetWindowThreadProcessId(h, out wp);
+                if (wp != (uint)pid || !IsWindowVisible(h)) return true;
+                RECT r; GetWindowRect(h, out r);
+                if (r.R - r.L > 200 && r.B - r.T > 150) list.Add(h);
+                return true;
+              }, IntPtr.Zero);
+              return list.ToArray();
+            }
+            public static string Describe(IntPtr h) {
+              var t = new System.Text.StringBuilder(256); GetWindowTextW(h, t, 256);
+              var c = new System.Text.StringBuilder(256); GetClassNameW(h, c, 256);
+              RECT r; GetWindowRect(h, out r);
+              return h + " '" + t + "' class=" + c + " " + r.L + "," + r.T + " " + (r.R - r.L) + "x" + (r.B - r.T);
+            }
           }
           "@
 
@@ -128,16 +158,26 @@ jobs:
           # box in the middle of the frame. A user never sees it because the two
           # travel together, so the capture moves them together too.
           function MainHandles {
-            $A = [System.Windows.Automation.AutomationElement]
-            $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
             $hs = @()
-            foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
-              if ($procs -notcontains $w.Current.ProcessId) { continue }
-              if ($w.Current.Name -match 'Island|Pill|Wallpaper') { continue }
-              $r = $w.Current.BoundingRectangle
-              if ($r.Width -gt 200 -and $r.Height -gt 150) { $hs += [IntPtr]$w.Current.NativeWindowHandle }
+            foreach ($p in @(Get-Process Terse -ErrorAction SilentlyContinue)) {
+              foreach ($h in [W]::TopLevel($p.Id)) {
+                $d = [W]::Describe($h)
+                # A full-screen window is the desktop wallpaper layer, not a
+                # window of the app to move around.
+                if ($d -match ' (19[0-9][0-9])x(10[6-9][0-9]|1[1-9][0-9][0-9])$') { continue }
+                $hs += $h
+              }
             }
             return ,$hs
+          }
+
+          function DumpWindows([string]$tag) {
+            $lines = @("== windows $tag ==")
+            foreach ($p in @(Get-Process Terse -ErrorAction SilentlyContinue)) {
+              foreach ($h in [W]::TopLevel($p.Id)) { $lines += "  " + [W]::Describe($h) }
+            }
+            $lines | Add-Content "$out\windows.log" -Encoding UTF8
+            $lines | ForEach-Object { Write-Host $_ }
           }
 
           # Fill the screen above the taskbar, or go back to the size a user gets.
@@ -151,6 +191,7 @@ jobs:
               else     { [W]::MoveWindow($h, 182, 182, 996, 659, $true) | Out-Null }
             }
             Write-Host "  grow=$on moved $($hs.Count) window(s)"
+            if ($on) { DumpWindows 'grown' }
             # The webview repaints on its own clock: v7 grew the window and
             # photographed a white band where it had not caught up yet.
             Start-Sleep -Seconds 10
@@ -496,7 +537,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v11c
+          name: Terse-Store-Screenshots-v11d
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

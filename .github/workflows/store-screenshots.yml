@@ -87,6 +87,8 @@ jobs:
             [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, System.Text.StringBuilder s, int n);
             [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, System.Text.StringBuilder s, int n);
             [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint cmd);
+            [DllImport("user32.dll")] public static extern IntPtr GetDesktopWindow();
+            [DllImport("user32.dll")] public static extern bool RedrawWindow(IntPtr h, IntPtr r, IntPtr rgn, uint flags);
             [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr p);
             [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
             delegate bool EnumProc(IntPtr h, IntPtr p);
@@ -152,11 +154,12 @@ jobs:
           # WS_MAXIMIZEBOX and WindowPattern.CanMaximize is false. Win32 does not
           # care about the style — MoveWindow sends a real WM_SIZE and the webview
           # follows it, which TransformPattern.Resize in v7 did not.
-          # The main window is not alone at its rect: a second, contentless window
-          # of the same size sits directly under it (transparent + shadow), and
-          # the run that moved only the top one left that one behind, a hollow
-          # box in the middle of the frame. A user never sees it because the two
-          # travel together, so the capture moves them together too.
+          # Moving the window leaves a hollow box behind it — the old title bar
+          # and a dark rectangle, sitting on the desktop at the rect the window
+          # just left. It is not a second window: EnumWindows over the process
+          # finds exactly one. The window is transparent and layered, so nothing
+          # invalidates the desktop underneath it and those pixels simply stay.
+          # Repainting the desktop after the move clears them.
           function MainHandles {
             $hs = @()
             foreach ($p in @(Get-Process Terse -ErrorAction SilentlyContinue)) {
@@ -192,6 +195,11 @@ jobs:
             }
             Write-Host "  grow=$on moved $($hs.Count) window(s)"
             if ($on) { DumpWindows 'grown' }
+            # Rub out the pixels the window left on the desktop. Re-setting the
+            # wallpaper is what actually redraws it; RedrawWindow alone left the
+            # trail in place. RDW_INVALIDATE|ERASE|ALLCHILDREN|UPDATENOW.
+            DarkDesktop
+            [W]::RedrawWindow([W]::GetDesktopWindow(), [IntPtr]::Zero, [IntPtr]::Zero, 0x185) | Out-Null
             # The webview repaints on its own clock: v7 grew the window and
             # photographed a white band where it had not caught up yet.
             Start-Sleep -Seconds 10
@@ -537,7 +545,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v11d
+          name: Terse-Store-Screenshots-v11e
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

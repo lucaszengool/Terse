@@ -122,24 +122,35 @@ jobs:
           # WS_MAXIMIZEBOX and WindowPattern.CanMaximize is false. Win32 does not
           # care about the style — MoveWindow sends a real WM_SIZE and the webview
           # follows it, which TransformPattern.Resize in v7 did not.
-          function MainHandle {
+          # The main window is not alone at its rect: a second, contentless window
+          # of the same size sits directly under it (transparent + shadow), and
+          # the run that moved only the top one left that one behind, a hollow
+          # box in the middle of the frame. A user never sees it because the two
+          # travel together, so the capture moves them together too.
+          function MainHandles {
             $A = [System.Windows.Automation.AutomationElement]
             $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+            $hs = @()
             foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
               if ($procs -notcontains $w.Current.ProcessId) { continue }
               if ($w.Current.Name -match 'Island|Pill|Wallpaper') { continue }
               $r = $w.Current.BoundingRectangle
-              if ($r.Width -gt 200 -and $r.Height -gt 150) { return [IntPtr]$w.Current.NativeWindowHandle }
+              if ($r.Width -gt 200 -and $r.Height -gt 150) { $hs += [IntPtr]$w.Current.NativeWindowHandle }
             }
-            return [IntPtr]::Zero
+            return ,$hs
           }
 
           # Fill the screen above the taskbar, or go back to the size a user gets.
           function Grow([bool]$on) {
-            $h = MainHandle
-            if ($h -eq [IntPtr]::Zero) { Write-Host "  grow: no window"; return $false }
-            if ($on) { [W]::MoveWindow($h, 0, 0, 1920, 1032, $true) | Out-Null }
-            else     { [W]::MoveWindow($h, 182, 182, 996, 659, $true) | Out-Null }
+            $hs = MainHandles
+            if ($hs.Count -eq 0) { Write-Host "  grow: no window"; return $false }
+            # Back to front, so the window the user reads stays on top.
+            [array]::Reverse($hs)
+            foreach ($h in $hs) {
+              if ($on) { [W]::MoveWindow($h, 0, 0, 1920, 1032, $true) | Out-Null }
+              else     { [W]::MoveWindow($h, 182, 182, 996, 659, $true) | Out-Null }
+            }
+            Write-Host "  grow=$on moved $($hs.Count) window(s)"
             # The webview repaints on its own clock: v7 grew the window and
             # photographed a white band where it had not caught up yet.
             Start-Sleep -Seconds 10
@@ -485,7 +496,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v11b
+          name: Terse-Store-Screenshots-v11c
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

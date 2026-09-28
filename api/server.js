@@ -1591,6 +1591,9 @@ accountRouter.hooks = {
 app.post('/api/auth/delete', accountRouter.handleDelete);
 app.use('/api/account', accountRouter);
 
+// ── 全员广播(平时返回空清单;发布要 BROADCAST_ADMIN_TOKEN,见 broadcast.js)──
+app.use('/api/broadcast', express.json({ limit: '32kb' }), require('./broadcast'));
+
 // ── Marketplace API routes ──
 app.use('/api/marketplace', marketplaceRouter);
 

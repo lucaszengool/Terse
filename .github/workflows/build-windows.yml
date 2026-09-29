@@ -2353,6 +2353,90 @@ jobs:
           Write-Host "BLEED OK: a white window behind Terse changed $pct% of it — nothing reads through"
 
 
+      # Always-on-top must not make the machine unusable.
+      #
+      # Reported by a user: after switching the wallpaper's 置顶 on, "nothing can
+      # be clicked", and several times the only way out was ending Terse from
+      # Task Manager. The window is topmost and covers the whole screen, so the
+      # moment it stops being click-through, every click in every application
+      # lands on the wallpaper instead — and the page arms itself whenever the
+      # cursor is over one of the big glyphs, which up there happens in seconds.
+      #
+      # A screenshot cannot see this (the window is transparent either way), so
+      # this drives the mouse and the keyboard: with the wallpaper lifted, click
+      # into Notepad and type. If the characters arrive, the desktop is still the
+      # user's.
+      - name: A lifted wallpaper must still let clicks through
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class T{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);[DllImport("user32.dll")]public static extern void mouse_event(uint f,int x,int y,uint d,UIntPtr e);[DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte sc,uint f,UIntPtr e);[DllImport("user32.dll")]public static extern IntPtr WindowFromPoint(P p);[DllImport("user32.dll")]public static extern IntPtr GetAncestor(IntPtr h,uint f);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetClassNameW(IntPtr h,StringBuilder s,int n);public struct R{public int L,T,Rr,B;}public struct P{public int X,Y;}
+            public static void Click(int x,int y){SetCursorPos(x,y);System.Threading.Thread.Sleep(90);mouse_event(2,0,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(60);mouse_event(4,0,0,0,UIntPtr.Zero);}
+            public static void Key(byte vk){keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(40);keybd_event(vk,0,2,UIntPtr.Zero);System.Threading.Thread.Sleep(40);}
+            public static void Combo(byte mod,byte vk){keybd_event(mod,0,0,UIntPtr.Zero);keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(40);keybd_event(vk,0,2,UIntPtr.Zero);keybd_event(mod,0,2,UIntPtr.Zero);System.Threading.Thread.Sleep(80);}
+            public static string ClassAt(int x,int y){P p;p.X=x;p.Y=y;IntPtr h=GetAncestor(WindowFromPoint(p),2);StringBuilder s=new StringBuilder(64);GetClassNameW(h,s,64);return s.ToString();}}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Remove-Item (Join-Path $dir "wallpaper.log") -ErrorAction SilentlyContinue
+          # Lifted, with a particle engine — overlay is refused for any engine
+          # that paints an opaque frame, so this has to be one that does not.
+          '{"enabled":true,"engine":"cinematic","overlay":true,"theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 50
+          $np = Start-Process notepad -PassThru
+          Start-Sleep -Seconds 4
+          $note = [IntPtr]::Zero
+          $cb = [T+Cb]{ param($h,$l)
+            if ([T]::IsWindowVisible($h)) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][T]::GetWindowTextW($h, $sb, 256)
+              if ($sb.ToString() -like "*Notepad*") { $script:note = $h; return $false }
+            }
+            return $true }
+          [void][T]::EnumWindows($cb, [IntPtr]::Zero)
+          $note = $script:note
+          if ($note -eq [IntPtr]::Zero) { throw "TEST HARNESS: Notepad never opened" }
+          $nr = New-Object T+R
+          $null = [T]::GetWindowRect($note, [ref]$nr)
+          $cx = [int](($nr.L + $nr.Rr) / 2); $cy = [int](($nr.T + $nr.B) / 2)
+          # The wallpaper has to actually BE over that point, or this proves
+          # nothing about click-through.
+          $over = [T]::ClassAt($cx, $cy)
+          Write-Host "window under ($cx,$cy) before clicking: $over"
+          $wl = Join-Path $dir "wallpaper.log"
+          $wt = if (Test-Path $wl) { Get-Content $wl -Raw } else { "" }
+          if ($wt -notmatch 'overlay ON') { Write-Warning "CLICKTHRU INCONCLUSIVE: the wallpaper never went topmost (overlay refused?)" }
+          # Move the cursor across the screen first: this is what arms the page —
+          # the cursor feed reports where the pointer is and the page grabs the
+          # mouse when it lands on a glyph. Then try to use the machine.
+          foreach ($i in 1..12) { [T]::Click(200 + $i * 60, 200 + $i * 30); Start-Sleep -Milliseconds 120 }
+          [T]::Click($cx, $cy)
+          Start-Sleep -Milliseconds 400
+          [T]::Key(0x41); [T]::Key(0x42); [T]::Key(0x43)   # A B C
+          Start-Sleep -Milliseconds 400
+          [T]::Combo(0x11, 0x41)   # Ctrl+A
+          [T]::Combo(0x11, 0x43)   # Ctrl+C
+          Start-Sleep -Milliseconds 400
+          $typed = ""
+          try { $typed = (Get-Clipboard -Raw) } catch {}
+          if ($null -eq $typed) { $typed = "" }
+          $typed = $typed.Trim().ToLower()
+          Write-Host "typed abc into Notepad through the lifted wallpaper -> '$typed'"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $wl) { Copy-Item $wl artifacts/wallpaper-clickthru.log }
+          Write-Host "--- wallpaper.log (tail) ---"
+          if (Test-Path $wl) { Get-Content $wl -Tail 20 | ForEach-Object { Write-Host "  $_" } }
+          $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($typed -ne 'abc') {
+            Write-Warning "CLICKTHRU FAIL: Notepad received '$typed' — the lifted wallpaper is eating clicks, which is a desktop the user cannot use"
+            throw "the always-on-top wallpaper swallowed the clicks"
+          }
+          Write-Host "CLICKTHRU OK: with the wallpaper lifted above every window, clicks and keys still reach the app underneath"
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

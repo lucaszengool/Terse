@@ -35,6 +35,7 @@ mod town_keys;
 mod particle_mode;
 mod desk;
 mod approvals;
+mod splash;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -4423,32 +4424,32 @@ pub fn run() {
                 });
             }
 
-            // main is `visible: false` in tauri.conf.json on Windows ONLY, and is
-            // shown HERE, after the sweep above has stripped its frame. Tauri
-            // creates and shows a visible:true window before setup() runs, so
-            // Windows painted main's caption before any of our code could strip
-            // it — and on a transparent window nothing ever repaints over those
-            // pixels, which is why the ghost "Terse" title outlived four
-            // different fixes. Stripping first and showing second is the only
-            // ordering where the caption is never drawn at all.
+            // main is `visible: false` in tauri.conf.json on Windows ONLY, and it
+            // is revealed by splash::finish — when the frontend says it is ready,
+            // or when the 8 s watchdog stops waiting for it. It used to be shown
+            // right here, and that ordering mattered for a reason that still
+            // holds: Tauri creates and shows a visible:true window before setup()
+            // runs, so Windows painted main's caption before any of our code
+            // could strip it, and on a transparent window nothing ever repaints
+            // over those pixels — the ghost "Terse" title outlived four fixes.
+            // Stripping first and showing second is the only ordering where the
+            // caption is never drawn at all, and finish() runs later than every
+            // strip above, so it keeps that property.
+            //
+            // Showing it here as well would also mean two windows arriving in
+            // whatever order they liked: the start-up picture and a half-built
+            // app behind it.
+            //
+            // The reveal deliberately does NOT flush the ghost titlebar itself.
+            // frame-strip.log caught that call running while main was
+            // style=0x14CF0000 — WS_CAPTION, WS_SYSMENU, WS_THICKFRAME, min/max,
+            // no WS_POPUP: the sweep above HAD stripped it and show() put the
+            // whole native frame back, so the flush was repainting a window that
+            // still had a real caption, flushing the ghost IN rather than out.
+            // set_focus() fires Focused(true), whose handler strips the frame and
+            // only then flushes — that is the flush that clears it.
             #[cfg(target_os = "windows")]
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.show();
-                let _ = w.set_focus();
-                // No flush here any more. frame-strip.log caught this call
-                // running while main was style=0x14CF0000 — WS_CAPTION,
-                // WS_SYSMENU, WS_THICKFRAME, min/max, no WS_POPUP. In other
-                // words the sweep above HAD stripped it, and then show() put the
-                // whole native frame back, so this flush was repainting a window
-                // that still had a real caption — flushing the ghost IN rather
-                // than out.
-                //
-                // set_focus() fires Focused(true), whose handler strips the frame
-                // and only then flushes. The third line of that same log confirms
-                // the ordering works: main flushed again at style=0x94040000,
-                // WS_POPUP set and no caption. That is the flush that clears it,
-                // and it is the one the island and Doctor now get too.
-            }
+            splash::start(app.handle().clone());
 
             // Tray icon + right-click menu (parity with macOS). Until now the
             // Windows tray had NO menu, so there was no way to quit Terse at all —
@@ -4615,7 +4616,16 @@ pub fn run() {
                 let h = app.handle().clone();
                 if let Err(e) = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+W", move |_a, _s, _e| {
                     if let Some(w) = h.get_webview_window("wallpaper") {
+                        // Hand the mouse back FIRST, whatever the page thinks.
+                        // This is the key someone presses when the wallpaper has
+                        // taken over the screen, and it has to work even if the
+                        // page is the reason it did — a toggle alone could arm
+                        // it again.
+                        set_wallpaper_click_through(&w, true);
+                        WP_ADJUST.store(false, std::sync::atomic::Ordering::SeqCst);
+                        WP_INTERACTIVE_GEN.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         let _ = w.emit("wallpaper-arm-toggle", ());
+                        let _ = h.emit("wallpaper-adjust", false);
                     }
                 }) {
                     eprintln!("[terse] Ctrl+Shift+W shortcut unavailable (already in use?): {e}");
@@ -5102,6 +5112,7 @@ pub fn run() {
             social_identity,
             list_open_windows,
             app_icon,
+            splash::app_ready,
             particle_mode::pm_windows,
             particle_mode::pm_window_rect,
             particle_mode::pm_start,
@@ -7932,6 +7943,10 @@ static WP_INTERACTIVE_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::Ato
 
 /// The hard ceiling on how long the wallpaper may hold the mouse.
 const WP_INTERACTIVE_MAX_SECS: u64 = 75;
+/// The same watchdog, for the case where the window is ABOVE everything: there a
+/// grab that never ends is a desktop nobody can click, so it is measured in
+/// seconds rather than in a minute and a quarter.
+const WP_INTERACTIVE_TOPMOST_SECS: u64 = 8;
 
 /// Out of WorkerW and up to just above the desktop icons.
 ///
@@ -8230,6 +8245,35 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
     // this window. See wallpaper_placement.
     let adjusting = WP_ADJUST.load(Ordering::SeqCst);
 
+    // ⚠ While the wallpaper is TOPMOST, only the adjust state may take the
+    // mouse. Reported by a user: turning always-on-top on left a full-screen
+    // window that swallowed every click — nothing on the desktop could be
+    // clicked, and several times the only way out was ending the process from
+    // Task Manager.
+    //
+    // How it happened: the page arms itself when the cursor is over one of the
+    // big glyphs, so that a glyph can be clicked. On the desktop layer that is
+    // harmless — the window sits behind the icons and the clicks were never
+    // going anywhere else. Lifted above every window it is the opposite: the
+    // wallpaper covers the screen, the cursor lands on a glyph within seconds,
+    // and from then on every click in every application lands on the wallpaper
+    // instead. The 75 s watchdog underneath does hand the mouse back, and the
+    // next hover takes it again.
+    //
+    // The adjust state stays allowed because it is the one the user asks for by
+    // pressing a button that lights up, and it can be left with Esc, the same
+    // button, or the watchdog. Anything else keeps its clicks.
+    if on && overlay_on && !adjusting {
+        diag_log(
+            "wallpaper",
+            "interactive REFUSED — the wallpaper is topmost and this was not the adjust state; \
+             taking the mouse there would make the whole desktop unclickable",
+        );
+        let win2 = win.clone();
+        let _ = app.run_on_main_thread(move || set_wallpaper_click_through(&win2, true));
+        return false;
+    }
+
     let placement = wallpaper_placement(overlay_on, adjusting);
     let win2 = win.clone();
     let _ = app.run_on_main_thread(move || {
@@ -8255,7 +8299,12 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
         // page intended.
         let app2 = app.clone();
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(WP_INTERACTIVE_MAX_SECS));
+            // Above every window, a stuck grab means the whole desktop is
+            // unclickable, so the rescue cannot be a minute away. Behind the
+            // icons it costs the user nothing to wait, and a longer window
+            // avoids cutting a real drag short.
+            let secs = if overlay_on { WP_INTERACTIVE_TOPMOST_SECS } else { WP_INTERACTIVE_MAX_SECS };
+            std::thread::sleep(std::time::Duration::from_secs(secs));
             // Renewed or already released in the meantime — this shot is stale.
             if WP_INTERACTIVE_GEN.load(Ordering::SeqCst) != generation { return; }
             // Cloned because the closure MOVES the handle it uses, and the
@@ -8276,7 +8325,7 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
                 let _ = app3.emit("wallpaper-adjust", false);
                 let _ = app3.emit("wallpaper-lift", false);
                 diag_log("wallpaper", &format!(
-                    "interactive watchdog fired after {WP_INTERACTIVE_MAX_SECS}s — mouse returned"));
+                    "interactive watchdog fired after {secs}s — mouse returned"));
             });
         });
     }

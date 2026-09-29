@@ -50,6 +50,21 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "splash",
+        "title": "Terse",
+        "url": "splash.html",
+        "width": 460,
+        "height": 300,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": true
+      },
+      {
         "label": "main",
         "title": "Terse",
         "url": "index.html",

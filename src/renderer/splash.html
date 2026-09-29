@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="dark">
+<title>Terse</title>
+<style>
+  /* 启动画面。刻意**不 import 任何东西** —— 它要在主界面之前就出现在屏幕上,
+     多一个 module 就多一次网络/解析,启动画面迟到就等于没有。 */
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:transparent}
+  /* ⚠ 必须 position:fixed + z-index。#card 是 fixed(定位元素),画布原来是普通流内元素 ——
+     定位元素一律画在流内元素**上面**,于是那块深色底板把粒子整个盖住了,
+     跑起来只看得见一块黑板和底下那条进度线。 */
+  #c{position:fixed;inset:0;z-index:1;display:block;width:100%;height:100%}
+  /* 底板:半透明深色玻璃 + 一圈很淡的边。窗口本身是无边框透明的,圆角在这儿画。 */
+  #card{position:fixed;inset:0;border-radius:20px;
+    background:radial-gradient(120% 120% at 50% 0%, rgba(30,34,44,.92), rgba(10,11,14,.96));
+    border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14)}
+  #bar{position:fixed;left:26px;right:26px;bottom:22px;height:2px;border-radius:2px;
+    background:rgba(255,255,255,.10);overflow:hidden}
+  #bar i{display:block;height:100%;width:30%;border-radius:2px;background:#C9F03D;
+    box-shadow:0 0 12px rgba(201,240,61,.8);animation:sweep 1.25s cubic-bezier(.45,.05,.3,1) infinite}
+  @keyframes sweep{0%{transform:translateX(-110%)}100%{transform:translateX(370%)}}
+  #tag{position:fixed;left:0;right:0;bottom:36px;text-align:center;font:600 10.5px/1
+    -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+    letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.42)}
+</style>
+</head>
+<body>
+  <div id="card"></div>
+  <canvas id="c"></canvas>
+  <div id="tag">Agent Butler</div>
+  <div id="bar"><i></i></div>
+<script>
+/* 「TERSE」这几个字是**粒子聚出来**的,和桌面壁纸、会话栏是同一种语言:
+   先把字画进一张离屏画布,把落在笔画上的像素挑出来当目标点,粒子从四面八方
+   旋进去。聚拢之后不停住 —— 每颗在自己的目标点附近继续呼吸,所以画面一直是活的
+   (启动慢的时候尤其要活:一个静止的启动图和一个卡死的窗口长得一模一样)。 */
+(function () {
+  const cv = document.getElementById('c'), g = cv.getContext('2d');
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  let W = 0, H = 0;
+  function size() {
+    W = cv.width = Math.round(innerWidth * DPR);
+    H = cv.height = Math.round(innerHeight * DPR);
+  }
+  size();
+  addEventListener('resize', () => { size(); build(); });
+
+  /** 把字画进离屏画布,取笔画上的点当目标 */
+  function targets() {
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const o = off.getContext('2d');
+    o.fillStyle = '#fff';
+    o.textAlign = 'center';
+    o.textBaseline = 'middle';
+    const fs = Math.round(Math.min(W * 0.20, H * 0.42));
+    o.font = `800 ${fs}px -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',system-ui,sans-serif`;
+    o.letterSpacing = `${Math.round(fs * 0.12)}px`;
+    o.fillText('TERSE', W / 2, H * 0.44);
+    const d = o.getImageData(0, 0, W, H).data;
+    const pts = [];
+    // 每隔几个像素取一颗 —— 取太密画面会糊成一块实心字,那就不是粒子了
+    const step = Math.max(2, Math.round(3 * DPR));
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        if (d[(y * W + x) * 4 + 3] > 128) pts.push([x, y]);
+      }
+    }
+    return pts;
+  }
+
+  let P = [];
+  function build() {
+    const pts = targets();
+    P = pts.map(([tx, ty], i) => {
+      // 从画面外一圈旋进来:角度按索引散开,半径带随机 —— 起手就是一团,不是一条线
+      const a = (i / pts.length) * Math.PI * 2 + Math.random() * 0.7;
+      const r = Math.max(W, H) * (0.55 + Math.random() * 0.5);
+      return {
+        x: W / 2 + Math.cos(a) * r, y: H / 2 + Math.sin(a) * r,
+        tx, ty,
+        // 每颗自己的到位速度和相位,所以字是**长出来**的,不是整块平移过来
+        k: 0.020 + Math.random() * 0.045,
+        ph: Math.random() * Math.PI * 2,
+        sp: 0.6 + Math.random() * 1.5,
+        s: (0.8 + Math.random() * 1.5) * DPR,
+        hue: Math.random(),
+      };
+    });
+  }
+  build();
+
+  let t = 0;
+  function frame() {
+    t += 1 / 60;
+    g.clearRect(0, 0, W, H);
+    g.globalCompositeOperation = 'lighter';   // 加性:叠在一起的地方更亮,像光点不像贴纸
+    for (const p of P) {
+      // 弹簧吸向目标点 + 到位之后的呼吸(呼吸幅度很小,字始终读得出来)
+      const br = Math.sin(t * p.sp + p.ph) * 1.6 * DPR;
+      p.x += (p.tx + Math.cos(t * 0.6 + p.ph) * br - p.x) * p.k;
+      p.y += (p.ty + Math.sin(t * 0.8 + p.ph) * br - p.y) * p.k;
+      // 颜色:品牌绿到冷白之间,按每颗自己的随机数分 —— 全绿会腻,全白没人设
+      const lime = p.hue > 0.55;
+      const a = 0.35 + 0.65 * Math.min(1, t * 0.9);
+      g.fillStyle = lime ? `rgba(201,240,61,${a * 0.9})` : `rgba(226,240,255,${a * 0.75})`;
+      g.beginPath();
+      g.arc(p.x, p.y, p.s, 0, 6.2832);
+      g.fill();
+    }
+    g.globalCompositeOperation = 'source-over';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

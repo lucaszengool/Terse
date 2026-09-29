@@ -94,6 +94,17 @@
     0 10px 28px -12px rgba(0,0,0,0.45);
 }
 
+/* Windows: the desktop cannot read through this here, it just shows through.
+   macOS frosts what is behind a transparent window with the page's own
+   backdrop-filter; WebView2's only ever samples the page, so these near-clear
+   tints leave the window see-through and whatever sits behind it — another app,
+   a bright wallpaper — reads straight through the controls. Same hue, carried by
+   the surface. Scoped to .win, so the Mac keeps its glass. */
+html.win[data-theme="horizon"] #bar {
+  background: linear-gradient(160deg, rgba(15,17,22,0.95), rgba(7,9,13,0.97));
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
 html { height: 100%; background: transparent; }
 
 /* Transparent body — glass lives in #bar */

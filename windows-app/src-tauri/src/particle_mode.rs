@@ -201,13 +201,19 @@ unsafe extern "system" fn collect(hwnd: HWND, lp: LPARAM) -> windows::Win32::Fou
 /// never shows that branch.
 #[tauri::command]
 pub fn pm_windows(app: AppHandle) -> Result<Vec<AgentWindow>, String> {
+    Ok(enumerate_windows(scale(Some(&app))))
+}
+
+/// The list itself, without an AppHandle — so it can be exercised directly on a
+/// real desktop by the unit tests, which is the only way anything here gets
+/// tried before a user tries it.
+fn enumerate_windows(k: f64) -> Vec<AgentWindow> {
     registry().lock().unwrap_or_else(|e| e.into_inner()).clear();
     let mut scan = Scan { out: Vec::new(), me: std::process::id() };
     unsafe {
         let _ = EnumWindows(Some(collect), LPARAM(&mut scan as *mut Scan as isize));
     }
     // Physical pixels from Win32, logical for the page.
-    let k = scale(Some(&app));
     for w in &mut scan.out {
         w.x /= k;
         w.y /= k;
@@ -216,7 +222,7 @@ pub fn pm_windows(app: AppHandle) -> Result<Vec<AgentWindow>, String> {
     }
     // Known agents first, then everything else — same order as macOS.
     scan.out.sort_by_key(|w| !w.known);
-    Ok(scan.out)
+    scan.out
 }
 
 fn hwnd_of(id: u32) -> Option<HWND> {
@@ -441,4 +447,48 @@ pub fn pl_send(app: AppHandle, pid: u32, text: String) -> Result<String, String>
         let _ = win.set_focus();
     }
     Ok(t)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A real desktop always has windows; if this comes back empty the walk is
+    /// broken, and the picker would be empty on every machine.
+    #[test]
+    fn lists_the_windows_on_this_desktop() {
+        let wins = enumerate_windows(1.0);
+        assert!(!wins.is_empty(), "no capturable windows found on a live desktop");
+        let mut ids: Vec<u32> = wins.iter().map(|w| w.id).collect();
+        let n = ids.len();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), n, "two windows were handed the same id");
+        for w in &wins {
+            assert!(w.w >= 200.0 && w.h >= 150.0, "{} is smaller than the floor", w.title);
+            assert!(!w.title.trim().is_empty(), "a window with no title was listed");
+            assert!(!w.bundle.to_lowercase().contains("terse"), "listed ourselves: {}", w.bundle);
+        }
+    }
+
+    /// And one of them can actually be turned into a frame. This is the whole
+    /// feature in one line: PrintWindow into a DIB, BGRA to RGB, JPEG out.
+    #[test]
+    fn captures_a_frame_from_a_real_window() {
+        let wins = enumerate_windows(1.0);
+        let mut last = String::new();
+        for w in &wins {
+            let Ok(h) = find_window(w.id) else { continue };
+            match grab_jpeg(h) {
+                Ok((jpg, dw, dh)) => {
+                    assert!(dw > 0 && dh > 0, "captured a frame with no size");
+                    assert!(jpg.len() > 512, "frame is too small to be a picture: {} bytes", jpg.len());
+                    assert_eq!(&jpg[..2], &[0xFF, 0xD8], "not a JPEG");
+                    return;
+                }
+                Err(e) => last = e,
+            }
+        }
+        panic!("no window on this desktop could be captured (last error: {last})");
+    }
 }

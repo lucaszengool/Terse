@@ -50,8 +50,10 @@ pub fn window_text(pid: u32, cap_chars: usize) -> Vec<WindowText> {
         CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_INPROC_SERVER,
         COINIT_APARTMENTTHREADED,
     };
+    use windows::core::Interface;
     use windows::Win32::UI::Accessibility::{
-        CUIAutomation, IUIAutomation, IUIAutomationElement, TreeScope_Subtree,
+        CUIAutomation, IUIAutomation, IUIAutomationElement, IUIAutomationTextPattern,
+        TreeScope_Subtree, UIA_TextPatternId,
     };
     let mut out: Vec<WindowText> = Vec::new();
     let hwnds = windows_of_pid(pid);
@@ -70,6 +72,30 @@ pub fn window_text(pid: u32, cap_chars: usize) -> Vec<WindowText> {
                 };
                 let title = root.CurrentName().map(|s| s.to_string()).unwrap_or_default();
                 let mut text = String::new();
+                // A CONSOLE keeps its contents in a text pattern, not in the
+                // names of child elements — a terminal window walked the way a
+                // dialog is walked reports nothing at all. That matters more
+                // here than anywhere else: Claude Code's CLI prompt ("Do you
+                // want to proceed?") lives in exactly such a window, and CI
+                // caught this reading textlen=0 from a PowerShell window that
+                // had the question on screen.
+                if let Ok(pat) = root.GetCurrentPattern(UIA_TextPatternId) {
+                    if let Ok(tp) = pat.cast::<IUIAutomationTextPattern>() {
+                        if let Ok(range) = tp.DocumentRange() {
+                            if let Ok(t) = range.GetText(cap_chars as i32) {
+                                let t = t.to_string();
+                                // Consoles pad every line to the buffer width.
+                                for line in t.lines() {
+                                    let line = line.trim_end();
+                                    if !line.is_empty() {
+                                        text.push_str(line);
+                                        text.push('\n');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if let Ok(cond) = uia.CreateTrueCondition() {
                     if let Ok(all) = root.FindAll(TreeScope_Subtree, &cond) {
                         let n = all.Length().unwrap_or(0);

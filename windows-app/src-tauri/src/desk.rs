@@ -503,6 +503,7 @@ pub fn desk_overlay_visible(app: AppHandle, show: bool) {
 
 pub fn show_overlay(app: &AppHandle) -> Result<(), String> {
     let a = app.clone();
+    crate::diag_log("desk", "overlay: dispatching to the main thread");
     app.run_on_main_thread(move || {
         if let Err(e) = show_overlay_main(&a) {
             crate::diag_log("desk", &format!("overlay: {e}"));
@@ -524,6 +525,7 @@ fn show_overlay_main(app: &AppHandle) -> Result<(), String> {
         }
         _ => (1440.0, 900.0),
     };
+    crate::diag_log("desk", &format!("overlay: building at {sw}x{sh}"));
     let win = WebviewWindowBuilder::new(app, "desk-overlay", WebviewUrl::App("desk-overlay.html".into()))
         .title("Terse Cursor")
         .decorations(false)
@@ -559,6 +561,10 @@ fn show_overlay_main(app: &AppHandle) -> Result<(), String> {
         }
     }
     let _ = win.show();
+    crate::diag_log(
+        "desk",
+        &format!("overlay: built and shown (visible={:?})", win.is_visible()),
+    );
     Ok(())
 }
 

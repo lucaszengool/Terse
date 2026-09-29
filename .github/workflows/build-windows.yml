@@ -2437,6 +2437,110 @@ jobs:
           Write-Host "CLICKTHRU OK: with the wallpaper lifted above every window, clicks and keys still reach the app underneath"
 
 
+      # The three features ported to Windows that nothing had yet EXERCISED —
+      # they compiled, the app started, and that was all anyone knew.
+      #
+      #   · The start-up picture now owns whether the main window is ever shown.
+      #     If both the frontend call and the 8 s watchdog failed, a user would
+      #     be left with a spinner and no app, so this waits for the window.
+      #   · Approval detection reads other apps' window text through UI
+      #     Automation. A Notepad holding the text of a real Claude prompt is a
+      #     genuine test of the whole chain: find the host, read its text, parse
+      #     it, announce it.
+      #   · The gesture cursor layer is a window that has to exist when the
+      #     feature is on, and stay click-through.
+      - name: The ported features must actually run
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class F{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte sc,uint f,UIntPtr e);
+            public static void Key(byte vk){keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(30);keybd_event(vk,0,2,UIntPtr.Zero);System.Threading.Thread.Sleep(30);}}'
+          function Windows-Named($like) {
+            $script:hits = New-Object System.Collections.ArrayList
+            $cb = [F+Cb]{ param($h,$l)
+              if ([F]::IsWindowVisible($h)) {
+                $sb = New-Object System.Text.StringBuilder 256
+                [void][F]::GetWindowTextW($h, $sb, 256)
+                $t = $sb.ToString()
+                if ($t -like $like) { [void]$script:hits.Add(@{ T = $t; H = $h }) }
+              }
+              return $true }
+            [void][F]::EnumWindows($cb, [IntPtr]::Zero)
+            return $script:hits
+          }
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Remove-Item (Join-Path $dir "approvals.log") -ErrorAction SilentlyContinue
+          Remove-Item (Join-Path $dir "splash.log") -ErrorAction SilentlyContinue
+          # The cursor layer should come back on its own for someone who left it on.
+          '{"enabled":true}' | Set-Content -Path (Join-Path $dir "desk.json") -Encoding ascii
+          '{"enabled":false,"engine":"mineradio","theme":"neon","quality":44,"angle":42,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+
+          # A window that looks exactly like a blocked Claude Code session,
+          # opened BEFORE Terse so the first sweep sees it.
+          $prompt = Join-Path $env:RUNNER_TEMP "approval.txt"
+          @(
+            'Bash(rm -rf build/)',
+            'Do you want to proceed?',
+            '1. Yes',
+            '2. Yes, and do not ask again for similar commands',
+            '3. No, and tell Claude what to do differently (esc)'
+          ) -join "`r`n" | Set-Content -Path $prompt -Encoding utf8
+          $np = Start-Process notepad -ArgumentList $prompt -PassThru
+          Start-Sleep -Seconds 4
+
+          $t0 = Get-Date
+          Start-Process -FilePath "$env:TERSE_EXE"
+          # The main window is now revealed by the splash path. Wait for it the
+          # way a user would: by looking at the screen.
+          $mainAt = $null
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 1
+            $m = Windows-Named "Terse"
+            if ($m.Count -gt 0) { $mainAt = ((Get-Date) - $t0).TotalSeconds; break }
+          }
+          if ($null -eq $mainAt) {
+            Write-Warning "SPLASH FAIL: the main window never appeared — the start-up picture owns that reveal now, and both it and the 8 s watchdog failed"
+            $bad = $true
+          } else {
+            Write-Host ("SPLASH OK: main window appeared {0:N1}s after launch" -f $mainAt)
+          }
+          $sp = Join-Path $dir "splash.log"
+          if (Test-Path $sp) { Get-Content $sp | ForEach-Object { Write-Host "  splash: $_" } }
+
+          # Give the approvals sweep a few passes (it runs every 1.5 s).
+          Start-Sleep -Seconds 14
+          $al = Join-Path $dir "approvals.log"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $al) { Copy-Item $al artifacts/approvals.log }
+          $at = if (Test-Path $al) { Get-Content $al -Raw } else { "" }
+          if ($at -match 'MATCHED') {
+            Write-Host "APPROVALS OK: the prompt on screen was read through UI Automation and recognised"
+          } elseif ($at -match 'textlen=([1-9]\d+)') {
+            Write-Warning "APPROVALS PARTIAL: window text was read but no prompt was recognised — the parser and the text disagree"
+          } else {
+            Write-Warning "APPROVALS FAIL: no window text was read at all (UI Automation returned nothing)"
+            if (Test-Path $al) { Get-Content $al -Tail 12 | ForEach-Object { Write-Host "  $_" } }
+          }
+
+          # The gesture cursor layer, which autostart should have brought back.
+          $deskWin = Windows-Named "Terse Cursor"
+          if ($deskWin.Count -gt 0) {
+            $ex = [F]::GetWindowLongPtrW($deskWin[0].H, -20)
+            $through = ($ex -band 0x20) -ne 0    # WS_EX_TRANSPARENT
+            Write-Host "DESK: cursor layer present, click-through=$through"
+            if (-not $through) { Write-Warning "DESK FAIL: the cursor layer takes clicks — it is a drawing, everything under it belongs to the desktop"; $bad = $true }
+          } else {
+            Write-Warning "DESK: no cursor layer window (Pro gate or autostart) — not failing the build on it"
+          }
+          $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Remove-Item (Join-Path $dir "desk.json") -ErrorAction SilentlyContinue
+          if ($bad) { throw "a ported feature did not run" }
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

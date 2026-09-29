@@ -34,6 +34,20 @@ pub fn finish(app: &tauri::AppHandle, why: &str) {
         let _ = s.close();
     }
     if let Some(m) = app.get_webview_window("main") {
+        // ⚠ Strip the frame IMMEDIATELY before showing, every time.
+        //
+        // The reveal used to sit in setup(), after the sweep that strips every
+        // window's native frame — and that ordering is the only reason the ghost
+        // "Terse" caption stopped appearing. Moving the reveal here reopens the
+        // race: the frontend's script chain can finish, and call app_ready,
+        // before setup() has reached that sweep, and Windows paints a caption on
+        // a transparent window that nothing ever repaints over.
+        //
+        // Idempotent, so paying for it on the watchdog path too costs nothing.
+        #[cfg(target_os = "windows")]
+        if let Ok(raw) = m.hwnd() {
+            crate::install_frame_guard(windows::Win32::Foundation::HWND(raw.0));
+        }
         let _ = m.show();
         let _ = m.set_focus();
     }

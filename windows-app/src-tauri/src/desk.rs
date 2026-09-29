@@ -570,7 +570,19 @@ pub fn hide_overlay(app: &AppHandle) {
 
 /// Bring the cursor layer back at launch for someone who left it on.
 pub fn autostart(app: AppHandle) {
-    if (enabled() || crate::hands::enabled()) && crate::license::License::load().is_pro() {
-        let _ = show_overlay(&app);
+    // Logged either way. "The cursor layer did not come back" has three
+    // different causes — the switch is off, gestures are off, the licence is
+    // not Pro — and they are indistinguishable from outside.
+    let desk = enabled();
+    let hands = crate::hands::enabled();
+    let pro = crate::license::License::load().is_pro();
+    crate::diag_log(
+        "desk",
+        &format!("autostart: desk={desk} hands={hands} pro={pro}"),
+    );
+    if (desk || hands) && pro {
+        if let Err(e) = show_overlay(&app) {
+            crate::diag_log("desk", &format!("autostart: overlay failed — {e}"));
+        }
     }
 }

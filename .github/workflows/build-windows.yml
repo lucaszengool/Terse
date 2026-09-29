@@ -2488,8 +2488,12 @@ jobs:
             '2. Yes, and do not ask again for similar commands',
             '3. No, and tell Claude what to do differently (esc)'
           ) -join "`r`n" | Set-Content -Path $prompt -Encoding utf8
-          $np = Start-Process notepad -ArgumentList $prompt -PassThru
-          Start-Sleep -Seconds 4
+          # In a POWERSHELL window, not Notepad. The scanner only reads the
+          # processes agents actually run in, and Notepad is rightly not one of
+          # them — the first version of this check planted the prompt where
+          # nothing would ever look and then reported that nothing was found.
+          $np = Start-Process powershell -PassThru -ArgumentList "-NoProfile", "-NoExit", "-Command", "Get-Content '$prompt'"
+          Start-Sleep -Seconds 6
 
           $t0 = Get-Date
           Start-Process -FilePath "$env:TERSE_EXE"
@@ -2526,6 +2530,8 @@ jobs:
           }
 
           # The gesture cursor layer, which autostart should have brought back.
+          $dl = Join-Path $dir "desk.log"
+          if (Test-Path $dl) { Copy-Item $dl artifacts/desk.log; Get-Content $dl -Tail 6 | ForEach-Object { Write-Host "  desk: $_" } }
           $deskWin = Windows-Named "Terse Cursor"
           if ($deskWin.Count -gt 0) {
             $ex = [F]::GetWindowLongPtrW($deskWin[0].H, -20)

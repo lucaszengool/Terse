@@ -415,6 +415,31 @@ jobs:
                 ConvertTo-Json -Depth 4 | Set-Content "$home2\license.json" -Encoding UTF8
             } else { Remove-Item "$home2\license.json" -ErrorAction SilentlyContinue }
           }
+          # Wait for the main window to actually exist. 1.4.0 shows a splash and
+          # keeps the main window hidden until the frontend reports app_ready, so
+          # a fixed sleep photographed an empty desktop and every sidebar press
+          # after it found nothing on screen.
+          function WaitForWindow([int]$maxSec = 90) {
+            $A = [System.Windows.Automation.AutomationElement]
+            $deadline = (Get-Date).AddSeconds($maxSec)
+            while ((Get-Date) -lt $deadline) {
+              $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+              foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+                if ($procs -notcontains $w.Current.ProcessId) { continue }
+                if ($w.Current.Name -match 'Island|Pill|Wallpaper|Splash') { continue }
+                $r = $w.Current.BoundingRectangle
+                if ($r.Width -gt 400 -and $r.Height -gt 300) {
+                  Write-Host "window up: '$($w.Current.Name)' after $([int]((Get-Date) - $deadline.AddSeconds(-$maxSec)).TotalSeconds)s"
+                  Start-Sleep -Seconds 4
+                  return $true
+                }
+              }
+              Start-Sleep -Seconds 3
+            }
+            Write-Host "::warning::no main window within ${maxSec}s"
+            return $false
+          }
+
           $script:p = $null
           function Launch([int]$settle) {
             # A fresh grace window each launch. It is 15 minutes long and a
@@ -517,7 +542,8 @@ jobs:
           # empty; over its own particle field the same UI reads dark and sharp,
           # and the frame shows what the product actually looks like running.
           Wallpaper 'cinematic' 'vortex' $true
-          Launch 35
+          Launch 20
+          WaitForWindow | Out-Null
           Onboard
           CloseStrays
           Front | Out-Null
@@ -553,7 +579,8 @@ jobs:
                 @('cinematic','starfall',$true, 'win'),
                 @('cinematic','aurora',$true,   'win'))) {
             Wallpaper $sc[0] $sc[1] $sc[2]
-            Launch 35
+            Launch 20
+            WaitForWindow | Out-Null
             Onboard 60
             CloseStrays
             if ($sc[3] -eq 'win') {
@@ -588,7 +615,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v13
+          name: Terse-Store-Screenshots-v14
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

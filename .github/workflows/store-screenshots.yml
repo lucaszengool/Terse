@@ -27,7 +27,7 @@ name: Store screenshots (Windows)
 # Runs on its own so retaking photos never costs a rebuild of a verified package.
 on:
   push:
-    branches: [store/submission-2]
+    branches: [store/submission-4]
     paths: ['.github/workflows/store-screenshots.yml']
   workflow_dispatch:
     inputs:
@@ -545,10 +545,48 @@ jobs:
           Page '17-app-settings'  '^Settings$'
           Quit
 
-          # The live wallpaper gets its listing frame from the Wallpaper page
-          # above, not from a photograph of the desktop: those came back as a
-          # washed-out glass window over a bright wallpaper, which is what
-          # certification rejected twice (10.1.1.3).
+          # ── The live wallpaper, its 3D styles, and the agent text ─────────
+          # These are the frames people stop scrolling for, and they are as
+          # direct as the rest: Terse draws the desktop itself, so the capture is
+          # the product. The main window stays in frame in the first pair, so the
+          # app is never in doubt; the last pair is the wallpaper alone with the
+          # agent's own steps written across it in particles, plus the island.
+          # Pro styles need Pro, so the capture licence stays on for them.
+          License $true
+          $n = 20
+          foreach ($sc in @(
+                @('cinematic','vortex',$true,   'win'),
+                @('cinematic','orbit',$true,   'win'),
+                @('cinematic','starfall',$true, 'bare'),
+                @('cinematic','neon',$false,    'bare'))) {
+            Wallpaper $sc[0] $sc[1] $sc[2]
+            Launch 35
+            Onboard 60
+            CloseStrays
+            if ($sc[3] -eq 'win') {
+              Front | Out-Null
+              Start-Sleep -Seconds 10
+            } else {
+              # Leave the wallpaper as the subject: minimise the window, keep the
+              # island (it is Terse's own, and it names the app in the frame).
+              $A = [System.Windows.Automation.AutomationElement]
+              $procs = @(Get-Process Terse -ErrorAction SilentlyContinue | ForEach-Object Id)
+              foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+                if ($procs -notcontains $w.Current.ProcessId) { continue }
+                if ($w.Current.Name -match 'Island|Pill|Wallpaper') { continue }
+                try { $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).SetWindowVisualState([System.Windows.Automation.WindowVisualState]::Minimized) } catch {}
+              }
+              Start-Sleep -Seconds 12
+            }
+            $tag = "$($sc[1])" + $(if ($sc[2]) { '-3d' } else { '' }) + "-$($sc[3])"
+            # The particle text writes itself one step at a time, so take a few
+            # and keep the one where a whole word has formed.
+            foreach ($i in 1..6) { Snap ("{0}-wall-{1}-{2:d2}" -f $n, $tag, $i); Start-Sleep -Seconds 7 }
+            Dump "wall-$tag"
+            Quit
+            $n++
+          }
+
           StopDemo
 
           Get-ChildItem $home2 -Filter *.log -ErrorAction SilentlyContinue | Copy-Item -Destination $out

@@ -3538,14 +3538,6 @@ fn minimize_window(app: AppHandle) {
     }
 }
 
-/// Quit for real. ✕ only hides to the tray, so this (titlebar ⏻ / Ctrl+Q)
-/// is the way out that doesn't depend on finding the tray icon.
-#[tauri::command]
-fn quit_app(app: AppHandle) {
-    shutdown_children(&app);
-    app.exit(0);
-}
-
 #[tauri::command]
 fn navigate_to_cowork(app: AppHandle) {
     navigate_main(&app, "cowork.html");

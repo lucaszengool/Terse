@@ -512,25 +512,18 @@ jobs:
           DemoSession
           Auth
           License $true
-          # The desktop stays plain: the interface is what these frames are
-          # about, and the Wallpaper page shows that feature itself.
-          WallpaperOff
+          # The live wallpaper stays ON behind the window. Maximised on a plain
+          # desktop the glass theme washed out to near-white with half the frame
+          # empty; over its own particle field the same UI reads dark and sharp,
+          # and the frame shows what the product actually looks like running.
+          Wallpaper 'cinematic' 'vortex' $true
           Launch 35
           Onboard
           CloseStrays
           Front | Out-Null
           Start-Sleep -Seconds 3
-          # Fill the screen for good. A 996x659 window on a bare desktop, cropped
-          # to the listing's 1366x768, is what certification read as a mockup
-          # three times: the product has to BE the frame.
-          Grow $true | Out-Null
-          $script:grown = $true
-          # The shell redraws the desktop and the taskbar from scratch, which is
-          # the one thing that clears what the resize left behind.
-          Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+          # Not maximised: see above.
           Start-Sleep -Seconds 10
-          Front | Out-Null
-          Start-Sleep -Seconds 8
           Snap '10-app-overview'
           # The sidebar is translated at runtime, so each pattern carries the
           # English label and the Chinese one from i18n.js.
@@ -557,8 +550,8 @@ jobs:
           foreach ($sc in @(
                 @('cinematic','vortex',$true,   'win'),
                 @('cinematic','orbit',$true,   'win'),
-                @('cinematic','starfall',$true, 'bare'),
-                @('cinematic','neon',$false,    'bare'))) {
+                @('cinematic','starfall',$true, 'win'),
+                @('cinematic','aurora',$true,   'win'))) {
             Wallpaper $sc[0] $sc[1] $sc[2]
             Launch 35
             Onboard 60
@@ -595,7 +588,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Terse-Store-Screenshots-v12
+          name: Terse-Store-Screenshots-v13
           path: ${{ runner.temp }}/shots
           if-no-files-found: warn
           retention-days: 30

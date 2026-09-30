@@ -247,7 +247,7 @@ pub fn mcp_list() -> Value {
 
 /// Move a server between `mcpServers` and `mcpServersDisabled` in its own config
 /// file. Round-trips the whole document as JSON so unrelated keys survive.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn mcp_set_enabled(source_path: String, name: String, enabled: bool) -> Result<bool, String> {
     let path = PathBuf::from(&source_path);
     let mut v = read_json(&path).ok_or_else(|| "config not readable".to_string())?;

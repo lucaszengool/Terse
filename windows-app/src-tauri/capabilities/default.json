@@ -2,6 +2,7 @@
   "identifier": "default",
   "description": "Default capability for Terse windows",
   "windows": [
+    "splash",
     "main",
     "popup",
     "pet",

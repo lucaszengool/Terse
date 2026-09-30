@@ -181,7 +181,7 @@ export function sampleBlock(rows, n) {
   // 排在同一张画布上,行距、字号、居中都由排版决定,采样只负责把它变成粒子。
   const W = 1024;
   const pad = 10;
-  const fontOf = (px, weight) => `${weight || 700} ${px}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif`;
+  const fontOf = (px, weight) => `${weight || 700} ${px}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif`;
   let H = pad;
   for (const r of rows) H += Math.round(r.px * 1.42);
   H += pad;
@@ -278,7 +278,7 @@ export function sampleBlock(rows, n) {
 function sampleLabel(name, n, maxAspect) {
   const H = 44, PAD = 4;
   const probe = document.createElement('canvas').getContext('2d');
-  const font = `700 ${H}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif`;
+  const font = `700 ${H}px -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif`;
   probe.font = font;
   let t = String(name || '').trim();
   if (!t) return null;

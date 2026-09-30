@@ -197,6 +197,12 @@ if (window.__TAURI__) {
     // 演成一段粒子缩影。上传的也是这颗胶囊 —— 别人在自己机器上生成同样的粒子,
     // 服务器只存 JSON,不渲染、不转码。
     navigateToProjects: () => invoke('navigate_to_projects'),
+    navigateToSocial: () => invoke('navigate_to_social'),
+    /* The install's social identity, read from (or minted into)
+       ~/.terse/social-identity. The same file the setup prompt tells the agent
+       to read — that shared file is what makes the card an agent drafted and the
+       card this app shows the SAME card. */
+    socialIdentity: () => invoke('social_identity'),
     // 文件夹选择器复用知识图谱那条已经在用的命令 —— 不给同一件事开第二条路。
     pickFolder: () => invoke('graph_pick_folder'),
     projectList: () => invoke('project_list'),

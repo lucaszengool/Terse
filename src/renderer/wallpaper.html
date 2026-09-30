@@ -13,7 +13,8 @@
     /* 置顶模式:页面自己不能有底色。窗口已经是 non-opaque + clearColor,
        只要这里还留着 #05060a,置顶后就是一块盖住整个屏幕的黑板。 */
     html.overlay, html.overlay body, html.overlay #stage { background: transparent !important; }
-    #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh}
+    /* z-index 1:壁纸粒子层(photo-particles)是一块 z-index 0 的 canvas,垫在这块后面。 */
+    #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh;z-index:1}
     #panel{position:fixed;left:30px;bottom:30px;padding:15px 20px;border-radius:18px;
       background:rgba(10,12,20,.30);backdrop-filter:blur(18px) saturate(1.2);
       -webkit-backdrop-filter:blur(18px) saturate(1.2);border:1px solid rgba(255,255,255,.11);
@@ -168,7 +169,10 @@
     // static import gives no way to catch it or even name it. A dynamic import
     // hands back a real error, and a failed engine becomes a wallpaper that does
     // not draw rather than a sheet over the user's screen.
-    let TokenWallpaper3D = null, MineradioWallpaper = null;
+    let TokenWallpaper3D = null, MineradioWallpaper = null, ChladniWallpaper = null;
+    /* 引擎之外的一层(见下面 applyPhotoLayer)。和引擎走同一条动态 import ——
+       它加载失败只该少一层,不该把整页拖下水。 */
+    let PhotoParticles = null;
     async function loadEngines(){
       const one = async (path) => {
         try { return (await import(path)).default; }
@@ -179,8 +183,12 @@
       };
       MineradioWallpaper = await one('./mineradio-wallpaper.js');
       TokenWallpaper3D   = await one('./token-wallpaper-3d.js');
+      ChladniWallpaper   = await one('./chladni-wallpaper.js');
+      PhotoParticles     = await one('./photo-particles.js');
       reportOverlayState('page engines loaded mineradio=' + !!MineradioWallpaper +
-                         ' topography=' + !!TokenWallpaper3D);
+                         ' topography=' + !!TokenWallpaper3D +
+                         ' chladni=' + !!ChladniWallpaper +
+                         ' photoParticles=' + !!PhotoParticles);
     }
     const T = window.terse;
     // 两个引擎 API 完全一致,所以下面的轮询/统计代码一行都不用分叉。
@@ -191,8 +199,13 @@
     // back to the free engine and the desktop looked identical.
     // Resolved at call time, not at parse time — the classes do not exist until
     // loadEngines() has run.
+    //   chladni    = 声之形(Chladni 粉末迷宫,Pro)—— 自带一整套画面,
+    //                不走 mineradio 的风格表,所以它是引擎而不是 style。
+    // 取不到就退回 mineradio:引擎加载失败时宁可画默认那张,也不能让桌面空着。
     const engineOf = c => (c && c.engine === 'topography')
       ? (TokenWallpaper3D || MineradioWallpaper)
+      : (c && c.engine === 'chladni')
+      ? (ChladniWallpaper || MineradioWallpaper)
       : MineradioWallpaper;
     const canvas = document.getElementById('stage');
     const panel = document.getElementById('panel');
@@ -206,7 +219,11 @@
       return (v && v !== key) ? v : fallback;
     };
 
-    let wp = null, lastTokens = null, cfg = { engine:'mineradio', style:'cinematic', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
+    let wp = null, lastTokens = null, cfg = { engine:'mineradio', style:'cinematic', theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true,
+      // 壁纸粒子层。默认关 —— 老配置里没有这个字段,升级不该改变任何人已经在看的画面。
+      photoParticles:false };
+    /** 壁纸粒子层的实例(独立于 wp,见 applyPhotoLayer) */
+    let photo = null;
     /** null = not checked yet (treat as entitled), true/false = a definite answer.
      *  Only an explicit false downgrades the field — see mountEngine. */
     let proOK = null;
@@ -259,7 +276,10 @@
                            intensity: cfg.intensity,
                            // 粒子风格。引擎自己会把非 Pro 一律钉回默认风格,所以这里
                            // 照传即可 —— 掉出 Pro 的用户会同时失去 Pro 的字和 Pro 的风格。
-                           style: cfg.style,
+                           // 「星轨炸环」是一台把风格钉死的引擎(见 wallpaper-control.html
+                           // 的 ENGINE_STYLE):它不是你桌面图上的另一种字,整张画面
+                           // 都是它的。照 cfg.style 走的话,选了炸环却画出上一次那种字。
+                           style: cfg.engine === 'orbit' ? 'orbit' : cfg.style,
                            // 用户自己调的那份差量,和 style 一起走同一条 Pro 闸门。
                            custom: cfg.customStyle || null,
                            // 保存下来的 3D 机位。引擎对非 Pro 一律把 on 与掉,
@@ -268,9 +288,61 @@
                            // 3D 按**许可**卖,不按引擎:付了钱但把引擎留在默认
                            // mineradio 的人,照样该能把桌面上的壁纸转起来。
                            proView: proOK !== false,
-                           pro: cfg.engine === 'cinematic' && proOK !== false });
+                           pro: (cfg.engine === 'cinematic' || cfg.engine === 'orbit') && proOK !== false });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
+      // 引擎换了,这一层要不要画也可能跟着变(光柱地形不透明,垫在它后面没有意义)。
+      applyPhotoLayer();
+    }
+
+    /* ── 壁纸粒子层 ────────────────────────────────────────────────────────
+       把**用户自己那张桌面图**也采样成粒子,垫在引擎那块画布**后面**(photo-particles.js)。
+
+       它是一层,不是某个引擎的一个特性:开着的时候,底图和引擎的粒子看起来是
+       同一种材质;关掉就是把这块 canvas 拆掉,底下原来那张壁纸露出来 ——
+       画面回到"原壁纸 + 引擎的粒子",和从来没有过这个功能一样。所以它和
+       mineradio / 电影级 / 星轨炸环 / 声之形 都能搭,引擎那边一行都不用改。
+
+       两条否决,都和「置顶」那条同源:
+         · 置顶模式下一律不画。这一层是不透明的(没粒子的地方是黑),抬到所有窗口
+           之上就是一块糊死屏幕的黑板。
+         · 光柱地形的画布本身不透明,垫在它后面只是白烧一块 GPU。 */
+    function photoLayerOK(){
+      return cfg.photoParticles === true &&
+             cfg.enabled !== false &&
+             !document.documentElement.classList.contains('overlay') &&
+             cfg.engine !== 'topography';
+    }
+
+    function applyPhotoLayer(){
+      const want = photoLayerOK();
+      if (want && !photo) {
+        if (!PhotoParticles) return;              // 没加载成功就当没有这一层
+        try {
+          photo = new PhotoParticles(document.body);
+          /* 出场的第一秒是"你原本那张壁纸"(粒子层还是透明的),所以**底下必须真的是那张图**。
+             mineradio 引擎会自己把壁纸铺到 body 上,但声之形/光柱地形不会 ——
+             mountEngine 给的是 #05060a 纯黑,那一秒就成了"从黑里化出来",
+             整个"先看清它原本长什么样"的意思就没了。这里补上同一张图。 */
+          if (T && T.getDesktopPicture) {
+            T.getDesktopPicture().then((src) => {
+              if (src && photo) document.body.style.background =
+                `#05060a url(${JSON.stringify(src)}) center/cover no-repeat`;
+            }).catch(() => {});
+          }
+          photo.start();
+          window.__tersePhoto = photo;            // dev aid,和 window.wp 同一个用处
+        } catch (e) {
+          photo = null;
+          reportOverlayState('page photo layer FAILED ' + (e && e.message || e));
+        }
+      } else if (!want && photo) {
+        try { photo.dispose(); } catch (e) {}
+        photo = null; window.__tersePhoto = null;
+        // 关掉这一层时把床还回引擎自己的那一套(mineradio 会重新铺;别的引擎回到纯黑)
+        document.body.style.background = overlayOK() ? '' : '#05060a';
+        if (wp && wp.refreshPhoto) { try { wp.refreshPhoto(); } catch (e) {} }
+      }
     }
 
     /** 只有粒子引擎能透明:mineradio/cinematic 是 alpha:true + clearColor 全 0,
@@ -291,13 +363,15 @@
     function overlayOK(c){
       const k = c || cfg;
       return k.overlay === true &&
-             (k.engine === 'mineradio' || k.engine === 'cinematic');
+             (k.engine === 'mineradio' || k.engine === 'cinematic' || k.engine === 'orbit');
     }
 
     /** 置顶模式的页面这一半:窗口层级由 Rust 改,这里只负责"别画背景"。 */
     function applyOverlay(on){
       document.documentElement.classList.toggle('overlay', !!on);
       if (wp && wp.setOverlay) wp.setOverlay(!!on);
+      // 置顶开着就不能有这一层(它不透明)。顺序要紧:class 先落地,photoLayerOK 读的就是它。
+      applyPhotoLayer();
     }
 
     /** 把这一半**实际画成什么样**如实写进日志,而不是留给下一个人看截图猜。
@@ -338,7 +412,8 @@
       // 散完再换。音域回响引擎没有这个方法,判空即可。
       // 第二个参数一定要传:省略表示"别动自定义",而这里正是自定义可能变了的地方。
       if (wp.setStyle) wp.setStyle(cfg.style, cfg.customStyle || null);
-      applyOverlay(overlayOK());
+      applyOverlay(overlayOK());   // 里面会跟着把壁纸粒子层开/关
+      applyPhotoLayer();           // 开关本身变了的情况(引擎没换,applyOverlay 的结论也没变)
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
       // 3D 自由视角。控制面板里一拖,桌面上这幅画就跟着转 —— 那是这个功能最直接的
@@ -540,6 +615,7 @@
       const totalBurn = active.reduce((s,a) => s + (+a.burnRate || 0), 0);
       const activity = Math.min(1, (active.length ? 0.08 : 0) + totalBurn / 4500);
       wp.setActivity(activity);
+      if (photo) photo.setActivity(activity);   // 同一份活跃度:两层荡得一样活
 
       // Feed the in-scene overlays (or clear them when the panel is hidden).
       if (!show) { wp.setAgents([]); wp.setStageItems([]); wp.setAgentLog(null); return; }
@@ -765,7 +841,7 @@
       setInterval(async () => {
         const was = proOK;
         await refreshEntitlement();
-        if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
+        if (was !== proOK && (cfg.engine === 'cinematic' || cfg.engine === 'orbit')) mountEngine();
         if (was !== proOK) apply3dMode();     // 掉出 Pro 就该把抬起来的这层放回去
         if (was !== proOK) {
           // 只请 Rust 重新判定,自己不下结论 —— 结果会由 wallpaper-overlay 事件推回来。
@@ -795,8 +871,13 @@
         // 否则那就是一块盖住桌面图标的黑板(和「始终置顶」同一个坑,同一套画法)。
         window.__TAURI__.event.listen('wallpaper-lift', ev => applyOverlay(!!ev.payload || overlayOK()));
       }
-      document.addEventListener('visibilitychange', () => { if (!wp || window.__terseTownOn) return; document.hidden ? wp.stop() : wp.start(); });
-      window.addEventListener('resize', () => wp && wp.resize());
+      document.addEventListener('visibilitychange', () => {
+        if (window.__terseTownOn) return;
+        if (photo) { document.hidden ? photo.stop() : photo.start(); }
+        if (!wp) return;
+        document.hidden ? wp.stop() : wp.start();
+      });
+      window.addEventListener('resize', () => { if (wp) wp.resize(); if (photo) photo.resize(); });
     }
     boot();
     // 诊断:这一层到底收不收得到鼠标。桌面层的窗口收不到点击是这个功能最主要的坑,
@@ -834,6 +915,16 @@
          所以这里**不查 bareSpot**:调节态里连图标上的点击也归我们 —— 那正是用户
          按那颗钮的意思。它有明确的进出,而且那颗钮一直亮着提醒他自己在哪。 */
       var adjustOn = false;
+      // Whether the window is currently ABOVE other windows. Rust is the single
+      // source of truth (wallpaper-overlay), and the arm path above refuses to
+      // take the mouse while it is true.
+      var overlayNow = false;
+      try {
+        if (window.__TAURI__ && window.__TAURI__.event) {
+          window.__TAURI__.event.listen('wallpaper-overlay', function (ev) { overlayNow = !!ev.payload; });
+        }
+        if (core) core.invoke('wallpaper_overlay_effective').then(function (v) { overlayNow = !!v; }).catch(function () {});
+      } catch (e) {}
 
       function setAdjust(on) {
         console.log('[wp3d] setAdjust', on, 'engine=', !!(wp && wp.attachOrbit),
@@ -945,6 +1036,14 @@
       }
 
       function setArmed(on) {
+        /* ⚠ 壁纸「始终置顶」的时候,自动 arm 一律不做。
+           自动 arm 的判据是"指针压在字上":壁纸待在桌面图标后面时,这最多把桌面
+           上的一下点击收过来;可一旦抬到所有窗口之上,壁纸铺满整个屏幕,指针几秒
+           内必然压到某个字上,从那一刻起**每个 app 里的每一次点击都落在壁纸上**。
+           有用户报过:开了置顶之后什么都点不了,好几次只能从任务管理器结束进程。
+           要在置顶状态下点字,用灵动岛旁边那颗「调节」钮 —— 那是人明确按进来的,
+           按钮亮着,Esc 也退得掉。Rust 那边同样会拒绝(wallpaper_set_interactive)。*/
+        if (on && !adjustOn && overlayNow) return;
         // 转视角期间不许把鼠标还回去:自动 arm 那套的判据是"指针压在字上",
         // 而拖动时指针大部分时间都不在字上 —— 让它说了算,拖到一半就断手。
         if (!on && orbitOn) return;

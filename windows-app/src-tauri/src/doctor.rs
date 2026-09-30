@@ -2375,15 +2375,23 @@ pub fn apply_fix(app: &AppHandle, finding: &Value) -> Value {
                         .and_then(|v| v.as_str())
                 })
                 .unwrap_or("Privacy_AllFiles");
-            let url = format!("x-apple.systempreferences:com.apple.preference.security?{pane}");
-            let opened = std::process::Command::new("open")
-                .arg(&url)
+            // macOS opens the Security pane for the named grant. Windows has no
+            // equivalent grant, so the honest destination is the Settings page
+            // that owns whatever the scan complained about; `start` is how a
+            // desktop app opens an ms-settings: URI.
+            let uri = match pane {
+                "Privacy_ScreenCapture" => "ms-settings:privacy-broadfilesystemaccess",
+                "Privacy_Accessibility" => "ms-settings:easeofaccess",
+                _ => "ms-settings:privacy",
+            };
+            let opened = crate::hidden_command("cmd")
+                .args(["/C", "start", "", uri])
                 .status()
                 .map(|s| s.success())
                 .unwrap_or(false);
             if opened {
                 json!({ "ok": true, "kind": "permission",
-                        "message": "System Settings opened — enable Terse, then re-scan.",
+                        "message": "Settings opened — check the switch there, then re-scan.",
                         "steps": fix_steps_for("grant-permission", id) })
             } else {
                 json!({ "ok": false, "message": "Could not open System Settings." })

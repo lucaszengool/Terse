@@ -1488,7 +1488,7 @@ pub fn rl_fetch_file(room_id: String, key: String, room_name: String, file: Valu
 }
 
 /// 在 Finder 里显示一个收下的文件(只认隔离文件夹里的路径)
-#[tauri::command]
+#[tauri::command(async)]
 pub fn rl_reveal(path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if !p.starts_with(inbox_root()) {

@@ -2,6 +2,9 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
+  <!-- WebView2 paints form controls and scrollbars as silver Windows widgets on a
+       dark page unless the scheme is declared; macOS happened to default to ours. -->
+  <meta name="color-scheme" content="dark">
 <title>Terse Sessions</title>
 <style>
   /* 背后是 NSVisualEffectView(HudWindow,不透明度压到 0.62)那层真的毛玻璃 —— 尽量透。
@@ -14,11 +17,11 @@
   /* 输入框(不是粒子 —— 打字要真的输入框)。回车 = 发给这一段会话 */
   .bar{display:none;position:absolute;box-sizing:border-box;height:34px;padding:0 12px;
     border-radius:10px;border:1px solid rgba(201,240,61,.45);background:rgba(10,12,18,.62);color:#F4F6FA;
-    font:500 13px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;outline:none;-webkit-user-select:text;user-select:text}
+    font:500 13px -apple-system,BlinkMacSystemFont,"PingFang SC",'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',sans-serif;outline:none;-webkit-user-select:text;user-select:text}
   .bar::placeholder{color:rgba(214,219,228,.55)}
   .bar:focus{border-color:#C9F03D;background:rgba(10,12,18,.8)}
   /* 输入框下 / 上那一行:这次回车会怎么送(直接送进去 / 在 Claude 里替你打字) */
-  .hint{display:none;position:absolute;box-sizing:border-box;height:16px;font:600 11px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+  .hint{display:none;position:absolute;box-sizing:border-box;height:16px;font:600 11px -apple-system,BlinkMacSystemFont,"PingFang SC",'Segoe UI Variable Text','Segoe UI','Microsoft YaHei UI',sans-serif;
     color:rgba(214,219,228,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;text-shadow:0 0 4px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.95)}
   /* 预览的回复框放在标题那几行正下方(原来贴窗口底边,经常被程序坞挡住看不到) */
   #reply{left:422px;top:112px;width:512px}

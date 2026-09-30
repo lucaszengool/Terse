@@ -76,6 +76,17 @@ html, body.dash-mode {
   backdrop-filter: blur(8px) saturate(1.35) brightness(1.03);
 }
 
+/* Windows: the desktop cannot read through this here, it just shows through.
+   macOS frosts what is behind a transparent window with the page's own
+   backdrop-filter; WebView2's only ever samples the page, so these near-clear
+   tints leave the window see-through and whatever sits behind it — another app,
+   a bright wallpaper — reads straight through the controls. Same hue, carried by
+   the surface. Scoped to .win, so the Mac keeps its glass. */
+html.win .dash-root {
+  background: linear-gradient(160deg, rgba(15,17,22,0.95) 0%, rgba(7,9,13,0.97) 100%);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
 /* moving sheen across the top edge */
 .dash-sheen {
   position: absolute; inset: 0; pointer-events: none; border-radius: 20px;

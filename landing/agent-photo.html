@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<title>Send photos to your Terse card</title>
+<!--
+  The phone half of the photo hand-off.
+
+  WHY THIS PAGE EXISTS AT ALL. An agent drafting a social card can usually write
+  a decent bio from what is on the machine. It almost never has a photo it is
+  actually entitled to use — the good ones are on a phone. So the fallback is a
+  QR: the desktop shows it, the phone opens this, and the pictures walk across
+  without either device learning anything about the other.
+
+  WHY THE TOKEN IN THE URL IS THE WHOLE CREDENTIAL. A phone camera opening a
+  link cannot send a custom header, so there is nothing else it could be. That
+  makes the token's blast radius the thing to design: it is minted per card, it
+  expires in twenty minutes, it can do exactly one thing (add images to one
+  pending card), and the moment the desktop picks the photos up it is burnt.
+
+  WHY THE RESIZE HAPPENS HERE AND NOT ON THE SERVER. A modern phone photo is
+  4–8MB. Uploading that to shrink it server-side would cost the bandwidth twice
+  and the CPU once, for a picture that is displayed at 220px. Drawing it to a
+  canvas first means the network only ever carries the version that gets stored.
+-->
+<style>
+  :root {
+    --bg: #07070a;
+    --card: #131319;
+    --line: #26262f;
+    --ink: #f2f2f5;
+    --muted: #8b8b98;
+    --accent: #6c5ce7;
+    --ok: #33c481;
+    --bad: #ff6b6b;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+    min-height: 100dvh;
+    padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+    max-width: 560px; margin: 0 auto;
+  }
+  h1 { font-size: 21px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 18px;
+  }
+  .drop {
+    display: block; text-align: center; padding: 30px 16px;
+    border: 1.5px dashed var(--line); border-radius: 14px;
+    color: var(--muted); cursor: pointer;
+  }
+  .drop strong { display: block; color: var(--ink); font-size: 16px; margin-bottom: 4px; }
+  input[type=file] { display: none; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .thumb { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #000; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb button {
+    position: absolute; top: 4px; right: 4px; width: 24px; height: 24px;
+    border: 0; border-radius: 50%; background: rgba(0,0,0,.65); color: #fff;
+    font-size: 15px; line-height: 24px; padding: 0; cursor: pointer;
+  }
+  .btn {
+    display: block; width: 100%; margin-top: 16px; padding: 14px;
+    border: 0; border-radius: 12px; background: var(--accent); color: #fff;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  .btn[disabled] { opacity: .4; cursor: default; }
+  .note { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .status { margin-top: 14px; font-size: 14px; min-height: 20px; }
+  .status.ok { color: var(--ok); }
+  .status.bad { color: var(--bad); }
+  .done { text-align: center; padding: 40px 10px; }
+  .done .tick { font-size: 40px; color: var(--ok); }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Send photos to your card</h1>
+<p class="sub">They go straight onto the Terse agent card open on your computer. Nothing is posted anywhere else.</p>
+
+<div id="form" class="card">
+  <label class="drop" for="pick">
+    <strong>Choose photos</strong>
+    Up to <span id="maxN">6</span> · camera roll or camera
+  </label>
+  <input id="pick" type="file" accept="image/*" multiple />
+  <div id="grid" class="grid"></div>
+  <button id="send" class="btn" disabled>Send</button>
+  <div id="status" class="status"></div>
+  <p class="note">Pictures are shrunk on this phone before they are sent, so only the small version ever leaves it. This link stops working in 20 minutes.</p>
+</div>
+
+<div id="done" class="card done hide">
+  <div class="tick">✓</div>
+  <p><strong id="doneN">Photos</strong> sent.</p>
+  <p class="sub" style="margin:0">Go back to Terse on your computer — they are waiting on the card.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var MAX_PHOTOS = 6;
+  /* Must stay under the server's per-photo ceiling (see MAX_PHOTO_BYTES in
+     api/social.js). The target is set below it, not at it, because base64 adds a
+     third on top of the bytes the canvas produces. */
+  var TARGET_BYTES = 150 * 1024;
+  var MAX_EDGE = 1280;
+
+  var token = new URLSearchParams(location.search).get('t') || '';
+  var api = location.origin + '/api/cloud/social/photos/session/' + encodeURIComponent(token);
+
+  var $ = function (s) { return document.querySelector(s); };
+  var picked = [];
+
+  if (!token) {
+    $('#status').textContent = 'This link is missing its code. Scan the QR again from Terse.';
+    $('#status').className = 'status bad';
+    $('#pick').disabled = true;
+  }
+  $('#maxN').textContent = MAX_PHOTOS;
+
+  /* Draw the photo into a canvas at a sane size and step the JPEG quality down
+     until it fits. Stepping beats guessing a single quality: a flat screenshot
+     and a noisy night photo compress nothing alike, and one fixed number either
+     wastes half the budget or blows through it. */
+  function shrink(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+        var w = Math.max(1, Math.round(img.width * scale));
+        var h = Math.max(1, Math.round(img.height * scale));
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        var q = 0.82, out = c.toDataURL('image/jpeg', q);
+        while (out.length > TARGET_BYTES && q > 0.35) {
+          q -= 0.12;
+          out = c.toDataURL('image/jpeg', q);
+        }
+        if (out.length > TARGET_BYTES) {
+          // Still too big at the floor quality: it is a huge image, so give up
+          // resolution rather than quality — blur reads worse than small.
+          var c2 = document.createElement('canvas');
+          c2.width = Math.max(1, Math.round(w * 0.6));
+          c2.height = Math.max(1, Math.round(h * 0.6));
+          c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height);
+          out = c2.toDataURL('image/jpeg', 0.7);
+        }
+        resolve(out);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+      img.src = url;
+    });
+  }
+
+  function render() {
+    var grid = $('#grid');
+    grid.innerHTML = '';
+    picked.forEach(function (dataUrl, i) {
+      var d = document.createElement('div');
+      d.className = 'thumb';
+      var im = document.createElement('img');
+      im.src = dataUrl;
+      var x = document.createElement('button');
+      x.type = 'button';
+      x.textContent = '×';
+      x.setAttribute('aria-label', 'Remove');
+      x.onclick = function () { picked.splice(i, 1); render(); };
+      d.appendChild(im); d.appendChild(x);
+      grid.appendChild(d);
+    });
+    $('#send').disabled = picked.length === 0;
+    $('#send').textContent = picked.length
+      ? 'Send ' + picked.length + (picked.length === 1 ? ' photo' : ' photos')
+      : 'Send';
+  }
+
+  $('#pick').addEventListener('change', function (e) {
+    var files = Array.prototype.slice.call(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    var room = MAX_PHOTOS - picked.length;
+    if (room <= 0) {
+      $('#status').textContent = 'That is already ' + MAX_PHOTOS + ' — remove one first.';
+      $('#status').className = 'status bad';
+      return;
+    }
+    $('#status').textContent = 'Preparing…';
+    $('#status').className = 'status';
+    Promise.all(files.slice(0, room).map(shrink)).then(function (urls) {
+      picked = picked.concat(urls).slice(0, MAX_PHOTOS);
+      $('#status').textContent = '';
+      render();
+    }).catch(function () {
+      $('#status').textContent = 'One of those could not be read. Try a different photo.';
+      $('#status').className = 'status bad';
+    });
+  });
+
+  $('#send').addEventListener('click', function () {
+    if (!picked.length) return;
+    $('#send').disabled = true;
+    $('#status').textContent = 'Sending…';
+    $('#status').className = 'status';
+    fetch(api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photos: picked }),
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (r) {
+      if (!r.ok) throw new Error((r.j && r.j.error) || 'Upload failed');
+      $('#doneN').textContent = r.j.count + (r.j.count === 1 ? ' photo' : ' photos');
+      $('#form').classList.add('hide');
+      $('#done').classList.remove('hide');
+    }).catch(function (err) {
+      $('#send').disabled = false;
+      /* The server's refusals are written to be read by a person — show them
+         rather than a generic failure, because "that link has expired" is
+         actionable and "upload failed" is not. */
+      $('#status').textContent = err.message;
+      $('#status').className = 'status bad';
+    });
+  });
+})();
+</script>
+</body>
+</html>

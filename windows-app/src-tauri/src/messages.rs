@@ -298,6 +298,140 @@ pub fn recent_for_wallpaper(limit: usize) -> Result<Vec<Message>, String> {
         .collect())
 }
 
+#[derive(serde::Serialize)]
+pub struct DetectedApp {
+    pub app_id: String,
+    pub app_name: String,
+    /// How many of the recent messages were this app's — so the switch says
+    /// what kind of volume it is turning off.
+    pub count: usize,
+    /// true = it reaches the wallpaper.
+    pub on_wallpaper: bool,
+    pub last_ts: i64,
+}
+
+/// Apps Terse has actually seen messages from, busiest first. Same logic as
+/// macOS, over the Action Center database instead of the notification store.
+pub fn detected_apps() -> Result<Vec<DetectedApp>, String> {
+    let msgs = recent(400, true)?;
+    let muted = load_config().muted;
+    let mut map: std::collections::HashMap<String, DetectedApp> = std::collections::HashMap::new();
+    for m in msgs {
+        let e = map.entry(m.app_id.clone()).or_insert_with(|| DetectedApp {
+            app_id: m.app_id.clone(),
+            app_name: m.app_name.clone(),
+            count: 0,
+            on_wallpaper: !muted.iter().any(|x| *x == m.app_id),
+            last_ts: 0,
+        });
+        e.count += 1;
+        if m.ts > e.last_ts {
+            e.last_ts = m.ts;
+        }
+    }
+    let mut out: Vec<DetectedApp> = map.into_values().collect();
+    out.sort_by(|a, b| b.count.cmp(&a.count).then(b.last_ts.cmp(&a.last_ts)));
+    Ok(out)
+}
+
+#[derive(serde::Serialize)]
+pub struct NotifSetting {
+    pub app_id: String,
+    pub app_name: String,
+    pub allowed: bool,
+    /// "none" | "banner" | "alert" | "unknown"
+    pub style: String,
+    /// Only messages that STAY in the centre can be read back later.
+    pub persists: bool,
+}
+
+/// Which apps Windows lets notify, from the per-app switches in the registry.
+///
+/// macOS reads NCPrefs.plist for the same three answers. Windows keeps them
+/// under Notifications\Settings\<AppId>: `Enabled` is the master switch and
+/// `ShowInActionCenter` decides whether a notification is still there to be
+/// read afterwards — which is exactly what Terse needs, since it reads the
+/// centre rather than watching banners go by.
+pub fn notification_settings() -> Vec<NotifSetting> {
+    use windows::core::HSTRING;
+    use windows::Win32::System::Registry::{
+        RegCloseKey, RegEnumKeyExW, RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_CURRENT_USER,
+        KEY_READ, REG_VALUE_TYPE,
+    };
+    const PATH: &str =
+        r"Software\Microsoft\Windows\CurrentVersion\Notifications\Settings";
+    let mut out = Vec::new();
+    unsafe {
+        let mut root = HKEY::default();
+        if RegOpenKeyExW(HKEY_CURRENT_USER, &HSTRING::from(PATH), 0, KEY_READ, &mut root).is_err() {
+            return out;
+        }
+        let dword = |key: HKEY, name: &str| -> Option<u32> {
+            let mut v: u32 = 0;
+            let mut sz = 4u32;
+            let mut ty = REG_VALUE_TYPE::default();
+            let ok = RegQueryValueExW(
+                key,
+                &HSTRING::from(name),
+                None,
+                Some(&mut ty),
+                Some(&mut v as *mut u32 as *mut u8),
+                Some(&mut sz),
+            )
+            .is_ok();
+            ok.then_some(v)
+        };
+        let mut i = 0u32;
+        loop {
+            let mut name = [0u16; 512];
+            let mut len = name.len() as u32;
+            if RegEnumKeyExW(
+                root,
+                i,
+                windows::core::PWSTR(name.as_mut_ptr()),
+                &mut len,
+                None,
+                windows::core::PWSTR::null(),
+                None,
+                None,
+            )
+            .is_err()
+            {
+                break;
+            }
+            i += 1;
+            let app_id = String::from_utf16_lossy(&name[..len as usize]);
+            if app_id.is_empty() {
+                continue;
+            }
+            let mut sub = HKEY::default();
+            if RegOpenKeyExW(root, &HSTRING::from(app_id.as_str()), 0, KEY_READ, &mut sub).is_err() {
+                continue;
+            }
+            let enabled = dword(sub, "Enabled").unwrap_or(1) != 0;
+            let in_centre = dword(sub, "ShowInActionCenter").unwrap_or(1) != 0;
+            let banner = dword(sub, "ShowBanner").unwrap_or(1) != 0;
+            let _ = RegCloseKey(sub);
+            out.push(NotifSetting {
+                app_name: crate::messages::app_display_name(&app_id),
+                app_id,
+                allowed: enabled,
+                style: if !enabled {
+                    "none".into()
+                } else if banner {
+                    "banner".into()
+                } else {
+                    "alert".into()
+                },
+                persists: enabled && in_centre,
+            });
+        }
+        let _ = RegCloseKey(root);
+    }
+    out.sort_by(|a, b| a.app_name.to_lowercase().cmp(&b.app_name.to_lowercase()));
+    out
+}
+
 pub fn set_app_on_wallpaper(app_id: &str, on: bool) -> Result<(), String> {
     let mut cfg = load_config();
     cfg.muted.retain(|x| x != app_id);

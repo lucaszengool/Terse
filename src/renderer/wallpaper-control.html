@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- WebView2 cannot blur what is BEHIND a window, so a surface that relies on
+       backdrop-filter has to carry its own opacity here. -->
+  <script>try{if(/Windows/i.test(navigator.userAgent))document.documentElement.classList.add('win');}catch(e){}</script>
   <meta name="color-scheme" content="dark">
   <script>(function(){var s=localStorage.getItem('terse-theme') || 'horizon';document.documentElement.setAttribute('data-theme',s)})();</script>
   <meta charset="UTF-8">
@@ -344,6 +347,85 @@
           <span class="p3d-hint" id="p3dHint" data-i18n="wp_3d_grab">Grab it — this one is in 3D</span></div>
       </div>
 
+      <div class="card">
+        <div class="card-t" data-i18n="wp_engine">Engine</div>
+        <div class="engines" id="engines">
+          <div class="eng" data-e="mineradio">
+            <div class="et" data-i18n="wp_eng_mine_t">Your wallpaper · particle motion</div>
+            <div class="ed" data-i18n-html="wp_eng_mine_d">Uses <b>your current desktop wallpaper</b> as the bed:
+              particles take its colours and move over it, and agent activity and token counts
+              surface as numbers formed out of those particles.</div>
+          </div>
+          <!-- Pro tier. Free users may SELECT it to watch the live preview —
+               that preview is the pitch — but applying it to the desktop opens
+               the plan window instead. -->
+          <div class="eng eng-pro" data-e="cinematic" data-pro="1">
+            <div class="et"><span data-i18n="wp_eng_cine_t">Cinematic · particle typography</span> <span class="pro-tag">PRO</span></div>
+            <div class="ed" data-i18n-html="wp_eng_cine_d">A layer on top of the motion: tokens saved, cache hit
+              rate and spend surface the way a title sequence does — <b>assembled out of particles</b>.
+              Every time a line forms, the scattered field ripples in a way it has not before.
+              It also shows the agent's live log.</div>
+          </div>
+          <!-- 星轨炸环。它在内部仍旧是 mineradio 的一种 Pro 风格(scene:'spindle'),
+               但对用户来说它不是"同一张壁纸的另一种字体":黑底、纺锤体、炸环 ——
+               整张画面都换了。所以它站在引擎这一栏里,而不是风格格子里。 -->
+          <div class="eng eng-pro" data-e="orbit" data-pro="1">
+            <div class="et"><span data-i18n="wp_eng_orbit_t">Orbit Burst · rings on black</span> <span class="pro-tag">PRO</span></div>
+            <div class="ed" data-i18n-html="wp_eng_orbit_d">A scene of its own: your desktop picture fades to
+              near-black and a <b>point-cloud spindle</b> turns in it, throwing off rings studded with stars and
+              notes. Every ring is one beat of your agents' traffic, and the live log <b>bursts apart along it</b>.</div>
+          </div>
+          <!-- 声之形。和星轨炸环同一类:它自带一整张画面(黑底、斜着看的振动方板、
+               粉末走成的迷宫),不是"同一张壁纸的另一种字",所以站在引擎这一栏。
+               画面不透明,因此**不进 overlayOK** —— 它不能当置顶层用,
+               否则会糊死整个屏幕(和 topography 同样的理由)。 -->
+          <div class="eng eng-pro" data-e="chladni" data-pro="1">
+            <div class="et"><span data-i18n="wp_eng_chladni_t">The Shape of Sound · Chladni plate</span> <span class="pro-tag">PRO</span></div>
+            <div class="ed" data-i18n-html="wp_eng_chladni_d">A square plate vibrating on black. Powder is thrown
+              off the antinodes and settles on the nodal lines, walking itself into a <b>slowly writhing maze</b> —
+              nobody draws the figure. Every few beats the whole plate gathers into one line of your agent's log,
+              then scatters back into the water.</div>
+          </div>
+          <div class="eng" data-e="topography">
+            <div class="et" data-i18n="wp_eng_topo_t">Spectrum · light-column terrain</div>
+            <div class="ed" data-i18n="wp_eng_topo_d">The original 3D column terrain: token flow raises ripples,
+              and a big spend drops a meteor.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 壁纸粒子层。刻意**不在**上面那一栏里:它不是第五个引擎,而是垫在引擎
+           后面的一层,和上面任何一个都能搭,也能单独关掉。关掉 = 底下原来那张
+           壁纸露出来,画面回到"原壁纸 + 引擎的粒子"。
+           光柱地形的画布不透明,垫在它后面看不见 —— 那时这一行禁用并说明原因,
+           和「始终置顶」同一条规矩。 -->
+      <div class="card">
+        <div class="row" style="padding-top:0">
+          <div class="rt"><span data-i18n="wp_photo_t">Your wallpaper as a particle plate</span> <span class="pro-tag">PRO</span>
+            <div class="rd" id="wpPhotoRd">Lifted off the desktop, floating in black</div></div>
+          <input type="checkbox" class="sw sm" id="wpPhoto">
+        </div>
+        <div class="note" style="margin-top:9px" data-i18n="wp_photo_note">Your own desktop picture is lifted out of the desktop and rebuilt as a plate of soft 3D grains, floating in black space with the engine's particles playing in front of it — the same arrangement Mineradio uses for an album cover. Same picture, same framing, same brightness; only the material changes. It pairs with any engine above, and turning it off puts your untouched picture straight back.</div>
+      </div>
+
+
+      <!-- Terse 这扇窗自己。刻意**默认全关**:新装的人第一次打开看到的还是普通窗口
+           (用户 2026-09-28:「不要变化 SOP 对新用户的」)。只有壁纸开着的时候这张卡
+           才有意义,所以它跟在壁纸粒子板后面。 -->
+      <div class="card">
+        <div class="row" style="padding-top:0">
+          <div class="rt"><span data-i18n="wp_win_glass_t">Terse 窗口也变成粒子板</span> <span class="pro-tag">PRO</span>
+            <div class="rd" data-i18n="wp_win_glass_d">界面变成一张半透明卡片,浮在你那张壁纸的粒子前面</div></div>
+          <input type="checkbox" class="sw sm" id="wpWinGlass">
+        </div>
+        <div class="row">
+          <div class="rt"><span data-i18n="wp_win_dock_t">平时收到屏幕右边</span> <span class="pro-tag">PRO</span>
+            <div class="rd" data-i18n="wp_win_dock_d">只留 14px 在外面,鼠标碰一下右边缘就滑出来;把窗口拖离右边就不再自动收起</div></div>
+          <input type="checkbox" class="sw sm" id="wpWinDock">
+        </div>
+        <div class="note" style="margin-top:9px" data-i18n="wp_win_note">这两条只在动态壁纸开着的时候生效。收起判断走原生光标位置,不是网页里的 hover —— 收起来的窗口不是焦点窗口,那种窗口里的网页收不到鼠标事件。</div>
+      </div>
+
       <!-- 置顶(Pro)放在最上面 —— 这是这一页最需要一眼看懂的东西。
            真窗口的层级没法在预览里复现(预览就是一块 canvas,没有"层级"),
            所以这里给的是一个诚实的**示意图**:两个假窗口 + 一层粒子,
@@ -429,33 +511,6 @@
             <div class="ds">Pins the token-reactive field behind your desktop icons across all Spaces. Bulk tokens ripple; big spikes drop meteors.</div>
           </div>
           <input type="checkbox" class="sw" id="enable">
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-t" data-i18n="wp_engine">Engine</div>
-        <div class="engines" id="engines">
-          <div class="eng" data-e="mineradio">
-            <div class="et" data-i18n="wp_eng_mine_t">Your wallpaper · particle motion</div>
-            <div class="ed" data-i18n-html="wp_eng_mine_d">Uses <b>your current desktop wallpaper</b> as the bed:
-              particles take its colours and move over it, and agent activity and token counts
-              surface as numbers formed out of those particles.</div>
-          </div>
-          <!-- Pro tier. Free users may SELECT it to watch the live preview —
-               that preview is the pitch — but applying it to the desktop opens
-               the plan window instead. -->
-          <div class="eng eng-pro" data-e="cinematic" data-pro="1">
-            <div class="et"><span data-i18n="wp_eng_cine_t">Cinematic · particle typography</span> <span class="pro-tag">PRO</span></div>
-            <div class="ed" data-i18n-html="wp_eng_cine_d">A layer on top of the motion: tokens saved, cache hit
-              rate and spend surface the way a title sequence does — <b>assembled out of particles</b>.
-              Every time a line forms, the scattered field ripples in a way it has not before.
-              It also shows the agent's live log.</div>
-          </div>
-          <div class="eng" data-e="topography">
-            <div class="et" data-i18n="wp_eng_topo_t">Spectrum · light-column terrain</div>
-            <div class="ed" data-i18n="wp_eng_topo_d">The original 3D column terrain: token flow raises ripples,
-              and a big spend drops a meteor.</div>
-          </div>
         </div>
       </div>
 
@@ -554,10 +609,15 @@
   <script type="module">
     import TokenWallpaper3D from './token-wallpaper-3d.js';
     import MineradioWallpaper from './mineradio-wallpaper.js';
+    import ChladniWallpaper from './chladni-wallpaper.js';
+    import PhotoParticles from './photo-particles.js';
     import { PRO_STYLES, DEFAULT_STYLE_ID, STYLE_SCHEMA, resolveStyle, readPath, writePath } from './wallpaper-styles.js';
     const T = window.terse;
     const ENGINES = { mineradio: MineradioWallpaper, cinematic: MineradioWallpaper,
-                      topography: TokenWallpaper3D };
+                      orbit: MineradioWallpaper, topography: TokenWallpaper3D,
+                      chladni: ChladniWallpaper };
+    /** 引擎自己就是一种风格的那些(选了它,风格格子就没有意义了)。 */
+    const ENGINE_STYLE = { orbit: 'orbit', chladni: 'chladni' };
     const $ = s => document.querySelector(s);
     const THEMES = [
       ['indigo','#4b3aa0','#8b6bff'],['ocean','#0a2a5e','#3aa0ff'],['ice','#1a5a7a','#7fe9ff'],
@@ -566,9 +626,18 @@
     ];
     let cfg = { enabled:false, engine:'mineradio', style:DEFAULT_STYLE_ID, theme:'neon', quality:44, angle:42, intensity:1.0, showPanel:true };
     let prev = null, prevPro = null, saveT = null, previewOnlyEngine = null;
+    /** 壁纸粒子层的预览实例。只挂在 PRO 那块上 —— 两块并排,差别看得见才是卖点。 */
+    let prevPhoto = null;
+    /** 免费用户打开这一层时,预览要跟着走而 cfg 不能被写脏 —— 和 previewOnlyStyle 同一个道理。
+     *  没有它的话,免费用户开了这一层、再点一下引擎,预览里的粒子壁纸就自己没了。 */
+    let previewOnlyPhoto = false;
     /** 免费用户点风格时,预览要跟着走但 cfg 不能被写脏 —— 和 previewOnlyEngine 同一个道理。 */
     let previewOnlyStyle = null;
-    const shownStyle = () => previewOnlyStyle || cfg.style || DEFAULT_STYLE_ID;
+    /** 正在演的引擎 —— 免费用户点 Pro 引擎时预览先走一步,cfg 还没动。 */
+    const shownEngine = () => previewOnlyEngine || cfg.engine || 'mineradio';
+    /* 引擎钉死风格时,它说了算:选了「星轨炸环」还去读 cfg.style 的话,画面会是
+       上一次选的那种字,而卡片上写的是炸环 —— 看到的和点的对不上。 */
+    const shownStyle = () => ENGINE_STYLE[shownEngine()] || previewOnlyStyle || cfg.style || DEFAULT_STYLE_ID;
 
     function save(){ clearTimeout(saveT); saveT = setTimeout(()=>{ T.setWallpaperConfig(cfg); }, 200); }
 
@@ -795,9 +864,11 @@
 
     function renderStyles(){
       // 光柱地形那个引擎根本没有粒子聚字,给它显示一排粒子风格是在承诺不存在的东西。
-      const eng = previewOnlyEngine || cfg.engine || 'mineradio';
+      const eng = shownEngine();
       const card = $('#styleCard');
-      if (card) card.style.display = (eng === 'topography') ? 'none' : '';
+      // 光柱地形没有粒子聚字;星轨炸环自己就是一种风格 —— 两种情况下这排格子
+      // 要么承诺不存在的东西,要么给出一个点了不算数的选择。
+      if (card) card.style.display = (eng === 'topography' || ENGINE_STYLE[eng]) ? 'none' : '';
       const cur = shownStyle();
       // 预览角标跟着选中的风格走,否则点了半天不知道右边这块正在演哪一种
       const meta = PRO_STYLES.find(s => s.id === cur) || PRO_STYLES[0];
@@ -868,8 +939,87 @@
       if (prevPro.attachOrbit) prevPro.attachOrbit($('#prevPro'), view3dChanged);
       // 用户自己定过机位就照着放(那是他的设置);没定过就让它自己转起来演示。
       if (view3d().on) stopDemoOrbit(); else startDemoOrbit();
+      applyPreviewPhoto();
       renderView3D();
       startPreviewFeed();
+    }
+
+    /** 壁纸粒子层的预览:垫在 PRO 那块引擎画布**后面**(DOM 里在前 = 画在后)。
+     *  和桌面上那一层同一个类、同一套机位,所以这里看到的就是桌面上会发生的事。
+     *  光柱地形不透明,垫在它后面什么也看不见,所以那时不挂。 */
+    function applyPreviewPhoto(){
+      const want = (cfg.photoParticles === true || previewOnlyPhoto) && shownEngine() !== 'topography';
+      if (want && !prevPhoto) {
+        const host = $('#prevPro') && $('#prevPro').parentElement;
+        if (!host) return;
+        try { prevPhoto = new PhotoParticles(host); prevPhoto.start(); prevPhoto.setActivity(0.7); }
+        catch (e) { prevPhoto = null; }          // 没有 WebGL2 就当没有这一层
+      } else if (!want && prevPhoto) {
+        try { prevPhoto.dispose(); } catch (e) {}
+        prevPhoto = null;
+      }
+    }
+
+    /* 壁纸粒子层的开关。和这一页其他 Pro 控件同一条规矩:预览随便看,写盘要 Pro。
+       但"关掉"永远放行 —— 和置顶同一个理由:许可查询慢一拍或者掉线,不能把人锁在
+       开着的状态里。 */
+    /* Terse 窗口自己的两条。和这一页其他 Pro 控件同一条规矩:关掉永远放行,
+       打开要 Pro —— 理由和置顶那一条一样,别把人锁在开着的状态里。 */
+    function wireWindow(){
+      const bind = (id, key) => {
+        const t = document.getElementById(id);
+        if (!t) return;
+        t.addEventListener('change', async (e) => {
+          const on = e.target.checked;
+          if (on && !(await proApplyLive('window'))) { e.target.checked = false; return; }
+          cfg[key] = on;
+          save();
+        });
+      };
+      bind('wpWinGlass', 'windowGlass');
+      bind('wpWinDock', 'windowDock');
+    }
+
+    /** 壁纸关着的时候这两条不生效 —— 如实说,别给一个按了没反应的开关。 */
+    function paintWindow(){
+      const g = $('#wpWinGlass'), d = $('#wpWinDock');
+      if (!g || !d) return;
+      g.checked = cfg.windowGlass === true;
+      d.checked = cfg.windowDock === true;
+      const live = cfg.enabled !== false;
+      for (const t of [g, d]) {
+        t.disabled = !live && !t.checked;
+        const row = t.closest('.row');
+        if (row) row.style.opacity = live ? '' : '.45';
+      }
+    }
+
+    function wirePhoto(){
+      const t = document.getElementById('wpPhoto');
+      if (!t) return;
+      t.addEventListener('change', async (e) => {
+        const on = e.target.checked;
+        previewOnlyPhoto = on;                   // 预览的归预览
+        cfg.photoParticles = on;
+        applyPreviewPhoto();                     // 预览先走一步,看得见才会想要
+        if (on && !(await proApplyLive('photo'))) { cfg.photoParticles = false; return; }  // 预览留着,不写盘
+        save();
+      });
+    }
+
+    /** 这一行的状态。换引擎也要刷新(光柱地形下它没有意义),所以挂在 renderEngines 上。 */
+    function paintPhoto(){
+      const t = $('#wpPhoto'); if (!t) return;
+      const row = t.closest('.row');
+      const usable = shownEngine() !== 'topography';
+      t.checked = cfg.photoParticles === true || previewOnlyPhoto;
+      // 只在"本来就关着"的时候禁用 —— 留着 true 的话必须留一条关掉它的路。
+      t.disabled = !usable && cfg.photoParticles !== true;
+      if (row) row.style.opacity = usable ? '' : '.45';
+      const rd = $('#wpPhotoRd');
+      if (rd) rd.textContent = usable
+        ? TT('wp_photo_label', 'Lifted off the desktop, floating in black')
+        : TT('wp_photo_engine', 'The spectrum terrain paints over everything behind it — this layer would not show.');
     }
 
     // Demo traffic for the previews. Real wallpapers are driven by live agents;
@@ -954,6 +1104,10 @@
                '10 colour presets plus density, angle and intensity — tuned on top of any style and saved as a diff.'],
       view3d: ['wp_pitch_3d_t',    'Free 3D view',         'wp_pitch_3d_d',
                'Take hold of the field and turn it — the flat sheet lifts into relief and you can look at your desktop from anywhere.'],
+      window: ['wp_pitch_win_t', 'Terse 窗口也是粒子', 'wp_pitch_win_d',
+               '界面变成一张浮在粒子板前面的半透明卡片,平时收到屏幕右边,鼠标一碰才出来。'],
+      photo:  ['wp_pitch_photo_t', 'Wallpaper as a particle plate', 'wp_pitch_photo_d',
+               'Your desktop picture floats in black space as a plate of glowing grains, with the engine\'s particles in front of it — the picture itself is untouched, only its material changes.'],
     };
     let poFeature = null;
     function proApply(feature){
@@ -1011,6 +1165,8 @@
      *  「电影级·粒子聚合」,拿文字匹配会把风格卡认成引擎卡(它确实认错了)。 */
     const TIP_OWNER = [
       ['top',    '#wpTop'],
+      ['photo',  '#wpPhoto'],
+      ['window', '#wpWinGlass'],
       ['engine', '#engines'],
       ['style',  '#styles'],
       ['theme',  '#themes'],
@@ -1266,7 +1422,7 @@
     // 光谱引擎的画布本身不透明,抬到屏保层就是一整块盖住屏幕的地形。
     // 与其给一个按了没用的开关,不如说清楚为什么不能按。
     { const t = $('#wpTop'); const row = t && t.closest('.row');
-      const particle = cfg.engine === 'mineradio' || cfg.engine === 'cinematic';
+      const particle = cfg.engine === 'mineradio' || cfg.engine === 'cinematic' || cfg.engine === 'orbit';
       if (t) {
         t.checked = cfg.overlay === true && particle;
         // 只在"本来就关着"的时候禁用。如果 overlay 还留着 true(比如换引擎之前
@@ -1540,6 +1696,8 @@
       });
       if ($('#styles')) renderStyles();
       paintTop();
+      paintPhoto();
+      paintWindow();
       renderTune();
       renderView3D();
     }
@@ -1555,7 +1713,7 @@
     }
 
     function wire(){
-      wireTune(); wirePreviewOnly(); wireTop(); initPreviewOnlyCopy(); wireProShow(); wireView3D(); wireStage3D();
+      wireTune(); wirePreviewOnly(); wireTop(); wirePhoto(); wireWindow(); initPreviewOnlyCopy(); wireProShow(); wireView3D(); wireStage3D();
       initTopDemo();
       $('#btnBack').addEventListener('click',()=>T.navigateBack());
       document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',async ()=>{

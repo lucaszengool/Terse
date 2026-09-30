@@ -405,13 +405,36 @@ pub fn active() -> bool {
 mod tests {
     use super::*;
 
+    /// The two platforms must take the same keys — read from the macOS file
+    /// itself, not from a copy of the list.
+    ///
+    /// This asserted a count of 13 and broke the moment someone added T (talk to
+    /// your pet) to both tables: a true change failing as though it were a
+    /// regression, and a test that would have said nothing if T had been added
+    /// to only ONE of them. Comparing against the source of truth catches the
+    /// case that matters — a key the town answers on a Mac and ignores here.
     #[test]
     fn key_table_matches_macos_set() {
-        let names: Vec<_> = (0u32..256).filter_map(key_name).collect();
-        for k in ["w", "a", "s", "d", "q", "r", "e", " ", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"] {
-            assert!(names.contains(&k), "missing {k}");
-        }
-        assert_eq!(names.len(), 13);
+        const MAC: &str = include_str!("../../../src-tauri/src/town_keys.rs");
+        let body = MAC
+            .split("fn key_name")
+            .nth(1)
+            .and_then(|b| b.split_once("\n}"))
+            .map(|(b, _)| b)
+            .expect("macOS key_name not found — did the file move?");
+        let mut want: Vec<&str> = body
+            .match_indices("=> \"")
+            .filter_map(|(i, _)| {
+                let rest = &body[i + 4..];
+                rest.find('"').map(|end| &rest[..end])
+            })
+            .collect();
+        want.sort_unstable();
+        want.dedup();
+        let mut got: Vec<&str> = (0u32..256).filter_map(key_name).collect();
+        got.sort_unstable();
+        got.dedup();
+        assert_eq!(got, want, "the town takes different keys on the two platforms");
         assert_eq!(key_name(0x5A), None); // Z is not the town's
     }
 

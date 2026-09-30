@@ -196,9 +196,68 @@ fn signal(pid: u32, sig: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// The Windows equivalents of the three signals the breaker sends.
+///
+/// This returned false for everything, which meant the breaker's whole point —
+/// pausing or stopping an agent that is burning tokens — did nothing at all
+/// here, while the UI reported that it had acted. Windows has no signals, but
+/// it has the two things the signals were for:
+///
+///   · STOP / CONT: suspend and resume every thread of the process. That is
+///     what SIGSTOP does, and a suspended agent stops spending immediately
+///     without losing its session.
+///   · TERM / KILL: TerminateProcess.
 #[cfg(not(unix))]
-fn signal(_pid: u32, _sig: &str) -> bool {
-    false
+fn signal(pid: u32, sig: &str) -> bool {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Thread32First, Thread32Next, TH32CS_SNAPTHREAD, THREADENTRY32,
+    };
+    use windows::Win32::System::Threading::{
+        OpenProcess, OpenThread, ResumeThread, SuspendThread, TerminateProcess,
+        PROCESS_TERMINATE, THREAD_SUSPEND_RESUME,
+    };
+    if pid <= 1 {
+        return false;
+    }
+    unsafe {
+        match sig {
+            "TERM" | "KILL" => {
+                let Ok(h) = OpenProcess(PROCESS_TERMINATE, false, pid) else { return false };
+                let ok = TerminateProcess(h, 1).is_ok();
+                let _ = CloseHandle(h);
+                ok
+            }
+            "STOP" | "CONT" => {
+                let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0) else { return false };
+                let mut te = THREADENTRY32 {
+                    dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
+                    ..Default::default()
+                };
+                let mut touched = 0;
+                if Thread32First(snap, &mut te).is_ok() {
+                    loop {
+                        if te.th32OwnerProcessID == pid {
+                            if let Ok(th) = OpenThread(THREAD_SUSPEND_RESUME, false, te.th32ThreadID) {
+                                let r = if sig == "STOP" { SuspendThread(th) } else { ResumeThread(th) };
+                                if r != u32::MAX {
+                                    touched += 1;
+                                }
+                                let _ = CloseHandle(th);
+                            }
+                        }
+                        te.dwSize = std::mem::size_of::<THREADENTRY32>() as u32;
+                        if Thread32Next(snap, &mut te).is_err() {
+                            break;
+                        }
+                    }
+                }
+                let _ = CloseHandle(snap);
+                touched > 0
+            }
+            _ => false,
+        }
+    }
 }
 
 /// One live-session reading, extracted from the agent snapshot.

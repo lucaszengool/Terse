@@ -97,31 +97,35 @@ fn stable_id(path: &str) -> String {
 
 // ── 图片 → data URL ────────────────────────────────────────────────────────
 
-/// 用系统自带的 sips 缩图 + 转 JPEG,再 base64。
+/// Shrink a cover image and inline it as a JPEG data URL.
 ///
-/// 和桌面壁纸那条路同一个做法:macOS 本来就有 sips,为了缩一张图引入一个图像库
-/// 不值得。缩到 224px 之后一张封面大约 10–20KB —— 仍旧是"参数",不是"图片"。
+/// macOS shells out to `sips`, which ships with the system. Windows has no such
+/// tool — the previous port called it anyway, so every project cover silently
+/// came back as None here and capsules published from Windows had no image at
+/// all. The `image` crate is already in the tree (粒子模式 encodes frames with
+/// it), so this does the same work in-process, with no temp file and nothing to
+/// spawn.
+///
+/// At 224px a cover lands around 10–20 KB: still a parameter, not a picture.
 pub fn image_data_url(src: &Path) -> Option<String> {
-    let tmp = std::env::temp_dir().join(format!(
-        "terse-cap-{}.jpg",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .ok()?
-            .as_nanos()
-    ));
-    let out = std::process::Command::new("sips")
-        .args(["-Z", &COVER_PX.to_string(), "-s", "format", "jpeg"])
-        .arg(src)
-        .arg("--out")
-        .arg(&tmp)
-        .output()
+    let img = image::ImageReader::open(src).ok()?.with_guessed_format().ok()?.decode().ok()?;
+    let (w, h) = (img.width(), img.height());
+    let longest = w.max(h);
+    let img = if longest > COVER_PX {
+        let k = COVER_PX as f64 / longest as f64;
+        img.resize(
+            ((w as f64 * k).round() as u32).max(1),
+            ((h as f64 * k).round() as u32).max(1),
+            image::imageops::FilterType::Triangle,
+        )
+    } else {
+        img
+    };
+    let rgb = img.to_rgb8();
+    let mut bytes: Vec<u8> = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut std::io::Cursor::new(&mut bytes), 82)
+        .encode(rgb.as_raw(), rgb.width(), rgb.height(), image::ExtendedColorType::Rgb8)
         .ok()?;
-    if !out.status.success() {
-        let _ = std::fs::remove_file(&tmp);
-        return None;
-    }
-    let bytes = std::fs::read(&tmp).ok()?;
-    let _ = std::fs::remove_file(&tmp);
     if bytes.is_empty() || bytes.len() > MAX_CAPSULE_BYTES {
         return None;
     }

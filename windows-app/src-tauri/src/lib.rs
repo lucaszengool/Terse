@@ -32,6 +32,10 @@ mod session_history;
 mod graph_store;
 mod graph_extract;
 mod town_keys;
+mod particle_mode;
+mod desk;
+mod approvals;
+mod splash;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -779,6 +783,15 @@ fn resize_popup(h: f64, state: tauri::State<'_, AppState>, app: AppHandle) {
     if minimized { return; }
     if let Some(popup) = app.get_webview_window("popup") {
         let clamped = h.max(120.0).min(800.0);
+        // Skip a resize that changes nothing. The page calls this on every
+        // content-height change, and on Windows each call is a synchronous
+        // window resize plus a WebView2 relayout on the main thread — CI
+        // measured one at 1026 ms, the slowest command in the run.
+        if let (Ok(sz), Ok(sf)) = (popup.inner_size(), popup.scale_factor()) {
+            if ((sz.height as f64 / sf) - clamped).abs() < 1.0 {
+                return;
+            }
+        }
         let _ = popup.set_size(tauri::LogicalSize::new(540.0, clamped));
     }
 }
@@ -793,7 +806,7 @@ fn get_agent_detections(state: tauri::State<'_, AppState>) -> Vec<serde_json::Va
     d
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_agent_sessions(state: tauri::State<'_, AppState>) -> Vec<serde_json::Value> {
     let monitor = lock_or_recover(&state.agent_monitor);
     let sessions = monitor.get_connected_sessions();
@@ -1114,7 +1127,7 @@ fn deploy_hook_script(config: &AgentHookConfig) -> Result<std::path::PathBuf, St
 }
 
 /// Install Terse hook for any supported agent.
-#[tauri::command]
+#[tauri::command(async)]
 fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String> {
     let agent_id = agent.as_deref().unwrap_or("claude-code");
     let config = get_agent_hook_config(agent_id)?;
@@ -1296,7 +1309,7 @@ fn install_agent_hook(agent: Option<String>) -> Result<serde_json::Value, String
 }
 
 /// Check if the Terse hook is installed for a given agent (or all agents).
-#[tauri::command]
+#[tauri::command(async)]
 fn check_agent_hook(agent: Option<String>) -> serde_json::Value {
     let home = match dirs::home_dir() {
         Some(h) => h,
@@ -1385,7 +1398,7 @@ fn check_json_hook(settings_path: &std::path::Path, hook_event: &str) -> serde_j
 }
 
 /// Read compression stats from both hook tracking files and sync to stats_store
-#[tauri::command]
+#[tauri::command(async)]
 fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_json::Value {
     let tmp = std::env::temp_dir();
     let stats_files = [
@@ -1478,7 +1491,7 @@ fn get_hook_stats(state: tauri::State<'_, AppState>, app: AppHandle) -> serde_js
 
 // ── Stats Commands ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_stats(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     store.get_stats(&period)
@@ -1835,25 +1848,37 @@ fn get_doctor_settings() -> doctor::DoctorSettings {
 fn set_clear_glass(app: tauri::AppHandle, enabled: bool) {
     #[cfg(target_os = "windows")]
     {
-        use window_vibrancy::{apply_mica, clear_mica};
+        use window_vibrancy::apply_mica;
         // Only the large rectangular surfaces, matching where `setup` rounds via
         // DWM. The island and toast are clipped to a shape with SetWindowRgn,
         // and DWM paints its backdrop over the whole rectangle ignoring that
         // region — mica on the island fills the pill's corners back in. They
         // stay plain transparent, which is also what Mac does with them.
-        // Remembered for windows that do not exist yet: build_lazy_window reads
-        // this so a Doctor opened after a theme change is not the one surface
-        // still wearing the old finish.
-        CLEAR_GLASS.store(enabled, std::sync::atomic::Ordering::Relaxed);
         for lbl in ["main", "doctor", "farm", "palette"] {
             if let Some(win) = app.get_webview_window(lbl) {
-                // Both error on pre-22000 builds, where the window is simply
-                // transparent already — a downgrade, not a breakage.
-                if enabled {
-                    let _ = clear_mica(&win);
-                } else {
-                    let _ = apply_mica(&win, Some(true));
-                }
+                // Mica either way — including "horizon", the clear-glass theme
+                // and the Windows default.
+                //
+                // Horizon is meant to read as glass over the desktop, and macOS
+                // gets that for free: a transparent WKWebView window lets the
+                // page's own backdrop-filter blur what is BEHIND the window.
+                // WebView2 cannot — backdrop-filter only ever samples the page —
+                // so the same theme on Windows left a window with no material at
+                // all, and the desktop and every window behind it read through
+                // crisply. Users reported it as "there is another window behind
+                // mine", and the screenshots are of Notepad and the Recycle Bin
+                // showing through Terse.
+                //
+                // Mica is the material that fixes exactly that: DWM derives it
+                // from the DESKTOP WALLPAPER, blurred and tinted, and
+                // deliberately does not sample other windows. So the desktop
+                // still tints the glass — which is the point of horizon — and
+                // other windows never bleed through it.
+                //
+                // Errors on pre-22000 builds, where the window is simply
+                // transparent already: a downgrade, not a breakage.
+                let ok = apply_mica(&win, Some(true)).is_ok();
+                diag_log("vibrancy", &format!("mica on '{lbl}' -> {ok} (clear_glass_requested={enabled})"));
             }
         }
     }
@@ -2476,6 +2501,13 @@ fn town_drop_mode(app: AppHandle, on: bool) -> bool {
 
 pub(crate) fn town_drop_set(app: &AppHandle, on: bool) {
     use std::sync::atomic::Ordering;
+    if on {
+        // A wallpaper the user turned off must stay off: lifting shows it, over
+        // every icon, for as long as Ctrl is down.
+        let visible = app.get_webview_window("wallpaper")
+            .and_then(|w| w.is_visible().ok()).unwrap_or(false);
+        if !visible { return; }
+    }
     if DROP_ON.swap(on, Ordering::SeqCst) == on { return; }
     let generation = DROP_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     if let Some(win) = app.get_webview_window("wallpaper") {
@@ -2624,16 +2656,6 @@ fn island_set_expanded(expanded: bool, app: AppHandle) {
     }
 }
 
-/// Clip a frameless window to a rounded-rectangle region so it reads as a pill/card
-/// — the Windows equivalent of macOS's native island corner radius (22px). Windows 10
-/// does NOT round frameless windows (that's Win11 only), and the acrylic backdrop fills
-/// the whole rectangular window, so without this the island shows as a rectangle with a
-/// tinted halo instead of the Mac's clean rounded pill. A GDI region is fixed to the size
-/// it was built for, so this MUST be re-applied after every resize (pill <-> card).
-/// Whether the last `set_clear_glass` asked for bare glass (horizon) or a
-/// material. A window built after that call has to be told, or it would be the
-/// one surface on screen wearing the wrong finish.
-static CLEAR_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 
 /// Everything setup() used to do to these windows AFTER building them.
 ///
@@ -2670,10 +2692,10 @@ fn attach_lazy_chrome(w: &tauri::WebviewWindow, radius: f64) {
         }
     }
 
-    // Match the material the rest of the app is wearing right now.
-    if !CLEAR_GLASS.load(std::sync::atomic::Ordering::Relaxed) {
-        let _ = window_vibrancy::apply_mica(w, Some(true));
-    }
+    // The same material every other surface wears. Unconditional now: a window
+    // with no material lets whatever is behind Terse read through it, which is
+    // what users reported (see set_clear_glass).
+    let _ = window_vibrancy::apply_mica(w, Some(true));
 
     let w2 = w.clone();
     w.on_window_event(move |ev| {
@@ -3245,6 +3267,154 @@ fn clear_ghost_titlebar(win: &tauri::WebviewWindow) {
     NUDGING.store(false, Ordering::SeqCst);
 }
 
+/// Keep the native frame off a window for good, by vetoing it at the source.
+///
+/// Every earlier fix stripped the caption AFTER it was drawn — on setup, on
+/// focus, on resize — and flushed the ghost it left. frame-strip.log showed why
+/// that never ended: tao re-applies WS_CAPTION | WS_SYSMENU | min/max on every
+/// show(), and a window shown WITHOUT focus (the island, toasts, dashboards, the
+/// session dock — every `focused(false)` window) never fires the Focused event
+/// that re-stripped it. So it kept the frame: the "extra Windows border" users
+/// kept reporting.
+///
+/// WM_STYLECHANGING arrives before any style change lands, from whoever makes
+/// it. Rewriting the new style there means the caption bits never exist, so
+/// there is nothing to draw and nothing to flush. Child windows (the pinned
+/// wallpaper is a WS_CHILD of the desktop) are never touched.
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn frame_guard_proc(
+    hwnd: windows::Win32::Foundation::HWND,
+    msg: u32,
+    wparam: windows::Win32::Foundation::WPARAM,
+    lparam: windows::Win32::Foundation::LPARAM,
+    _id: usize,
+    _data: usize,
+) -> windows::Win32::Foundation::LRESULT {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GWL_EXSTYLE, GWL_STYLE, STYLESTRUCT, WM_STYLECHANGING, WS_CAPTION, WS_CHILD,
+        WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE,
+        WS_POPUP, WS_SYSMENU,
+    };
+    // Caption PAINTING, as opposed to caption styles. CI still showed a thin
+    // system-font "Terse Doctor" over the Doctor page with its style already
+    // clean (0x84040000, no WS_CAPTION): Windows paints the title text itself
+    // when the title is set or the window (de)activates, through the
+    // undocumented WM_NCUAHDRAWCAPTION / WM_NCUAHDRAWFRAME (0xAE / 0xAF) and
+    // WM_NCACTIVATE — even for custom-frame windows. Chromium blocks exactly
+    // these on its frameless windows for the same reason. Every Terse window is
+    // decorations(false) with no non-client area, so nothing legitimate is lost.
+    {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetWindowLongPtrW, GWL_STYLE, WM_NCACTIVATE, WM_NCPAINT, WS_CHILD,
+        };
+        let top_level = GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_CHILD.0 as isize == 0;
+        if top_level {
+            match msg {
+                0x00AE | 0x00AF => return windows::Win32::Foundation::LRESULT(0),
+                WM_NCPAINT => return windows::Win32::Foundation::LRESULT(0),
+                // lParam -1: "do not repaint the non-client area"; activation
+                // itself still goes through.
+                WM_NCACTIVATE => {
+                    return windows::Win32::UI::Shell::DefSubclassProc(
+                        hwnd, msg, wparam, windows::Win32::Foundation::LPARAM(-1));
+                }
+                _ => {}
+            }
+        }
+    }
+    if msg == WM_STYLECHANGING && lparam.0 != 0 {
+        let ss = &mut *(lparam.0 as *mut STYLESTRUCT);
+        let which = wparam.0 as i32;
+        if which == GWL_STYLE.0 && ss.styleNew & WS_CHILD.0 == 0 {
+            // WS_MINIMIZEBOX / WS_MAXIMIZEBOX stay: Windows consults them for
+            // Aero Snap, Win+arrows and the taskbar menu, and this guard was
+            // quietly putting them back off after strip_native_frame left them
+            // on — CI measured Win+Up doing nothing with the fix already in.
+            // They draw nothing without a caption, and there is none.
+            ss.styleNew = (ss.styleNew & !(WS_CAPTION.0 | WS_SYSMENU.0)) | WS_POPUP.0;
+        } else if which == GWL_EXSTYLE.0 {
+            ss.styleNew &= !(WS_EX_DLGMODALFRAME.0 | WS_EX_WINDOWEDGE.0
+                | WS_EX_CLIENTEDGE.0 | WS_EX_STATICEDGE.0);
+        }
+    }
+    windows::Win32::UI::Shell::DefSubclassProc(hwnd, msg, wparam, lparam)
+}
+
+/// Install [`frame_guard_proc`] on a top-level window and strip what is already
+/// there. Idempotent (same subclass id); must run on the window's own thread —
+/// the main thread, which is where `on_webview_ready` calls it.
+#[cfg(target_os = "windows")]
+pub(crate) fn install_frame_guard(hwnd: windows::Win32::Foundation::HWND) {
+    // Distinct from tao's own subclass ids; "TRSEFRAM".
+    const ID: usize = 0x5452_5345_4652_414D;
+    unsafe {
+        let _ = windows::Win32::UI::Shell::SetWindowSubclass(hwnd, Some(frame_guard_proc), ID, 0);
+    }
+    strip_native_frame(hwnd);
+}
+
+/// Make a WebView2 stop behaving like a browser inside the app.
+///
+/// macOS gets this for free: WKWebView has no browser chrome to leak. WebView2
+/// brings Edge's with it, and every one of these is a place where Terse stops
+/// feeling like an app on Windows and nowhere else:
+///
+///   · **Right-click** opens Edge's menu — Refresh, Save as, Print, Inspect —
+///     over the app's own UI. Fields keep their own editing menu (cut/copy/
+///     paste/undo are a different menu and are not affected by this flag).
+///   · **The status bar**: hovering anything link-shaped pops a grey URL bubble
+///     into the bottom-left corner of the window, over the app's content.
+///   · **Ctrl + wheel** zooms the whole interface, and there is no visible way
+///     back — a common way for a Tauri window on Windows to end up looking
+///     broken at 150% with the user unsure what they pressed.
+///   · **Browser accelerators**: F5 and Ctrl+R reload the page (the app blinks
+///     back to its first screen), Ctrl+P opens a print dialog, F12 and
+///     Ctrl+Shift+I open DevTools. Kept in debug builds, where they are how you
+///     work; dropped in release. Ctrl+C / Ctrl+V are NOT browser accelerators
+///     and keep working.
+///
+/// Best-effort by design: each setting lives on a different revision of
+/// ICoreWebView2Settings, so on an older runtime a cast simply fails and that
+/// one flag stays at its default rather than costing the window its webview.
+#[cfg(target_os = "windows")]
+pub(crate) fn polish_webview(webview: &tauri::Webview) {
+    let label = webview.label().to_string();
+    let _ = webview.with_webview(move |pw| {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            ICoreWebView2Settings3, ICoreWebView2Settings6,
+        };
+        // 0.61's trait, not windows 0.58's: webview2-com is built against that
+        // one, and only it can see `cast` on these interfaces.
+        use windows_core::Interface;
+        unsafe {
+            let Ok(core) = pw.controller().CoreWebView2() else { return };
+            let Ok(settings) = core.Settings() else { return };
+            let ctx = settings.SetAreDefaultContextMenusEnabled(false).is_ok();
+            let bar = settings.SetIsStatusBarEnabled(false).is_ok();
+            let zoom = settings.SetIsZoomControlEnabled(false).is_ok();
+            // Debug builds keep F12/Ctrl+R — that is how the page is worked on.
+            let keys = if cfg!(debug_assertions) {
+                true
+            } else {
+                settings
+                    .cast::<ICoreWebView2Settings3>()
+                    .and_then(|s3| s3.SetAreBrowserAcceleratorKeysEnabled(false))
+                    .is_ok()
+            };
+            // Two-finger sideways on a precision trackpad is "go back" in a
+            // browser. In a single-page app that is a blank window.
+            let swipe = settings
+                .cast::<ICoreWebView2Settings6>()
+                .and_then(|s6| s6.SetIsSwipeNavigationEnabled(false))
+                .is_ok();
+            diag_log(
+                "webview-polish",
+                &format!("'{label}' ctx={ctx} statusbar={bar} zoom={zoom} accel_keys={keys} swipe={swipe}"),
+            );
+        }
+    });
+}
+
 /// Remove the native caption from a window built with `decorations(false)`.
 ///
 /// tao leaves WS_CAPTION and WS_SYSMENU on undecorated windows so that snap and
@@ -3261,8 +3431,7 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
     use windows::Win32::UI::WindowsAndMessaging::{
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED,
         SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_EX_CLIENTEDGE,
-        WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
-        WS_POPUP, WS_SYSMENU,
+        WS_EX_DLGMODALFRAME, WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, WS_POPUP, WS_SYSMENU,
     };
     use windows::Win32::Graphics::Gdi::{
         RedrawWindow, RDW_ALLCHILDREN, RDW_FRAME, RDW_INVALIDATE, RDW_UPDATENOW,
@@ -3272,8 +3441,16 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         // WS_CAPTION is WS_BORDER|WS_DLGFRAME, so the title bar and its border
         // both go with it.
-        let drop_bits =
-            (WS_CAPTION.0 | WS_SYSMENU.0 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
+        // WS_MINIMIZEBOX / WS_MAXIMIZEBOX are NOT dropped, although they read
+        // like caption decoration. Windows consults them for Aero Snap,
+        // Win+↑/↓/←/→ and the taskbar's window menu, and with them gone the main
+        // window could not be snapped or maximized at all — measured on the CI
+        // runner, which is also what proves they draw nothing on their own:
+        // there is no caption for them to appear in (WS_CAPTION is dropped,
+        // WS_POPUP is set, DWM non-client rendering is disabled, and the frame
+        // guard swallows the caption-painting messages). The ghost-bar check
+        // that runs every build is what holds that claim honest.
+        let drop_bits = (WS_CAPTION.0 | WS_SYSMENU.0) as isize;
         // Adding WS_POPUP is what actually guarantees it: a popup window has no
         // caption by definition, so this holds even if something re-sets the
         // caption bit behind us. Clearing the bits alone left the classic grey
@@ -3304,6 +3481,20 @@ fn strip_native_frame(hwnd: windows::Win32::Foundation::HWND) {
                 DWMWA_NCRENDERING_POLICY,
                 &policy as *const _ as *const std::ffi::c_void,
                 std::mem::size_of_val(&policy) as u32,
+            );
+            // And no system border. Windows 11 draws a 1px DWM border (plus the
+            // shadow) round every top-level window at the WINDOW edge, and every
+            // Terse page draws its own glass card inside a transparent window —
+            // so users saw two outlines, "a Windows frame behind the app". macOS
+            // draws neither. DWMWA_BORDER_COLOR (34) = DWMWA_COLOR_NONE turns it
+            // off in the compositor, where no later style change can bring it
+            // back. Windows 10 has no such border and just rejects the call.
+            let none: u32 = 0xFFFF_FFFE;
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                windows::Win32::Graphics::Dwm::DWMWINDOWATTRIBUTE(34),
+                &none as *const _ as *const std::ffi::c_void,
+                std::mem::size_of_val(&none) as u32,
             );
         }
         if stripped != style || ex_stripped != ex {
@@ -3347,6 +3538,14 @@ fn minimize_window(app: AppHandle) {
     }
 }
 
+/// Quit for real. ✕ only hides to the tray, so this (titlebar ⏻ / Ctrl+Q)
+/// is the way out that doesn't depend on finding the tray icon.
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    shutdown_children(&app);
+    app.exit(0);
+}
+
 #[tauri::command]
 fn navigate_to_cowork(app: AppHandle) {
     navigate_main(&app, "cowork.html");
@@ -3364,7 +3563,7 @@ fn navigate_to_doctor(app: AppHandle) {
 /// optional suffix under `/teams` (e.g. a team id); when absent we send the user
 /// to the create/connect flow (`?connect=app`) so the website can hand a token
 /// straight back via the `terse://` deep link.
-#[tauri::command]
+#[tauri::command(async)]
 fn open_cloud_teams(path: Option<String>, state: tauri::State<'_, AppState>) {
     const BASE: &str = "https://www.terseai.org";
     let url = match path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
@@ -3405,7 +3604,7 @@ fn open_dashboards(app: AppHandle) {
 
 /// Open an arbitrary http(s) URL in the user's default browser (e.g. Slack web,
 /// the webhook setup page). Restricted to http/https so it can't launch apps.
-#[tauri::command]
+#[tauri::command(async)]
 fn open_url(url: String) {
     let u = url.trim();
     if u.starts_with("http://") || u.starts_with("https://") {
@@ -3865,6 +4064,41 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        // Every window, however and wherever it is built (setup, lazily on first
+        // use, other modules), gets the frame guard the moment its webview
+        // exists — so no window can be missed by a per-site list again.
+        .plugin(
+            tauri::plugin::Builder::<tauri::Wry, ()>::new("terse-frame-guard")
+                .on_webview_ready(|webview| {
+                    #[cfg(target_os = "windows")]
+                    {
+                        // Every webview, wallpaper included: these are webview
+                        // settings, not window styles, so the child-window
+                        // reasons that exclude the wallpaper below do not apply.
+                        polish_webview(&webview);
+                        let win = webview.window();
+                        if win.label() == "wallpaper" { return; }
+                        if let Ok(raw) = win.hwnd() {
+                            install_frame_guard(windows::Win32::Foundation::HWND(raw.0));
+                            diag_log("frame-strip", &format!("guard installed on '{}'", win.label()));
+                        }
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    let _ = webview;
+                })
+                .build(),
+        )
+        // "Close window" on the taskbar button, or Alt+F4, is how people quit
+        // an app on Windows. Left alone it would destroy only the main window
+        // and leave Terse running with nothing to reopen.
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    shutdown_children(window.app_handle());
+                    window.app_handle().exit(0);
+                }
+            }
+        })
         // single-instance MUST be registered first; with the deep-link feature it
         // also forwards a `terse://` URL from a second launch to the running app —
         // on Windows that second launch is how the browser hands the sign-in token
@@ -3902,6 +4136,7 @@ pub fn run() {
         )
         .manage(permission::PermissionHub::default())
         .manage(AppState::default())
+        .manage(std::sync::Arc::new(particle_mode::Capture::default()))
         .setup(|app| {
             // Which thread is the main one, so ensure_window can tell whether it
             // is already on it. setup() runs on the main thread by definition.
@@ -4055,22 +4290,30 @@ pub fn run() {
             // set_clear_glass, which is the same seam Mac swaps vibrancy on.
             #[cfg(target_os = "windows")]
             {
-                // NO backdrop material at startup — the Mac build's rule, ported.
+                // Mica from the first frame, including the default theme.
                 //
-                // src-tauri/src/lib.rs:4183 spells out why: "horizon" is the
-                // default theme and it is clear glass, so applying a native
-                // material underneath frosts the desktop into a flat slab, which
-                // is the exact look horizon exists to avoid. Mac therefore starts
-                // bare and lets the frontend call set_clear_glass(false) when the
-                // user picks any other theme. Mica was being applied here
-                // unconditionally, which is why every big Windows window read as
-                // frosted while the same theme on Mac read as clear glass.
+                // This was bare transparency, ported from the Mac rule: "horizon"
+                // is the default theme, it is clear glass, and a native material
+                // underneath frosts the desktop into a flat slab — the look
+                // horizon exists to avoid. It cost what the previous note here
+                // called the trade-off: with no material, windows behind Terse
+                // "show through sharply instead of dissolving into a wash". That
+                // is what users reported as a window sitting behind theirs, and
+                // it only happens on Windows, because macOS lets the page's own
+                // backdrop-filter blur what is behind the window and WebView2
+                // does not.
                 //
-                // Trade-off this re-opens, recorded so it isn't rediscovered a
-                // fourth time: bare transparency has no material, so windows
-                // behind Terse show through sharply instead of dissolving into a
-                // wash. Mica hid that by deriving its backdrop from the wallpaper
-                // only. It now comes back with the theme, via set_clear_glass.
+                // Mica settles it the other way: DWM derives it from the desktop
+                // WALLPAPER, so the desktop still tints the glass, and it never
+                // samples other windows, so nothing behind Terse reads through.
+                // Applied here as well as in set_clear_glass so the first frames
+                // are not the see-through ones.
+                for lbl in ["main", "doctor", "farm", "palette"] {
+                    if let Some(w) = app.get_webview_window(lbl) {
+                        let ok = window_vibrancy::apply_mica(&w, Some(true)).is_ok();
+                        diag_log("vibrancy", &format!("mica at startup on '{lbl}' -> {ok}"));
+                    }
+                }
                 for lbl in ["main", "doctor", "farm", "palette"] {
                     if let Some(w) = app.get_webview_window(lbl) {
                         // Round these through DWM rather than SetWindowRgn. The
@@ -4234,32 +4477,32 @@ pub fn run() {
                 });
             }
 
-            // main is `visible: false` in tauri.conf.json on Windows ONLY, and is
-            // shown HERE, after the sweep above has stripped its frame. Tauri
-            // creates and shows a visible:true window before setup() runs, so
-            // Windows painted main's caption before any of our code could strip
-            // it — and on a transparent window nothing ever repaints over those
-            // pixels, which is why the ghost "Terse" title outlived four
-            // different fixes. Stripping first and showing second is the only
-            // ordering where the caption is never drawn at all.
+            // main is `visible: false` in tauri.conf.json on Windows ONLY, and it
+            // is revealed by splash::finish — when the frontend says it is ready,
+            // or when the 8 s watchdog stops waiting for it. It used to be shown
+            // right here, and that ordering mattered for a reason that still
+            // holds: Tauri creates and shows a visible:true window before setup()
+            // runs, so Windows painted main's caption before any of our code
+            // could strip it, and on a transparent window nothing ever repaints
+            // over those pixels — the ghost "Terse" title outlived four fixes.
+            // Stripping first and showing second is the only ordering where the
+            // caption is never drawn at all, and finish() runs later than every
+            // strip above, so it keeps that property.
+            //
+            // Showing it here as well would also mean two windows arriving in
+            // whatever order they liked: the start-up picture and a half-built
+            // app behind it.
+            //
+            // The reveal deliberately does NOT flush the ghost titlebar itself.
+            // frame-strip.log caught that call running while main was
+            // style=0x14CF0000 — WS_CAPTION, WS_SYSMENU, WS_THICKFRAME, min/max,
+            // no WS_POPUP: the sweep above HAD stripped it and show() put the
+            // whole native frame back, so the flush was repainting a window that
+            // still had a real caption, flushing the ghost IN rather than out.
+            // set_focus() fires Focused(true), whose handler strips the frame and
+            // only then flushes — that is the flush that clears it.
             #[cfg(target_os = "windows")]
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.show();
-                let _ = w.set_focus();
-                // No flush here any more. frame-strip.log caught this call
-                // running while main was style=0x14CF0000 — WS_CAPTION,
-                // WS_SYSMENU, WS_THICKFRAME, min/max, no WS_POPUP. In other
-                // words the sweep above HAD stripped it, and then show() put the
-                // whole native frame back, so this flush was repainting a window
-                // that still had a real caption — flushing the ghost IN rather
-                // than out.
-                //
-                // set_focus() fires Focused(true), whose handler strips the frame
-                // and only then flushes. The third line of that same log confirms
-                // the ordering works: main flushed again at style=0x94040000,
-                // WS_POPUP set and no caption. That is the flush that clears it,
-                // and it is the one the island and Doctor now get too.
-            }
+            splash::start(app.handle().clone());
 
             // Tray icon + right-click menu (parity with macOS). Until now the
             // Windows tray had NO menu, so there was no way to quit Terse at all —
@@ -4270,7 +4513,7 @@ pub fn run() {
             let mode_aggressive = MenuItemBuilder::with_id("mode_aggressive", "Mode: Aggressive").build(app)?;
             let tray_doctor = MenuItemBuilder::with_id("tray_doctor", "Open Doctor · 体检").build(app)?;
             let tray_stats = MenuItemBuilder::with_id("tray_stats", "Open Stats").build(app)?;
-            let tray_quit = MenuItemBuilder::with_id("tray_quit", "Quit Terse").build(app)?;
+            let tray_quit = MenuItemBuilder::with_id("tray_quit", "Quit Terse · 退出").build(app)?;
             let sep = PredefinedMenuItem::separator(app)?;
             let tray_menu = MenuBuilder::new(app)
                 .items(&[
@@ -4292,7 +4535,14 @@ pub fn run() {
                 }
             };
 
-            let _tray = TrayIconBuilder::new()
+            // The icon has to be set here. Without one this tray entry was
+            // blank, and the only visible Terse icon was the menu-less one
+            // tauri.conf.json used to add — so right-click offered no Quit.
+            let mut tray_builder = TrayIconBuilder::new();
+            if let Some(icon) = app.default_window_icon() {
+                tray_builder = tray_builder.icon(icon.clone());
+            }
+            let _tray = tray_builder
                 .tooltip("Terse")
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
@@ -4419,7 +4669,16 @@ pub fn run() {
                 let h = app.handle().clone();
                 if let Err(e) = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+W", move |_a, _s, _e| {
                     if let Some(w) = h.get_webview_window("wallpaper") {
+                        // Hand the mouse back FIRST, whatever the page thinks.
+                        // This is the key someone presses when the wallpaper has
+                        // taken over the screen, and it has to work even if the
+                        // page is the reason it did — a toggle alone could arm
+                        // it again.
+                        set_wallpaper_click_through(&w, true);
+                        WP_ADJUST.store(false, std::sync::atomic::Ordering::SeqCst);
+                        WP_INTERACTIVE_GEN.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         let _ = w.emit("wallpaper-arm-toggle", ());
+                        let _ = h.emit("wallpaper-adjust", false);
                     }
                 }) {
                     eprintln!("[terse] Ctrl+Shift+W shortcut unavailable (already in use?): {e}");
@@ -4637,6 +4896,33 @@ pub fn run() {
             // stream for the wallpaper's big text.
             feeds::start(app.handle().clone());
             dock_hook::start(app.handle().clone());
+            // The session dock (会话栏): a 14px strip on the left edge that opens
+            // when the cursor touches it — started at launch, as on macOS.
+            session_dock::start(app.handle().clone());
+            // The cursor layer comes back for anyone who left it on, exactly as
+            // macOS does it.
+            desk::autostart(app.handle().clone());
+            // Approval prompts on screen ("allow / deny"), read through UI
+            // Automation — the island and the toast both rely on this.
+            approvals::spawn_scanner(app.handle().clone());
+            // Main-thread latency probe: every 2 s, time a no-op on the main
+            // thread. Anything over 1 s is a freeze the user feels in every
+            // window at once; the log gives each one's start and length, to line
+            // up against slow-cmd.log and the scanner's phase timings.
+            {
+                let app2 = app.handle().clone();
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    let (tx, rx) = std::sync::mpsc::channel::<()>();
+                    let t = std::time::Instant::now();
+                    if app2.run_on_main_thread(move || { let _ = tx.send(()); }).is_err() { break; }
+                    let _ = rx.recv_timeout(std::time::Duration::from_secs(120));
+                    let ms = t.elapsed().as_millis();
+                    if ms > 1000 {
+                        diag_log("main-thread", &format!("main thread was blocked ~{ms} ms"));
+                    }
+                });
+            }
             room_link::start(app.handle().clone());
 
             // The localhost route Claude Code's hook posts to. One thread per
@@ -4669,8 +4955,15 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![
-            quit_app,
+        // Every command runs through this wrapper, which logs any that takes
+        // over 300 ms. A SYNC command runs on the main thread, and while it runs
+        // every Terse window is frozen — clicks, IPC, the wallpaper's boot. CI
+        // caught a 44 s freeze whose cause no log could name; now the command
+        // names itself in ~/.terse/slow-cmd.log. (Async commands return at
+        // once, so only real main-thread time is measured.)
+        .invoke_handler({
+            let handler: Box<dyn Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync> =
+                Box::new(tauri::generate_handler![
             get_sessions,
             remove_session,
             enter_pick_mode,
@@ -4725,6 +5018,7 @@ pub fn run() {
             sign_out,
             // ── Parity commands ported from macOS ──
             minimize_window,
+            quit_app,
             open_url,
             check_ax_permission,
             trial_grace_status,
@@ -4835,6 +5129,21 @@ pub fn run() {
             // and none of the rl_* commands below can ever be reached.
             session_dock::sd_active,
             session_dock::sd_sessions,
+            session_dock::sd_usage,
+            session_dock::sd_git,
+            session_dock::sd_diff,
+            session_dock::sd_codex_open,
+            session_dock::sd_open_claude,
+            session_dock::sd_jump,
+            session_dock::sd_send,
+            session_dock::sd_stop,
+            session_dock::sd_alert,
+            session_dock::sd_focus_input,
+            session_dock::sd_transcript,
+            session_dock::sd_image,
+            session_dock::sd_dock,
+            session_dock::sd_dock_hide,
+            session_dock::sd_dock_open,
             room_link::rl_status,
             town_drop_mode,
             pet_chat_show,
@@ -4864,7 +5173,29 @@ pub fn run() {
             project_remove_image,
             project_capsule,
             navigate_to_projects,
+            navigate_to_social,
+            social_identity,
             list_open_windows,
+            app_icon,
+            splash::app_ready,
+            particle_mode::pm_windows,
+            particle_mode::pm_window_rect,
+            particle_mode::pm_start,
+            particle_mode::pm_stop,
+            particle_mode::pm_status,
+            particle_mode::pm_has_permission,
+            particle_mode::pm_request_permission,
+            particle_mode::pl_send,
+            pm_overlay,
+            pm_overlay_hide,
+            pl_target,
+            pl_transcript,
+            desk::desk_call,
+            desk::desk_get_enabled,
+            desk::desk_set_enabled,
+            desk::desk_trust,
+            desk::desk_open_ax_settings,
+            desk::desk_overlay_visible,
             wallpaper_set_hot_rect,
             messages_for_wallpaper,
             permission_control_status,
@@ -4884,6 +5215,11 @@ pub fn run() {
             permission_ack,
             permission_respond,
             messages_set_app_on_wallpaper,
+            messages_detected_apps,
+            messages_notification_settings,
+            messages_open_settings,
+            messages_open_permission_settings,
+            messages_permission_report,
             messages_open_chat,
             messages_send_open,
             messages_status,
@@ -4965,7 +5301,20 @@ pub fn run() {
             focus_app,
             get_doctor_settings,
             set_clear_glass,
-        ])
+        ]);
+            move |invoke: tauri::ipc::Invoke<tauri::Wry>| {
+                let cmd = invoke.message.command().to_string();
+                let t = std::time::Instant::now();
+                let handled = handler(invoke);
+                let ms = t.elapsed().as_millis();
+                if ms > 300 {
+                    diag_log("slow-cmd", &format!(
+                        "{cmd} held the {} thread for {ms} ms",
+                        std::thread::current().name().unwrap_or("?")));
+                }
+                handled
+            }
+        })
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app, event| {
@@ -5149,7 +5498,7 @@ fn build_replay_html(tl: &serde_json::Value) -> String {
 
 /// Export the current timeline as a self-contained HTML replay in ~/Downloads;
 /// returns the written file path.
-#[tauri::command]
+#[tauri::command(async)]
 fn export_session_replay(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> Result<String, String> {
     let at = agent_type.unwrap_or_default();
     let tl = {
@@ -5172,7 +5521,7 @@ fn export_session_replay(agent_type: Option<String>, state: tauri::State<'_, App
 
 // ── Rules / Memory Manager (Remember) — CLAUDE.md across projects ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_list() -> serde_json::Value {
     let home = dirs::home_dir().unwrap_or_default();
     let mut candidates: Vec<(std::path::PathBuf, &str)> = vec![
@@ -5207,12 +5556,12 @@ fn claude_md_list() -> serde_json::Value {
     serde_json::json!({ "files": files })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_read(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn claude_md_write(path: String, content: String) -> Result<bool, String> {
     if let Some(dir) = std::path::Path::new(&path).parent() {
         let _ = std::fs::create_dir_all(dir);
@@ -6012,7 +6361,7 @@ fn graph_list(state: tauri::State<'_, AppState>) -> serde_json::Value {
 }
 
 /// Forget a repo (and delete its cached graph + overlay).
-#[tauri::command]
+#[tauri::command(async)]
 fn graph_remove(path: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let repo = std::path::PathBuf::from(path.trim());
     let hash = graph_store::repo_hash(&repo);
@@ -6280,6 +6629,319 @@ fn wallpaper_default_config() -> serde_json::Value {
 }
 
 /// 极简 base64(只为把一张 JPEG 塞进 data URL,不值得为它加一个依赖)
+/// What the particle panel is connected to right now.
+///
+/// Pushed AND stored, both on purpose: the first pm_overlay happens before the
+/// page has registered its listener, so the event is lost and the panel would
+/// sit there with interactive=false — drawn, but refusing to type. The page
+/// asks for this once it is up.
+static PM_TARGET: std::sync::Mutex<serde_json::Value> =
+    std::sync::Mutex::new(serde_json::Value::Null);
+
+#[tauri::command]
+fn pl_target() -> serde_json::Value {
+    PM_TARGET.lock().map(|v| v.clone()).unwrap_or_else(|e| e.into_inner().clone())
+}
+
+#[tauri::command(async)]
+async fn pl_transcript(
+    agent_type: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let monitor = lock_or_recover(&state.agent_monitor);
+    Ok(monitor.transcript(&agent_type, 80))
+}
+
+/// The click-through panel that the particles are drawn on, placed exactly over
+/// the window being captured.
+#[tauri::command]
+fn pm_overlay(app: AppHandle, x: f64, y: f64, w: f64, h: f64,
+              interactive: Option<bool>, pid: Option<u32>, label: Option<String>)
+    -> Result<(), String>
+{
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    let win = match app.get_webview_window("particles") {
+        Some(win) => win,
+        None => WebviewWindowBuilder::new(&app, "particles", WebviewUrl::App("particle-window.html".into()))
+            .title("Terse Particles")
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .shadow(false)
+            .skip_taskbar(true)
+            .focused(false)
+            .resizable(false)
+            .build()
+            .map_err(|e| e.to_string())?,
+    };
+    // Re-placed every time: the window underneath gets dragged and resized, and
+    // the overlay has to stay on it.
+    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+    let _ = win.set_size(tauri::LogicalSize::new(w.max(1.0), h.max(1.0)));
+    let _ = win.show();
+    let interactive = interactive.unwrap_or(false);
+    // Watching vs talking, the same split macOS makes. Watching: click-through,
+    // the panel is scenery and the mouse passes to the app underneath. Talking:
+    // it must take the mouse and the keyboard, or its input box is a picture of
+    // an input box.
+    #[cfg(target_os = "windows")]
+    if let Ok(raw) = win.hwnd() {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+            WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+        };
+        unsafe {
+            let hwnd = HWND(raw.0);
+            let mut ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let pass = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0) as isize;
+            ex = if interactive { ex & !pass } else { ex | pass };
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | (WS_EX_TOOLWINDOW.0 | WS_EX_LAYERED.0) as isize);
+        }
+    }
+    let _ = win.set_ignore_cursor_events(!interactive);
+    if interactive {
+        let _ = win.set_focus();
+    }
+    let target = serde_json::json!({
+        "pid": pid.unwrap_or(0),
+        "label": label.clone().unwrap_or_default(),
+        "interactive": interactive,
+    });
+    if let Ok(mut slot) = PM_TARGET.lock() {
+        *slot = target.clone();
+    }
+    let _ = app.emit("pm-target", target);
+    Ok(())
+}
+
+#[tauri::command]
+fn pm_overlay_hide(app: AppHandle) {
+    if let Some(win) = app.get_webview_window("particles") {
+        let _ = win.hide();
+    }
+}
+
+/* ══════════════ small Win32 helpers shared by the ported features ══════════
+   Each of these is one line on macOS (NSRunningApplication, NSPasteboard, an
+   AX action) and a few Win32 calls here. They live together so the ports read
+   like the Mac originals instead of like Win32. */
+
+/// On another virtual desktop, or a suspended UWP frame: visible by style,
+/// not on screen.
+#[cfg(target_os = "windows")]
+pub(crate) fn is_cloaked(hwnd: windows::Win32::Foundation::HWND) -> bool {
+    use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+    let mut v: u32 = 0;
+    unsafe {
+        DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &mut v as *mut u32 as *mut core::ffi::c_void, 4)
+            .is_ok()
+            && v != 0
+    }
+}
+
+/// The executable behind a pid ("Cursor.exe"), which is what stands in for a
+/// bundle id here.
+#[cfg(target_os = "windows")]
+pub(crate) fn process_exe_name(pid: u32) -> Option<String> {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    unsafe {
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = [0u16; 512];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(
+            h, PROCESS_NAME_WIN32, windows::core::PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
+        let _ = CloseHandle(h);
+        if !ok || len == 0 { return None; }
+        let full = String::from_utf16_lossy(&buf[..len as usize]);
+        std::path::Path::new(&full).file_name().map(|f| f.to_string_lossy().to_string())
+    }
+}
+
+/// The visible window belonging to this agent — walking up parents if the
+/// process itself has none.
+///
+/// The reason macOS walks the process tree here holds on Windows too: a `claude`
+/// started in Windows Terminal owns no window at all, and its conversation is
+/// in the terminal's. Sending keys to a process with no window is shouting at
+/// something nobody can see.
+#[cfg(target_os = "windows")]
+pub(crate) fn ui_window_for_pid(pid: u32) -> Option<windows::Win32::Foundation::HWND> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM, TRUE};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindowTextLengthW, GetWindowThreadProcessId, IsWindowVisible,
+    };
+    struct Find { want: u32, hit: isize }
+    unsafe extern "system" fn scan(h: HWND, lp: LPARAM) -> BOOL {
+        let f = &mut *(lp.0 as *mut Find);
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(h, Some(&mut pid));
+        if pid == f.want && IsWindowVisible(h).as_bool() && GetWindowTextLengthW(h) > 0 {
+            f.hit = h.0 as isize;
+            return BOOL(0);
+        }
+        TRUE
+    }
+    let mut pid = pid;
+    for _ in 0..6 {
+        let mut f = Find { want: pid, hit: 0 };
+        unsafe { let _ = EnumWindows(Some(scan), LPARAM(&mut f as *mut Find as isize)); }
+        if f.hit != 0 {
+            return Some(HWND(f.hit as *mut core::ffi::c_void));
+        }
+        pid = crate::agent_monitor::parent_pid(pid)?;
+        if pid <= 1 { break; }
+    }
+    None
+}
+
+/// The clipboard, natively — the PowerShell round trip this used to take costs
+/// a process launch per character-free paste.
+#[cfg(target_os = "windows")]
+pub(crate) fn clipboard_get() -> Option<String> {
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::DataExchange::{CloseClipboard, GetClipboardData, OpenClipboard};
+    use windows::Win32::System::Memory::{GlobalLock, GlobalUnlock};
+    const CF_UNICODETEXT: u32 = 13;
+    unsafe {
+        if OpenClipboard(None).is_err() { return None; }
+        let out = (|| {
+            let h: HANDLE = GetClipboardData(CF_UNICODETEXT).ok()?;
+            let p = GlobalLock(windows::Win32::Foundation::HGLOBAL(h.0)) as *const u16;
+            if p.is_null() { return None; }
+            let mut n = 0usize;
+            while *p.add(n) != 0 && n < 1 << 22 { n += 1; }
+            let s = String::from_utf16_lossy(std::slice::from_raw_parts(p, n));
+            let _ = GlobalUnlock(windows::Win32::Foundation::HGLOBAL(h.0));
+            Some(s)
+        })();
+        let _ = CloseClipboard();
+        out
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn clipboard_set(text: &str) -> Result<(), String> {
+    use windows::Win32::Foundation::{HANDLE, HGLOBAL};
+    use windows::Win32::System::DataExchange::{
+        CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData,
+    };
+    use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+    const CF_UNICODETEXT: u32 = 13;
+    let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    unsafe {
+        OpenClipboard(None).map_err(|e| e.to_string())?;
+        let res = (|| -> Result<(), String> {
+            EmptyClipboard().map_err(|e| e.to_string())?;
+            let bytes = wide.len() * 2;
+            let mem: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, bytes).map_err(|e| e.to_string())?;
+            let p = GlobalLock(mem) as *mut u16;
+            if p.is_null() { return Err("clipboard alloc".into()); }
+            std::ptr::copy_nonoverlapping(wide.as_ptr(), p, wide.len());
+            let _ = GlobalUnlock(mem);
+            // The clipboard owns the block once this succeeds — do not free it.
+            SetClipboardData(CF_UNICODETEXT, HANDLE(mem.0)).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        let _ = CloseClipboard();
+        res
+    }
+}
+
+/// Put back whatever the user had. Empty means they had nothing, and clearing
+/// is the honest restore of that.
+#[cfg(target_os = "windows")]
+pub(crate) fn clipboard_restore(saved: Option<String>) -> Result<(), String> {
+    clipboard_set(saved.as_deref().unwrap_or(""))
+}
+
+/// Bring a window to the front, including from a background thread.
+///
+/// SetForegroundWindow alone is refused unless the caller owns the foreground —
+/// Windows added that rule to stop apps stealing focus. Attaching to the
+/// foreground thread's input queue for the moment of the call is the documented
+/// way around it, and it is what every remote-control tool does.
+#[cfg(target_os = "windows")]
+pub(crate) fn activate_window(hwnd: windows::Win32::Foundation::HWND) -> bool {
+    use windows::Win32::System::Threading::GetCurrentThreadId;
+    use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+    // AttachThreadInput is filed with the threading calls in this crate.
+    use windows::Win32::System::Threading::AttachThreadInput;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowThreadProcessId, IsIconic, SetForegroundWindow, ShowWindow,
+        SW_RESTORE,
+    };
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        let fg = GetForegroundWindow();
+        let me = GetCurrentThreadId();
+        let other = GetWindowThreadProcessId(fg, None);
+        let attached = other != 0 && other != me && AttachThreadInput(me, other, true).as_bool();
+        let ok = SetForegroundWindow(hwnd).as_bool();
+        let _ = SetFocus(hwnd);
+        if attached {
+            let _ = AttachThreadInput(me, other, false);
+        }
+        ok
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn tap(vk: u16, down: bool) {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
+        VIRTUAL_KEY,
+    };
+    let mut i = INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: VIRTUAL_KEY(vk),
+                wScan: 0,
+                dwFlags: if down { KEYBD_EVENT_FLAGS(0) } else { KEYEVENTF_KEYUP },
+                time: 0,
+                dwExtraInfo: 0,
+            },
+        },
+    };
+    unsafe {
+        SendInput(std::slice::from_mut(&mut i), std::mem::size_of::<INPUT>() as i32);
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn press_ctrl_v() {
+    const VK_CONTROL: u16 = 0x11;
+    const VK_V: u16 = 0x56;
+    tap(VK_CONTROL, true);
+    tap(VK_V, true);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    tap(VK_V, false);
+    tap(VK_CONTROL, false);
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn press_escape() {
+    const VK_ESCAPE: u16 = 0x1B;
+    tap(VK_ESCAPE, true);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    tap(VK_ESCAPE, false);
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn press_enter() {
+    const VK_RETURN: u16 = 0x0D;
+    tap(VK_RETURN, true);
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    tap(VK_RETURN, false);
+}
+
 pub(crate) fn b64(data: &[u8]) -> String {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
@@ -6359,7 +7021,7 @@ fn desktop_picture_source() -> Option<std::path::PathBuf> {
 /// macOS 用 `sips` 缩图;Windows 没有 sips,改用系统自带的 PowerShell + System.Drawing
 /// (Windows PowerShell 5.1 一定有),同样不引入图像处理依赖。
 /// 结果缓存在 ~/.terse/wallpaper-bg.jpg,壁纸窗口每次启动直接读缓存。
-#[tauri::command]
+#[tauri::command(async)]
 fn get_desktop_picture(force: Option<bool>) -> Option<String> {
     let cache = dirs::home_dir()?.join(".terse").join("wallpaper-bg.jpg");
     let fresh = std::fs::metadata(&cache)
@@ -6501,10 +7163,10 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
     use windows::Win32::UI::WindowsAndMessaging::{
         FindWindowExW, GetSystemMetrics, GetWindowLongPtrW, SendMessageTimeoutW, SetParent,
         SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SMTO_NORMAL, SM_CXVIRTUALSCREEN,
-        HWND_BOTTOM, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
-        SWP_SHOWWINDOW, WS_CAPTION, WS_CHILD, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
+        HWND_TOP, SM_CYVIRTUALSCREEN, SWP_NOACTIVATE,
+        WS_CAPTION, WS_CHILD, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
         WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_EX_WINDOWEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
-        WS_POPUP, WS_SYSMENU, WS_THICKFRAME, WS_VISIBLE,
+        WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
     };
 
     let raw = match win.hwnd() {
@@ -6540,33 +7202,32 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             }
         }
 
-        // Finding the wallpaper host, in the order the shell actually arranges
-        // it. The previous version took the last top-level WorkerW *without* a
-        // SHELLDLL_DefView child, which is not the same thing: there are
-        // normally two or three WorkerWs and that picked an arbitrary one, so
-        // the window was re-parented somewhere that never draws. CI confirmed
-        // it — wallpaper.json said enabled, wallpaper-bg.jpg was generated, and
-        // the desktop still showed the stock picture.
+        // Finding the wallpaper host. THE RULE: the wallpaper must end up BELOW
+        // the icon layer (SHELLDLL_DefView) in z-order — never merely "in some
+        // WorkerW". Users reported every desktop icon vanishing the moment Terse
+        // started: with DefView on Progman, the old walk took "the first
+        // top-level WorkerW without DefView" and never checked where that WorkerW
+        // sat. When it sat above Progman, our full-screen child covered the
+        // icons. Three shell layouts, each with a host that is provably below
+        // the icons:
         //
-        // 1) If SHELLDLL_DefView is a direct child of Progman (the usual case
-        //    on Windows 11), Progman itself is the correct parent: our window
-        //    then draws over the wallpaper and under the icons.
-        // 2) Otherwise DefView lives inside a WorkerW, and the wallpaper host
-        //    is that WorkerW's NEXT sibling of the same class.
-        // Walk every top-level WorkerW ONCE, recording both candidates:
-        //   · the sibling immediately after whichever host owns SHELLDLL_DefView
-        //   · the first WorkerW that has no DefView child at all
-        //
-        // The previous version short-circuited: if DefView was a direct child of
-        // Progman it never looked at the WorkerWs and parented to Progman. That
-        // is the common Windows 11 layout, and parenting there puts us in the
-        // same child list as the icons, sunk to HWND_BOTTOM — i.e. underneath
-        // the picture Progman paints. Correct parent, invisible result.
-        let defview_owner_is_progman = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
-            .map(|h| !h.is_invalid())
-            .unwrap_or(false);
+        // A) DefView is a child of Progman (Windows 11 24H2+, where the wallpaper
+        //    WorkerW became Progman's own child; also any shell where 0x052C did
+        //    not split). Parent to Progman and insert directly AFTER DefView in
+        //    its sibling order: under the icons, above Explorer's WorkerW
+        //    picture. HWND_BOTTOM was wrong here — it sank us below that WorkerW
+        //    too, i.e. invisible.
+        // B) DefView lives inside a top-level WorkerW (classic 0x052C split). The
+        //    wallpaper host is the WorkerW that follows it in z-order, i.e. below.
+        // C) Nothing matched: Progman, below DefView if it has one.
+        let defview_on_progman = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None)
+            .unwrap_or_default();
+        let defview_owner_is_progman = !progman.is_invalid() && !defview_on_progman.is_invalid();
+        let progman_child_workerw = !progman.is_invalid()
+            && FindWindowExW(progman, None, w!("WorkerW"), None)
+                .map(|h| !h.is_invalid())
+                .unwrap_or(false);
         let mut after_defview = HWND::default();
-        let mut first_bare = HWND::default();
         let mut worker_count = 0usize;
         let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
         while !worker.is_invalid() {
@@ -6575,34 +7236,33 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
                 .map(|h| !h.is_invalid())
                 .unwrap_or(false);
             if has_defview && after_defview.is_invalid() {
+                // FindWindowExW(None, worker, ..) continues the top-level walk
+                // from `worker` in z-order, so this is the next WorkerW BELOW the
+                // one holding the icons.
                 after_defview = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
-            } else if !has_defview && first_bare.is_invalid() {
-                first_bare = worker;
             }
             worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
         }
-        // When DefView sits on Progman there is no "sibling after" to find, so
-        // the bare WorkerW is the wallpaper layer. When DefView sits inside a
-        // WorkerW, the sibling after it is. Prefer whichever the layout implies,
-        // then the other, then Progman as a last resort.
-        let target = if defview_owner_is_progman {
-            if !first_bare.is_invalid() { first_bare } else { after_defview }
+        // (parent, sibling to insert after — None means top of that parent)
+        let (parent, insert_after, layout) = if defview_owner_is_progman {
+            (progman, Some(defview_on_progman), if progman_child_workerw { "A:24h2" } else { "A:progman" })
         } else if !after_defview.is_invalid() {
-            after_defview
+            (after_defview, None, "B:workerw-after-defview")
         } else {
-            first_bare
+            let dv = FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None).ok()
+                .filter(|h| !h.is_invalid());
+            (progman, dv, "C:progman-fallback")
         };
-        let parent = if target.is_invalid() { progman } else { target };
         // Record what the shell actually looked like. CI cannot test any of this
         // — the runner has no Progman and no WorkerW at all (the diagnostic came
         // back "Progman = 0, total top-level WorkerW: 0"), so this path has never
         // once executed there. The only machine that can answer is a real
         // desktop, and this is how it reports back.
         pin_log(&format!(
-            "progman={:?} defview_on_progman={} workerw_count={} after_defview={:?} \
-             first_bare={:?} chosen={:?}{}",
-            progman.0, defview_owner_is_progman, worker_count, after_defview.0,
-            first_bare.0, parent.0,
+            "progman={:?} defview_on_progman={} progman_child_workerw={} workerw_count={} \
+             after_defview={:?} layout={} chosen={:?} insert_after={:?}{}",
+            progman.0, defview_owner_is_progman, progman_child_workerw, worker_count,
+            after_defview.0, layout, parent.0, insert_after.map(|h| h.0),
             if parent.is_invalid() { "  << NO PARENT - pin aborted" } else { "" }
         ));
         if !parent.is_invalid() {
@@ -6620,10 +7280,13 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
             let drop_bits = (WS_POPUP.0 | WS_CAPTION.0 | WS_THICKFRAME.0 | WS_SYSMENU.0
                 | WS_MINIMIZEBOX.0 | WS_MAXIMIZEBOX.0) as isize;
+            // WS_VISIBLE is carried over, not forced: re-pins run from timers
+            // and the sentinel, and must never re-show a wallpaper the user
+            // turned off. show_wallpaper_window shows it AFTER this pin.
             SetWindowLongPtrW(
                 hwnd,
                 GWL_STYLE,
-                (style & !drop_bits) | (WS_CHILD.0 | WS_VISIBLE.0) as isize,
+                (style & !drop_bits) | WS_CHILD.0 as isize,
             );
             // WS_EX_APPWINDOW forces a taskbar button, WS_EX_WINDOWEDGE draws a
             // raised edge, and WS_EX_TOOLWINDOW — which this function used to ADD
@@ -6651,17 +7314,14 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
             let cx = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             let cy = GetSystemMetrics(SM_CYVIRTUALSCREEN);
             if cx > 0 && cy > 0 {
-                // HWND_BOTTOM, not NOZORDER. The icons live in SHELLDLL_DefView,
-                // a sibling under the same parent, so inserting at the top of
-                // the z-order painted the wallpaper OVER them — CI showed the
-                // particle field drawing correctly with every desktop icon
-                // gone. macOS's kCGDesktopWindowLevel sits below the icons;
-                // sinking to the bottom of the parent's children is the
-                // equivalent, and puts us above the static wallpaper but under
-                // the icons.
+                // Directly below the icons. With DefView in the same parent we
+                // insert right after it (SetWindowPos places hwnd BELOW the
+                // insert-after window); in layout B the host WorkerW is itself
+                // below the icons, so the top of it is fine.
+                let z = insert_after.unwrap_or(HWND_TOP);
                 let _ = SetWindowPos(
-                    hwnd, HWND_BOTTOM, 0, 0, cx, cy,
-                    SWP_NOACTIVATE | SWP_SHOWWINDOW,
+                    hwnd, z, 0, 0, cx, cy,
+                    SWP_NOACTIVATE,
                 );
             }
         }
@@ -6677,6 +7337,22 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
         let add = (WS_EX_TRANSPARENT.0 | WS_EX_NOACTIVATE.0) as isize;
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | add);
+
+        if parent.is_invalid() {
+            // No desktop host at all (Explorer not running / restarting). Left
+            // as it is, this is a full-screen top-level window over the whole
+            // desktop — the "all my icons are gone" report. No wallpaper beats
+            // no icons; the sentinel re-pins once Explorer is back.
+            let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(
+                hwnd, windows::Win32::UI::WindowsAndMessaging::SW_HIDE);
+            WP_PIN_HIDDEN.store(true, std::sync::atomic::Ordering::SeqCst);
+            WP_PINNED.store(false, std::sync::atomic::Ordering::SeqCst);
+            pin_log("  no desktop host - wallpaper HIDDEN rather than cover the icons");
+        } else {
+            WP_PINNED.store(true, std::sync::atomic::Ordering::SeqCst);
+            WP_OVERLAY_ON.store(false, std::sync::atomic::Ordering::SeqCst);
+            WP_PIN_HIDDEN.store(false, std::sync::atomic::Ordering::SeqCst);
+        }
 
         // What the window ended up as, so the log answers "did it take?" rather
         // than only "what did we ask for?".
@@ -6699,6 +7375,166 @@ fn pin_wallpaper_window(win: &tauri::WebviewWindow) {
 #[cfg(not(target_os = "windows"))]
 fn pin_wallpaper_window(_win: &tauri::WebviewWindow) {}
 
+/// True while the wallpaper is meant to be pinned behind the icons (not the Pro
+/// overlay, not lifted for adjust / a Ctrl file drop). Only then does the
+/// sentinel hold it to "below the icons".
+static WP_PINNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// The pin found no desktop host and hid the window instead.
+static WP_PIN_HIDDEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static WP_SENTINEL_FAILS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static WP_SENTINEL_ON: std::sync::Once = std::sync::Once::new();
+
+/// Is the pinned wallpaper really underneath the desktop icons?
+///
+/// `Some(false)` = provably not (top-level, or ordered above SHELLDLL_DefView);
+/// `None` = cannot tell (no DefView found — Explorer restarting), so no action.
+#[cfg(target_os = "windows")]
+fn wallpaper_below_icons(hwnd: windows::Win32::Foundation::HWND) -> Option<bool> {
+    use windows::core::w;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        FindWindowExW, GetAncestor, GetParent, GetWindow, GA_PARENT, GW_HWNDNEXT,
+    };
+    unsafe {
+        // The icon layer, wherever this shell keeps it.
+        let progman = FindWindowExW(None, None, w!("Progman"), None).unwrap_or_default();
+        let mut defview = if progman.is_invalid() { HWND::default() } else {
+            FindWindowExW(progman, None, w!("SHELLDLL_DefView"), None).unwrap_or_default()
+        };
+        if defview.is_invalid() {
+            let mut worker = FindWindowExW(None, None, w!("WorkerW"), None).unwrap_or_default();
+            while !worker.is_invalid() {
+                let dv = FindWindowExW(worker, None, w!("SHELLDLL_DefView"), None).unwrap_or_default();
+                if !dv.is_invalid() { defview = dv; break; }
+                worker = FindWindowExW(None, worker, w!("WorkerW"), None).unwrap_or_default();
+            }
+        }
+        if defview.is_invalid() { return None; }
+        let icons_host = GetParent(defview).unwrap_or_default();
+        let ours = GetParent(hwnd).unwrap_or_default();
+        // Top-level (no parent, or the desktop itself is the parent): nothing
+        // keeps it behind the icons. This is the screenshot users sent.
+        let desktop = GetAncestor(icons_host, GA_PARENT);
+        if ours.is_invalid() || ours == desktop { return Some(false); }
+        // Walk down the z-order from `from` looking for `target`: found means
+        // target is below.
+        let below = |from: HWND, target: HWND| -> bool {
+            let mut h = GetWindow(from, GW_HWNDNEXT).unwrap_or_default();
+            let mut n = 0;
+            while !h.is_invalid() && n < 4096 {
+                if h == target { return true; }
+                h = GetWindow(h, GW_HWNDNEXT).unwrap_or_default();
+                n += 1;
+            }
+            false
+        };
+        if ours == icons_host {
+            // Siblings of the icons: must come after DefView.
+            Some(below(defview, hwnd))
+        } else {
+            // In another host: that host must sit below the icons' host.
+            Some(below(icons_host, ours))
+        }
+    }
+}
+
+/// Every 3 s: make sure a wallpaper that is supposed to be behind the icons IS.
+///
+/// Users kept reporting "I opened Terse and every desktop icon disappeared".
+/// Each cause fixed so far was a different path putting the wallpaper in front
+/// (wrong host, shown before pinned, a stuck Ctrl lift) — so instead of trusting
+/// the next path to get it right, this checks the outcome. Wrong → re-pin; still
+/// wrong after two re-pins → hide the wallpaper. No wallpaper beats no icons.
+fn start_wallpaper_sentinel(app: &AppHandle) {
+    #[cfg(target_os = "windows")]
+    {
+        let app = app.clone();
+        WP_SENTINEL_ON.call_once(move || {
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                let a2 = app.clone();
+                let _ = app.run_on_main_thread(move || wallpaper_sentinel_tick(&a2));
+            });
+        });
+    }
+    #[cfg(not(target_os = "windows"))]
+    let _ = app;
+}
+
+#[cfg(target_os = "windows")]
+fn wallpaper_sentinel_tick(app: &AppHandle) {
+    use std::sync::atomic::Ordering;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_LBUTTON};
+    use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
+    let Some(win) = app.get_webview_window("wallpaper") else { return };
+    let Ok(raw) = win.hwnd() else { return };
+    let hwnd = HWND(raw.0);
+
+    // Explorer came back after a pin that found no host: pin again now.
+    if WP_PIN_HIDDEN.load(Ordering::SeqCst) {
+        // Only for a wallpaper the user still has on; switching it off meanwhile
+        // must not bring it back.
+        let enabled = get_wallpaper_config().get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+        if !enabled {
+            WP_PIN_HIDDEN.store(false, Ordering::SeqCst);
+            return;
+        }
+        if !overlay_active_cached() {
+            pin_wallpaper_window(&win);
+            if wallpaper_below_icons(hwnd) == Some(true) {
+                WP_PIN_HIDDEN.store(false, Ordering::SeqCst);
+                let _ = win.show();
+                pin_log("sentinel: desktop host is back - wallpaper shown again");
+            } else {
+                // Pinned somewhere, but not provably under the icons: stay hidden
+                // and try again next tick.
+                WP_PIN_HIDDEN.store(true, Ordering::SeqCst);
+            }
+        }
+        return;
+    }
+    if !unsafe { IsWindowVisible(hwnd) }.as_bool() { return; }
+
+    // A Ctrl file-drop lift whose key-up the hook never saw (lock screen, UAC,
+    // a key released while another desktop had input). Neither Ctrl nor the
+    // mouse button is really down, so no drop can be in progress: put it back.
+    #[cfg(not(feature = "msstore"))]
+    if DROP_ON.load(Ordering::SeqCst) {
+        let held = |vk: i32| (unsafe { GetAsyncKeyState(vk) } as u16) & 0x8000 != 0;
+        if !held(VK_CONTROL.0 as i32) && !held(VK_LBUTTON.0 as i32) {
+            diag_log("town", "sentinel: drop lift with no Ctrl/mouse held - lowering");
+            town_drop_set(app, false);
+        }
+        return;
+    }
+
+    if !WP_PINNED.load(Ordering::SeqCst) || WP_ADJUST.load(Ordering::SeqCst) { return; }
+    match wallpaper_below_icons(hwnd) {
+        Some(false) => {
+            let n = WP_SENTINEL_FAILS.fetch_add(1, Ordering::SeqCst) + 1;
+            if n <= 2 {
+                pin_log(&format!("sentinel: wallpaper is ABOVE the icons - re-pin #{n}"));
+                pin_wallpaper_window(&win);
+            } else {
+                pin_log("sentinel: still above the icons after 2 re-pins - HIDING the wallpaper");
+                let _ = win.hide();
+            }
+        }
+        Some(true) => { WP_SENTINEL_FAILS.store(0, Ordering::SeqCst); }
+        None => {}
+    }
+}
+
+/// The overlay switch as last applied, without re-reading the licence (the
+/// sentinel runs every 3 s and overlay_allowed logs + loads the licence).
+#[cfg(target_os = "windows")]
+fn overlay_active_cached() -> bool {
+    !WP_PINNED.load(std::sync::atomic::Ordering::SeqCst)
+        && WP_OVERLAY_ON.load(std::sync::atomic::Ordering::SeqCst)
+}
+static WP_OVERLAY_ON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Size the (already-created) wallpaper window to the primary display, pin it
 /// behind the desktop, and show it. The window itself is built once in `setup`
 /// on the main thread; commands only show/hide it (thread-safe).
@@ -6716,7 +7552,12 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
         let _ = win.set_position(tauri::LogicalPosition::new(0.0, 0.0));
         let _ = win.set_size(tauri::LogicalSize::new(w, h));
     }
-    let _ = win.show();
+    // NOT shown here. Shown on the main thread AFTER it is placed: shown first,
+    // it is a plain full-screen window in front of every desktop icon until the
+    // pin runs — and at launch that pin is queued behind the whole of setup().
+    WP_SENTINEL_FAILS.store(0, std::sync::atomic::Ordering::SeqCst);
+    WP_PIN_HIDDEN.store(false, std::sync::atomic::Ordering::SeqCst);
+    start_wallpaper_sentinel(app);
     // Re-parenting touches the shell's window tree — must run on the main thread,
     // so this is safe whether called from `setup` or from a command handler thread.
     // Honour the Pro overlay across restarts. Without this the switch survives
@@ -6729,6 +7570,9 @@ fn show_wallpaper_window(app: &AppHandle) -> Result<(), String> {
             apply_wallpaper_overlay(&win2);
         } else {
             pin_wallpaper_window(&win2);
+        }
+        if !WP_PIN_HIDDEN.load(std::sync::atomic::Ordering::SeqCst) {
+            let _ = win2.show();
         }
     });
     // The page asks for this answer at boot and then listens for changes. Without
@@ -6824,6 +7668,8 @@ fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
         }
     }
     let _ = win.set_ignore_cursor_events(true);
+    WP_PINNED.store(false, std::sync::atomic::Ordering::SeqCst);
+    WP_OVERLAY_ON.store(true, std::sync::atomic::Ordering::SeqCst);
     diag_log("wallpaper", "overlay ON — topmost, click-through");
 }
 
@@ -6849,7 +7695,10 @@ fn apply_wallpaper_overlay(win: &tauri::WebviewWindow) {
 fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     let on = cfg.get("overlay").and_then(|v| v.as_bool()).unwrap_or(false);
     let engine = cfg.get("engine").and_then(|v| v.as_str()).unwrap_or("mineradio");
-    let particle = matches!(engine, "mineradio" | "cinematic");
+    // "orbit" (星轨炸环) is another scene of the mineradio renderer — same
+    // alpha:true canvas — so it lifts above other windows like the other two.
+    // Without it here, always-on-top is silently refused for that engine.
+    let particle = matches!(engine, "mineradio" | "cinematic" | "orbit");
     let pro = license::License::load().is_pro();
     // Logged, not inferred. Four diagnoses of the black-sheet overlay were wrong
     // because the inputs to this decision were never printed - a screenshot
@@ -6959,7 +7808,7 @@ fn set_wallpaper_enabled(on: bool, app: AppHandle) -> Result<(), String> {
 }
 
 /// Cheap token counter (today, in+out) that the wallpaper polls to drive pulses.
-#[tauri::command]
+#[tauri::command(async)]
 fn get_token_pulse(state: tauri::State<'_, AppState>) -> u64 {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).today_total_tokens()
 }
@@ -7159,6 +8008,10 @@ static WP_INTERACTIVE_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::Ato
 
 /// The hard ceiling on how long the wallpaper may hold the mouse.
 const WP_INTERACTIVE_MAX_SECS: u64 = 75;
+/// The same watchdog, for the case where the window is ABOVE everything: there a
+/// grab that never ends is a desktop nobody can click, so it is measured in
+/// seconds rather than in a minute and a quarter.
+const WP_INTERACTIVE_TOPMOST_SECS: u64 = 8;
 
 /// Out of WorkerW and up to just above the desktop icons.
 ///
@@ -7195,6 +8048,7 @@ fn lift_wallpaper_above_icons(win: &tauri::WebviewWindow) {
             SWP_NOACTIVATE | SWP_SHOWWINDOW,
         );
     }
+    WP_PINNED.store(false, std::sync::atomic::Ordering::SeqCst);
     diag_log("wallpaper", "3D: lifted out of WorkerW to just above the desktop icons");
 }
 
@@ -7456,6 +8310,35 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
     // this window. See wallpaper_placement.
     let adjusting = WP_ADJUST.load(Ordering::SeqCst);
 
+    // ⚠ While the wallpaper is TOPMOST, only the adjust state may take the
+    // mouse. Reported by a user: turning always-on-top on left a full-screen
+    // window that swallowed every click — nothing on the desktop could be
+    // clicked, and several times the only way out was ending the process from
+    // Task Manager.
+    //
+    // How it happened: the page arms itself when the cursor is over one of the
+    // big glyphs, so that a glyph can be clicked. On the desktop layer that is
+    // harmless — the window sits behind the icons and the clicks were never
+    // going anywhere else. Lifted above every window it is the opposite: the
+    // wallpaper covers the screen, the cursor lands on a glyph within seconds,
+    // and from then on every click in every application lands on the wallpaper
+    // instead. The 75 s watchdog underneath does hand the mouse back, and the
+    // next hover takes it again.
+    //
+    // The adjust state stays allowed because it is the one the user asks for by
+    // pressing a button that lights up, and it can be left with Esc, the same
+    // button, or the watchdog. Anything else keeps its clicks.
+    if on && overlay_on && !adjusting {
+        diag_log(
+            "wallpaper",
+            "interactive REFUSED — the wallpaper is topmost and this was not the adjust state; \
+             taking the mouse there would make the whole desktop unclickable",
+        );
+        let win2 = win.clone();
+        let _ = app.run_on_main_thread(move || set_wallpaper_click_through(&win2, true));
+        return false;
+    }
+
     let placement = wallpaper_placement(overlay_on, adjusting);
     let win2 = win.clone();
     let _ = app.run_on_main_thread(move || {
@@ -7481,7 +8364,12 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
         // page intended.
         let app2 = app.clone();
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(WP_INTERACTIVE_MAX_SECS));
+            // Above every window, a stuck grab means the whole desktop is
+            // unclickable, so the rescue cannot be a minute away. Behind the
+            // icons it costs the user nothing to wait, and a longer window
+            // avoids cutting a real drag short.
+            let secs = if overlay_on { WP_INTERACTIVE_TOPMOST_SECS } else { WP_INTERACTIVE_MAX_SECS };
+            std::thread::sleep(std::time::Duration::from_secs(secs));
             // Renewed or already released in the meantime — this shot is stale.
             if WP_INTERACTIVE_GEN.load(Ordering::SeqCst) != generation { return; }
             // Cloned because the closure MOVES the handle it uses, and the
@@ -7502,7 +8390,7 @@ fn wallpaper_set_interactive(app: AppHandle, on: bool) -> bool {
                 let _ = app3.emit("wallpaper-adjust", false);
                 let _ = app3.emit("wallpaper-lift", false);
                 diag_log("wallpaper", &format!(
-                    "interactive watchdog fired after {WP_INTERACTIVE_MAX_SECS}s — mouse returned"));
+                    "interactive watchdog fired after {secs}s — mouse returned"));
             });
         });
     }
@@ -7924,6 +8812,53 @@ fn navigate_to_projects(app: AppHandle) {
     navigate_main(&app, "projects.html");
 }
 
+/// 打开「社交卡片」那一页。Through navigate_main for the same reason as the line
+/// above: a "tauri://localhost/…" URL parses on Windows and then points at a
+/// scheme WebView2 does not serve, so the navigation quietly does nothing.
+#[tauri::command]
+fn navigate_to_social(app: AppHandle) {
+    navigate_main(&app, "social.html");
+}
+
+/// This install's Terse social identity — the one credential an agent card hangs
+/// off. Read it if it is there, mint it if it is not.
+///
+/// WHY IT LIVES IN A FILE AND NOT IN THE APP'S OWN SETTINGS. Two processes have
+/// to agree on it: this app, where the human reviews and publishes the card, and
+/// whichever coding agent they pasted the setup prompt into, which reaches Terse
+/// over MCP with `x-terse-identity`. A value only the app knew would mean the
+/// card the agent drafted and the card this app shows are two different cards.
+/// ~/.terse/social-identity is the handshake, and the setup prompt writes the
+/// very same file when the agent gets there first — on every platform, which is
+/// why the path is built from the home directory rather than anything per-OS.
+///
+/// The 0600 the macOS build applies has no Windows equivalent here; the file
+/// sits under the user's own profile directory, which is the protection NTFS
+/// actually offers for this.
+#[tauri::command(async)]
+fn social_identity() -> Result<String, String> {
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let dir = home.join(".terse");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create ~/.terse: {}", e))?;
+    let path = dir.join("social-identity");
+
+    // A truncated or hand-edited file is worse than no file: it would silently
+    // become a DIFFERENT identity from the agent's, and the human would be
+    // looking at an empty page while their agent insists it just wrote a card.
+    if let Ok(existing) = std::fs::read_to_string(&path) {
+        let t = existing.trim().to_string();
+        if t.len() == 64 && t.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Ok(t);
+        }
+    }
+
+    let mut bytes = [0u8; 32];
+    getrandom::getrandom(&mut bytes).map_err(|e| format!("Failed to generate identity: {}", e))?;
+    let id: String = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    std::fs::write(&path, &id).map_err(|e| format!("Failed to write identity: {}", e))?;
+    Ok(id)
+}
+
 /// The windows the user actually has open right now: app name, position, size.
 ///
 /// The always-on-top card used to draw two fake white rectangles. A fake shows
@@ -7932,6 +8867,133 @@ fn navigate_to_projects(app: AppHandle) {
 /// then it is just a diagram. With this the same card draws the user's own
 /// Chrome, terminal and chat at their real relative positions, and flipping the
 /// switch shows the particles come forward over them.
+/// The icon of the app that owns `pid`, as a PNG data URL — the same string
+/// macOS returns from NSRunningApplication, so the pages that show it need no
+/// Windows branch.
+///
+/// Windows keeps an app's icon in its .exe rather than in a bundle, so this is:
+/// pid → exe path → the icon resource → a bitmap. DrawIconEx does the scaling,
+/// which matters because the extracted icon is whatever size the exe happens to
+/// carry (usually 32) while callers ask for 64.
+///
+/// The bitmap comes back as premultiplied BGRA; PNG wants straight RGBA, so the
+/// alpha has to be divided back out or every icon is dark where it is soft.
+/// Icons with no alpha channel at all (old exes) would come out fully
+/// transparent, so a zero alpha plane is treated as opaque.
+// Async: extracting and scaling an icon is disk work, and a sync command runs
+// on the main thread, where it would freeze every window for its duration.
+#[tauri::command(async)]
+fn app_icon(pid: u32, size: Option<u32>) -> Option<String> {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::Graphics::Gdi::{
+        CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO,
+        BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HBITMAP, HGDIOBJ,
+    };
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::Shell::ExtractIconExW;
+    use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, DI_NORMAL, HICON};
+
+    let px = size.unwrap_or(64).clamp(16, 256) as i32;
+    unsafe {
+        // 1. pid → exe path
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = [0u16; 512];
+        let mut len = buf.len() as u32;
+        let got = QueryFullProcessImageNameW(
+            h,
+            PROCESS_NAME_WIN32,
+            windows::core::PWSTR(buf.as_mut_ptr()),
+            &mut len,
+        )
+        .is_ok();
+        let _ = CloseHandle(h);
+        if !got || len == 0 {
+            return None;
+        }
+        let mut path: Vec<u16> = buf[..len as usize].to_vec();
+        path.push(0);
+
+        // 2. exe → HICON (large first; some exes only carry a small one)
+        let mut large = HICON::default();
+        let mut small = HICON::default();
+        let n = ExtractIconExW(
+            windows::core::PCWSTR(path.as_ptr()),
+            0,
+            Some(&mut large as *mut HICON),
+            Some(&mut small as *mut HICON),
+            1,
+        );
+        if n == 0 || n == u32::MAX {
+            return None;
+        }
+        let icon = if !large.is_invalid() { large } else { small };
+        if icon.is_invalid() {
+            if !small.is_invalid() { let _ = DestroyIcon(small); }
+            return None;
+        }
+
+        // 3. HICON → 32-bit top-down DIB at the requested size
+        let mut bmi = BITMAPINFO::default();
+        bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
+        bmi.bmiHeader.biWidth = px;
+        bmi.bmiHeader.biHeight = -px; // negative = rows top-down, as PNG wants
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB.0;
+        let mut bits: *mut core::ffi::c_void = std::ptr::null_mut();
+        let dc = CreateCompatibleDC(None);
+        let bmp: HBITMAP = CreateDIBSection(dc, &bmi, DIB_RGB_COLORS, &mut bits, None, 0).ok()?;
+        let old = SelectObject(dc, HGDIOBJ(bmp.0));
+        let drew = DrawIconEx(dc, 0, 0, icon, px, px, 0, None, DI_NORMAL).is_ok();
+        SelectObject(dc, old);
+
+        let mut rgba = Vec::new();
+        if drew && !bits.is_null() {
+            let n = (px * px) as usize;
+            let src = std::slice::from_raw_parts(bits as *const u8, n * 4);
+            let opaque = src.chunks_exact(4).all(|p| p[3] == 0); // no alpha plane at all
+            rgba.reserve(n * 4);
+            for p in src.chunks_exact(4) {
+                let (b, g, r, a) = (p[0], p[1], p[2], p[3]);
+                if opaque {
+                    rgba.extend_from_slice(&[r, g, b, 255]);
+                } else if a == 0 {
+                    rgba.extend_from_slice(&[0, 0, 0, 0]);
+                } else {
+                    // Un-premultiply, or soft edges come out muddy.
+                    let un = |c: u8| ((c as u32 * 255 + a as u32 / 2) / a as u32).min(255) as u8;
+                    rgba.extend_from_slice(&[un(r), un(g), un(b), a]);
+                }
+            }
+        }
+        let _ = DeleteObject(HGDIOBJ(bmp.0));
+        let _ = DeleteDC(dc);
+        if !large.is_invalid() { let _ = DestroyIcon(large); }
+        if !small.is_invalid() { let _ = DestroyIcon(small); }
+        if rgba.is_empty() {
+            return None;
+        }
+
+        // 4. RGBA → PNG → data URL
+        let mut png: Vec<u8> = Vec::new();
+        {
+            let mut enc = png::Encoder::new(&mut png, px as u32, px as u32);
+            enc.set_color(png::ColorType::Rgba);
+            enc.set_depth(png::BitDepth::Eight);
+            let mut w = enc.write_header().ok()?;
+            w.write_image_data(&rgba).ok()?;
+        }
+        use base64::Engine;
+        Some(format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(&png)
+        ))
+    }
+}
+
 ///
 /// EnumWindows already walks in z-order, front first, so the array order IS the
 /// stacking order the card relies on. Eight is plenty to draw.
@@ -8147,6 +9209,59 @@ async fn messages_open_chat(app_id: String, target: String) -> serde_json::Value
 #[tauri::command]
 async fn messages_send_open(app_id: String, text: String) -> serde_json::Value {
     serde_json::to_value(messages::send_to_open_chat(&app_id, &text).await).unwrap_or_default()
+}
+
+/// Social apps Terse has actually seen messages from, each with its wallpaper
+/// switch.
+#[tauri::command(async)]
+fn messages_detected_apps() -> Result<serde_json::Value, String> {
+    Ok(serde_json::to_value(messages::detected_apps()?).unwrap_or_default())
+}
+
+/// Which apps Windows lets notify, and whether their notifications stay in the
+/// centre — the page explains an empty feed with this.
+#[tauri::command(async)]
+fn messages_notification_settings() -> serde_json::Value {
+    serde_json::to_value(messages::notification_settings()).unwrap_or_default()
+}
+
+/// Open the Settings page that owns a switch the user needs.
+///
+/// macOS opens a System Settings pane per grant. Windows has no Full Disk
+/// Access and no Accessibility grant to give — the notification database is
+/// readable as the user — so the only page worth opening is Notifications,
+/// where an app that is switched off there can never reach Terse either.
+#[tauri::command(async)]
+fn messages_open_settings(which: String) -> Result<(), String> {
+    let uri = match which.as_str() {
+        "notifications" => "ms-settings:notifications",
+        "accessibility" => "ms-settings:easeofaccess",
+        _ => "ms-settings:privacy",
+    };
+    crate::hidden_command("cmd")
+        .args(["/C", "start", "", uri])
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command(async)]
+fn messages_open_permission_settings() -> Result<(), String> {
+    messages_open_settings("notifications".into())
+}
+
+/// What the feed can and cannot read right now.
+///
+/// `fullDiskAccess` keeps the macOS name because the page speaks it; on Windows
+/// it means "the notification database could be opened". `accessibility` is
+/// always true: window titles are read with ordinary Win32 calls here, with no
+/// grant behind them.
+#[tauri::command]
+fn messages_permission_report() -> serde_json::Value {
+    serde_json::json!({
+        "fullDiskAccess": messages::feed_status().available,
+        "accessibility": true,
+    })
 }
 
 /// Can the message feed be read? Drives the UI's "why is this empty" line.

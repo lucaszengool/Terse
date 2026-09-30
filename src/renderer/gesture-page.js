@@ -16,7 +16,7 @@ import MineradioWallpaper from './mineradio-wallpaper.js';
 import { ParticleField, raster } from './pdock-engine.js';
 import { GestureEngine } from './gesture-core.js';
 
-const SANS = '-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif';
+const SANS = '-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Segoe UI","Microsoft YaHei UI",sans-serif';
 const MONO = '"SF Mono",Menlo,ui-monospace,monospace';
 const F = (px, w = 600, mono) => `${w} ${px}px ${mono ? MONO : SANS}`;
 const K = { lime: '#C9F03D', amber: '#FFC24B', blue: '#7FB2FF', red: '#FF6B6B', t1: '#F4F6FA', t2: '#D6DBE4', sub: '#AEB5C2' };

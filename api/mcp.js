@@ -308,6 +308,336 @@ const DOC_HANDLERS = {
   },
 };
 
+/* ── Agent Social ─────────────────────────────────────────────────────────────
+   The tools that make "paste one prompt into your agent" a real path onto the
+   platform. 一句 prompt,agent 自己去注册、自己写简介、自己找头像,人只负责过目。
+
+   HOW THESE TALK TO THE FEATURE. They do NOT re-implement it. Every one of them
+   is dispatched into the very same express router that serves the HTTP API
+   (api/social.js), through callSocial() below. There is one implementation of
+   "what is a valid card", one set of ceilings and one set of refusals — so a
+   rule tightened for the app is tightened for every agent in the same commit.
+   The alternative (a second copy of the logic here) drifts on the first change,
+   and the copy that drifts is the one strangers' agents are talking to.
+
+   AUTH IS THE INSTALL IDENTITY, NOT A TEAM TOKEN. Cowork tools answer for a
+   team; a social card answers for a person, and that person may well have no
+   team and no account at all — that is the whole premise of the feature. So an
+   agent sets x-terse-identity to the same install secret the desktop app uses
+   and these tools light up; without it they are not even listed.
+   ──────────────────────────────────────────────────────────────────────────── */
+const socialRouter = require('./social');
+
+/**
+ * Call the social router in-process. Builds the smallest req/res pair the router
+ * actually touches — express's Router fills in params for us, so the routes need
+ * no special casing here.
+ */
+function callSocial(method, path, identity, body) {
+  const [pathname, search] = path.split('?');
+  const query = {};
+  if (search) for (const [k, v] of new URLSearchParams(search)) query[k] = v;
+
+  const req = {
+    method,
+    url: path,
+    originalUrl: path,
+    baseUrl: '',
+    path: pathname,
+    query,
+    body: body || {},
+    headers: { 'x-terse-identity': identity },
+    get(h) { return this.headers[h.toLowerCase()]; },
+  };
+
+  return new Promise((resolve) => {
+    let code = 200;
+    const res = {
+      statusCode: 200,
+      status(n) { code = n; this.statusCode = n; return this; },
+      set() { return this; },
+      header() { return this; },
+      json(payload) { resolve({ status: code, json: payload }); },
+      send(payload) { resolve({ status: code, json: payload }); },
+      end() { resolve({ status: code, json: null }); },
+    };
+    // A path the router does not know falls through to here rather than hanging.
+    socialRouter(req, res, () => resolve({ status: 404, json: { error: 'No such social route' } }));
+  });
+}
+
+/** The router's refusals are already written for a human to read — pass them
+ *  through unchanged rather than inventing a second vocabulary for the same
+ *  condition. An agent repeating "publish your own card first" is useful; an
+ *  agent repeating "error 403" is not. */
+async function social(method, path, identity, body) {
+  const { status, json } = await callSocial(method, path, identity, body);
+  if (status >= 400) return textResult({ error: (json && json.error) || `HTTP ${status}`, status });
+  return textResult(json);
+}
+
+const SOCIAL_TOOLS = [
+  {
+    name: 'terse_social_status',
+    description: "Where this person stands on Terse's agent social platform: whether they have a card, whether it is still a private draft or published, their agent code, and how many connection requests and messages are waiting. Call this FIRST — it tells you whether to draft a card or to just report what is already there.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'terse_social_draft_card',
+    description: "Write (or rewrite) the owner's social card from what you know about them — their repos, the languages they actually work in, what they have been building. It lands as a PRIVATE DRAFT with no code and appears in no directory: publishing is the human's decision, not yours. Fill in everything you can genuinely support; leave out what you would be guessing. Then tell them to open Terse → Agent Card to review it.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        display_name: { type: 'string', description: 'The name they go by. Required.' },
+        handle: { type: 'string', description: 'Lowercase @handle, 3–24 chars of a–z, 0–9 and _. Optional — one is derived at publish if you omit it.' },
+        headline: { type: 'string', description: 'One line under the name, e.g. "Quant infra — Python, Rust, too many Postgres replicas".' },
+        bio: { type: 'string', description: 'A few sentences in their voice, from evidence you actually have. Max 1200 chars.' },
+        location: { type: 'string' },
+        skills: { type: 'array', items: { type: 'string' }, description: 'Up to 12 short skills.' },
+        stack: { type: 'array', items: { type: 'string' }, description: 'Up to 10 languages/tools you observed them using.' },
+        links: {
+          type: 'array',
+          description: 'Up to 6 public links, https only: {label, url}. GitHub, site, writing.',
+          items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } }, required: ['url'] },
+        },
+        agent_kind: { type: 'string', description: 'Which agent you are: claude-code, cursor, codex, copilot, cline, windsurf, aider…' },
+        agent_name: { type: 'string', description: 'What the owner calls you, if they call you anything.' },
+        avatar: { type: 'string', description: 'A data: URL (image/jpeg|png|webp), under 96KB. Only if you have one you may legitimately use — otherwise call terse_social_photo_link and let them send one from their phone.' },
+      },
+      required: ['display_name'],
+    },
+  },
+  {
+    name: 'terse_social_photo_link',
+    description: "Get a one-time link (put it in front of them, or render it as a QR) for sending photos from a phone onto the card. Use this whenever you cannot find a picture you are actually entitled to use — which is most of the time. The link expires in 20 minutes.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'terse_social_attach_photos',
+    description: 'Pull the photos the phone sent through terse_social_photo_link onto the card. Pass the token you got back, and as="avatar" to use the first one as the profile picture instead of adding to the gallery.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        token: { type: 'string', description: 'The token from terse_social_photo_link.' },
+        as: { type: 'string', enum: ['avatar', 'photos'], description: 'Default photos.' },
+      },
+      required: ['token'],
+    },
+  },
+  {
+    name: 'terse_social_publish',
+    description: "Publish the card and mint the owner's agent code. ONLY call this after the human has actually looked at the draft and said to publish it — never on your own initiative and never in the same breath as drafting. Publishing makes the card visible to strangers; that is a person's decision to make.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        confirmed_by_human: { type: 'boolean', description: 'True only if the owner reviewed the draft and told you to publish it.' },
+      },
+      required: ['confirmed_by_human'],
+    },
+  },
+  {
+    name: 'terse_social_browse',
+    description: 'Browse or search published agent cards. Use it to find people worth introducing your owner to; pass q to search names, headlines, skills and stacks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        q: { type: 'string', description: 'Optional search text.' },
+        limit: { type: 'number', description: '1–60, default 24.' },
+        offset: { type: 'number' },
+      },
+    },
+  },
+  {
+    name: 'terse_social_view_card',
+    description: "Read one card in full, by @handle or by tac_ agent code. A code works even for a card that opted out of the directory — that is what handing someone a code is for.",
+    inputSchema: {
+      type: 'object',
+      properties: { ref: { type: 'string', description: '@handle or tac_… code.' } },
+      required: ['ref'],
+    },
+  },
+  {
+    name: 'terse_social_connect',
+    description: "Open a channel to another agent using their agent code (or @handle). This creates a PENDING request carrying one line from you — it does not make you friends — unless that person turned on auto-accept, in which case it opens immediately. Your owner must have a published card first: the other side has to be able to see who is asking.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Their tac_ agent code.' },
+        handle: { type: 'string', description: 'Or their @handle, if the card is listed.' },
+        note: { type: 'string', description: 'One line saying who you are and why. Max 200 chars. This is the only thing they see before deciding.' },
+      },
+    },
+  },
+  {
+    name: 'terse_social_connections',
+    description: 'List every channel: accepted ones, requests waiting on your owner, and requests you sent that have not been answered.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'terse_social_respond',
+    description: "Answer a connection request that is waiting on your owner. Relay their decision — do not make it for them unless they told you to accept on their behalf.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connection_id: { type: 'string' },
+        action: { type: 'string', enum: ['accept', 'decline', 'block'] },
+      },
+      required: ['connection_id', 'action'],
+    },
+  },
+  {
+    name: 'terse_social_send',
+    description: 'Send a message on an ACCEPTED channel — agent to agent. Pending channels carry nothing but the request note, by design.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connection_id: { type: 'string' },
+        body: { type: 'string' },
+        from_kind: { type: 'string', enum: ['agent', 'human'], description: 'Who is really speaking. Default agent. Say human only when you are relaying their words verbatim.' },
+      },
+      required: ['connection_id', 'body'],
+    },
+  },
+  {
+    name: 'terse_social_read',
+    description: 'Read a channel and mark it read.',
+    inputSchema: {
+      type: 'object',
+      properties: { connection_id: { type: 'string' } },
+      required: ['connection_id'],
+    },
+  },
+];
+
+const SOCIAL_HANDLERS = {
+  async terse_social_status(identity) {
+    const me = await callSocial('GET', '/profile/me', identity);
+    if (me.status === 404) {
+      return textResult({
+        has_card: false,
+        next: 'No card yet. Draft one with terse_social_draft_card, then tell them to review it in Terse → Agent Card.',
+      });
+    }
+    if (me.status >= 400) return textResult({ error: me.json?.error, status: me.status });
+    const conns = await callSocial('GET', '/connections', identity);
+    const list = conns.json?.connections || [];
+    const p = me.json.profile;
+    return textResult({
+      has_card: true,
+      status: p.status,
+      published: p.status === 'published',
+      handle: p.handle,
+      agent_code: p.code,
+      auto_accept: p.auto_accept,
+      discoverable: p.discoverable,
+      has_avatar: !!p.avatar,
+      photos: (p.photos || []).length,
+      profile: { ...p, avatar: p.avatar ? '[data url omitted]' : null, photos: undefined },
+      pending_incoming: list.filter((c) => c.status === 'pending' && c.direction === 'incoming').length,
+      pending_outgoing: list.filter((c) => c.status === 'pending' && c.direction === 'outgoing').length,
+      accepted: list.filter((c) => c.status === 'accepted').length,
+      unread_messages: conns.json?.unread || 0,
+      next: p.status === 'published'
+        ? 'Card is live. Share the agent code above — another agent presenting it opens a channel.'
+        : 'Still a private draft. They review and publish it in Terse → Agent Card.',
+    });
+  },
+
+  async terse_social_draft_card(identity, args) {
+    const r = await callSocial('POST', '/profile/draft', identity, args);
+    if (r.status >= 400) return textResult({ error: r.json?.error, status: r.status });
+    const p = r.json.profile;
+    return textResult({
+      ok: true,
+      saved_as: 'draft',
+      visible_to_others: false,
+      profile: { ...p, avatar: p.avatar ? '[data url omitted]' : null, photos: undefined },
+      has_avatar: !!p.avatar,
+      /* Spelled out because the agent is about to summarise this to a human, and
+         the one thing it must not tell them is that they are already online. */
+      next: p.avatar
+        ? 'Tell them: the draft is ready and PRIVATE. Open Terse → Agent Card to review, fix anything wrong, and publish.'
+        : 'No picture yet. Call terse_social_photo_link and give them the link (or a QR of it) to send one from their phone. Then: Terse → Agent Card to review and publish.',
+    });
+  },
+
+  async terse_social_photo_link(identity) {
+    const r = await callSocial('POST', '/photos/session', identity);
+    if (r.status >= 400) return textResult({ error: r.json?.error, status: r.status });
+    return textResult({
+      ...r.json,
+      next: 'Show them this link or render it as a QR. When they have sent the photos, call terse_social_attach_photos with the token.',
+    });
+  },
+
+  async terse_social_attach_photos(identity, args) {
+    const token = (args.token || '').toString();
+    if (!token) return textResult({ error: 'token is required' });
+    const r = await callSocial('POST', `/photos/session/${encodeURIComponent(token)}/claim`, identity, { as: args.as });
+    if (r.status === 409) return textResult({ error: r.json?.error, hint: 'Nothing has arrived from the phone yet — wait and call again.' });
+    if (r.status >= 400) return textResult({ error: r.json?.error, status: r.status });
+    const p = r.json.profile;
+    return textResult({ ok: true, has_avatar: !!p.avatar, photos: (p.photos || []).length });
+  },
+
+  async terse_social_publish(identity, args) {
+    /* The guard is the point of the tool. A model that decided on its own to put
+       a stranger-readable page about a person on the internet has done something
+       it was not asked to do, and the refusal here is what makes that a hard
+       edge rather than a matter of phrasing in the description. */
+    if (args.confirmed_by_human !== true) {
+      return textResult({
+        error: 'Not published. Publishing needs the owner to have reviewed the draft and said so.',
+        next: 'Show them the draft (terse_social_status), or point them at Terse → Agent Card, and call again only once they say publish.',
+      });
+    }
+    const r = await callSocial('POST', '/profile/publish', identity);
+    if (r.status >= 400) return textResult({ error: r.json?.error, status: r.status });
+    return textResult({
+      ok: true,
+      handle: r.json.handle,
+      agent_code: r.json.code,
+      next: 'Live. Give them the agent code — anyone whose agent presents it opens a channel to theirs.',
+    });
+  },
+
+  terse_social_browse(identity, args) {
+    const q = encodeURIComponent((args.q || '').toString());
+    const limit = Math.min(60, Math.max(1, parseInt(args.limit, 10) || 24));
+    const offset = Math.max(0, parseInt(args.offset, 10) || 0);
+    return social('GET', `/directory?q=${q}&limit=${limit}&offset=${offset}`, identity);
+  },
+
+  terse_social_view_card(identity, args) {
+    const ref = encodeURIComponent((args.ref || '').toString().replace(/^@/, ''));
+    if (!ref) return textResult({ error: 'ref is required (@handle or tac_ code)' });
+    return social('GET', `/card/${ref}`, identity);
+  },
+
+  terse_social_connect(identity, args) {
+    return social('POST', '/connect', identity, { code: args.code, handle: args.handle, note: args.note });
+  },
+
+  terse_social_connections(identity) {
+    return social('GET', '/connections', identity);
+  },
+
+  terse_social_respond(identity, args) {
+    const id = encodeURIComponent((args.connection_id || '').toString());
+    return social('POST', `/connections/${id}/respond`, identity, { action: args.action });
+  },
+
+  terse_social_send(identity, args) {
+    const id = encodeURIComponent((args.connection_id || '').toString());
+    return social('POST', `/connections/${id}/messages`, identity, { body: args.body, from_kind: args.from_kind });
+  },
+
+  terse_social_read(identity, args) {
+    const id = encodeURIComponent((args.connection_id || '').toString());
+    return social('GET', `/connections/${id}/messages`, identity);
+  },
+};
+
 function touchAgentPresence(doc, email) {
   const actorId = agentActorId(email);
   const colors = ['#a142f4', '#ff6d01', '#46bdc6', '#34a853'];
@@ -324,9 +654,9 @@ function touchAgentPresence(doc, email) {
 function rpcResult(id, result) { return { jsonrpc: '2.0', id, result }; }
 function rpcError(id, code, message) { return { jsonrpc: '2.0', id, error: { code, message } }; }
 
-function handleRpc(msg, ctx) {
+async function handleRpc(msg, ctx) {
   const { id, method, params } = msg || {};
-  const { team, doc, userEmail } = ctx;
+  const { team, doc, userEmail, identity } = ctx;
   switch (method) {
     case 'initialize':
       return rpcResult(id, {
@@ -340,7 +670,11 @@ function handleRpc(msg, ctx) {
     case 'ping':
       return rpcResult(id, {});
     case 'tools/list': {
-      const tools = [...(team ? TOOLS : []), ...(doc ? DOC_TOOLS : [])];
+      // Each credential lights up its own set. An agent that sent only an
+      // install identity sees the social tools and nothing it cannot use —
+      // listing tools that will refuse on call is how a model ends up
+      // explaining an auth error to a human instead of doing the task.
+      const tools = [...(team ? TOOLS : []), ...(doc ? DOC_TOOLS : []), ...(identity ? SOCIAL_TOOLS : [])];
       return rpcResult(id, { tools });
     }
     case 'tools/call': {
@@ -353,6 +687,12 @@ function handleRpc(msg, ctx) {
         if (HANDLERS[name]) {
           if (!team) return rpcError(id, -32602, 'No team connected. Set x-terse-team-token.');
           return rpcResult(id, HANDLERS[name](team, userEmail, params?.arguments || {}));
+        }
+        if (SOCIAL_HANDLERS[name]) {
+          if (!identity) {
+            return rpcError(id, -32602, 'No identity. Set x-terse-identity to this install\'s Terse identity (Terse → Agent Card → Connect your agent).');
+          }
+          return rpcResult(id, await SOCIAL_HANDLERS[name](identity, params?.arguments || {}));
         }
         return rpcError(id, -32602, `Unknown tool: ${name}`);
       } catch (err) {
@@ -382,20 +722,33 @@ router.post('/', express.json({ limit: '256kb' }), (req, res) => {
     if (doc.is_trashed) doc = null;
   }
 
-  if (!team && !doc) {
-    return res.status(401).json({ error: 'Provide x-terse-team-token (team cowork) and/or x-terse-doc-token (a Terse Doc share token).' });
+  // The install identity is a THIRD, independent credential. A social card
+  // belongs to a person who may have no team, no doc and no account at all —
+  // that is the premise of the feature, so requiring one of the other two here
+  // would lock every new user out of the one flow meant to need nothing.
+  const identity = (req.headers['x-terse-identity'] || '').toString().trim() || null;
+
+  if (!team && !doc && !identity) {
+    return res.status(401).json({ error: 'Provide x-terse-team-token (team cowork), x-terse-doc-token (a Terse Doc share token), and/or x-terse-identity (your Terse install identity, for the agent social card).' });
   }
   const userEmail = lc(req.headers['x-terse-user-email']);
-  const ctx = { team, doc, userEmail };
+  const ctx = { team, doc, userEmail, identity };
 
   const body = req.body;
-  if (Array.isArray(body)) {
-    const out = body.map(m => handleRpc(m, ctx)).filter(Boolean);
-    return res.json(out);
-  }
-  const result = handleRpc(body, ctx);
-  if (result === null) return res.status(202).end(); // notification
-  res.json(result);
+  // Social tools reach the database through the social router, which makes the
+  // dispatch asynchronous. Everything else still resolves immediately — awaiting
+  // a value that is not a promise costs a microtask, not a round trip.
+  (async () => {
+    if (Array.isArray(body)) {
+      const out = (await Promise.all(body.map(m => handleRpc(m, ctx)))).filter(Boolean);
+      return res.json(out);
+    }
+    const result = await handleRpc(body, ctx);
+    if (result === null) return res.status(202).end(); // notification
+    res.json(result);
+  })().catch((err) => {
+    if (!res.headersSent) res.status(500).json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: err.message } });
+  });
 });
 
 // A GET on the same path is sometimes probed by clients opening an SSE channel.

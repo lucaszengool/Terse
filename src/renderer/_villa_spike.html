@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Spark decisive</title>
+<style>body{margin:0;overflow:hidden}#hud{position:fixed;left:10px;top:8px;font:12px monospace;color:#8ef;z-index:9;white-space:pre;text-shadow:0 0 4px #000}</style>
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three-0180/three.module.js",
+  "three/addons/": "./vendor/three-0180/addons/",
+  "@sparkjsdev/spark": "./vendor/spark/spark.module.js"
+} }
+</script>
+</head>
+<body>
+<div id="hud">booting…</div>
+<script type="module">
+import * as THREE from "three";
+import { SparkRenderer, SplatMesh, PackedSplats } from "@sparkjsdev/spark";
+const hud = document.getElementById('hud');
+addEventListener('error', e=>hud.textContent='ERR '+(e.message||e.error));
+addEventListener('unhandledrejection', e=>hud.textContent='REJ '+(e.reason&&e.reason.message||e.reason));
+const W=()=>innerWidth||1280, H=()=>innerHeight||720;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, W()/H(), 0.01, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(2,devicePixelRatio));
+renderer.setSize(W(), H());
+renderer.setClearColor(0x0a0a12, 1);
+document.body.appendChild(renderer.domElement);
+addEventListener('resize', ()=>{camera.aspect=W()/H();camera.updateProjectionMatrix();renderer.setSize(W(),H());});
+
+const spark = new SparkRenderer({ renderer });
+scene.add(spark);
+
+// A few GIANT bright procedural splats at origin — impossible to miss if Spark draws.
+const packed = new PackedSplats();
+const c=new THREE.Vector3(), s=new THREE.Vector3(), q=new THREE.Quaternion(), col=new THREE.Color();
+const P=(x,y,z,r,g,b,sc)=>{c.set(x,y,z);s.set(sc,sc,sc);q.identity();col.setRGB(r,g,b);packed.pushSplat(c,s,q,1,col);};
+P(0,0,0, 1,0.2,0.2, 0.6);
+P(1.2,0,0, 0.2,1,0.3, 0.5);
+P(-1.2,0,0, 0.3,0.5,1, 0.5);
+P(0,1.2,0, 1,1,0.2, 0.5);
+for(let i=0;i<2000;i++){const a=i/2000*Math.PI*2; P(Math.cos(a)*2, Math.sin(a)*2, 0, 0.9,0.6,1, 0.05);}
+const proc = new SplatMesh({ packedSplats: packed });
+proc.frustumCulled=false;
+scene.add(proc);
+
+const bf = new SplatMesh({ url:"https://sparkjs.dev/assets/splats/butterfly.spz",
+  onLoad:()=>{ hud.textContent='bf '+bf.packedSplats.numSplats+' | proc '+packed.numSplats; }});
+bf.quaternion.set(1,0,0,0); bf.position.set(0,0,-6); bf.frustumCulled=false;
+scene.add(bf);
+
+Object.assign(window, {THREE, scene, camera, renderer, spark, proc, bf});
+let t=0;
+renderer.setAnimationLoop(()=>{ t+=0.005; camera.position.set(Math.sin(t)*5,1.2,Math.cos(t)*5); camera.lookAt(0,0,0);
+  renderer.render(scene,camera);
+  hud.textContent='cam r5 | proc '+packed.numSplats+' | bf '+(bf.packedSplats?bf.packedSplats.numSplats:'…')+' | canvas '+renderer.domElement.width+'x'+renderer.domElement.height;
+});
+</script>
+</body>
+</html>

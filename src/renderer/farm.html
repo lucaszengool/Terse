@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <!-- WebView2 cannot blur what is BEHIND a window, so a surface that relies on
+       backdrop-filter has to carry its own opacity here. -->
+  <script>try{if(/Windows/i.test(navigator.userAgent))document.documentElement.classList.add('win');}catch(e){}</script>
   <meta name="color-scheme" content="dark">
 <meta charset="UTF-8">
 <title>Terse Farm</title>

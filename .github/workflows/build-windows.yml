@@ -1896,6 +1896,818 @@ jobs:
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
           if ($ok) { Write-Host "TOWN OK: the pill takes WASD from the app in front and gives it back" } else { throw "Code Town check failed" }
 
+      # 星轨炸环 (the "orbit" engine) on Windows. The style is shared JS, so the
+      # question is never "is the code there" — it is whether it RENDERS on this
+      # platform: Windows draws WebGL through ANGLE/D3D11 rather than Metal, and
+      # a shader that compiles on a Mac can fail here and leave a black desktop
+      # with nothing in the log but a dead page. It also proves the one Rust line
+      # this engine needed: overlay_allowed must treat "orbit" as a particle
+      # engine, or always-on-top is silently refused for it.
+      - name: Prove the orbit wallpaper renders (ANGLE, not Metal)
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $wl = Join-Path $dir "wallpaper.log"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Remove-Item $wl -ErrorAction SilentlyContinue
+          '{"enabled":true,"engine":"orbit","style":"orbit","overlay":true,"theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 50
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class O{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr FindWindowExW(IntPtr p,IntPtr c,string cls,string t);public struct R{public int L,T,Rr,B;}}'
+          Add-Type -AssemblyName System.Drawing
+          $script:target = [IntPtr]::Zero
+          $script:scan = [O+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][O]::GetWindowTextW($h, $sb, 256)
+            if ($sb.ToString() -eq 'Terse Wallpaper') { $script:target = $h; return $false }
+            [void][O]::EnumChildWindows($h, $script:scan, [IntPtr]::Zero)
+            return $true }
+          [void][O]::EnumWindows($script:scan, [IntPtr]::Zero)
+          if ($script:target -eq [IntPtr]::Zero) {
+            # Pinned into the shell, so it is a child of Progman or a WorkerW and
+            # EnumWindows never reports it.
+            $hosts = @([O]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"Progman",$null))
+            $w = [O]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"WorkerW",$null)
+            while ($w -ne [IntPtr]::Zero) { $hosts += $w; $w = [O]::FindWindowExW([IntPtr]::Zero,$w,"WorkerW",$null) }
+            foreach ($hh in $hosts) { if ($script:target -ne [IntPtr]::Zero) { break }; [void][O]::EnumChildWindows($hh, $script:scan, [IntPtr]::Zero) }
+          }
+          $target = $script:target
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if ($target -eq [IntPtr]::Zero) { throw "ORBIT FAIL: no wallpaper window at all" }
+          $r = New-Object O+R
+          [void][O]::GetWindowRect($target, [ref]$r)
+          $w = $r.Rr - $r.L; $h2 = $r.B - $r.T
+          Write-Host "wallpaper window ${w}x${h2} at $($r.L),$($r.T)"
+          if ($w -le 0 -or $h2 -le 0) { throw "ORBIT FAIL: the wallpaper window has no size" }
+          # Six frames a second apart: the beam advances and rings open on a 0.8s
+          # beat, so identical frames mean a dead page, not a calm one.
+          $lit = @(); $names = @()
+          for ($i = 1; $i -le 6; $i++) {
+            $bmp = New-Object System.Drawing.Bitmap $w, $h2
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $hdc = $g.GetHdc(); $null = [O]::PrintWindow($target, $hdc, 2); $g.ReleaseHdc($hdc); $g.Dispose()
+            $n = "artifacts/orbit-frame-$i.png"; $bmp.Save($n); $names += $n
+            # How much of the frame is actually lit. The orbit bed is black by
+            # design, so "not black" is the wrong question — "are there bright
+            # particles" is the right one.
+            $c = 0
+            for ($y = 0; $y -lt $h2; $y += 8) {
+              for ($x = 0; $x -lt $w; $x += 8) {
+                $p = $bmp.GetPixel($x, $y)
+                if (($p.R + $p.G + $p.B) -gt 150) { $c++ }
+              }
+            }
+            $lit += $c
+            $bmp.Dispose()
+            Start-Sleep -Seconds 1
+          }
+          Write-Host "lit samples per frame: $($lit -join ', ')"
+          $hashes = $names | ForEach-Object { (Get-FileHash $_ -Algorithm MD5).Hash }
+          $distinct = ($hashes | Sort-Object -Unique).Count
+          Write-Host "distinct frames: $distinct of $($hashes.Count)"
+          $wt = if (Test-Path $wl) { Get-Content $wl -Raw } else { "" }
+          Write-Host "--- wallpaper.log (tail) ---"
+          if (Test-Path $wl) { Get-Content $wl -Tail 30 | ForEach-Object { Write-Host "  $_" }; Copy-Item $wl artifacts/wallpaper-orbit.log }
+          $ok = $true
+          if ($wt -match 'import .* FAILED') { Write-Warning "ORBIT FAIL: a module failed to import (wallpaper-spindle.js is a static import of the engine)"; $ok = $false }
+          if ($wt -notmatch 'engine=orbit particle=true') { Write-Warning "ORBIT FAIL: Rust did not treat orbit as a particle engine — always-on-top would be refused"; $ok = $false }
+          if ($distinct -le 1) { Write-Warning "ORBIT FAIL: every frame is identical — the page is not drawing"; $ok = $false }
+          if (($lit | Measure-Object -Maximum).Maximum -lt 20) { Write-Warning "ORBIT FAIL: the frames are essentially unlit — the beam and rings never drew (a shader that compiles on Metal can fail on ANGLE)"; $ok = $false }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($ok) { Write-Host "ORBIT OK: the star-trail wallpaper draws and animates on Windows" } else { throw "orbit wallpaper check failed" }
+
+
+      # "There is another window behind mine" — reported by users, and visible in
+      # CI's own screenshots: a light band across the top of a Terse window with
+      # the title painted in it. Two different things can produce it, and only a
+      # SCREEN capture can tell them apart:
+      #   · Windows painting a caption on a frameless window (WM_NCUAHDRAWCAPTION
+      #     / WM_NCACTIVATE — the frame guard swallows these), or the WebView2
+      #     ghost titlebar (tauri#14764).
+      #   · Another window simply seen THROUGH ours: every Terse window is
+      #     transparent, so whatever sits behind shows in any area the page has
+      #     not painted.
+      # PrintWindow cannot answer it — it captures the client area and can miss
+      # what the system draws. So: blank the desktop to flat black (any light
+      # pixel inside a window is then ours), capture the screen, and measure the
+      # top rows of every visible Terse window.
+      - name: Prove no ghost title bar on any window
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class G{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetClassNameW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern bool SystemParametersInfoW(uint a,uint b,string c,uint d);[DllImport("user32.dll")]public static extern bool SetSysColors(int n,int[] idx,int[] col);public struct R{public int L,T,Rr,B;}}'
+          # A flat black desktop: with the picture gone, the desktop is the
+          # background COLOUR, so nothing light can leak through a transparent
+          # window and be mistaken for a caption.
+          $null = [G]::SystemParametersInfoW(20, 0, "", 3)
+          $null = [G]::SetSysColors(1, @(1), @(0))
+          Start-Sleep -Seconds 2
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          # Wallpaper OFF for this one: the engine draws its own bright pixels.
+          '{"enabled":false,"engine":"mineradio","theme":"neon","quality":44,"angle":42,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 45
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $shot = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($shot)
+          $g.CopyFromScreen($b.X, $b.Y, 0, 0, $shot.Size)
+          $g.Dispose()
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $shot.Save("artifacts/ghostbar-screen.png")
+          $script:wins = New-Object System.Collections.ArrayList
+          $cb = [G+Cb]{ param($h,$l)
+            if ([G]::IsWindowVisible($h)) {
+              $t = New-Object System.Text.StringBuilder 256
+              [void][G]::GetWindowTextW($h, $t, 256)
+              $c = New-Object System.Text.StringBuilder 256
+              [void][G]::GetClassNameW($h, $c, 256)
+              if ($c.ToString() -eq 'Tauri Window') {
+                $r = New-Object G+R
+                [void][G]::GetWindowRect($h, [ref]$r)
+                [void]$script:wins.Add([pscustomobject]@{ T = $t.ToString(); L = $r.L; Tp = $r.T; W = $r.Rr - $r.L; H = $r.B - $r.T; S = [G]::GetWindowLongPtrW($h, -16) })
+              }
+            }
+            return $true }
+          [void][G]::EnumWindows($cb, [IntPtr]::Zero)
+          $bad = @()
+          foreach ($w in $script:wins) {
+            Write-Host ("window '{0}' {1}x{2} at {3},{4} style=0x{5:X8} WS_CAPTION={6}" -f $w.T, $w.W, $w.H, $w.L, $w.Tp, $w.S, (($w.S -band 0xC00000) -eq 0xC00000))
+            if ($w.W -lt 300 -or $w.H -lt 200) { continue }   # pills and buttons have no caption to paint
+            # Fraction of each of the top 40 rows that is LIGHT. Terse's own
+            # chrome is near-black with green; a caption band is pale and spans
+            # the width.
+            $rows = @()
+            for ($y = 0; $y -lt 40; $y++) {
+              $sy = $w.Tp + $y
+              if ($sy -lt 0 -or $sy -ge $b.Height) { $rows += 0.0; continue }
+              $light = 0; $n = 0
+              for ($x = 8; $x -lt ($w.W - 8); $x += 6) {
+                $sx = $w.L + $x
+                if ($sx -lt 0 -or $sx -ge $b.Width) { continue }
+                $p = $shot.GetPixel($sx, $sy)
+                $n++
+                if ((($p.R + $p.G + $p.B) / 3) -gt 140 -and [Math]::Abs($p.R - $p.B) -lt 40) { $light++ }
+              }
+              $rows += $(if ($n -gt 0) { [Math]::Round($light / $n, 2) } else { 0.0 })
+            }
+            # A painted caption starts at the window's first row. A pale band
+            # further down is the PAGE — the Doctor view is a white card, and
+            # judging that as a title bar is how this check first cried wolf.
+            $band = 0; $run = 0; $start = -1; $i = 0
+            foreach ($f in $rows) {
+              if ($f -ge 0.6) { if ($run -eq 0) { $start = $i }; $run++; if ($run -gt $band -and $start -le 8) { $band = $run } }
+              else { $run = 0 }
+              $i++
+            }
+            Write-Host ("  top-row light fraction: {0}" -f (($rows | Select-Object -First 40) -join ' '))
+            Write-Host ("  widest pale band: $band rows")
+            $crop = New-Object System.Drawing.Bitmap ([Math]::Min($w.W, $b.Width - [Math]::Max($w.L,0))), 60
+            $cg = [System.Drawing.Graphics]::FromImage($crop)
+            $cg.DrawImage($shot, (New-Object System.Drawing.Rectangle 0, 0, $crop.Width, 60), (New-Object System.Drawing.Rectangle ([Math]::Max($w.L,0)), ([Math]::Max($w.Tp,0)), $crop.Width, 60), [System.Drawing.GraphicsUnit]::Pixel)
+            $cg.Dispose()
+            $safe = ($w.T -replace '[^A-Za-z0-9]', '_')
+            $crop.Save("artifacts/ghostbar-$safe.png"); $crop.Dispose()
+            if ($band -ge 6) { $bad += ("'{0}' has a {1}-row pale band across its top" -f $w.T, $band) }
+            if ((($w.S -band 0xC00000) -eq 0xC00000)) { $bad += ("'{0}' carries WS_CAPTION" -f $w.T) }
+          }
+          $shot.Dispose()
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($bad.Count -gt 0) {
+            foreach ($x in $bad) { Write-Warning "GHOST BAR: $x" }
+            throw "a title bar is being painted on a Terse window"
+          }
+          Write-Host "GHOST BAR OK: no pale band and no caption style on any Terse window"
+
+
+      # Snapping, Win+arrows and the taskbar menu — the Windows half of "as
+      # smooth as the Mac". Every Terse window has its caption stripped to keep
+      # Windows from painting a title bar, and that strip takes WS_MAXIMIZEBOX /
+      # WS_MINIMIZEBOX with it. Those bits are not decoration: Windows consults
+      # them for Aero Snap, Win+↑/↓/←/→ and the Alt+Space / taskbar window menu.
+      # This measures what the main window can actually do, rather than assuming.
+      - name: Measure what the main window can do (snap, Win+arrows)
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class S{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte sc,uint f,UIntPtr e);[DllImport("user32.dll")]public static extern bool GetWindowPlacement(IntPtr h,ref WP p);public struct R{public int L,T,Rr,B;}public struct P{public int X,Y;}public struct WP{public int len,flags,show;public P min,max;public R norm;}
+            public static void Win(byte vk){keybd_event(0x5B,0,0,UIntPtr.Zero);keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(60);keybd_event(vk,0,2,UIntPtr.Zero);keybd_event(0x5B,0,2,UIntPtr.Zero);}}'
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 40
+          $script:main = [IntPtr]::Zero
+          $cb = [S+Cb]{ param($h,$l)
+            if ([S]::IsWindowVisible($h)) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][S]::GetWindowTextW($h, $sb, 256)
+              if ($sb.ToString() -eq 'Terse') { $script:main = $h; return $false }
+            }
+            return $true }
+          [void][S]::EnumWindows($cb, [IntPtr]::Zero)
+          if ($script:main -eq [IntPtr]::Zero) { throw "SNAP: no main window to measure" }
+          $h = $script:main
+          $style = [S]::GetWindowLongPtrW($h, -16)
+          $maxbox = ($style -band 0x10000) -ne 0
+          $minbox = ($style -band 0x20000) -ne 0
+          $sysmenu = ($style -band 0x80000) -ne 0
+          $thick = ($style -band 0x40000) -ne 0
+          Write-Host ("main style=0x{0:X8} MAXIMIZEBOX={1} MINIMIZEBOX={2} SYSMENU={3} THICKFRAME={4}" -f $style, $maxbox, $minbox, $sysmenu, $thick)
+          function Rect { $r = New-Object S+R; [void][S]::GetWindowRect($h, [ref]$r); return "$($r.L),$($r.T) $($r.Rr - $r.L)x$($r.B - $r.T)" }
+          function Show { $p = New-Object S+WP; $p.len = 44; [void][S]::GetWindowPlacement($h, [ref]$p); return $p.show }  # 1 normal 2 min 3 max
+          [void][S]::SetForegroundWindow($h); Start-Sleep -Milliseconds 600
+          $before = Rect
+          [S]::Win(0x26); Start-Sleep -Seconds 2          # Win + Up
+          $afterUp = Rect; $showUp = Show
+          Write-Host "Win+Up   : $before -> $afterUp (showCmd=$showUp)"
+          [S]::Win(0x28); Start-Sleep -Seconds 2          # Win + Down (restore)
+          Write-Host "Win+Down : $(Rect) (showCmd=$(Show))"
+          [void][S]::SetForegroundWindow($h); Start-Sleep -Milliseconds 400
+          [S]::Win(0x25); Start-Sleep -Seconds 2          # Win + Left (snap half)
+          $afterLeft = Rect
+          Write-Host "Win+Left : $afterLeft"
+          $work = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+          Write-Host "work area: $($work.X),$($work.Y) $($work.Width)x$($work.Height)"
+          $maximized = ($showUp -eq 3)
+          $snapped = $afterLeft -ne $before -and $afterLeft -ne $afterUp
+          if (-not $maxbox) { Write-Warning "SNAP: WS_MAXIMIZEBOX is stripped — Windows will refuse Aero Snap and Win+arrows on this window" }
+          if (-not $maximized) { Write-Warning "SNAP FAIL: Win+Up did not maximize the window" }
+          if (-not $snapped) { Write-Warning "SNAP FAIL: Win+Left did not snap the window to a half" }
+          if ($maximized -and $snapped) { Write-Host "SNAP OK: the main window maximizes and snaps like a native window" }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+
+
+      # Smoothness, measured rather than felt. A SYNC Tauri command runs on the
+      # main thread, and while it runs every Terse window is frozen — the island
+      # stops, clicks queue, the wallpaper stalls. The app already times itself
+      # (slow-cmd.log names the command, main-thread.log times a no-op every 2 s);
+      # this reads those back after the smoke steps have exercised the app, so a
+      # command that starts doing disk work on the main thread fails the build
+      # instead of being discovered on a user's machine.
+      # Smoothness, measured rather than felt — over a QUIET window, on purpose.
+      # A sync Tauri command runs on the main thread, and while it runs every
+      # Terse window is frozen: the island stops, clicks queue, the wallpaper
+      # stalls. The app times itself (slow-cmd.log names the command,
+      # main-thread.log times a no-op every 2 s), but reading the whole run back
+      # would judge the app on minutes when CI is deliberately hammering a
+      # two-core VM with no GPU — a software-rendered particle field starves
+      # everything, and that is the runner, not the product. So: relaunch,
+      # leave it alone for 90 s, and read only what happened in that window.
+      - name: The main thread must not freeze while the app sits idle
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $mt = Join-Path $dir "main-thread.log"
+          $sc = Join-Path $dir "slow-cmd.log"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          # Wallpaper off: what is measured here is the app, not a GPU-less VM
+          # drawing particles in software.
+          '{"enabled":false,"engine":"mineradio","theme":"neon","quality":44,"angle":42,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          $mark = Get-Date
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Write-Host "launched at $($mark.ToString('HH:mm:ss')) — idling for 90 s"
+          Start-Sleep -Seconds 90
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          foreach ($p in @($mt, $sc)) { if (Test-Path $p) { Copy-Item $p artifacts/ } }
+          function After($line) {
+            if ($line -match '^\[(\d\d):(\d\d):(\d\d)') {
+              $t = Get-Date -Hour $Matches[1] -Minute $Matches[2] -Second $Matches[3]
+              return $t -ge $mark.AddSeconds(-2)
+            }
+            return $false
+          }
+          $blocks = @(); $cmds = @{}
+          if (Test-Path $mt) {
+            foreach ($l in Get-Content $mt) {
+              if ((After $l) -and $l -match 'blocked ~(\d+) ms') { $blocks += [int]$Matches[1] }
+            }
+          }
+          if (Test-Path $sc) {
+            foreach ($l in Get-Content $sc) {
+              if ((After $l) -and $l -match '(\w+) held the main thread for (\d+) ms') {
+                $n = $Matches[1]; $ms = [int]$Matches[2]
+                if (-not $cmds.ContainsKey($n) -or $cmds[$n] -lt $ms) { $cmds[$n] = $ms }
+              }
+            }
+          }
+          $worstBlock = if ($blocks.Count) { ($blocks | Measure-Object -Maximum).Maximum } else { 0 }
+          $worstCmd = if ($cmds.Count) { ($cmds.Values | Measure-Object -Maximum).Maximum } else { 0 }
+          Write-Host "idle window: $($blocks.Count) freeze(s) over 1 s, worst ${worstBlock} ms"
+          if ($cmds.Count -gt 0) {
+            Write-Host "commands on the main thread during it:"
+            $cmds.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 10 |
+              ForEach-Object { Write-Host ("  {0,-28} {1} ms" -f $_.Key, $_.Value) }
+          }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          $bad = $false
+          # Building a window on the main thread costs a few hundred ms and is
+          # unavoidable; seconds of dead UI while nothing is being asked of the
+          # app are not.
+          if ($worstBlock -gt 3000) { Write-Warning "FREEZE: the main thread stopped for ${worstBlock} ms while the app was idle — every window was dead that long"; $bad = $true }
+          if ($worstCmd -gt 700) { Write-Warning "FREEZE: a single command held the main thread for ${worstCmd} ms; make it #[tauri::command(async)]"; $bad = $true }
+          if (-not $bad) { Write-Host "SMOOTH OK: idle for 90 s with no freeze over 3 s and no command over 700 ms" }
+          else { throw "the main thread froze while the app was idle" }
+
+      # "There is another window behind mine." Users reported it, and the cause
+      # is Windows-only: a transparent window with no backdrop material lets
+      # whatever sits behind it read through. macOS never shows it because the
+      # page's own backdrop-filter blurs what is behind a WKWebView window;
+      # WebView2's cannot see outside the page at all, so the same theme that
+      # reads as frosted glass on a Mac is a clear pane here.
+      #
+      # Differential test, which needs no judgement about what a window "should"
+      # look like: photograph Terse over the bare desktop, then put a MAXIMISED
+      # WHITE window behind it and photograph again. If nothing bleeds through,
+      # the two pictures of Terse's own rectangle are nearly identical.
+      - name: Nothing behind Terse may show through it
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class B{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int c);[DllImport("user32.dll")]public static extern bool SetWindowPos(IntPtr h,IntPtr after,int x,int y,int cx,int cy,uint f);public struct R{public int L,T,Rr,B;}}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          '{"enabled":false,"engine":"mineradio","theme":"neon","quality":44,"angle":42,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 45
+          $script:main = [IntPtr]::Zero
+          $cb = [B+Cb]{ param($h,$l)
+            if ([B]::IsWindowVisible($h)) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][B]::GetWindowTextW($h, $sb, 256)
+              if ($sb.ToString() -eq 'Terse') { $script:main = $h; return $false }
+            }
+            return $true }
+          [void][B]::EnumWindows($cb, [IntPtr]::Zero)
+          if ($script:main -eq [IntPtr]::Zero) { throw "BLEED: no main window to photograph" }
+          $r = New-Object B+R
+          [void][B]::GetWindowRect($script:main, [ref]$r)
+          $w = $r.Rr - $r.L; $h2 = $r.B - $r.T
+          Write-Host "main window ${w}x${h2} at $($r.L),$($r.T)"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          function Shot($name) {
+            $bmp = New-Object System.Drawing.Bitmap $w, $h2
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size)
+            $g.Dispose()
+            $bmp.Save("artifacts/bleed-$name.png")
+            return $bmp
+          }
+          [void][B]::SetForegroundWindow($script:main); Start-Sleep -Seconds 2
+          $before = Shot "before"
+          # A maximised Notepad is the brightest thing this runner can put behind
+          # a window; anything that bleeds through will be obvious.
+          $np = Start-Process notepad -PassThru
+          Start-Sleep -Seconds 4
+          if ($np.MainWindowHandle -ne [IntPtr]::Zero) { [void][B]::ShowWindow($np.MainWindowHandle, 3) }  # SW_MAXIMIZE
+          Start-Sleep -Seconds 2
+          # Terse back in front, Notepad behind it. SetForegroundWindow alone is
+          # not enough — Windows refuses a focus steal from a background caller,
+          # and the first version of this check measured a screenshot of NOTEPAD
+          # and called the app see-through. HWND_TOPMOST does not ask.
+          [void][B]::SetWindowPos($script:main, [IntPtr](-1), 0, 0, 0, 0, 0x0003)  # HWND_TOPMOST, NOSIZE|NOMOVE
+          [void][B]::SetForegroundWindow($script:main)
+          Start-Sleep -Seconds 3
+          $after = Shot "after"
+          [void][B]::SetWindowPos($script:main, [IntPtr](-2), 0, 0, 0, 0, 0x0003)  # HWND_NOTOPMOST
+          # Prove the picture is of Terse, not of whatever was in front: the app
+          # is dark, Notepad is white. A frame that is mostly white IS Notepad,
+          # and any conclusion from it would be about the wrong window.
+          $white = 0; $tot = 0
+          for ($y = 0; $y -lt $h2; $y += 8) {
+            for ($x = 0; $x -lt $w; $x += 8) {
+              $p = $after.GetPixel($x, $y); $tot++
+              if (($p.R + $p.G + $p.B) -gt 690) { $white++ }
+            }
+          }
+          if ($tot -gt 0 -and ($white / $tot) -gt 0.6) {
+            $after.Save("artifacts/bleed-wrong-window.png")
+            $before.Dispose(); $after.Dispose()
+            $np | Stop-Process -Force -ErrorAction SilentlyContinue
+            throw "TEST HARNESS: the second photograph is of Notepad, not of Terse — the app never came back to the front"
+          }
+          $diff = 0; $n = 0
+          for ($y = 0; $y -lt $h2; $y += 4) {
+            for ($x = 0; $x -lt $w; $x += 4) {
+              $a = $before.GetPixel($x, $y); $b = $after.GetPixel($x, $y)
+              $n++
+              if ([Math]::Abs($a.R - $b.R) + [Math]::Abs($a.G - $b.G) + [Math]::Abs($a.B - $b.B) -gt 60) { $diff++ }
+            }
+          }
+          $before.Dispose(); $after.Dispose()
+          $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          $pct = [Math]::Round(100 * $diff / [Math]::Max($n,1), 1)
+          Write-Host "pixels that changed when a white window was put behind Terse: $pct%"
+          # The main window is not the only one people look at: the room's chat,
+          # the Doctor and a notification card are all transparent windows whose
+          # legibility came from a blur that does nothing here. Any other Terse
+          # window that happens to be open gets measured the same way.
+          $others = New-Object System.Collections.ArrayList
+          $cb2 = [B+Cb]{ param($h,$l)
+            if ([B]::IsWindowVisible($h) -and $h -ne $script:main) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][B]::GetWindowTextW($h, $sb, 256)
+              $t = $sb.ToString()
+              if ($t -like "Terse*" -and $t -ne "Terse") {
+                $rr = New-Object B+R
+                [void][B]::GetWindowRect($h, [ref]$rr)
+                if (($rr.Rr - $rr.L) -ge 300 -and ($rr.B - $rr.T) -ge 200) {
+                  [void]$others.Add([pscustomobject]@{ T = $t; H = $h; R = $rr })
+                }
+              }
+            }
+            return $true }
+          [void][B]::EnumWindows($cb2, [IntPtr]::Zero)
+          foreach ($o in $others) {
+            $ow = $o.R.Rr - $o.R.L; $oh = $o.R.B - $o.R.T
+            $b1 = New-Object System.Drawing.Bitmap $ow, $oh
+            $g1 = [System.Drawing.Graphics]::FromImage($b1)
+            $g1.CopyFromScreen($o.R.L, $o.R.T, 0, 0, $b1.Size); $g1.Dispose()
+            # Nothing is moved behind it — this asks a simpler question: is the
+            # window mostly the app's own dark surface, or mostly wallpaper?
+            $lit = 0; $tot2 = 0
+            for ($y = 0; $y -lt $oh; $y += 8) {
+              for ($x = 0; $x -lt $ow; $x += 8) {
+                $p2 = $b1.GetPixel($x, $y); $tot2++
+                if (($p2.R + $p2.G + $p2.B) -gt 600) { $lit++ }
+              }
+            }
+            $b1.Save("artifacts/bleed-other-$(($o.T -replace '[^A-Za-z0-9]','_')).png")
+            $b1.Dispose()
+            $frac = [Math]::Round(100 * $lit / [Math]::Max($tot2,1), 1)
+            Write-Host ("other window '{0}' {1}x{2}: {3}% near-white" -f $o.T, $ow, $oh, $frac)
+          }
+          # A few percent is the app's own animation between the two shots.
+          if ($pct -gt 12) {
+            Write-Warning "BLEED: $pct% of Terse's window changed — what is behind it is showing through"
+            throw "a window behind Terse shows through it"
+          }
+          Write-Host "BLEED OK: a white window behind Terse changed $pct% of it — nothing reads through"
+
+
+      # Always-on-top must not make the machine unusable.
+      #
+      # Reported by a user: after switching the wallpaper's 置顶 on, "nothing can
+      # be clicked", and several times the only way out was ending Terse from
+      # Task Manager. The window is topmost and covers the whole screen, so the
+      # moment it stops being click-through, every click in every application
+      # lands on the wallpaper instead — and the page arms itself whenever the
+      # cursor is over one of the big glyphs, which up there happens in seconds.
+      #
+      # A screenshot cannot see this (the window is transparent either way), so
+      # this drives the mouse and the keyboard: with the wallpaper lifted, click
+      # into Notepad and type. If the characters arrive, the desktop is still the
+      # user's.
+      - name: A lifted wallpaper must still let clicks through
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class T{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);[DllImport("user32.dll")]public static extern void mouse_event(uint f,int x,int y,uint d,UIntPtr e);[DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte sc,uint f,UIntPtr e);[DllImport("user32.dll")]public static extern IntPtr WindowFromPoint(P p);[DllImport("user32.dll")]public static extern IntPtr GetAncestor(IntPtr h,uint f);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetClassNameW(IntPtr h,StringBuilder s,int n);public struct R{public int L,T,Rr,B;}public struct P{public int X,Y;}
+            public static void Click(int x,int y){SetCursorPos(x,y);System.Threading.Thread.Sleep(90);mouse_event(2,0,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(60);mouse_event(4,0,0,0,UIntPtr.Zero);}
+            public static void Key(byte vk){keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(40);keybd_event(vk,0,2,UIntPtr.Zero);System.Threading.Thread.Sleep(40);}
+            public static void Combo(byte mod,byte vk){keybd_event(mod,0,0,UIntPtr.Zero);keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(40);keybd_event(vk,0,2,UIntPtr.Zero);keybd_event(mod,0,2,UIntPtr.Zero);System.Threading.Thread.Sleep(80);}
+            public static string ClassAt(int x,int y){P p;p.X=x;p.Y=y;IntPtr h=GetAncestor(WindowFromPoint(p),2);StringBuilder s=new StringBuilder(64);GetClassNameW(h,s,64);return s.ToString();}}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Remove-Item (Join-Path $dir "wallpaper.log") -ErrorAction SilentlyContinue
+          # Lifted, with a particle engine — overlay is refused for any engine
+          # that paints an opaque frame, so this has to be one that does not.
+          '{"enabled":true,"engine":"cinematic","overlay":true,"theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 50
+          $np = Start-Process notepad -PassThru
+          Start-Sleep -Seconds 4
+          $note = [IntPtr]::Zero
+          $cb = [T+Cb]{ param($h,$l)
+            if ([T]::IsWindowVisible($h)) {
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][T]::GetWindowTextW($h, $sb, 256)
+              if ($sb.ToString() -like "*Notepad*") { $script:note = $h; return $false }
+            }
+            return $true }
+          [void][T]::EnumWindows($cb, [IntPtr]::Zero)
+          $note = $script:note
+          if ($note -eq [IntPtr]::Zero) { throw "TEST HARNESS: Notepad never opened" }
+          $nr = New-Object T+R
+          $null = [T]::GetWindowRect($note, [ref]$nr)
+          $cx = [int](($nr.L + $nr.Rr) / 2); $cy = [int](($nr.T + $nr.B) / 2)
+          # The wallpaper has to actually BE over that point, or this proves
+          # nothing about click-through.
+          $over = [T]::ClassAt($cx, $cy)
+          Write-Host "window under ($cx,$cy) before clicking: $over"
+          $wl = Join-Path $dir "wallpaper.log"
+          $wt = if (Test-Path $wl) { Get-Content $wl -Raw } else { "" }
+          if ($wt -notmatch 'overlay ON') { Write-Warning "CLICKTHRU INCONCLUSIVE: the wallpaper never went topmost (overlay refused?)" }
+          # Move the cursor across the screen first: this is what arms the page —
+          # the cursor feed reports where the pointer is and the page grabs the
+          # mouse when it lands on a glyph. Then try to use the machine.
+          foreach ($i in 1..12) { [T]::Click(200 + $i * 60, 200 + $i * 30); Start-Sleep -Milliseconds 120 }
+          [T]::Click($cx, $cy)
+          Start-Sleep -Milliseconds 400
+          [T]::Key(0x41); [T]::Key(0x42); [T]::Key(0x43)   # A B C
+          Start-Sleep -Milliseconds 400
+          [T]::Combo(0x11, 0x41)   # Ctrl+A
+          [T]::Combo(0x11, 0x43)   # Ctrl+C
+          Start-Sleep -Milliseconds 400
+          $typed = ""
+          try { $typed = (Get-Clipboard -Raw) } catch {}
+          if ($null -eq $typed) { $typed = "" }
+          $typed = $typed.Trim().ToLower()
+          Write-Host "typed abc into Notepad through the lifted wallpaper -> '$typed'"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $wl) { Copy-Item $wl artifacts/wallpaper-clickthru.log }
+          Write-Host "--- wallpaper.log (tail) ---"
+          if (Test-Path $wl) { Get-Content $wl -Tail 20 | ForEach-Object { Write-Host "  $_" } }
+          $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($typed -ne 'abc') {
+            Write-Warning "CLICKTHRU FAIL: Notepad received '$typed' — the lifted wallpaper is eating clicks, which is a desktop the user cannot use"
+            throw "the always-on-top wallpaper swallowed the clicks"
+          }
+          Write-Host "CLICKTHRU OK: with the wallpaper lifted above every window, clicks and keys still reach the app underneath"
+
+
+      # The three features ported to Windows that nothing had yet EXERCISED —
+      # they compiled, the app started, and that was all anyone knew.
+      #
+      #   · The start-up picture now owns whether the main window is ever shown.
+      #     If both the frontend call and the 8 s watchdog failed, a user would
+      #     be left with a spinner and no app, so this waits for the window.
+      #   · Approval detection reads other apps' window text through UI
+      #     Automation. A Notepad holding the text of a real Claude prompt is a
+      #     genuine test of the whole chain: find the host, read its text, parse
+      #     it, announce it.
+      #   · The gesture cursor layer is a window that has to exist when the
+      #     feature is on, and stay click-through.
+      - name: The ported features must actually run
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class F{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte sc,uint f,UIntPtr e);
+            public static void Key(byte vk){keybd_event(vk,0,0,UIntPtr.Zero);System.Threading.Thread.Sleep(30);keybd_event(vk,0,2,UIntPtr.Zero);System.Threading.Thread.Sleep(30);}}'
+          function Windows-Named($like) {
+            $script:hits = New-Object System.Collections.ArrayList
+            $cb = [F+Cb]{ param($h,$l)
+              if ([F]::IsWindowVisible($h)) {
+                $sb = New-Object System.Text.StringBuilder 256
+                [void][F]::GetWindowTextW($h, $sb, 256)
+                $t = $sb.ToString()
+                if ($t -like $like) { [void]$script:hits.Add(@{ T = $t; H = $h }) }
+              }
+              return $true }
+            [void][F]::EnumWindows($cb, [IntPtr]::Zero)
+            return $script:hits
+          }
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Remove-Item (Join-Path $dir "approvals.log") -ErrorAction SilentlyContinue
+          Remove-Item (Join-Path $dir "splash.log") -ErrorAction SilentlyContinue
+          # The cursor layer should come back on its own for someone who left it on.
+          '{"enabled":true}' | Set-Content -Path (Join-Path $dir "desk.json") -Encoding ascii
+          '{"enabled":false,"engine":"mineradio","theme":"neon","quality":44,"angle":42,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+
+          # A window that looks exactly like a blocked Claude Code session,
+          # opened BEFORE Terse so the first sweep sees it.
+          $prompt = Join-Path $env:RUNNER_TEMP "approval.txt"
+          @(
+            'Bash(rm -rf build/)',
+            'Do you want to proceed?',
+            '1. Yes',
+            '2. Yes, and do not ask again for similar commands',
+            '3. No, and tell Claude what to do differently (esc)'
+          ) -join "`r`n" | Set-Content -Path $prompt -Encoding utf8
+          # In a POWERSHELL window, not Notepad. The scanner only reads the
+          # processes agents actually run in, and Notepad is rightly not one of
+          # them — the first version of this check planted the prompt where
+          # nothing would ever look and then reported that nothing was found.
+          # Through conhost explicitly. `Start-Process powershell` is folded into
+          # Windows Terminal here, and the text then belongs to a window owned by
+          # a different process — the first two attempts at this check were
+          # reading someone else's window and reporting the feature broken.
+          $np = Start-Process conhost -PassThru -ArgumentList "powershell", "-NoProfile", "-NoExit", "-Command", "Get-Content '$prompt'"
+          Start-Sleep -Seconds 8
+
+          $t0 = Get-Date
+          Start-Process -FilePath "$env:TERSE_EXE"
+          # The main window is now revealed by the splash path. Wait for it the
+          # way a user would: by looking at the screen.
+          $mainAt = $null
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 1
+            $m = Windows-Named "Terse"
+            if ($m.Count -gt 0) { $mainAt = ((Get-Date) - $t0).TotalSeconds; break }
+          }
+          if ($null -eq $mainAt) {
+            Write-Warning "SPLASH FAIL: the main window never appeared — the start-up picture owns that reveal now, and both it and the 8 s watchdog failed"
+            $bad = $true
+          } else {
+            Write-Host ("SPLASH OK: main window appeared {0:N1}s after launch" -f $mainAt)
+          }
+          $sp = Join-Path $dir "splash.log"
+          if (Test-Path $sp) { Get-Content $sp | ForEach-Object { Write-Host "  splash: $_" } }
+
+          # Give the approvals sweep a few passes (it runs every 1.5 s).
+          Start-Sleep -Seconds 14
+          $al = Join-Path $dir "approvals.log"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $al) { Copy-Item $al artifacts/approvals.log }
+          $at = if (Test-Path $al) { Get-Content $al -Raw } else { "" }
+          if ($at -match 'MATCHED') {
+            Write-Host "APPROVALS OK: the prompt on screen was read through UI Automation and recognised"
+          } elseif ($at -match 'textlen=([1-9]\d+)') {
+            Write-Warning "APPROVALS PARTIAL: window text was read but no prompt was recognised — the parser and the text disagree"
+          } else {
+            Write-Warning "APPROVALS FAIL: no window text was read at all (UI Automation returned nothing)"
+            if (Test-Path $al) { Get-Content $al -Tail 12 | ForEach-Object { Write-Host "  $_" } }
+          }
+
+          # The gesture cursor layer, which autostart should have brought back.
+          $dl = Join-Path $dir "desk.log"
+          if (Test-Path $dl) { Copy-Item $dl artifacts/desk.log; Get-Content $dl -Tail 6 | ForEach-Object { Write-Host "  desk: $_" } }
+          # Hidden, not absent: with no camera there is never a hand, and the
+          # page takes the layer off screen exactly as it should. What matters is
+          # that the window EXISTS and stays click-through.
+          $script:deskHits = New-Object System.Collections.ArrayList
+          $cbd = [F+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][F]::GetWindowTextW($h, $sb, 256)
+            if ($sb.ToString() -eq "Terse Cursor") { [void]$script:deskHits.Add(@{ T = $sb.ToString(); H = $h }) }
+            return $true }
+          [void][F]::EnumWindows($cbd, [IntPtr]::Zero)
+          $deskWin = $script:deskHits
+          if ($deskWin.Count -gt 0) {
+            $ex = [F]::GetWindowLongPtrW($deskWin[0].H, -20)
+            $through = ($ex -band 0x20) -ne 0    # WS_EX_TRANSPARENT
+            Write-Host "DESK: cursor layer present, click-through=$through"
+            if (-not $through) { Write-Warning "DESK FAIL: the cursor layer takes clicks — it is a drawing, everything under it belongs to the desktop"; $bad = $true }
+          } else {
+            Write-Warning "DESK: no cursor layer window (Pro gate or autostart) — not failing the build on it"
+          }
+          $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Remove-Item (Join-Path $dir "desk.json") -ErrorAction SilentlyContinue
+          if ($bad) { throw "a ported feature did not run" }
+
+
+      # The class of bug a user actually hit, guarded generically.
+      #
+      # He turned the wallpaper's always-on-top on and "nothing could be
+      # clicked" — a full-screen window of ours that was not click-through, and
+      # Task Manager was the way out. Terse has several windows that cover the
+      # whole screen by design (the wallpaper, the particle overlay, the gesture
+      # cursor layer) and every one of them is only safe because it passes clicks
+      # through. This asserts that for ALL of them at once, so the next one
+      # somebody adds is covered before a user finds it.
+      #
+      # The main window is the exception: it is meant to take clicks, and it does
+      # not cover the screen.
+      - name: No full-screen Terse window may swallow clicks
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class C2{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetClassNameW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern long GetWindowLongPtrW(IntPtr h,int i);public struct R{public int L,T,Rr,B;}}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          # Everything that can cover the screen, on at once: the wallpaper
+          # lifted above every window, and the gesture cursor layer.
+          '{"enabled":true,"engine":"cinematic","overlay":true,"theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          '{"enabled":true}' | Set-Content -Path (Join-Path $dir "desk.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 50
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $area = $b.Width * $b.Height
+          $script:rows = New-Object System.Collections.ArrayList
+          $cb = [C2+Cb]{ param($h,$l)
+            $t = New-Object System.Text.StringBuilder 256
+            [void][C2]::GetWindowTextW($h, $t, 256)
+            $title = $t.ToString()
+            if ($title -like "Terse*") {
+              $c = New-Object System.Text.StringBuilder 256
+              [void][C2]::GetClassNameW($h, $c, 256)
+              $r = New-Object C2+R
+              [void][C2]::GetWindowRect($h, [ref]$r)
+              [void]$script:rows.Add([pscustomobject]@{
+                T = $title; Cls = $c.ToString(); Vis = [C2]::IsWindowVisible($h)
+                W = $r.Rr - $r.L; H = $r.B - $r.T
+                Ex = [C2]::GetWindowLongPtrW($h, -20)
+              })
+            }
+            return $true }
+          [void][C2]::EnumWindows($cb, [IntPtr]::Zero)
+          $bad = @()
+          foreach ($w in $script:rows) {
+            $covers = ($w.W * $w.H) -ge ($area * 0.7)
+            $through = ($w.Ex -band 0x20) -ne 0        # WS_EX_TRANSPARENT
+            Write-Host ("{0,-22} {1,5}x{2,-5} visible={3,-5} covers_screen={4,-5} click_through={5}" -f $w.T, $w.W, $w.H, $w.Vis, $covers, $through)
+            # "Terse" alone is the main window: it is meant to take clicks.
+            if ($covers -and -not $through -and $w.T -ne "Terse") {
+              $bad += ("'{0}' covers the screen and takes clicks" -f $w.T)
+            }
+          }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Remove-Item (Join-Path $dir "desk.json") -ErrorAction SilentlyContinue
+          if ($bad.Count -gt 0) {
+            foreach ($x in $bad) { Write-Warning "COVER FAIL: $x — this is the shape of the bug where the desktop stops responding and Task Manager is the only way out" }
+            throw "a full-screen Terse window swallows clicks"
+          }
+          Write-Host "COVER OK: every Terse window that covers the screen passes clicks through"
+
+
+      # Every wallpaper engine, not just the one that was new.
+      #
+      # The engines are shared JS, so the question is never "is the code there" —
+      # it is whether each one RENDERS here: Windows draws WebGL through
+      # ANGLE/D3D11 rather than Metal, the runner has no GPU at all, and a shader
+      # that compiles on a Mac can leave a dead black desktop with nothing in the
+      # log. Each engine is switched on for real and photographed.
+      - name: Every wallpaper engine must draw
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class E{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr FindWindowExW(IntPtr p,IntPtr c,string cls,string t);public struct R{public int L,T,Rr,B;}}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $wl = Join-Path $dir "wallpaper.log"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $verdicts = @()
+          foreach ($eng in @("mineradio", "cinematic", "orbit", "topography", "chladni")) {
+            Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 3
+            Remove-Item $wl -ErrorAction SilentlyContinue
+            ('{"enabled":true,"engine":"' + $eng + '","theme":"neon","quality":56,"angle":55,"intensity":1.0}') |
+              Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+            Start-Process -FilePath "$env:TERSE_EXE"
+            Start-Sleep -Seconds 45
+            # The wallpaper is a child of the shell once pinned, so EnumWindows
+            # alone never sees it.
+            $script:target = [IntPtr]::Zero
+            $script:scan = [E+Cb]{ param($h,$l)
+              $sb = New-Object System.Text.StringBuilder 256
+              [void][E]::GetWindowTextW($h, $sb, 256)
+              if ($sb.ToString() -eq 'Terse Wallpaper') { $script:target = $h; return $false }
+              [void][E]::EnumChildWindows($h, $script:scan, [IntPtr]::Zero)
+              return $true }
+            [void][E]::EnumWindows($script:scan, [IntPtr]::Zero)
+            if ($script:target -eq [IntPtr]::Zero) {
+              $hosts = @([E]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"Progman",$null))
+              $w = [E]::FindWindowExW([IntPtr]::Zero,[IntPtr]::Zero,"WorkerW",$null)
+              while ($w -ne [IntPtr]::Zero) { $hosts += $w; $w = [E]::FindWindowExW([IntPtr]::Zero,$w,"WorkerW",$null) }
+              foreach ($hh in $hosts) { if ($script:target -ne [IntPtr]::Zero) { break }; [void][E]::EnumChildWindows($hh, $script:scan, [IntPtr]::Zero) }
+            }
+            if ($script:target -eq [IntPtr]::Zero) { $verdicts += "${eng}: NO WINDOW"; continue }
+            $r = New-Object E+R
+            [void][E]::GetWindowRect($script:target, [ref]$r)
+            $w2 = $r.Rr - $r.L; $h2 = $r.B - $r.T
+            if ($w2 -le 0 -or $h2 -le 0) { $verdicts += "${eng}: ZERO SIZE"; continue }
+            $hashes = @(); $lit = @()
+            for ($i = 1; $i -le 3; $i++) {
+              $bmp = New-Object System.Drawing.Bitmap $w2, $h2
+              $g = [System.Drawing.Graphics]::FromImage($bmp)
+              $hdc = $g.GetHdc(); $null = [E]::PrintWindow($script:target, $hdc, 2); $g.ReleaseHdc($hdc); $g.Dispose()
+              $n = "artifacts/engine-$eng-$i.png"; $bmp.Save($n)
+              $c = 0
+              for ($y = 0; $y -lt $h2; $y += 10) {
+                for ($x = 0; $x -lt $w2; $x += 10) {
+                  $p = $bmp.GetPixel($x, $y)
+                  if (($p.R + $p.G + $p.B) -gt 150) { $c++ }
+                }
+              }
+              $lit += $c; $bmp.Dispose()
+              $hashes += (Get-FileHash $n -Algorithm MD5).Hash
+              Start-Sleep -Milliseconds 900
+            }
+            $distinct = ($hashes | Sort-Object -Unique).Count
+            $maxlit = ($lit | Measure-Object -Maximum).Maximum
+            $wt = if (Test-Path $wl) { Get-Content $wl -Raw } else { "" }
+            $broke = $wt -match 'import .* FAILED'
+            $ok = ($distinct -gt 1) -and ($maxlit -ge 20) -and (-not $broke)
+            $verdicts += ("{0}: {1} (frames {2}/3 distinct, lit {3}{4})" -f $eng, $(if ($ok) { "OK" } else { "FAIL" }), $distinct, $maxlit, $(if ($broke) { ", MODULE FAILED TO LOAD" } else { "" }))
+            if (Test-Path $wl) { Copy-Item $wl "artifacts/wallpaper-$eng.log" }
+          }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Write-Host "── engines ──"
+          $verdicts | ForEach-Object { Write-Host "  $_" }
+          $failed = @($verdicts | Where-Object { $_ -match "FAIL|NO WINDOW|ZERO SIZE" })
+          if ($failed.Count -gt 0) {
+            foreach ($f in $failed) { Write-Warning "ENGINE $f" }
+            throw "a wallpaper engine does not draw on Windows"
+          }
+          Write-Host "ENGINES OK: every wallpaper engine draws and animates on Windows"
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

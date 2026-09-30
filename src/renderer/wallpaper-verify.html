@@ -130,7 +130,7 @@
       // would be the worse error.
       wp = new E(canvas, { theme: cfg.theme, quality: cfg.quality, angle: cfg.angle,
                            intensity: cfg.intensity,
-                           pro: cfg.engine === 'cinematic' && proOK !== false });
+                           pro: (cfg.engine === 'cinematic' || cfg.engine === 'orbit') && proOK !== false });
       window.wp = wp;   // dev aid: drive from console / preview harness
       wp.start();
     }
@@ -309,7 +309,7 @@
       setInterval(async () => {
         const was = proOK;
         await refreshEntitlement();
-        if (was !== proOK && cfg.engine === 'cinematic') mountEngine();
+        if (was !== proOK && (cfg.engine === 'cinematic' || cfg.engine === 'orbit')) mountEngine();
       }, 300000);
       applyAccent(cfg.theme);
       panel.classList.toggle('off', cfg.showPanel === false);

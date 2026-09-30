@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Terse · Social</title>
+  <!--
+    Terse Social in the desktop app. Deliberately just a frame: the page itself is
+    social-home.js — the very module terseai.org/social runs — mounted with this
+    install's identity instead of a browser session. One UI, two hosts, so what a
+    person sees in the app and on the web cannot drift apart.
+  -->
+  <style>
+    html,body{margin:0;background:#0a0a0a}
+    @media (prefers-color-scheme:light){html,body{background:#fafafa}}
+    .bar{position:fixed;top:10px;left:14px;z-index:30}
+    .bar button{width:30px;height:30px;border-radius:50%;border:1px solid rgba(127,127,127,.3);background:transparent;
+      color:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999}
+    /* The rail's logo sits where the back button goes; the button replaces it. */
+    .tsh-rail .logo{visibility:hidden}
+  </style>
+</head>
+<body>
+  <div class="bar"><button id="btnBack" title="Back" aria-label="Back">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>
+  </button></div>
+  <div id="app"></div>
+
+  <script src="qr.js"></script>
+  <script src="tauri-bridge.js"></script>
+  <!-- social-home.js is NOT loaded here: social.js fetches the live copy from
+       terseai.org first and falls back to the bundled one only when offline. -->
+  <script src="social.js"></script>
+</body>
+</html>

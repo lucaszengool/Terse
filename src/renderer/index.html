@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Platform on <html>, before any stylesheet paints: WebView2 cannot frost
+       what is behind the window, so a few glass rules differ here. -->
+  <script>try{if(/Windows/i.test(navigator.userAgent))document.documentElement.classList.add('win');}catch(e){}</script>
   <meta name="color-scheme" content="dark">
   <meta charset="UTF-8">
   <title>Terse</title>
@@ -117,6 +120,13 @@
         <button class="sb-item sb-town" data-page="projects" title="Code Town — the plaza's particle town as your wallpaper">
           <span class="sb-emoji">🏘️</span>
           <span data-i18n="nav_projects">Code Town</span>
+        </button>
+        <!-- 社交卡片 —— agent 时代的名片。你的 agent 写草稿,你过目,你发布;
+             发布之后才有 agent 码,别人的 agent 拿着码来敲门。放在小镇旁边:
+             它们是同一件事的两半 —— 小镇是作品,卡片是人。 -->
+        <button class="sb-item sb-card" data-page="social" title="Agent Card — your agent drafts your profile, you publish it">
+          <span class="sb-emoji">🪪</span>
+          <span data-i18n="nav_social">Agent Card</span>
         </button>
         <button class="sb-item active" data-page="overview">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
@@ -1430,6 +1440,11 @@
     </div>
   </div>
   </div><!-- /shell -->
+  <!-- 粒子板窗口。默认不生效(要 wallpaper.json 里 enabled + windowGlass 都开),
+       所以对新用户这一行只是多下载一个 2KB 的模块。 -->
+  <script type="module" src="./window-glass.js"></script>
+  <!-- 全员广播:平时接口返回空清单,界面上什么都不画。 -->
+  <script type="module" src="./broadcast.js"></script>
   <script>
     /* ── Theme System ── */
     /* "horizon" is clear glass (blur 3px) — the desktop is meant to read through
@@ -1517,8 +1532,10 @@
     });
 
     function _loadScripts() {
-      if (!window.__TAURI__) { setTimeout(_loadScripts, 30); return; }
-      ['tauri-bridge.js','pals.js','qr.js','roomqueue.js','rooms.js','optimizer-bundle.js','doctor-theater.js','onboarding.js','tour.js','app.js'].reduce(function(p, src) {
+      // __TAURI__ 还没注入就等一下 —— 这里返回的 Promise 是给启动画面用的:
+      // 它要等到**整条链都加载完**才算"准备好了"。
+      if (!window.__TAURI__) { return new Promise(function (r) { setTimeout(function () { r(_loadScripts()); }, 30); }); }
+      return ['tauri-bridge.js','pals.js','qr.js','roomqueue.js','rooms.js','optimizer-bundle.js','doctor-theater.js','onboarding.js','tour.js','app.js'].reduce(function(p, src) {
         return p.then(function() {
           return new Promise(function(resolve) {
             var s = document.createElement('script'); s.src = src;
@@ -1532,11 +1549,21 @@
         });
       }, Promise.resolve());
     }
-    _loadScripts();
+    /* 脚本链跑完 = 界面真的能用了 → 关掉启动画面、亮出主窗口(src-tauri/src/splash.rs)。
+       ⚠ 这一句失败也不能让窗口永远不出现:Rust 那边有一个 8 秒的看门狗兜底。 */
+    Promise.resolve(_loadScripts()).then(function () {
+      try { window.__TAURI__.core.invoke('app_ready'); } catch (e) { console.warn('[splash]', e); }
+    }, function () {
+      try { window.__TAURI__.core.invoke('app_ready'); } catch (e) {}
+    });
 
     // i18n — load after everything, purely additive (no changes to existing code)
     var i18nScript = document.createElement('script');
     i18nScript.src = 'i18n.js';
+    // Shortcut hints are written as ⌘K in the source HTML. i18n translates the
+    // words around them; the KEY has to be translated too, and only after i18n
+    // has re-rendered those rows — on Windows ⌘ is a key nobody has.
+    i18nScript.onload = function () { setTimeout(function () { try { window.localizeKbd && window.localizeKbd(); } catch (e) {} }, 0); };
     document.body.appendChild(i18nScript);
 
     // Language picker — uses stopPropagation to avoid drag region issues

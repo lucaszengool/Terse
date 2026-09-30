@@ -46,6 +46,16 @@ webview2-com = "0.38"
 # the macOS build — the two sides encrypt and decrypt each other's messages.
 aes-gcm = "0.10"
 base64 = "0.22"
+# app_icon encodes the extracted .exe icon as PNG (already in the tree via tauri).
+png = "0.17"
+# 粒子模式 encodes each captured frame as JPEG (already in the tree via tauri).
+# 粒子模式 encodes frames as JPEG; project covers also READ png/webp/gif.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
+# webview2-com 0.38 is built against windows-core 0.61, NOT the 0.58 this crate
+# uses elsewhere — so ICoreWebView2Settings implements 0.61's Interface trait and
+# `windows::core::Interface` cannot see its `cast`. polish_webview needs the
+# matching trait to reach the newer settings interfaces.
+windows-core = "0.61"
 regex = "1"
 # room_link fills its AES nonces straight from the OS CSPRNG.
 getrandom = "0.2"
@@ -64,14 +74,29 @@ windows = { version = "0.58", features = [
     "Win32_System_LibraryLoader",
     "Win32_System_ProcessStatus",
     "Win32_System_Diagnostics_ToolHelp",
+    # agent_monitor reads a process's command line and working directory from the
+    # kernel (NtQueryInformationProcess + the PEB) instead of launching PowerShell
+    # for each question on a 5 s timer.
+    "Wdk_System_Threading",
+    "Win32_System_Kernel",
     # desktop_icon_rects reads Explorer's icon ListView, which lives in another
     # process: the RECT it fills has to be allocated inside explorer.exe and read
     # back out. VirtualAllocEx/VirtualFreeEx come from Memory,
     # Read/WriteProcessMemory from Diagnostics_Debug.
     "Win32_System_Memory",
+    # 粒子模式 pastes into another app: the clipboard and SendInput.
+    # 粒子模式 captures a window with PrintWindow, which the crate files under Xps.
+    "Win32_Storage_Xps",
+    "Win32_System_DataExchange",
+    # Per-app notification switches live in the registry (messages.rs).
+    "Win32_System_Registry",
     "Win32_System_Diagnostics_Debug",
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",
+    # 信息流「正在播放」reads the system media transport controls (WinRT), the
+    # same source as the volume flyout's media tile.
+    "Media_Control",
+    "Foundation",
 ] }
 
 [build-dependencies]

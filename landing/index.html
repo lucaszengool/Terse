@@ -2770,7 +2770,12 @@ function clerkSignOut() {
 
 // ═══ DOWNLOAD (requires sign-in) ═══
 const DMG_URL = 'https://github.com/lucaszengool/Terse/releases/latest/download/Terse_1.3.3_x64.dmg';
-const EXE_URL = 'https://github.com/lucaszengool/Terse/releases/download/v1.3.3/Terse_1.3.3_x64-setup.exe';
+// Windows ships through the Microsoft Store now (product 9P3HZLPMQMPT).
+// The Store page is public, so handleDownload sends Windows there without
+// the sign-in gate below: asking someone to sign in to OUR site before we
+// hand them off to a store listing loses them for no reason.
+const STORE_URL = 'https://apps.microsoft.com/detail/9P3HZLPMQMPT';
+const EXE_URL = STORE_URL;
 
 const PLATFORM_URLS = {
   mac: DMG_URL,
@@ -2782,6 +2787,11 @@ const PLATFORM_URLS = {
 async function handleDownload(e, platform) {
   e.preventDefault();
   const p = platform || 'mac';
+  if (p === 'windows') {
+    gtag('event', 'download_click', { platform: 'windows_store' });
+    window.open(STORE_URL, '_blank');
+    return;
+  }
   const url = PLATFORM_URLS[p] || DMG_URL;
   gtag('event', 'download_click', { platform: p });
   if (window.Clerk && !window.Clerk.loaded) await window.Clerk.load();

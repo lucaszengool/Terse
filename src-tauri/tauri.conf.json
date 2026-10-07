@@ -55,6 +55,21 @@
     "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "splash",
+        "title": "Terse",
+        "url": "splash.html",
+        "width": 460,
+        "height": 300,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": true
+      },
+      {
         "label": "main",
         "title": "Terse",
         "url": "index.html",
@@ -65,7 +80,7 @@
         "alwaysOnTop": false,
         "resizable": true,
         "shadow": false,
-        "visible": true,
+        "visible": false,
         "visibleOnAllWorkspaces": true,
         "minWidth": 820,
         "minHeight": 560

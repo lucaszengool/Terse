@@ -13,6 +13,11 @@
     /* 置顶模式:页面自己不能有底色。窗口已经是 non-opaque + clearColor,
        只要这里还留着 #05060a,置顶后就是一块盖住整个屏幕的黑板。 */
     html.overlay, html.overlay body, html.overlay #stage { background: transparent !important; }
+    /* 歌词置顶、但引擎自己不画(光柱地形 / 声之形这种不透明引擎抬到最上面就是糊屏) ——
+       这时窗口里只该剩歌词那一层。HUD 面板也要跟着让位,否则一块玻璃卡片
+       会浮在所有窗口之上。壁纸粒子层(photo-particles)在置顶状态下 photoLayerOK()
+       本来就返回 false,这里不用再管。 */
+    html.music-top #panel { visibility: hidden !important; }
     /* z-index 1:壁纸粒子层(photo-particles)是一块 z-index 0 的 canvas,垫在这块后面。 */
     #stage{position:fixed;inset:0;display:block;width:100vw;height:100vh;z-index:1}
     #panel{position:fixed;left:30px;bottom:30px;padding:15px 20px;border-radius:18px;
@@ -173,6 +178,8 @@
     /* 引擎之外的一层(见下面 applyPhotoLayer)。和引擎走同一条动态 import ——
        它加载失败只该少一层,不该把整页拖下水。 */
     let PhotoParticles = null;
+    /** 粒子歌词(音乐模式)。和 agent 那条字是两条独立通道,所以它也是单独一层。 */
+    let MusicLyrics = null, music = null;
     async function loadEngines(){
       const one = async (path) => {
         try { return (await import(path)).default; }
@@ -185,6 +192,7 @@
       TokenWallpaper3D   = await one('./token-wallpaper-3d.js');
       ChladniWallpaper   = await one('./chladni-wallpaper.js');
       PhotoParticles     = await one('./photo-particles.js');
+      MusicLyrics        = await one('./music-lyrics.js');
       reportOverlayState('page engines loaded mineradio=' + !!MineradioWallpaper +
                          ' topography=' + !!TokenWallpaper3D +
                          ' chladni=' + !!ChladniWallpaper +
@@ -293,6 +301,7 @@
       wp.start();
       // 引擎换了,这一层要不要画也可能跟着变(光柱地形不透明,垫在它后面没有意义)。
       applyPhotoLayer();
+      applyMusicLayer();
     }
 
     /* ── 壁纸粒子层 ────────────────────────────────────────────────────────
@@ -362,8 +371,77 @@
      *  真正的答案由 Rust 用 wallpaper-overlay 事件推过来,见 boot()。 */
     function overlayOK(c){
       const k = c || cfg;
+      /* 「歌词置顶」也要抬窗口,而且不受"只有粒子引擎能置顶"那条限制 ——
+         因为不透明的引擎在这种模式下会被**藏起来**(见 applyMusicLayer),
+         抬上去的只剩一块透明画布 + 歌词粒子,不可能糊住屏幕。
+         引擎本来就能抬的(粒子引擎),则两条轨道一起浮上去。 */
+      if (k.music === true && k.musicTop === true && k.enabled !== false) return true;
       return k.overlay === true &&
              (k.engine === 'mineradio' || k.engine === 'cinematic' || k.engine === 'orbit');
+    }
+
+    /* ── 音乐模式:壁纸上的粒子歌词 ────────────────────────────────────────
+       和 agent 那条粒子字**各走各的**:两个开关、两块画布,可以同时开,也可以只开一条。
+       歌词这一层挂在**引擎前面**(Mineradio 里歌词也是在封面前面的)。
+       置顶模式下照样可以画:它是透明画布 + 加性混合,没粒子的地方什么都不画。 */
+    function applyMusicLayer(){
+      /* 置顶模式下窗口在所有窗口之上,没有"画在窗口后面"这个位置 ——
+         所以那时歌词只有在「歌词浮在所有窗口之上」也开着时才画。
+         这正是"关掉歌词置顶 = 歌词立刻消失"的那一半。 */
+      const want = cfg.music === true && cfg.enabled !== false
+                   && (!overlayOK() || cfg.musicTop === true);
+      if (want && !music) {
+        if (!MusicLyrics) return;
+        try {
+          music = new MusicLyrics(document.body, { zIndex: 2, style: cfg.musicStyle || null });
+          music.start();
+          window.__terseMusic = music;        // dev aid
+          // 壁纸窗口可能是在歌放到一半时才起来的 —— 主动问一次,不然要等下一次换歌
+          if (T && T.musicState) T.musicState().then(st => { if (st && music) music.setState(st); }).catch(() => {});
+        } catch (e) {
+          music = null;
+          reportOverlayState('page music layer FAILED ' + (e && e.message || e));
+        }
+      } else if (!want && music) {
+        try { music.dispose(); } catch (e) {}
+        music = null; window.__terseMusic = null;
+      } else if (want && music) {
+        // 开着的时候改外观:不用重建,换一份参数就行(密度/光粒数变了它自己会重建缓冲区)
+        try { music.setStyle(cfg.musicStyle || null); } catch (e) {}
+      }
+      /* ── 引擎画布画不画:两个规矩合起来 ────────────────────────────────
+         ⚠ 这是**第三轮**修了,前两轮都踩了坑,把两段教训都写在这里以免再反复:
+
+         ① 第一轮:只要 musicTop 开着,一律把引擎藏起来。
+            坑 → 用户只开了「歌词置顶」(overlay 默认 false),壁纸整块消失。
+            用户原话:"音乐置顶开启的时候壁纸那些都不见了"。
+         ② 第二轮:引擎可见只看"安全不安全"(粒子引擎永远画),完全不理 overlay。
+            坑 → 置顶开关按下去画面没动静,用户以为开关坏了。
+            用户原话:"始终置顶完全控制不了"。
+
+         这一轮:
+           · **安全**是最底的闸门。不透明引擎(光柱地形 / 声之形)只要被抬了,
+             一律不画 —— 抬上去就是一整块糊屏,这条没得商量。
+           · 粒子引擎(mineradio / cinematic / orbit)安全,所以"抬了画不画"交给
+             **cfg.overlay 这个开关**自己决定。关掉就从顶上消失,打开就回来。
+             window 还被 musicTop 举着没关系 —— 画布 visibility:hidden 就行。
+           · 没抬的时候(两条开关都关)引擎当然画,这是桌面模式的默认样子。
+
+         配套在隔壁:为了"刚开 musicTop 不会把壁纸干掉",app.js 里 musicTop 的
+         change handler 会在打开时**顺手把 overlay 也打开**(是粒子引擎的话)。
+         所以第一次开 musicTop 看到的还是 ① 用户想要的"引擎+歌词都在"。想要只剩
+         歌词,打开后再手动关掉「始终置顶」就是了 —— 这时它真会关掉。 */
+      const engineCanLift = cfg.engine === 'mineradio' || cfg.engine === 'cinematic' || cfg.engine === 'orbit';
+      const lifted = overlayOK();
+      const engineDraws = !lifted || (cfg.overlay === true && engineCanLift);
+      document.documentElement.classList.toggle('music-top', lifted && !engineDraws);
+      if (canvas) canvas.style.visibility = engineDraws ? '' : 'hidden';
+      /* visibility:hidden 不停渲染,引擎还在往画布里塞帧;只有真的被藏时(= 不透明
+         引擎 + 置顶)才停,其它情况都保持跑着。document.hidden 的分支交给
+         visibilitychange 处理,不在这里 start()/stop(),避免和它互相覆盖。 */
+      if (wp && wp.stop && wp.start && !document.hidden) {
+        try { engineDraws ? wp.start() : wp.stop(); } catch (e) {}
+      }
     }
 
     /** 置顶模式的页面这一半:窗口层级由 Rust 改,这里只负责"别画背景"。 */
@@ -414,6 +492,7 @@
       if (wp.setStyle) wp.setStyle(cfg.style, cfg.customStyle || null);
       applyOverlay(overlayOK());   // 里面会跟着把壁纸粒子层开/关
       applyPhotoLayer();           // 开关本身变了的情况(引擎没换,applyOverlay 的结论也没变)
+      applyMusicLayer();
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
       // 3D 自由视角。控制面板里一拖,桌面上这幅画就跟着转 —— 那是这个功能最直接的
@@ -861,6 +940,10 @@
       // actual deltas) and agent activity (setActivity), so the 律动 always means something.
       if (window.__TAURI__?.event?.listen){
         window.__TAURI__.event.listen('wallpaper-config', ev => applyConfig(ev.payload || {}));
+        // 音乐模式:Rust 两秒推一次(在放什么 + 播到第几秒 + 整首的歌词)
+        window.__TAURI__.event.listen('music-state', ev => {
+          if (music) music.setState(ev.payload && ev.payload.off ? null : ev.payload);
+        });
         // 项目缩影:一段有头有尾的演出(默认 20 秒),不是一个设置 —— 所以走事件,
         // 不写 wallpaper.json。自己在列表里点预览、和广场上点别人的项目,同一条路。
         window.__TAURI__.event.listen('wallpaper-project', ev => {
@@ -875,9 +958,12 @@
         if (window.__terseTownOn) return;
         if (photo) { document.hidden ? photo.stop() : photo.start(); }
         if (!wp) return;
-        document.hidden ? wp.stop() : wp.start();
+        // 回到可见时不是无条件 start:歌词置顶模式下引擎本来就该停(applyMusicLayer
+        // 刚停下的那次会被这里一次 start 推翻,然后又在下一轮 applyMusicLayer 停回去 ——
+        // 用户看到的现象是一两帧的意外闪现)。所以可见时仍要尊重 applyMusicLayer 的决定。
+        if (document.hidden) { wp.stop(); } else { applyMusicLayer(); }
       });
-      window.addEventListener('resize', () => { if (wp) wp.resize(); if (photo) photo.resize(); });
+      window.addEventListener('resize', () => { if (wp) wp.resize(); if (photo) photo.resize(); if (music) music.resize(); });
     }
     boot();
     // 诊断:这一层到底收不收得到鼠标。桌面层的窗口收不到点击是这个功能最主要的坑,

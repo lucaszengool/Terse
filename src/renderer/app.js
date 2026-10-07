@@ -3,7 +3,7 @@ const $$ = s => document.querySelectorAll(s);
 const T = window.terse;
 
 let prevView = 'sessions';
-const views = { gesture: $('#gestureView'), particles: $('#particlesView'), msgs: $('#msgsView'), sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView'), pair: $('#pairView'), category: $('#categoryView'), collab: $('#collabView') };
+const views = { gesture: $('#gestureView'), particles: $('#particlesView'), msgs: $('#msgsView'), sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView'), pair: $('#pairView'), category: $('#categoryView'), collab: $('#collabView'), music: $('#musicView') };
 // 两级导航:大部分老页面(data-page)现在住在某个分类落地页或协同门户里,不再
 // 各占一个侧栏按钮。子页面点亮它的**父入口**,这张表就是"子页面 → 分类"。
 const CAT_OF = {
@@ -2323,6 +2323,7 @@ async function gestureInit() {
 const SB_ACTIONS = {
   overview: () => show('sessions'),
   gesture:  () => { show('gesture'); gestureInit(); },
+  music:    () => { show('music'); musicInit(); },
   cleanup:  () => { show('cleanup'); if (!clState.scanned) clScan(); },
   alerts:   () => T.navigateToAlerts && T.navigateToAlerts(),
   settings: () => show('settings'),
@@ -4335,3 +4336,219 @@ $('#pmStop')?.addEventListener('click', () => pmOff());
 // Windows sees Ctrl+K where the source HTML says ⌘K. Runs once here for the
 // case where i18n never loads; index.html calls it again after i18n renders.
 try { localizeKbd(); document.addEventListener('DOMContentLoaded', () => localizeKbd()); } catch (e) {}
+
+
+/* ── 音乐模式 ──────────────────────────────────────────────────────────────
+   这一页只做两件事:把开关写进 wallpaper.json 的 `music`,以及如实显示
+   "现在认出了什么、歌词取到没有"。真正干活的是 src-tauri/src/music.rs
+   (认歌 + 去 LRCLIB 取同步歌词)和壁纸里的 music-lyrics.js(把词聚成粒子)。
+
+   ⚠ 开关走的是**壁纸配置**,不是另起一份:歌词画在壁纸上,壁纸关着的时候
+   这一条无处可画。所以壁纸没开的时候这里会说清楚,而不是给一个按了没反应的开关。 */
+let musicWired = false, musicTimer = null;
+async function musicInit() {
+  const sw = $('#musicOn');
+  if (!sw) return;
+  const paint = async () => {
+    let cfg = {};
+    try { cfg = (await T.getWallpaperConfig()) || {}; } catch (e) {}
+    sw.checked = cfg.music === true;
+    const wpOff = cfg.enabled === false;
+    const row = sw.closest('.row');
+    if (row) row.style.opacity = wpOff ? '.5' : '';
+    let st = null, pb = null;
+    try { st = T.musicState ? await T.musicState() : null; } catch (e) {}
+    /* 再问一次系统"现在到底认出了什么"。
+       ⚠ 这一句是用户那次"我网易云明明在放,却说检测不到"逼出来的:当时系统其实
+       认得出(标题/艺人/时长都在),是我们这边的 reader 没起来 —— 而页面只会说
+       "还没检测到",把**我们的问题**说成了**你没在放歌**。现在两边都问,
+       谁出问题就说谁。 */
+    try { pb = T.musicProbe ? await T.musicProbe() : null; } catch (e) {}
+    const now = $('#musicNow'), lyr = $('#musicLyr');
+    if (wpOff) {
+      now.textContent = TT('music_need_wp', '动态壁纸关着 —— 歌词是画在壁纸上的,先把壁纸打开。');
+      lyr.textContent = '';
+      return;
+    }
+    const seen = (st && st.title) ? st : (pb && pb.title ? pb : null);
+    if (!seen) {
+      now.textContent = TT('music_idle', '还没检测到在播放的音乐。打开任意播放器放一首,这里会显示它。');
+      lyr.textContent = pb && pb.unsupported
+        ? TT('music_unsupported', '这台 macOS 不让读系统的「正在播放」—— 音乐模式用不了。')
+        : '';
+      return;
+    }
+    now.textContent = `${seen.title}${seen.artist ? ' — ' + seen.artist : ''}${seen.app ? '  ·  ' + seen.app : ''}`;
+    /* 播放器有没有在汇报进度。网易云实测:标题给了,但 rate 一直是 0、
+       进度停在某一秒不动(快照十几分钟没更新)。这种情况歌词没法对齐,
+       与其让人以为是我们坏了,不如直说是谁没汇报。 */
+    const age = (st && st.age != null) ? st.age : (pb && pb.age != null ? pb.age : -1);
+    const rate = (st && st.rate != null) ? st.rate : (pb ? pb.rate : 0);
+    /* 在不在播,信**系统自己的** localIsPlaying(Rust 侧的 playing / 探针的 isPlaying),
+       不信 info 字典里的 rate —— 网易云实测:暂停时 rate=0 且 elapsed 冻住,
+       而在播时 rate 可能照样是 0。两件事只有 localIsPlaying 分得开。 */
+    const isPlaying = st ? !!st.playing : !!(pb && pb.isPlaying);
+    const selfClock = st ? !!st.self_clock : (!!(pb && pb.isPlaying) && !(rate > 0));
+    /* ⚠ `rate == 0` **不等于**"播放器坏了" —— 暂停长什么样,它就长什么样。
+       上一版把这两件事混成一条,直接说"{播放器}没把进度汇报给系统",那是在
+       **用一个分不清的信号下结论**。现在只说事实:要么在播(进度会走),
+       要么系统说它停在哪一秒。 */
+    const paused = !isPlaying;
+    const bits = [];
+    if (st && st.lines && st.lines.length) {
+      bits.push(TT('music_lyr_ok', '已取到 {n} 行同步歌词({src})')
+        .replace('{n}', st.lines.length).replace('{src}', st.source || ''));
+    } else if (st) {
+      bits.push(TT('music_lyr_no', '这首没找到同步歌词 —— 壁纸上只会显示歌名。'));
+    } else {
+      bits.push(TT('music_warming', '正在取这首的歌词…'));
+    }
+    if (paused) {
+      bits.push(TT('music_paused2', '⏸ 已暂停(停在 {at})—— 歌词会停在那一句。')
+        .replace('{at}', fmtClock(seen.elapsed || 0)));
+    } else if (selfClock) {
+      bits.push(TT('music_self_clock', '▶ 在播,但 {app} 不向系统汇报进度 —— 歌词改用我们自己的钟推算,中途拖进度条可能会错开一点。')
+        .replace('{app}', seen.app || '这个播放器'));
+    }
+    lyr.innerHTML = bits.map(b => `<div>${b}</div>`).join('');
+  };
+  const fmtClock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  if (!musicWired) {
+    musicWired = true;
+    sw.addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      /* ⚠ 音乐模式本身**不要 Pro**(用户 2026-10-05):谁都能把歌词放到壁纸上。
+         要 Pro 的是下面那些**调节** —— 免费用户用默认那一套。 */
+      let cfg = {};
+      try { cfg = (await T.getWallpaperConfig()) || {}; } catch (err) {}
+      cfg.music = on;
+      try { await T.setWallpaperConfig(cfg); } catch (err) {}
+      paint();
+    });
+  }
+  musicTune(paint);
+  paint();
+  // 这一页开着的时候每三秒对一次 —— 换歌、取到歌词都要能看见
+  clearInterval(musicTimer);
+  musicTimer = setInterval(() => {
+    if (views.music && !views.music.classList.contains('hidden')) paint(); else clearInterval(musicTimer);
+  }, 3000);
+}
+
+
+/* ── 歌词外观(全部要 Pro)────────────────────────────────────────────────
+   控件由 music-style.js 的 MUSIC_SCHEMA **生成**。手写一个十几项的面板迟早漏一项,
+   而漏掉的那一项没人会发现 —— 壁纸的自定义面板早就是这个教训。
+
+   ⚠ 分层的规矩(用户 2026-10-05):**音乐模式本身免费,所有调节要 Pro**。
+   免费用户看得见每一个控件、拖得动(预览立刻生效),但**不写盘** —— 松手弹升级页,
+   下次打开还是默认那一套。看得见才会想要,而写盘是要付费的那一步。 */
+let musicTuneWired = false;
+async function musicTune(repaint) {
+  const body = $('#musicTuneBody');
+  if (!body) return;
+  const { MUSIC_SCHEMA, MUSIC_DEFAULTS, resolveMusicStyle } = await import('./music-style.js');
+  const read = async () => { try { return (await T.getWallpaperConfig()) || {}; } catch (e) { return {}; } };
+
+  const render = async () => {
+    const cfg = await read();
+    const cur = resolveMusicStyle(cfg.musicStyle);
+    const custom = (cfg.musicStyle && typeof cfg.musicStyle === 'object') ? cfg.musicStyle : {};
+    const groups = [];
+    for (const f of MUSIC_SCHEMA) {
+      if (!groups.length || groups[groups.length - 1].g !== f.g) groups.push({ g: f.g, rows: [] });
+      const v = cur[f.key];
+      const dirty = custom[f.key] !== undefined;
+      let ctl = '';
+      if (f.type === 'range') {
+        const shown = f.step >= 1 ? Math.round(v) : (+v).toFixed(2);
+        ctl = `<input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}" data-mk="${f.key}">
+               <span class="tune-v" data-mv="${f.key}">${shown}</span>`;
+      } else if (f.type === 'enum') {
+        ctl = `<div class="tune-chips">` + Object.entries(f.options).map(([n, ov]) =>
+          `<button class="tune-chip ${ov === v ? 'on' : ''}" data-mk="${f.key}" data-mval="${ov}">${n}</button>`).join('') + `</div>`;
+      } else if (f.type === 'color') {
+        ctl = `<input type="color" value="${v}" data-mk="${f.key}">`;
+      }
+      groups[groups.length - 1].rows.push(
+        `<div class="tune-r ${dirty ? 'dirty' : ''}"><div class="tune-l">${f.label}</div>${ctl}</div>` +
+        (f.hint ? `<div class="tune-h">${f.hint}</div>` : ''));
+    }
+    body.innerHTML = groups.map(g => `<div class="tune-g"><div class="tune-gt">${g.g}</div>${g.rows.join('')}</div>`).join('');
+    const n = Object.keys(custom).filter(k => MUSIC_DEFAULTS[k] !== undefined).length;
+    const meta = $('#musicTuneMeta');
+    if (meta) meta.textContent = n ? TT('music_tune_n', '{n} 项改过').replace('{n}', n) : TT('music_tune_0', '全部是默认值');
+    const top = $('#musicTop');
+    if (top) top.checked = cfg.musicTop === true;
+  };
+
+  const save = async (key, value) => {
+    if (document.body.classList.contains('is-free')) {
+      openPaywall(TT('pro_gate_music_tune', '歌词外观的调节是 Pro 功能:密度、大小、颜色、溢光、光粒、位置都能自己定。音乐模式本身免费,免费用户用默认那一套。'));
+      await render();                        // 把控件拨回去:没写盘就不该留着改过的样子
+      return;
+    }
+    const cfg = await read();
+    const ms = { ...(cfg.musicStyle || {}) };
+    if (value === undefined) delete ms[key]; else ms[key] = value;
+    cfg.musicStyle = ms;
+    try { await T.setWallpaperConfig(cfg); } catch (e) {}
+    await render();
+    if (repaint) repaint();
+  };
+
+  if (!musicTuneWired) {
+    musicTuneWired = true;
+    body.addEventListener('input', (e) => {
+      const el = e.target.closest('[data-mk]');
+      if (!el || el.type === 'button') return;
+      const key = el.dataset.mk;
+      const v = el.type === 'color' ? el.value : +el.value;
+      const label = body.querySelector(`[data-mv="${key}"]`);
+      if (label) label.textContent = (Math.abs(v) >= 1 ? Math.round(v) : (+v).toFixed(2));
+    });
+    body.addEventListener('change', (e) => {
+      const el = e.target.closest('[data-mk]');
+      if (!el) return;
+      save(el.dataset.mk, el.type === 'color' ? el.value : +el.value);
+    });
+    body.addEventListener('click', (e) => {
+      const chip = e.target.closest('.tune-chip[data-mval]');
+      if (chip) save(chip.dataset.mk, +chip.dataset.mval);
+    });
+    const reset = $('#musicReset');
+    if (reset) reset.addEventListener('click', async () => {
+      if (document.body.classList.contains('is-free')) {
+        openPaywall(TT('pro_gate_music_tune', '歌词外观的调节是 Pro 功能。')); return;
+      }
+      const cfg = await read(); cfg.musicStyle = {};
+      try { await T.setWallpaperConfig(cfg); } catch (e) {}
+      await render();
+    });
+    const top = $('#musicTop');
+    if (top) top.addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      // 和壁纸的「始终置顶」同一条规矩:关掉永远放行,打开要 Pro
+      if (on && document.body.classList.contains('is-free')) {
+        e.target.checked = false;
+        openPaywall(TT('pro_gate_music_top', '把歌词浮在所有窗口之上是 Pro 功能。'));
+        return;
+      }
+      const cfg = await read(); cfg.musicTop = on;
+      /* 顺手把壁纸的「始终置顶」也打开 —— 单窗口架构下,窗口要么整块抬,要么整块沉;
+         只开 musicTop 的话,打开那一刻窗口被抬到最上面,而壁纸引擎看 cfg.overlay=false
+         就把自己藏起来 —— 用户看到的就是"打开歌词置顶,壁纸整块没了"。
+         所以这里替用户补一下:只在打开 musicTop、而且 overlay 还没开、且当前引擎
+         是安全的粒子引擎时才补,其它情况维持原样。打开之后用户想单要歌词,去把
+         「始终置顶」手动关掉就行,那时它会真的关掉。 */
+      if (on && cfg.overlay !== true) {
+        const engine = cfg.engine || 'mineradio';
+        if (engine === 'mineradio' || engine === 'cinematic' || engine === 'orbit') {
+          cfg.overlay = true;
+        }
+      }
+      try { await T.setWallpaperConfig(cfg); } catch (e) {}
+    });
+  }
+  await render();
+}

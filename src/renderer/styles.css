@@ -1570,30 +1570,6 @@ html:not(.page-awake) .sc-mcp .reqdot {
 .cw-card-d{font-size:10px;color:var(--t3);line-height:1.5}
 
 
-/* ── 粒子板窗口(glass3d)────────────────────────────────────────────────
-   只有 wallpaper.json 里 `enabled` + `windowGlass` 同时为真时,window-glass.js
-   才会给 <html> 挂上 .glass3d —— 默认两个都不满足,所以下面这一整段对新用户
-   是死代码,原来那扇窗一个像素都不会变。
-
-   结构:#glassBed(你的壁纸变成的粒子,铺满整个窗口)→ #glassCard(半透明卡片)
-   → 原来的 #titlebar / #shell 浮在卡片上。卡片四周留 12px,所以粒子会从边上
-   透出来一圈 —— 界面是**浮在**那块板前面,而不是贴在它上面。 */
-html.glass3d, html.glass3d body { background: transparent !important; }
-html.glass3d body { padding: 16px; border-radius: 0; }
-#glassBed { position: fixed; inset: 0; z-index: 0; overflow: hidden; border-radius: 16px; pointer-events: none; }
-#glassCard { position: fixed; inset: 16px; z-index: 1; border-radius: 16px;
-  background: color-mix(in srgb, var(--bg) 66%, transparent);
-  backdrop-filter: blur(18px) saturate(1.12); -webkit-backdrop-filter: blur(18px) saturate(1.12);
-  border: 1px solid color-mix(in srgb, var(--t1) 12%, transparent);
-  box-shadow: 0 24px 60px rgba(0,0,0,0.42), inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent); }
-/* WebView2 不会去模糊窗口背后的东西,玻璃得自己撑住 —— 和 palette 那条同一个道理。 */
-html.win #glassCard { background: color-mix(in srgb, var(--bg) 88%, transparent); }
-html.glass3d #titlebar, html.glass3d #shell { position: relative; z-index: 2; }
-/* 卡片已经画了底,里面这两块就别再各画一层,否则粒子被闷死看不见。 */
-html.glass3d #sidebar { background: transparent; border-right-color: color-mix(in srgb, var(--t1) 10%, transparent); }
-html.glass3d #app { background: transparent; }
-
-
 /* ── 全员广播的那张小卡(broadcast.js)────────────────────────────────────
    平时**不存在** —— 服务端没有在发的公告时,这段 CSS 一个元素都匹配不到。
    放右下角:横幅压在顶上会挤掉正在看的内容,而这条东西不紧急到值得那样。 */

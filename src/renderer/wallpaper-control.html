@@ -409,23 +409,6 @@
       </div>
 
 
-      <!-- Terse 这扇窗自己。刻意**默认全关**:新装的人第一次打开看到的还是普通窗口
-           (用户 2026-09-28:「不要变化 SOP 对新用户的」)。只有壁纸开着的时候这张卡
-           才有意义,所以它跟在壁纸粒子板后面。 -->
-      <div class="card">
-        <div class="row" style="padding-top:0">
-          <div class="rt"><span data-i18n="wp_win_glass_t">Terse 窗口也变成粒子板</span> <span class="pro-tag">PRO</span>
-            <div class="rd" data-i18n="wp_win_glass_d">界面变成一张半透明卡片,浮在你那张壁纸的粒子前面</div></div>
-          <input type="checkbox" class="sw sm" id="wpWinGlass">
-        </div>
-        <div class="row">
-          <div class="rt"><span data-i18n="wp_win_dock_t">平时收到屏幕右边</span> <span class="pro-tag">PRO</span>
-            <div class="rd" data-i18n="wp_win_dock_d">只留 14px 在外面,鼠标碰一下右边缘就滑出来;把窗口拖离右边就不再自动收起</div></div>
-          <input type="checkbox" class="sw sm" id="wpWinDock">
-        </div>
-        <div class="note" style="margin-top:9px" data-i18n="wp_win_note">这两条只在动态壁纸开着的时候生效。收起判断走原生光标位置,不是网页里的 hover —— 收起来的窗口不是焦点窗口,那种窗口里的网页收不到鼠标事件。</div>
-      </div>
-
       <!-- 置顶(Pro)放在最上面 —— 这是这一页最需要一眼看懂的东西。
            真窗口的层级没法在预览里复现(预览就是一块 canvas,没有"层级"),
            所以这里给的是一个诚实的**示意图**:两个假窗口 + 一层粒子,
@@ -963,37 +946,6 @@
     /* 壁纸粒子层的开关。和这一页其他 Pro 控件同一条规矩:预览随便看,写盘要 Pro。
        但"关掉"永远放行 —— 和置顶同一个理由:许可查询慢一拍或者掉线,不能把人锁在
        开着的状态里。 */
-    /* Terse 窗口自己的两条。和这一页其他 Pro 控件同一条规矩:关掉永远放行,
-       打开要 Pro —— 理由和置顶那一条一样,别把人锁在开着的状态里。 */
-    function wireWindow(){
-      const bind = (id, key) => {
-        const t = document.getElementById(id);
-        if (!t) return;
-        t.addEventListener('change', async (e) => {
-          const on = e.target.checked;
-          if (on && !(await proApplyLive('window'))) { e.target.checked = false; return; }
-          cfg[key] = on;
-          save();
-        });
-      };
-      bind('wpWinGlass', 'windowGlass');
-      bind('wpWinDock', 'windowDock');
-    }
-
-    /** 壁纸关着的时候这两条不生效 —— 如实说,别给一个按了没反应的开关。 */
-    function paintWindow(){
-      const g = $('#wpWinGlass'), d = $('#wpWinDock');
-      if (!g || !d) return;
-      g.checked = cfg.windowGlass === true;
-      d.checked = cfg.windowDock === true;
-      const live = cfg.enabled !== false;
-      for (const t of [g, d]) {
-        t.disabled = !live && !t.checked;
-        const row = t.closest('.row');
-        if (row) row.style.opacity = live ? '' : '.45';
-      }
-    }
-
     function wirePhoto(){
       const t = document.getElementById('wpPhoto');
       if (!t) return;
@@ -1104,8 +1056,6 @@
                '10 colour presets plus density, angle and intensity — tuned on top of any style and saved as a diff.'],
       view3d: ['wp_pitch_3d_t',    'Free 3D view',         'wp_pitch_3d_d',
                'Take hold of the field and turn it — the flat sheet lifts into relief and you can look at your desktop from anywhere.'],
-      window: ['wp_pitch_win_t', 'Terse 窗口也是粒子', 'wp_pitch_win_d',
-               '界面变成一张浮在粒子板前面的半透明卡片,平时收到屏幕右边,鼠标一碰才出来。'],
       photo:  ['wp_pitch_photo_t', 'Wallpaper as a particle plate', 'wp_pitch_photo_d',
                'Your desktop picture floats in black space as a plate of glowing grains, with the engine\'s particles in front of it — the picture itself is untouched, only its material changes.'],
     };
@@ -1166,7 +1116,6 @@
     const TIP_OWNER = [
       ['top',    '#wpTop'],
       ['photo',  '#wpPhoto'],
-      ['window', '#wpWinGlass'],
       ['engine', '#engines'],
       ['style',  '#styles'],
       ['theme',  '#themes'],
@@ -1427,6 +1376,9 @@
         t.checked = cfg.overlay === true && particle;
         // 只在"本来就关着"的时候禁用。如果 overlay 还留着 true(比如换引擎之前
         // 开着的),必须留一条关掉它的路,不能把人锁在里面。
+        // ⚠ musicTop 开着时**不**在这里锁 —— 开关要让人能点、能看见反馈。
+        // 点下去页面(wallpaper.html 的 applyMusicLayer)会把引擎画布藏起来 ——
+        // 窗口仍然被 musicTop 举着,但引擎确实从顶上消失。
         t.disabled = !particle && cfg.overlay !== true;
         if (row) row.style.opacity = particle ? '' : '.45';
         const rd = row && row.querySelector('.rd');
@@ -1697,7 +1649,6 @@
       if ($('#styles')) renderStyles();
       paintTop();
       paintPhoto();
-      paintWindow();
       renderTune();
       renderView3D();
     }
@@ -1713,7 +1664,7 @@
     }
 
     function wire(){
-      wireTune(); wirePreviewOnly(); wireTop(); wirePhoto(); wireWindow(); initPreviewOnlyCopy(); wireProShow(); wireView3D(); wireStage3D();
+      wireTune(); wirePreviewOnly(); wireTop(); wirePhoto(); initPreviewOnlyCopy(); wireProShow(); wireView3D(); wireStage3D();
       initTopDemo();
       $('#btnBack').addEventListener('click',()=>T.navigateBack());
       document.querySelectorAll('.eng').forEach(el=>el.addEventListener('click',async ()=>{
@@ -1787,6 +1738,18 @@
       try { const c = await T.getWallpaperConfig(); if (c) cfg = Object.assign(cfg, c); } catch(e){}
       paint(); wire();
       mountPreview();
+      /* 别的页(主要是「音乐」页的 musicTop)改配置时,这里必须跟着刷新 ——
+         否则 paintTop 读的是开机那次拉下来的 cfg,「始终置顶」看起来还能点,
+         其实已经被 musicTop 锁了。听 wallpaper-config 事件,合并 + 重画。 */
+      try {
+        if (window.__TAURI__ && window.__TAURI__.event && window.__TAURI__.event.listen) {
+          await window.__TAURI__.event.listen('wallpaper-config', (ev) => {
+            const c = ev && ev.payload; if (!c) return;
+            cfg = Object.assign(cfg, c);
+            paint();   // paintTop 在里面,工具条/预览的那几项也顺手刷新
+          });
+        }
+      } catch(e) {}
       // Drive the preview with gentle demo pulses so the user sees the motion without the small
       // canvas washing out — mostly soft ripples, an occasional (capped) meteor for drama.
       setInterval(()=>{ if(!prev) return; const r=Math.random();

@@ -173,6 +173,10 @@ if (window.__TAURI__) {
     // Live token wallpaper (desktop-pinned)
     navigateToWallpaper: () => invoke('navigate_to_wallpaper'),
     getWallpaperConfig: () => invoke('get_wallpaper_config'),
+    // 音乐模式:现在在放什么 + 这首的同步歌词(src-tauri/src/music.rs)
+    musicState: () => invoke('music_state'),
+    // 问一次系统"现在认出了什么"——不依赖常驻 reader,音乐页用它自证
+    musicProbe: () => invoke('music_probe'),
     // 用户当前那张真桌面壁纸(1920 宽 JPEG data URL)—— mineradio 引擎的底图
     getDesktopPicture: (force) => invoke('get_desktop_picture', { force: !!force }),
     setWallpaperConfig: (config) => invoke('set_wallpaper_config', { config }),

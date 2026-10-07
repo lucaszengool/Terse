@@ -2496,7 +2496,22 @@ jobs:
           # Windows Terminal here, and the text then belongs to a window owned by
           # a different process — the first two attempts at this check were
           # reading someone else's window and reporting the feature broken.
-          $np = Start-Process conhost -PassThru -ArgumentList "powershell", "-NoProfile", "-NoExit", "-Command", "Get-Content '$prompt'"
+          # 300 lines of output FIRST, so the prompt sits at the bottom of a long
+          # buffer the way it does in a real session. Reading the buffer from the
+          # top (DocumentRange) finds the first screenful and never the prompt;
+          # only what is on screen does.
+          $show = "1..300 | ForEach-Object { 'build output line ' + `$_ }; Get-Content '$prompt'"
+          $np = Start-Process conhost -PassThru -ArgumentList "powershell", "-NoProfile", "-NoExit", "-Command", $show
+          # The same prompt in Windows Terminal — the default terminal on
+          # Windows 11, and a different text provider from conhost's.
+          $wtProc = $null
+          $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+          if ($wt) {
+            # wt.exe reads ";" as its own subcommand separator; "\;" passes it through.
+            $wtProc = Start-Process $wt.Source -PassThru -ArgumentList "-w", "new", "powershell", "-NoProfile", "-NoExit", "-Command", ($show -replace ';', '\;')
+          } else {
+            Write-Host "  (no wt.exe on this runner — Windows Terminal not exercised)"
+          }
           Start-Sleep -Seconds 8
 
           $t0 = Get-Date
@@ -2524,6 +2539,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           if (Test-Path $al) { Copy-Item $al artifacts/approvals.log }
           $at = if (Test-Path $al) { Get-Content $al -Raw } else { "" }
+          foreach ($hostName in @("powershell", "conhost", "WindowsTerminal")) {
+            if ($at -match "\[$hostName pid=\d+\] >>> MATCHED") { Write-Host "  matched in: $hostName" }
+          }
           if ($at -match 'MATCHED') {
             Write-Host "APPROVALS OK: the prompt on screen was read through UI Automation and recognised"
           } elseif ($at -match 'textlen=([1-9]\d+)') {
@@ -2556,6 +2574,7 @@ jobs:
             Write-Warning "DESK: no cursor layer window (Pro gate or autostart) — not failing the build on it"
           }
           $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          if ($wtProc) { $wtProc | Stop-Process -Force -ErrorAction SilentlyContinue }
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
           Remove-Item (Join-Path $dir "desk.json") -ErrorAction SilentlyContinue
           if ($bad) { throw "a ported feature did not run" }

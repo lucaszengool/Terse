@@ -2710,7 +2710,7 @@ jobs:
 
       # 音乐模式, end to end, on a real media session.
       #
-      # A track is published to Windows the way every player does it (see
+      # A track is published to Windows the way a player does it (see
       # windows-app/ci/media-host.ps1), music mode is switched on, and the proof
       # is on disk: a cold lyrics cache that Terse filled with synced lines for
       # that exact track. That one file needs every link — the WinRT read, the
@@ -2734,20 +2734,8 @@ jobs:
           Start-Sleep -Seconds 3
           $bad = @()
 
-          # A silent WAV as long as the real song (269 s): lyrics are matched to
-          # the track's length within 15 s, so a short clip would be rejected.
-          $wav = Join-Path $env:RUNNER_TEMP "yellow.wav"
-          $rate = 8000; $data = $rate * 2 * 269
-          $bw = New-Object System.IO.BinaryWriter([System.IO.File]::Create($wav))
-          $bw.Write([Text.Encoding]::ASCII.GetBytes("RIFF")); $bw.Write([int](36 + $data))
-          $bw.Write([Text.Encoding]::ASCII.GetBytes("WAVEfmt ")); $bw.Write([int]16)
-          $bw.Write([int16]1); $bw.Write([int16]1); $bw.Write([int]$rate); $bw.Write([int]($rate * 2))
-          $bw.Write([int16]2); $bw.Write([int16]16)
-          $bw.Write([Text.Encoding]::ASCII.GetBytes("data")); $bw.Write([int]$data)
-          $bw.Write((New-Object byte[] $data)); $bw.Close()
-
           $hostLog = Join-Path $env:RUNNER_TEMP "media-host.log"
-          $mh = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $ci "media-host.ps1"), $wav, $hostLog
+          $mh = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $ci "media-host.ps1"), $hostLog
           Start-Sleep -Seconds 8
           $sys = (& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ci "media-observe.ps1")) -join " "
           Write-Host "  $sys"

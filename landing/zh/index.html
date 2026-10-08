@@ -66,6 +66,7 @@
     },
     {
       "@type": "SoftwareApplication",
+      "@id": "https://www.terseai.org/zh/#software",
       "name": "Terse",
       "url": "https://www.terseai.org",
       "applicationCategory": "DeveloperApplication",
@@ -88,6 +89,10 @@
         }
       ],
       "featureList": [
+        "Live 3D particle wallpaper rebuilt from your own desktop picture",
+        "Puts notifications, window titles and what is playing on the wallpaper as particle text",
+        "Music mode: synced lyrics of the song you are playing, drawn as particles on the desktop (free)",
+        "Code Town: a first-person particle town as your wallpaper",
         "40-70% token cost reduction on AI prompts",
         "Live monitoring of 8 coding agents: Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider",
         "Budget circuit breaker — pauses or kills runaway agents before the next API call",
@@ -1290,6 +1295,9 @@
       <div class="wp-card"><div class="wp-k">单独的一层</div><p>歌词画在自己的一层上,和 agent 的字、你原来的壁纸同时播放,互不打扰。</p></div>
       <div class="wp-card"><div class="wp-k">免费,Pro 可调样式</div><p>音乐模式本身免费。Pro 可以让歌词浮在所有窗口之上,并多出 15 项调节:密度、溢光、大小、字重、颜色、位置等等。</p></div>
     </div>
+    <div class="more-row rv">
+      <a href="/music" class="more-link">音乐模式详解(英文)→</a>
+    </div>
   </div>
 </section>
 <script>
@@ -1639,7 +1647,7 @@
 <footer>
   <div class="footer-inner">
     <div class="footer-brand"><a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a><p data-i18n="footer.tagline">Token 优化器 + 团队分析。压缩提示、监控 Agent、检测重复——用 Terse Cloud 追踪团队 AI 开销。</p></div>
-    <div class="footer-col"><h4 data-i18n="footer.product">产品</h4><a href="/tokens#pipeline" data-i18n="nav.pipeline">处理流程</a><a href="/tokens#techniques" data-i18n="footer.techniques">技术</a><a href="/tokens#agents" data-i18n="nav.agentMonitor">Agent 监控</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token 交易所</a><a href="/pricing-faq#pricing" data-i18n="nav.pricing">价格</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">下载</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
+    <div class="footer-col"><h4 data-i18n="footer.product">产品</h4><a href="/tokens#pipeline" data-i18n="nav.pipeline">处理流程</a><a href="/tokens#techniques" data-i18n="footer.techniques">技术</a><a href="/tokens#agents" data-i18n="nav.agentMonitor">Agent 监控</a><a href="/marketplace" data-i18n="nav.tokenExchange">Token 交易所</a><a href="/pricing-faq#pricing" data-i18n="nav.pricing">价格</a><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/wallpaper">Live Wallpaper</a><a href="/music">Music Mode</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="#dl" data-i18n="footer.download">下载</a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener">GitHub ★</a></div>
     <div class="footer-col"><h4 data-i18n="footer.techniques">技术</h4><a href="/spell-correction" data-i18n="footer.spellCorrection">拼写校正</a><a href="/pattern-optimization" data-i18n="footer.patternOpt">模式优化</a><a href="/nlp-analysis" data-i18n="footer.nlpAnalysis">NLP 分析</a><a href="/telegraph-compression" data-i18n="footer.telegraphComp">电报式压缩</a></div>
     <div class="footer-col"><h4 data-i18n="footer.learn">了解更多</h4><a href="/blog">Blog</a><a href="/for-claude-code">Terse for Claude Code</a><a href="/for-cursor">Terse for Cursor</a><a href="/for-chatgpt">Terse for ChatGPT</a><a href="/for-github-copilot">Terse for GitHub Copilot</a><a href="/for-aider">Terse for Aider</a><a href="/for-cline">Terse for Cline</a><a href="/for-windsurf">Terse for Windsurf</a><a href="/for-codex">Terse for Codex</a><a href="/terse-vs-llmlingua">Terse vs LLMLingua</a><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/claude-code-cost-tracker">Claude Code Cost Trackers Compared</a><a href="/token-calculator">Token Cost Calculator</a><a href="/reduce-ai-api-costs" data-i18n="footer.reduceApiCosts">如何降低 AI API 成本</a><a href="/i-built-an-app-to-steal-50m-back">How Terse Works</a><a href="/docs">Docs</a><a href="/refund-policy" data-i18n="footer.refundPolicy">退款政策</a></div>
     <div class="footer-col"><h4 data-i18n="footer.support">支持</h4><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Ask a question</a><a href="#" onclick="window.terseSupport&&terseSupport.open();return false">Join our Slack</a><a href="mailto:support@terseai.org">Email support</a></div>
@@ -3022,7 +3030,7 @@ function showPricingToast(msg) {
 })();
 </script>
 <script>try{localStorage.setItem('terse-lang','zh-Hans')}catch(e){}</script>
-<script src="/i18n.js?v=581ea9a9"></script>
+<script src="/i18n.js?v=5f72f472"></script>
 <script>
 // Language switcher
 function initLangSwitcher(){

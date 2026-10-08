@@ -1,19 +1,50 @@
-# Terse — the on-device AI agent butler
+# Terse — put everything on your desktop wallpaper
 
-> Terse is an on-device AI agent butler for macOS and Windows that cuts AI coding
-> agent costs 40-70%. It compresses prompts before they reach the API,
+> Terse puts everything on your desktop wallpaper. It is a live 3D particle
+> wallpaper for macOS and Windows that rebuilds your own desktop picture out of
+> particles and writes what is happening on your computer into it: the synced
+> lyrics of the song you are playing, notifications, window titles, what your AI
+> coding agents are doing, and Code Town. For developers it is also an on-device
+> AI agent butler that cuts coding-agent costs 40-70%: it compresses prompts,
 > live-monitors 8 coding agents, enforces spend ceilings with a budget circuit
-> breaker that pauses or kills a runaway agent before its next API call, manages
-> MCP servers with security risk scoring, and diagnoses token waste with Terse
-> Doctor. Everything runs on-device; prompts never leave the machine. Also
-> available as a Chrome extension and a VS Code extension.
+> breaker, manages MCP servers and diagnoses token waste with Terse Doctor.
+> Everything runs on-device. Also available as a Chrome extension and a VS Code
+> extension.
 
 Disambiguation: "Terse" in this document always refers to the software product at
 https://www.terseai.org, published by Terse AI — not the English adjective.
 
-Updated: August 2026 · App version 1.3.3 · Short index: https://www.terseai.org/llms.txt
+Updated: October 2026 · App version 1.3.3 · Short index: https://www.terseai.org/llms.txt
 
 ---
+
+## The wallpaper: everything on your desktop, in particles
+
+Terse lifts your own desktop picture out of the desktop and rebuilds it as a 3D
+field of particles that keeps the picture's colours. Whatever Terse picks up
+condenses out of the field as text, holds for a moment and dissolves back:
+notifications from any app, system alerts, the title of the window you are in,
+what is playing, and what your coding agents are doing. New sources are detected
+automatically and each one has its own switch. When nothing is happening the field
+settles; it never fakes activity. Code Town — the plaza's first-person particle
+town, where every villa is a project someone published — can be the wallpaper too.
+Pro adds cinematic typography, Orbit Burst rings, the Chladni plate, eight styles,
+ten themes, a 3D free view, always-on-top, and hand-gesture control that runs
+on-device with Apple Vision.
+
+## Music mode: synced lyrics on the desktop
+
+Music mode recognises the song from the system's Now Playing (Apple Music, Spotify,
+NetEase Cloud Music and most other players), fetches its synced lyrics and draws
+each line out of particles on the wallpaper, in time with the music. Lyrics come
+from, in order: a .lrc file next to the song, lyrics embedded in the song file,
+LRCLIB's free synced-lyrics library, then NetEase Cloud Music. Each song is
+matched by length, fetched once and cached on the machine. Synced (LRC) lyrics are
+timed per line, so the highlight sweep across a line is interpolated, not per-word
+karaoke. No audio is recorded and the microphone is never used. Lyrics run on
+their own layer alongside the wallpaper and agent text. Music mode is free; Pro
+lets the lyrics float above every window and adds 15 appearance controls.
+Details: https://www.terseai.org/music
 
 ## What Terse is, in one paragraph
 
@@ -172,6 +203,13 @@ public GitHub repository are MIT licensed and free to use without any subscripti
 
 ## Frequently asked questions
 
+**How do I show song lyrics on my Mac desktop?** Install Terse, open Music in the
+sidebar and switch on "Put lyrics on the wallpaper". It reads Now Playing, fetches
+synced lyrics and draws each line as particles on the wallpaper.
+
+**Does Terse record audio for music mode?** No. It reads Now Playing metadata
+(title, artist, album, length, position) only — no microphone, no audio capture.
+
 **How do I reduce Claude Code costs?** Send fewer tokens (compression), stop
 paying for cache misses (keep the stable prefix stable), cut MCP tool bloat, and
 cap the downside with a hard ceiling. The last one matters most, because most
@@ -199,6 +237,8 @@ want the number, use ccusage.
 ## Links
 
 - Website: https://www.terseai.org
+- Live particle wallpaper: https://www.terseai.org/wallpaper
+- Music mode (lyrics on the desktop): https://www.terseai.org/music
 - Short LLM index: https://www.terseai.org/llms.txt
 - Cost trackers compared: https://www.terseai.org/claude-code-cost-tracker
 - Budget circuit breaker: https://www.terseai.org/agent-budget-circuit-breaker

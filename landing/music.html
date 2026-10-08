@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LNCSLGTN76"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-LNCSLGTN76");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lyrics on Your Desktop — Synced Particle Lyrics Wallpaper for Mac | Terse</title>
+  <meta name="description" content="Show the synced lyrics of whatever you are playing — Apple Music, Spotify, NetEase Cloud Music — as particles on your desktop wallpaper. Music mode in Terse is free; nothing is recorded.">
+  <link rel="canonical" href="https://www.terseai.org/music">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Lyrics on Your Desktop — Synced Particle Lyrics Wallpaper for Mac | Terse">
+  <meta property="og:description" content="The song you are playing, sung across your desktop: Terse reads Now Playing, fetches synced lyrics and builds every line out of particles on your wallpaper.">
+  <meta property="og:url" content="https://www.terseai.org/music">
+  <meta property="og:site_name" content="Terse">
+  <meta property="og:image" content="https://www.terseai.org/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Lyrics on Your Desktop — Synced Particle Lyrics Wallpaper for Mac | Terse">
+  <meta name="twitter:description" content="The song you are playing, sung across your desktop: Terse reads Now Playing, fetches synced lyrics and builds every line out of particles on your wallpaper.">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "name": "Lyrics on Your Desktop — Synced Particle Lyrics Wallpaper for Mac | Terse",
+      "url": "https://www.terseai.org/music",
+      "description": "Show the synced lyrics of whatever you are playing — Apple Music, Spotify, NetEase Cloud Music — as particles on your desktop wallpaper. Music mode in Terse is free; nothing is recorded.",
+      "datePublished": "2026-10-08",
+      "dateModified": "2026-10-08",
+      "inLanguage": "en",
+      "author": {
+        "@type": "Person",
+        "@id": "https://www.terseai.org/luz-wang#person",
+        "name": "Luz Wang",
+        "url": "https://www.terseai.org/luz-wang"
+      },
+      "about": {
+        "@id": "https://www.terseai.org/#software"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.terseai.org/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Music mode",
+            "item": "https://www.terseai.org/music"
+          }
+        ]
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I show song lyrics on my Mac desktop?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Install Terse, open Music in the sidebar and switch on “Put lyrics on the wallpaper”. Terse picks up whatever is playing from the system’s Now Playing, fetches the song’s synced lyrics and draws each line as particles on your wallpaper, in time with the music."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which music apps does it work with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Any player that reports to the system’s Now Playing — Apple Music, Spotify, NetEase Cloud Music and most others. Terse only needs the title, artist, album, length and playback position that the player already publishes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where do the lyrics come from?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "In order: a .lrc file next to the song, lyrics embedded in the song file (for local files played in the Music app), LRCLIB’s free synced-lyrics library, then NetEase Cloud Music’s public lyrics. Results are matched by song length and cached on your machine, so each song is fetched only once."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Terse record audio or use the microphone?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Music mode reads Now Playing metadata only. It never records audio, never uses the microphone and never asks for screen-recording permission."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are the lyrics word-by-word, like karaoke?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not quite. Synced lyrics (LRC) are timed per line, so Terse sweeps the highlight across each line over that line’s duration. It follows the song closely, but it is an interpolation, not true per-word timing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is music mode free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Music mode is free with the default look. Pro lets the lyrics float above every window and adds 15 appearance controls: density, particle size, lyric glow, beat glow, light motes, mote speed, text size, weight, letter spacing, horizontal and vertical position, edge fade, animation, lyric colour and highlight colour."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I keep my wallpaper and agent text while lyrics play?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Lyrics are drawn on their own layer, so your particle wallpaper, notifications and coding-agent text keep playing underneath. If you float the lyrics above all windows on top of an opaque engine, Terse lifts only the lyrics so the screen is never covered."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does music mode work on Windows?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Music mode has been ported to the Windows app and arrives with version 1.4.1, which is in Microsoft Store review now. It is available in the macOS app today."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg0:hsl(250,24%,5%);--bg2:hsl(250,21%,11%);
+      --sf:hsla(0,0%,100%,0.04);--sfh:hsla(0,0%,100%,0.07);
+      --bd:hsla(0,0%,100%,0.08);--bdl:hsla(0,0%,100%,0.14);
+      --t1:#fff;--t2:hsla(0,0%,100%,0.72);--t3:hsla(0,0%,100%,0.38);
+      --ac:#6ee7b7;--acd:rgba(110,231,183,0.10);--acm:rgba(110,231,183,0.20);
+      --gradient:linear-gradient(135deg,#6ee7b7 0%,#34d399 100%);
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg0);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:hsla(250,24%,5%,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+    .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:var(--bg0)}
+    .nav-links{display:flex;gap:24px;font-size:13px}
+    .nav-links a{color:var(--t2)}
+    .nav-cta{padding:8px 18px;background:var(--t1);color:var(--bg0);border-radius:8px;font-size:13px;font-weight:700}
+    .gradient-text{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .hero{padding:140px 40px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(110,231,183,0.07),transparent 65%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--acd);border:1px solid var(--acm);font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+    .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:-3px;line-height:1.05;margin-bottom:16px}
+    .hero .sub{font-size:18px;color:var(--t2);max-width:620px;margin:0 auto 36px;line-height:1.7}
+    .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:60px;flex-wrap:wrap}
+    .btn-primary{padding:13px 28px;background:var(--t1);color:var(--bg0);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{opacity:.9;transform:translateY(-2px)}
+    .btn-ghost{padding:13px 28px;background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-ghost:hover{background:var(--sf)}
+    .stats-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .stat-pill{padding:10px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;text-align:center}
+    .stat-pill .val{font-size:24px;font-weight:900;color:var(--ac);display:block;line-height:1}
+    .stat-pill .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+
+    section{padding:80px 40px;max-width:1100px;margin:0 auto}
+    section h2{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-1.5px;margin-bottom:8px}
+    .section-sub{font-size:16px;color:var(--t2);margin-bottom:40px;max-width:600px}
+    .divider{height:1px;background:var(--bd);margin:0 40px}
+
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .feat-card{padding:24px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;transition:all .3s}
+    .feat-card:hover{border-color:var(--bdl);transform:translateY(-3px)}
+    .feat-icon{font-size:22px;margin-bottom:12px}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+    .feat-card p{font-size:13px;color:var(--t3);line-height:1.6}
+    .feat-card .tag{display:inline-block;margin-top:10px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--acd);color:var(--ac)}
+
+    .demo-box{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;max-width:760px;margin:0 auto 40px}
+    .demo-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:hsla(0,0%,100%,0.02)}
+    .wd{width:10px;height:10px;border-radius:50%}.wd.r{background:#ff5f57}.wd.y{background:#ffbd2e}.wd.g{background:#28c840}
+    .demo-title{margin-left:8px;font-size:11px;color:var(--t3);flex:1}
+    .demo-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--acd);color:var(--ac)}
+    .mcp-list{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+    .mcp-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:12px;opacity:0;transition:opacity .3s}
+    .mcp-row.show{opacity:1}
+    .mcp-name{font-family:'JetBrains Mono',monospace;font-weight:600;min-width:130px}
+    .mcp-src{color:var(--t3);font-size:10px;flex:1}
+    .risk{padding:2px 9px;border-radius:4px;font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+    .risk.low{background:var(--acd);color:var(--ac)}
+    .risk.med{background:rgba(251,191,36,0.12);color:#fbbf24}
+    .risk.high{background:rgba(248,113,113,0.12);color:#f87171}
+    .mcp-toggle{width:32px;height:18px;border-radius:9px;background:var(--ac);position:relative;flex-shrink:0}
+    .mcp-toggle::after{content:'';position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--bg0)}
+    .mcp-toggle.off{background:hsla(0,0%,100%,0.15)}
+    .mcp-toggle.off::after{right:auto;left:2px;background:var(--t3)}
+
+    .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+    .faq-item{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px}
+    .faq-q{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+    .faq-q::before{content:'Q';flex-shrink:0;width:20px;height:20px;border-radius:5px;background:var(--acd);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .faq-a{font-size:13px;color:var(--t2);line-height:1.7;padding-left:28px}
+
+    .also-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .also-card{padding:14px 20px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .also-card:hover{border-color:var(--ac);color:var(--ac)}
+
+    .cta-section{text-align:center;padding:100px 40px;position:relative;overflow:hidden}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(110,231,183,0.06),transparent 65%);pointer-events:none}
+    .cta-section h2{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1}
+    .cta-section p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;position:relative;z-index:1}
+
+    footer{padding:50px 40px 30px;border-top:1px solid var(--bd)}
+    .footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;font-size:13px}
+    .footer-col h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+    .footer-col a{display:block;color:var(--t3);padding:4px 0;transition:color .2s}
+    .footer-col a:hover{color:var(--ac)}
+    .footer-bottom{max-width:1000px;margin:28px auto 0;padding-top:16px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+
+    @media(max-width:768px){
+      nav{padding:12px 20px}.nav-links{display:none}
+      .hero{padding:120px 20px 60px}
+      .feature-grid{grid-template-columns:1fr}
+      .faq-grid{grid-template-columns:1fr}
+      .footer-inner{grid-template-columns:1fr 1fr}
+      section{padding:60px 20px}
+      .mcp-src{display:none}
+    }
+  
+@media (min-width:1250px){/* desktop type scale - see terse-glass.css */
+.nav-links{font-size:calc(13px + var(--fs-up))}
+.nav-cta{font-size:calc(13px + var(--fs-up))}
+.badge{font-size:calc(11px + var(--fs-up))}
+.btn-primary{font-size:calc(15px + var(--fs-up))}
+.btn-ghost{font-size:calc(15px + var(--fs-up))}
+.stat-pill .lbl{font-size:calc(11px + var(--fs-up))}
+.feat-card h3{font-size:calc(15px + var(--fs-up))}
+.feat-card p{font-size:calc(13px + var(--fs-up))}
+.feat-card .tag{font-size:calc(10px + var(--fs-up))}
+.demo-title{font-size:calc(11px + var(--fs-up))}
+.demo-badge{font-size:calc(9px + var(--fs-up))}
+.mcp-row{font-size:calc(12px + var(--fs-up))}
+.mcp-src{font-size:calc(10px + var(--fs-up))}
+.risk{font-size:calc(9px + var(--fs-up))}
+.faq-q{font-size:calc(14px + var(--fs-up))}
+.faq-a{font-size:calc(13px + var(--fs-up))}
+.also-card{font-size:calc(13px + var(--fs-up))}
+.footer-inner{font-size:calc(13px + var(--fs-up))}
+.footer-col h4{font-size:calc(11px + var(--fs-up))}
+.footer-bottom{font-size:calc(11px + var(--fs-up))}
+}
+.mu-cap{max-width:780px;margin:14px auto 0;font-size:12.5px;color:var(--t3);text-align:center;line-height:1.6}
+.mu-stage{position:relative;max-width:980px;margin:30px auto 0;padding:46px 22px 96px;border-radius:18px;overflow:hidden;text-align:center;
+  background:radial-gradient(110% 90% at 50% 38%,rgba(185,140,255,.13),rgba(4,6,12,.72) 68%);border:1px solid rgba(160,200,255,.15);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.mu-lyric{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.mu-line{position:relative;display:inline-block;font-weight:900;letter-spacing:-.5px;line-height:1.1;font-size:clamp(30px,5vw,60px);transition:opacity .7s,transform .9s,filter .9s;
+  filter:drop-shadow(0 0 5px rgba(185,140,255,.9)) drop-shadow(0 0 16px rgba(185,140,255,.45))}
+/* no filter on the clipped spans themselves: Chrome drops background-clip:text under a filter */
+/* terse-glass.css forces color:#fff !important on every element; the text FILL is a separate
+   property, so the dotted lyric sets that instead of color */
+.mu-line span{display:block;background-size:5px 5px,7px 7px,3px 3px;background-position:0 0,2px 3px,1px 1px;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  text-shadow:none !important}/* the glass theme's readability halo would paint over the dots */
+.mu-line .b{background-image:radial-gradient(circle,#fff 0 1.1px,transparent 1.7px),radial-gradient(circle,rgba(225,210,255,.95) 0 1.3px,transparent 2px),radial-gradient(circle,rgba(255,255,255,.45) 0 .6px,transparent 1px)}
+.mu-line .h{position:absolute;inset:0;background-image:radial-gradient(circle,#E4FF6B 0 1.2px,transparent 1.8px),radial-gradient(circle,#C9F03D 0 1.4px,transparent 2.1px),radial-gradient(circle,rgba(201,240,61,.6) 0 .7px,transparent 1.1px);clip-path:inset(0 100% 0 0)}
+.mu-line.go .h{animation:muSweep var(--d,4s) linear forwards}
+.mu-next{font-size:clamp(17px,2.4vw,26px);font-weight:800;opacity:.38;transition:opacity .7s}
+.mu-line.out{opacity:0;transform:translateY(-10px) scale(1.05);filter:blur(7px) drop-shadow(0 0 10px rgba(185,140,255,.55))}
+@keyframes muSweep{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.mu-now{position:absolute;right:18px;bottom:18px;display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px;border-radius:14px;text-align:left;
+  background:rgba(14,16,24,.82);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 30px rgba(0,0,0,.4);max-width:calc(100% - 36px)}
+.mu-art{width:38px;height:38px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#0b0d12;background:linear-gradient(135deg,#C9F03D,#7CF5C0)}
+.mu-k{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;opacity:.8}
+.mu-t{font-size:13.5px;font-weight:800;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mu-bar{height:3px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:7px;overflow:hidden}
+.mu-bar i{display:block;height:100%;width:0;background:#C9F03D;border-radius:3px}
+.mu-eq{display:flex;align-items:flex-end;gap:2px;height:16px;flex:none}
+.mu-eq i{width:3px;height:40%;border-radius:2px;background:#C9F03D;animation:muEq 1s ease-in-out infinite}
+.mu-eq i:nth-child(2){animation-delay:-.3s}.mu-eq i:nth-child(3){animation-delay:-.6s}.mu-eq i:nth-child(4){animation-delay:-.15s}
+@keyframes muEq{0%,100%{height:30%}50%{height:100%}}
+.wp-grid-3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:900px){.wp-grid-3{grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}}
+.mu-cap{max-width:780px;margin:14px auto 0;font-size:12.5px;color:var(--t3);text-align:center;line-height:1.6}
+@media(max-width:760px){.mu-stage{padding:34px 14px 92px}.mu-lyric{min-height:130px}.mu-now{left:12px;right:12px;bottom:12px}}
+@media (prefers-reduced-motion:reduce){.mu-eq i{animation:none}.mu-line.go .h{animation:none;clip-path:none}}
+/* ── /music ── */
+.byline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:820px;margin:0 auto 26px;padding:12px 16px;border-radius:11px;
+  background:hsla(250,21%,11%,.40);border:1px solid hsla(0,0%,100%,.08);-webkit-backdrop-filter:blur(12px) saturate(1.35) brightness(.74);
+  backdrop-filter:blur(12px) saturate(1.35) brightness(.74);box-shadow:inset 0 1px 0 hsla(0,0%,100%,.10);font-size:13.5px}
+.byline .av{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#6ee7b7,#34d399);color:#06231a;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.byline a{color:#fff;font-weight:700;text-decoration:none}
+.byline a:hover{text-decoration:underline;text-underline-offset:3px}
+.byline .sep{color:hsla(0,0%,100%,.24)}
+.byline .meta{color:hsla(0,0%,100%,.44)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+.step{padding:22px;background:var(--bg2);border:1px solid var(--bd);border-radius:14px}
+.step b{display:inline-flex;width:26px;height:26px;border-radius:7px;align-items:center;justify-content:center;background:var(--acd);font-size:13px;margin-bottom:10px}
+.step h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.step p{font-size:13px;color:var(--t2);line-height:1.65}
+@media(max-width:768px){.steps{grid-template-columns:1fr}}
+</style>
+  <!-- Live agent-log particle wallpaper + liquid-glass surfaces.
+       Purely additive: both files only override existing tokens and
+       insert their own two elements. Remove these two lines to revert. -->
+  <link rel="stylesheet" href="/terse-glass.css?v=4f8b6d3d">
+  <!-- The background says what a Terse wallpaper says; lyrics: Daisy Bell (1892), public domain. -->
+  <script>
+  window.TERSE_COSMOS = {
+    console: false,
+    lines: [
+      ['cache', 'Daisy, Daisy,'], ['agents', 'Claude Code: all done'], ['saved', 'Mia: dinner at 8?'],
+      ['compact', 'give me your answer, do'], ['cost', 'Stand-up in 5 minutes'], ['agents', 'Codex: build passed'],
+      ['spent', 'Now playing · Daisy Bell'], ['saved', 'Lin sent you a photo'], ['compact', 'On your wallpaper'],
+      ['cost', 'Calendar · lunch at 12'], ['agents', 'Your town is awake'], ['spent', 'Mail · 2 new messages']
+    ],
+    cycle: [
+      ['saved', 'Messages · 2 new'], ['cache', 'Now playing'], ['agents', 'Claude Code · running'],
+      ['compact', 'Mail · 1 unread'], ['cost', 'Calendar · 10:30'], ['spent', 'Safari · reading'],
+      ['agents', 'Codex · done'], ['saved', 'Lin joined the room'], ['compact', 'Music · paused'],
+      ['spent', 'Slack · 3 mentions'], ['cost', 'Lyrics synced'], ['agents', 'Code Town · live']
+    ]
+  };
+  </script>
+  <script defer src="/terse-cosmos.js?v=d6e65529"></script>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
+  <div class="nav-links">
+    <a href="/wallpaper">Wallpaper</a>
+    <a href="/music">Music</a>
+    <a href="/#agents-social">Agents &amp; Town</a>
+    <a href="/tokens">Token savings</a>
+    <a href="/pricing-faq">Pricing</a>
+  </div>
+  <a href="/#dl" class="nav-cta">Download free</a>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto">
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge">Music mode</div>
+  <h1>Lyrics on your desktop, <span class="gradient-text">made of particles.</span></h1>
+  <p class="sub">Play anything — Apple Music, Spotify, NetEase Cloud Music. Terse recognises the song from your system's Now Playing, fetches its synced lyrics, and builds every line out of particles on your wallpaper, in time with the music.</p>
+  <div class="hero-actions">
+    <a href="/#dl" class="btn-primary">Download Terse — free</a>
+    <a href="#how" class="btn-ghost">How it works</a>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill"><span class="val">4</span><span class="lbl">lyric sources, checked in order</span></div>
+    <div class="stat-pill"><span class="val">0</span><span class="lbl">seconds of audio recorded</span></div>
+    <div class="stat-pill"><span class="val">15</span><span class="lbl">appearance controls (Pro)</span></div>
+    <div class="stat-pill"><span class="val">Free</span><span class="lbl">music mode itself</span></div>
+  </div>
+</div>
+</div>
+
+<div class="byline"><span class="av" aria-hidden="true">LW</span><span>By <a href="/luz-wang" rel="author">Luz Wang</a></span><span class="sep">·</span><span class="meta">Founder, Terse</span><span class="sep">·</span><span class="meta">Updated <time datetime="2026-10-08">Oct 8, 2026</time></span></div>
+
+<section id="demo" style="padding-top:20px">
+  <div class="mu-stage" id="muStage">
+    <div class="mu-lyric">
+      <div class="mu-line" id="muLine"><span class="b">Daisy, Daisy,</span><span class="h" aria-hidden="true">Daisy, Daisy,</span></div>
+      <div class="mu-next" id="muNext">give me your answer, do</div>
+    </div>
+    <div class="mu-now">
+      <div class="mu-art" aria-hidden="true">♪</div>
+      <div style="min-width:0">
+        <div class="mu-k">Music · particle lyrics</div>
+        <div class="mu-t">Daisy Bell · Harry Dacre (1892)</div>
+        <div class="mu-bar"><i id="muBar"></i></div>
+      </div>
+      <div class="mu-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+  <p class="mu-cap">Lyrics: Daisy Bell (1892) — public domain, and the first song a computer ever sang. In the app every line is made of particles; a few of these lines also drift through this page's background, drawn by the particle engine.</p>
+</section>
+
+<div class="divider"></div>
+
+<section id="how">
+  <h2>From Now Playing <span class="gradient-text">to your wallpaper</span></h2>
+  <p class="section-sub">Three steps, all on your machine. The only network request is fetching a song's lyrics the first time it plays.</p>
+  <div class="steps">
+    <div class="step"><b>1</b><h3>Recognise the song</h3><p>Terse reads the system's Now Playing: title, artist, album, length and position. Pause, skip or scrub and it follows.</p></div>
+    <div class="step"><b>2</b><h3>Find the synced lyrics</h3><p>A .lrc file next to the song, lyrics embedded in the file, LRCLIB's free synced-lyrics library, then NetEase Cloud Music — matched by song length and cached locally.</p></div>
+    <div class="step"><b>3</b><h3>Build each line from particles</h3><p>Every line assembles out of the field, a highlight sweeps across it while it is sung, and it scatters into the next one.</p></div>
+  </div>
+
+  <div class="feature-grid" style="margin-top:40px">
+    <div class="feat-card"><div class="feat-icon">🎧</div><h3>Works with your player</h3><p>Apple Music, Spotify, NetEase Cloud Music and most other players — anything that shows up in Now Playing.</p><span class="tag">No setup</span></div>
+    <div class="feat-card"><div class="feat-icon">🔒</div><h3>Nothing recorded</h3><p>No microphone, no audio capture, no screen recording. Music mode only reads the metadata your player already publishes.</p><span class="tag">Private</span></div>
+    <div class="feat-card"><div class="feat-icon">💾</div><h3>Fetched once</h3><p>Each song's lyrics are fetched the first time and kept on your machine, including "no lyrics found", so nothing is asked twice.</p><span class="tag">Offline after</span></div>
+    <div class="feat-card"><div class="feat-icon">🌌</div><h3>A layer of its own</h3><p>Lyrics play on their own layer, alongside your particle wallpaper, notifications and coding-agent text.</p><span class="tag">Runs together</span></div>
+    <div class="feat-card"><div class="feat-icon">🪟</div><h3>Float above every window</h3><p>Keep the lyrics on top of your apps while you work. Over an opaque engine only the lyrics rise, so the screen is never covered.</p><span class="tag">Pro</span></div>
+    <div class="feat-card"><div class="feat-icon">🎛️</div><h3>15 appearance controls</h3><p>Density, particle size, lyric and beat glow, light motes, size, weight, spacing, position, edge fade, animation and colours.</p><span class="tag">Pro</span></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="faq">
+  <h2>Questions, <span class="gradient-text">answered</span></h2>
+  <div class="faq-grid">
+    <div class="faq-item"><div class="faq-q">How do I show song lyrics on my Mac desktop?</div><div class="faq-a">Install Terse, open Music in the sidebar and switch on “Put lyrics on the wallpaper”. Terse picks up whatever is playing from the system’s Now Playing, fetches the song’s synced lyrics and draws each line as particles on your wallpaper, in time with the music.</div></div>
+    <div class="faq-item"><div class="faq-q">Which music apps does it work with?</div><div class="faq-a">Any player that reports to the system’s Now Playing — Apple Music, Spotify, NetEase Cloud Music and most others. Terse only needs the title, artist, album, length and playback position that the player already publishes.</div></div>
+    <div class="faq-item"><div class="faq-q">Where do the lyrics come from?</div><div class="faq-a">In order: a .lrc file next to the song, lyrics embedded in the song file (for local files played in the Music app), LRCLIB’s free synced-lyrics library, then NetEase Cloud Music’s public lyrics. Results are matched by song length and cached on your machine, so each song is fetched only once.</div></div>
+    <div class="faq-item"><div class="faq-q">Does Terse record audio or use the microphone?</div><div class="faq-a">No. Music mode reads Now Playing metadata only. It never records audio, never uses the microphone and never asks for screen-recording permission.</div></div>
+    <div class="faq-item"><div class="faq-q">Are the lyrics word-by-word, like karaoke?</div><div class="faq-a">Not quite. Synced lyrics (LRC) are timed per line, so Terse sweeps the highlight across each line over that line’s duration. It follows the song closely, but it is an interpolation, not true per-word timing.</div></div>
+    <div class="faq-item"><div class="faq-q">Is music mode free?</div><div class="faq-a">Yes. Music mode is free with the default look. Pro lets the lyrics float above every window and adds 15 appearance controls: density, particle size, lyric glow, beat glow, light motes, mote speed, text size, weight, letter spacing, horizontal and vertical position, edge fade, animation, lyric colour and highlight colour.</div></div>
+    <div class="faq-item"><div class="faq-q">Can I keep my wallpaper and agent text while lyrics play?</div><div class="faq-a">Yes. Lyrics are drawn on their own layer, so your particle wallpaper, notifications and coding-agent text keep playing underneath. If you float the lyrics above all windows on top of an opaque engine, Terse lifts only the lyrics so the screen is never covered.</div></div>
+    <div class="faq-item"><div class="faq-q">Does music mode work on Windows?</div><div class="faq-a">Music mode has been ported to the Windows app and arrives with version 1.4.1, which is in Microsoft Store review now. It is available in the macOS app today.</div></div>
+  </div>
+  <div class="also-grid">
+    <a href="/wallpaper" class="also-card"><span style="font-size:18px">🌌</span><span>Live particle wallpaper</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/#agents-social" class="also-card"><span style="font-size:18px">🏘️</span><span>Agents &amp; Code Town</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/for-windows" class="also-card"><span style="font-size:18px">🪟</span><span>Terse for Windows</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+    <a href="/pricing-faq" class="also-card"><span style="font-size:18px">💳</span><span>Pricing &amp; FAQ</span><span style="color:var(--t3);font-size:11px;margin-left:auto">→</span></a>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Let your desktop <span class="gradient-text">sing along</span></h2>
+  <p>Free to download. Music mode is free; Pro adds floating lyrics and the full style console.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="/#dl" class="btn-primary">Download Terse</a>
+    <a href="/wallpaper" class="btn-ghost">See the wallpaper</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <a href="/" style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:12px"><div class="logo-icon" style="width:28px;height:28px;font-size:14px">T</div>Terse</a>
+      <p style="color:var(--t3);font-size:13px;line-height:1.7;max-width:220px">Put everything on your wallpaper: lyrics, notifications, your agents — in particles. All on-device.</p>
+    </div>
+    <div class="footer-col"><h4>For AI Tools</h4><a href="/for-claude-code">Claude Code</a><a href="/for-cursor">Cursor</a><a href="/for-cline">Cline</a><a href="/for-windsurf">Windsurf</a><a href="/for-codex-cli">OpenAI Codex</a><a href="/for-cline">OpenClaw</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="/agent-budget-circuit-breaker">Budget Circuit Breaker</a><a href="/wallpaper">Live Wallpaper</a><a href="/music">Music Mode</a><a href="/mcp-manager">MCP Manager</a><a href="/for-windows">Terse for Windows</a><a href="/llmlingua">Terse vs LLMLingua</a></div>
+    <div class="footer-col"><h4>Learn</h4><a href="/claude-code-pricing">Claude Code Pricing 2026</a><a href="/claude-code-cost-tracker">Claude Code Cost Trackers Compared</a><a href="/reduce-ai-api-costs">Reduce AI API Costs</a><a href="/token-calculator">Token Calculator</a><a href="/llmlingua">LLMLingua Research</a><a href="/docs">Docs</a></div>
+  </div>
+  <div class="footer-bottom"><span>&copy; 2026 Terse</span><span>macOS · Windows · Rust</span></div>
+</footer>
+
+<script>
+/* The music stage: a few lines of Daisy Bell (public domain), each one swept
+   left to right over its own length, the way the app interpolates a line's
+   timing (LRC lyrics are timed per line, not per word). Runs only while the
+   stage is on screen. */
+(function () {
+  var L = ["Daisy, Daisy,", "give me your answer, do", "I'm half crazy", "all for the love of you",
+           "It won't be a stylish marriage,", "I can't afford a carriage,",
+           "But you'll look sweet upon the seat", "of a bicycle made for two"];
+  var D = 3600, stage = document.getElementById('muStage');
+  var line = document.getElementById('muLine'), next = document.getElementById('muNext'), bar = document.getElementById('muBar');
+  if (!stage || !line) return;
+  var i = 0, timer = 0, on = false, t0 = Date.now();
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function show() {
+    var t = L[i % L.length];
+    line.classList.remove('go'); line.classList.add('out');
+    setTimeout(function () {
+      line.children[0].textContent = t; line.children[1].textContent = t;
+      next.textContent = L[(i + 1) % L.length];
+      line.style.setProperty('--d', (D - 400) + 'ms');
+      line.classList.remove('out'); void line.offsetWidth; line.classList.add('go');
+      if (bar) bar.style.width = (((i % L.length) + 1) / L.length * 100).toFixed(1) + '%';
+      i++;
+    }, 450);
+  }
+  function tick() { if (!on) return; show(); timer = setTimeout(tick, D); }
+  function set(v) { if (v === on) return; on = v; clearTimeout(timer); if (on) tick(); }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) { set(es[0].isIntersecting); }, { rootMargin: '80px' }).observe(stage);
+  } else set(true);
+})();
+</script>
+</body>
+</html>

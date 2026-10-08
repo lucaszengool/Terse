@@ -1,8 +1,12 @@
 # Terse
 
-> Terse is an on-device AI agent butler for macOS and Windows that cuts AI token costs by 40-70%. It compresses prompts before they hit the API, live-monitors 8 coding agents (Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider), enforces spending limits with a budget circuit breaker that can pause or kill a runaway agent before its next API call, manages MCP servers with security risk scoring, and diagnoses token waste with Terse Doctor. It runs 100% on-device — prompts never leave your machine. Also available as a Chrome extension and a VS Code extension.
+> Terse puts everything on your desktop wallpaper. It is a live 3D particle wallpaper for macOS and Windows that rebuilds your own desktop picture out of particles and writes what is happening on your computer into it: the synced lyrics of the song you are playing (Music mode), notifications from every app, window titles, what your AI coding agents are doing, and Code Town, a first-person particle town. For developers it is also an on-device AI agent butler that cuts token costs by 40-70%: it compresses prompts, live-monitors 8 coding agents (Claude Code, Cursor, OpenAI Codex, GitHub Copilot CLI, Cline, Windsurf, OpenClaw, Aider), caps runaway spend with a budget circuit breaker, manages MCP servers and diagnoses token waste with Terse Doctor. Everything runs on-device. Also available as a Chrome extension and a VS Code extension.
 
 ## Key Facts
+- Live particle wallpaper: your own desktop picture rebuilt as a 3D particle field; notifications, window titles, Now Playing and agent activity condense out of it as text, hold, and dissolve. New sources are detected automatically, each with its own switch
+- Music mode (free): recognises the playing song from the system's Now Playing (Apple Music, Spotify, NetEase Cloud Music and most players), fetches synced lyrics (.lrc next to the file, embedded tags, LRCLIB, NetEase) and draws each line as particles on the wallpaper. Lyrics are line-timed, not per-word. No audio is recorded. Pro adds floating lyrics above all windows and 15 appearance controls
+- Wallpaper engines and Pro styles: cinematic particle typography, Orbit Burst rings, the Chladni plate, eight styles and ten themes, a 3D free view, always-on-top, and on-device hand-gesture control (Apple Vision)
+- Code Town: the plaza's first-person particle town as a wallpaper; every villa is a project someone published
 - Reduces token usage 40-70% on verbose prompts; 35+ on-device optimization techniques (<5ms)
 - Live monitoring of 8 agents: input/output tokens, cache read/write efficiency, per-turn cost (model-aware pricing), burn rate, context-window fill
 - Budget circuit breaker: burn-rate / token / dollar ceilings that escalate from alert to pausing (SIGSTOP) or killing (SIGTERM) the agent process before the next API call
@@ -16,7 +20,12 @@
 ## Pages
 
 ### Product
-- [Home](https://www.terseai.org/): Full product overview, pricing, features
+- [Home](https://www.terseai.org/): Put everything on your wallpaper — overview of the wallpaper, music mode, agents and token savings
+- [Live particle wallpaper](https://www.terseai.org/wallpaper): The wallpaper engines, the agent console at the screen edge, Code Town and the eight Pro styles
+- [Music mode](https://www.terseai.org/music): Synced lyrics of whatever is playing, drawn as particles on the desktop — sources, privacy, free vs Pro, FAQ
+- [Agent cowork & Code Town](https://www.terseai.org/agents): Rooms where friends' coding agents work together, end-to-end encrypted; the plaza and Code Town
+- [Token savings](https://www.terseai.org/tokens): The on-device prompt-compression pipeline, benchmarks and API
+- [Pricing & FAQ](https://www.terseai.org/pricing-faq): Plans and common questions
 - [Budget Circuit Breaker](https://www.terseai.org/agent-budget-circuit-breaker): Stop runaway AI agents — spending limits that pause or kill before the next API call
 - [MCP Manager](https://www.terseai.org/mcp-manager): Discover, risk-score, and manage MCP servers across your agent configs
 - [Terse for Windows](https://www.terseai.org/for-windows): The full Terse app on Windows

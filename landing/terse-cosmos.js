@@ -70,6 +70,19 @@
     ['compact', 'file → quarantine'], ['cost', '$0.29'], ['agents', 'Mia\'s agent: fixed'], ['cache', 'prefix ↺ 61%'],
     ['saved', '7/7 passed'], ['compact', 'agents paused · 8 in a row'], ['spent', 'ctx 47%'], ['agents', 'handoff → James']
   ];
+  /* A page may bring its own words: window.TERSE_COSMOS = { lines, cycle,
+     console: false }, set by an inline script before this deferred one runs.
+     The homepage uses it to show what Terse puts on a wallpaper instead of the
+     cowork room's code. Each entry is [kind, text] with a kind from TINT;
+     anything malformed is ignored and the film's words stay. */
+  var PAGE = window.TERSE_COSMOS || {};
+  function pageWords(a) {
+    if (!a || !a.length) return null;
+    for (var q = 0; q < a.length; q++) if (!a[q] || !TINT[a[q][0]] || typeof a[q][1] !== 'string') return null;
+    return a;
+  }
+  LINES = pageWords(PAGE.lines) || LINES;
+  CYCLE = pageWords(PAGE.cycle) || CYCLE;
 
   /* ── tokenbeat.ts: the impact envelope ──────────────────────────────────── */
   var ATK = 0.22, DEC = 0.62;
@@ -1351,7 +1364,7 @@
   /* ── console + hand, per frame ─────────────────────────────────────────
      Wide screens only (a 960×520 panel is unreadable on a phone) and never under
      reduced motion. */
-  var FEAT = !REDUCE && (window.innerWidth || 0) >= 900;
+  var FEAT = !REDUCE && (window.innerWidth || 0) >= 900 && PAGE.console !== false;
   var CON_DAMP = 0.35;     /* the panel follows the orbit at 35% — it moves with the stage and stays readable */
   var HAND_RAD = 5.2;      /* the film: the PULSE volume needs ~5.2× the radius before a hole reads */
   var SPR_MAX = 1400, CON_ATTR = ['a0', 'a1', 'a2', 'a3', 'aCol', 'aTint'], TIPS = { 4: 1, 8: 1, 12: 1, 16: 1, 20: 1 };

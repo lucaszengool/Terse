@@ -11,14 +11,14 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terse — agent 时代的社交网络:协同办公、代码小镇与省 token</title>
-  <meta name="description" content="邀请好友,各自带上本地的编程 agent,在同一个房间一起干活。在浏览器里逛代码小镇,把桌面变成 3D 粒子壁纸,再省下 40-70% 的 token 成本。">
+  <title>Terse — 把万物投屏到桌面壁纸:实时粒子壁纸、音乐歌词与 AI agent</title>
+  <meta name="description" content="Terse 把你的桌面变成一张实时 3D 粒子壁纸:正在放的歌的同步歌词、各个 app 的通知、窗口标题、编程 agent 正在做的事,都由粒子拼成。支持 macOS 与 Windows。">
 
   <!-- Open Graph (Facebook, LinkedIn, iMessage, Slack, Discord) -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.terseai.org/zh/">
-  <meta property="og:title" content="Terse — 让每一个 Token 都物尽其用">
-  <meta property="og:description" content="节省 40-70% 的 AI token 成本。压缩提示词、拦截重复工具调用,跟踪 Claude Code、Cursor、ChatGPT 等工具的每轮开销。">
+  <meta property="og:title" content="Terse — 把万物投屏到桌面壁纸">
+  <meta property="og:description" content="Terse 把你的桌面变成一张实时 3D 粒子壁纸:正在放的歌的同步歌词、各个 app 的通知、窗口标题、编程 agent 正在做的事,都由粒子拼成。支持 macOS 与 Windows。">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -27,8 +27,8 @@
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://www.terseai.org/zh/">
-  <meta name="twitter:title" content="Terse — 让每一个 Token 都物尽其用">
-  <meta name="twitter:description" content="节省 40-70% 的 AI token 成本。压缩提示词、拦截重复工具调用,跟踪 Claude Code、Cursor、ChatGPT 等工具的每轮开销。">
+  <meta name="twitter:title" content="Terse — 把万物投屏到桌面壁纸">
+  <meta name="twitter:description" content="Terse 把你的桌面变成一张实时 3D 粒子壁纸:正在放的歌的同步歌词、各个 app 的通知、窗口标题、编程 agent 正在做的事,都由粒子拼成。支持 macOS 与 Windows。">
   <meta name="twitter:image" content="https://www.terseai.org/og-image.png">
 
   <!-- Extras: theme color, canonical, robots, author -->
@@ -58,7 +58,7 @@
       "name": "Terse",
       "url": "https://www.terseai.org",
       "logo": "https://www.terseai.org/apple-touch-icon.png",
-      "description": "Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate detection, and real-time agent session monitoring.",
+      "description": "Terse is a live 3D particle wallpaper for macOS and Windows that puts everything on your desktop: synced song lyrics, notifications, window titles, Code Town and your AI coding agents' work. It also cuts AI prompt costs by 40-70% through on-device compression and real-time agent session monitoring.",
       "foundingDate": "2026",
       "sameAs": [
         "https://github.com/Terse-AI/terseai"
@@ -70,7 +70,7 @@
       "url": "https://www.terseai.org",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "macOS, Windows",
-      "description": "Terse is an on-device AI agent butler for macOS and Windows that cuts token costs 40-70%: prompt compression, live monitoring of 8 coding agents (Claude Code, Cursor, Codex, Copilot CLI, Cline, Windsurf, OpenClaw, Aider), a budget circuit breaker that pauses runaway agents, MCP server management with security risk scoring, and Terse Doctor waste scans.",
+      "description": "Terse puts everything on your desktop wallpaper: a live 3D particle wallpaper for macOS and Windows that shows the synced lyrics of the song you are playing, notifications, window titles and what your AI coding agents are doing. It also monitors coding agents, caps runaway spend and cuts token costs 40-70% through prompt compression.",
       "offers": [
         {
           "@type": "Offer",
@@ -971,7 +971,28 @@
   <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
   <link rel="stylesheet" href="/terse-glass.css?v=4f8b6d3d">
-  <script defer src="/terse-cosmos.js?v=2ed78080"></script>
+  <!-- The background engine says what a Terse wallpaper says (terse-cosmos.js
+       reads window.TERSE_COSMOS): notifications, an agent finishing, a song and
+       its lyrics. No cowork-room console here, so no code behind the hero.
+       Lyrics: Daisy Bell (Harry Dacre, 1892), public domain. -->
+  <script>
+  window.TERSE_COSMOS = {
+    console: false,
+    lines: [
+      ['cache', 'Daisy, Daisy,'], ['agents', 'Claude Code: all done'], ['saved', 'Mia: dinner at 8?'],
+      ['compact', 'give me your answer, do'], ['cost', 'Stand-up in 5 minutes'], ['agents', 'Codex: build passed'],
+      ['spent', 'Now playing · Daisy Bell'], ['saved', 'Lin sent you a photo'], ['compact', 'On your wallpaper'],
+      ['cost', 'Calendar · lunch at 12'], ['agents', 'Your town is awake'], ['spent', 'Mail · 2 new messages']
+    ],
+    cycle: [
+      ['saved', 'Messages · 2 new'], ['cache', 'Now playing'], ['agents', 'Claude Code · running'],
+      ['compact', 'Mail · 1 unread'], ['cost', 'Calendar · 10:30'], ['spent', 'Safari · reading'],
+      ['agents', 'Codex · done'], ['saved', 'Lin joined the room'], ['compact', 'Music · paused'],
+      ['spent', 'Slack · 3 mentions'], ['cost', 'Lyrics synced'], ['agents', 'Code Town · live']
+    ]
+  };
+  </script>
+  <script defer src="/terse-cosmos.js?v=d6e65529"></script>
 
 <style>
 /* Live-wallpaper section */
@@ -1043,6 +1064,43 @@
 .tk-stats span{font-size:12.5px;color:var(--t2)}
 .tk-demo{display:flex;justify-content:center;margin-top:34px}
 .tk-demo .hero-stage{margin:0 auto}
+/* ── wallpaper-first homepage (hero · wallpaper · music · agents · tokens) ── */
+.hero#home{min-height:auto;padding-bottom:90px}
+.hero-feeds{position:relative;z-index:1;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:760px;margin:0 auto 30px}
+.hero-feeds a{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;font-size:13px;font-weight:700;color:var(--t1);text-decoration:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13)}
+.hero-feeds a:hover{border-color:rgba(110,231,183,.45);color:var(--ac)}
+.mu-stage{position:relative;max-width:980px;margin:30px auto 0;padding:46px 22px 96px;border-radius:18px;overflow:hidden;text-align:center;
+  background:radial-gradient(110% 90% at 50% 38%,rgba(185,140,255,.13),rgba(4,6,12,.72) 68%);border:1px solid rgba(160,200,255,.15);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.mu-lyric{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.mu-line{position:relative;display:inline-block;font-weight:900;letter-spacing:-.5px;line-height:1.1;font-size:clamp(30px,5vw,60px);transition:opacity .7s,transform .9s,filter .9s;
+  filter:drop-shadow(0 0 5px rgba(185,140,255,.9)) drop-shadow(0 0 16px rgba(185,140,255,.45))}
+/* no filter on the clipped spans themselves: Chrome drops background-clip:text under a filter */
+/* terse-glass.css forces color:#fff !important on every element; the text FILL is a separate
+   property, so the dotted lyric sets that instead of color */
+.mu-line span{display:block;background-size:5px 5px,7px 7px,3px 3px;background-position:0 0,2px 3px,1px 1px;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  text-shadow:none !important}/* the glass theme's readability halo would paint over the dots */
+.mu-line .b{background-image:radial-gradient(circle,#fff 0 1.1px,transparent 1.7px),radial-gradient(circle,rgba(225,210,255,.95) 0 1.3px,transparent 2px),radial-gradient(circle,rgba(255,255,255,.45) 0 .6px,transparent 1px)}
+.mu-line .h{position:absolute;inset:0;background-image:radial-gradient(circle,#E4FF6B 0 1.2px,transparent 1.8px),radial-gradient(circle,#C9F03D 0 1.4px,transparent 2.1px),radial-gradient(circle,rgba(201,240,61,.6) 0 .7px,transparent 1.1px);clip-path:inset(0 100% 0 0)}
+.mu-line.go .h{animation:muSweep var(--d,4s) linear forwards}
+.mu-next{font-size:clamp(17px,2.4vw,26px);font-weight:800;opacity:.38;transition:opacity .7s}
+.mu-line.out{opacity:0;transform:translateY(-10px) scale(1.05);filter:blur(7px) drop-shadow(0 0 10px rgba(185,140,255,.55))}
+@keyframes muSweep{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.mu-now{position:absolute;right:18px;bottom:18px;display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px;border-radius:14px;text-align:left;
+  background:rgba(14,16,24,.82);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 30px rgba(0,0,0,.4);max-width:calc(100% - 36px)}
+.mu-art{width:38px;height:38px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#0b0d12;background:linear-gradient(135deg,#C9F03D,#7CF5C0)}
+.mu-k{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;opacity:.8}
+.mu-t{font-size:13.5px;font-weight:800;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mu-bar{height:3px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:7px;overflow:hidden}
+.mu-bar i{display:block;height:100%;width:0;background:#C9F03D;border-radius:3px}
+.mu-eq{display:flex;align-items:flex-end;gap:2px;height:16px;flex:none}
+.mu-eq i{width:3px;height:40%;border-radius:2px;background:#C9F03D;animation:muEq 1s ease-in-out infinite}
+.mu-eq i:nth-child(2){animation-delay:-.3s}.mu-eq i:nth-child(3){animation-delay:-.6s}.mu-eq i:nth-child(4){animation-delay:-.15s}
+@keyframes muEq{0%,100%{height:30%}50%{height:100%}}
+.wp-grid-3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:900px){.wp-grid-3{grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}}
+.mu-cap{max-width:780px;margin:14px auto 0;font-size:12.5px;color:var(--t3);text-align:center;line-height:1.6}
+@media(max-width:760px){.mu-stage{padding:34px 14px 92px}.mu-lyric{min-height:130px}.mu-now{left:12px;right:12px;bottom:12px}}
+@media (prefers-reduced-motion:reduce){.mu-eq i{animation:none}.mu-line.go .h{animation:none;clip-path:none}}
 @media(max-width:760px){
   .tk-stats{grid-template-columns:repeat(2,1fr)}
   .town-stage{aspect-ratio:4/5;max-height:72vh}
@@ -1057,7 +1115,7 @@
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
   <div class="nav-links">
-            <a href="#agents-social">Agent 与小镇</a><a href="#wallpaper">壁纸</a><a href="#tokens">省 token</a><a href="/pricing-faq">价格</a><a href="../guide.html" data-i18n="nav.guide">使用指南</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API 文档</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">文档 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">演示 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">手机版 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
+            <a href="#wallpaper">壁纸</a><a href="#music">音乐</a><a href="#agents-social">Agent 与小镇</a><a href="#tokens">省 token</a><a href="/pricing-faq">价格</a><a href="../guide.html" data-i18n="nav.guide">使用指南</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API 文档</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">文档 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">演示 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">手机版 <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <div style="position:relative" id="lang-switcher">
       <button onclick="document.getElementById('lang-menu').style.display=document.getElementById('lang-menu').style.display==='block'?'none':'block'" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px">
@@ -1086,12 +1144,15 @@
 
 <!-- ═══ HERO ═══ -->
 <main>
-<!-- ═══ 1 · agent 协同办公 + 社交网络 —— 首屏、代码小镇窗口、协同办公 ═══ -->
-<section class="hero" id="agents-social" aria-label="agent 时代的社交网络">
+<!-- ═══ 1 · 首屏 —— 把万物投屏到桌面壁纸 ═══ -->
+<section class="hero" id="home" aria-label="把万物投屏到你的桌面壁纸">
   <div class="hero-glow"></div>
-  <div class="hero-kicker rv">agent 协同办公 · 代码小镇</div>
-  <h1 class="rv">agent 时代的<br><span class="gradient-text">社交网络。</span></h1>
-  <p class="sub rv d1">邀请好友,各自带上本地的编程 agent,在同一个房间一起干活。每个项目都会变成代码小镇里的一栋别墅 —— 一座第一人称的粒子小镇,就在这个网页里能逛。</p>
+  <div class="hero-kicker rv">实时粒子壁纸</div>
+  <h1 class="rv">把万物,<br><span class="gradient-text">投屏到你的桌面壁纸。</span></h1>
+  <p class="sub rv d1">正在放的歌和它的歌词、每个 app 的通知、你正在用的窗口、编程 agent 正在做的事,甚至一整座粒子小镇 —— Terse 把电脑上发生的一切,变成桌面上实时的 3D 粒子,颜色还是你自己那张壁纸的颜色。</p>
+  <div class="hero-feeds rv d1">
+    <a href="#music">🎵 音乐与歌词</a><a href="#wallpaper">🔔 通知</a><a href="#wallpaper">🪟 窗口标题</a><a href="#agents-social">🤖 编程 agent</a><a href="#agents-social">🏘️ 代码小镇</a><a href="#wallpaper">🖼️ 你自己的壁纸</a>
+  </div>
 
   <div class="hero-actions rv d2" style="flex-wrap:wrap;gap:10px">
     <a href="/demo" class="btn-primary" style="text-decoration:none;background:var(--gradient);color:#000"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><polygon points="5 3 19 12 5 21 5 3"/></svg> Try Live Demo</a>
@@ -1168,6 +1229,112 @@
     </div>
   </div>
 
+</section>
+
+
+
+<!-- ═══ 2 · 3D 粒子壁纸 ═══ -->
+<section class="section home-sec" id="wallpaper" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
+      <div class="label">3D 粒子壁纸</div>
+      <h2>你的桌面,<br><span class="gradient-text">由粒子组成。</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">Terse 把你自己的壁纸重建成一片 3D 粒子场,颜色还是原来那张图的颜色。它接到的每一件事 —— 一条通知、一首歌名、一个 agent 干完了活、朋友的一句话 —— 都从粒子里凝成字,停一会儿,再散回去。</p>
+    </div>
+    <div class="wp-live rv" style="max-width:780px;margin:26px auto 0">
+      <span class="wp-live-dot" aria-hidden="true"></span>
+      <p>这个网页的背景就是同一台引擎,正在实时运行 —— 放的正是 Terse 会投到壁纸上的那类句子。</p>
+    </div>
+    <div class="wp-grid wp-grid-3 rv" style="max-width:980px;margin:30px auto 0">
+      <div class="wp-card"><div class="wp-k">发生的每一件事</div><p>任何 app 的通知、系统提醒、你正在用的窗口、正在播放的内容。新来源会被自动发现,每一个都有自己的开关。</p></div>
+      <div class="wp-card"><div class="wp-k">还是你那张图</div><p>你自己的桌面图片被抬出来,重建成一整块粒子,所以你看到的还是你选的那张壁纸。</p></div>
+      <div class="wp-card"><div class="wp-k">你静它也静</div><p>每来一句,都从字落下的地方荡开一圈涟漪。什么都没发生时粒子场就静下来 —— 从不假装在忙。</p></div>
+      <div class="wp-card"><div class="wp-k">代码小镇当壁纸</div><p>打开后小镇就是你的桌面:平时自己慢慢转,开关一拨就能进去走,桌面图标照样能用。</p></div>
+      <div class="wp-card"><div class="wp-k">风格、3D 与始终置顶(Pro)</div><p>电影感粒子字、星轨炸环、声之形克拉尼板、八种风格和十套主题。还能让粒子浮在所有窗口之上,或者抓起来 3D 转着看。</p></div>
+      <div class="wp-card"><div class="wp-k">手势控制(Pro)</div><p>摄像头 + Apple Vision 在本机识别你的手:张开手掌推开粒子,张掌停住就定格,捏一下就是批准。</p></div>
+    </div>
+    <div class="more-row rv">
+      <a href="/wallpaper" class="more-link">壁纸、控制台和八种 Pro 风格 →</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 3 · 音乐模式 ═══ -->
+<section class="section home-sec" id="music" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
+      <div class="label">音乐模式</div>
+      <h2>你正在放的歌,<br><span class="gradient-text">唱满你的桌面。</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">放什么都行 —— Apple Music、Spotify、网易云音乐。Terse 从系统的「正在播放」认出这首歌,取回同步歌词,把每一句都用粒子拼在你的壁纸上,跟着音乐走。</p>
+    </div>
+    <div class="mu-stage rv" id="muStage">
+      <div class="mu-lyric">
+        <div class="mu-line" id="muLine" data-no-i18n><span class="b">Daisy, Daisy,</span><span class="h" aria-hidden="true">Daisy, Daisy,</span></div>
+        <div class="mu-next" id="muNext" data-no-i18n>give me your answer, do</div>
+      </div>
+      <div class="mu-now">
+        <div class="mu-art" aria-hidden="true">♪</div>
+        <div style="min-width:0">
+          <div class="mu-k">音乐 · 粒子歌词</div>
+          <div class="mu-t" data-no-i18n>Daisy Bell · Harry Dacre (1892)</div>
+          <div class="mu-bar"><i id="muBar"></i></div>
+        </div>
+        <div class="mu-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <p class="mu-cap">歌词:Daisy Bell(1892)—— 已进入公有领域,也是第一首由计算机唱出来的歌。在 app 里每一句都是粒子;其中几句也正飘在这个网页的背景里,由粒子引擎画出来。</p>
+    <div class="wp-grid rv" style="max-width:980px;margin:26px auto 0">
+      <div class="wp-card"><div class="wp-k">认得出正在放什么</div><p>读的是系统的「正在播放」,所以 Apple Music、Spotify、网易云音乐和大多数播放器都行。不用麦克风,不录任何声音。</p></div>
+      <div class="wp-card"><div class="wp-k">同步歌词,只取一次</div><p>来自你自己的 .lrc 文件、歌曲文件里内嵌的歌词,或者免费的同步歌词库 LRCLIB。每首歌只联网取一次,之后存在本机。</p></div>
+      <div class="wp-card"><div class="wp-k">单独的一层</div><p>歌词画在自己的一层上,和 agent 的字、你原来的壁纸同时播放,互不打扰。</p></div>
+      <div class="wp-card"><div class="wp-k">免费,Pro 可调样式</div><p>音乐模式本身免费。Pro 可以让歌词浮在所有窗口之上,并多出 15 项调节:密度、溢光、大小、字重、颜色、位置等等。</p></div>
+    </div>
+  </div>
+</section>
+<script>
+/* The music stage: a few lines of Daisy Bell (public domain), each one swept
+   left to right over its own length, the way the app interpolates a line's
+   timing (LRC lyrics are timed per line, not per word). Runs only while the
+   stage is on screen. */
+(function () {
+  var L = ["Daisy, Daisy,", "give me your answer, do", "I'm half crazy", "all for the love of you",
+           "It won't be a stylish marriage,", "I can't afford a carriage,",
+           "But you'll look sweet upon the seat", "of a bicycle made for two"];
+  var D = 3600, stage = document.getElementById('muStage');
+  var line = document.getElementById('muLine'), next = document.getElementById('muNext'), bar = document.getElementById('muBar');
+  if (!stage || !line) return;
+  var i = 0, timer = 0, on = false, t0 = Date.now();
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function show() {
+    var t = L[i % L.length];
+    line.classList.remove('go'); line.classList.add('out');
+    setTimeout(function () {
+      line.children[0].textContent = t; line.children[1].textContent = t;
+      next.textContent = L[(i + 1) % L.length];
+      line.style.setProperty('--d', (D - 400) + 'ms');
+      line.classList.remove('out'); void line.offsetWidth; line.classList.add('go');
+      if (bar) bar.style.width = (((i % L.length) + 1) / L.length * 100).toFixed(1) + '%';
+      i++;
+    }, 450);
+  }
+  function tick() { if (!on) return; show(); timer = setTimeout(tick, D); }
+  function set(v) { if (v === on) return; on = v; clearTimeout(timer); if (on) tick(); }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) { set(es[0].isIntersecting); }, { rootMargin: '80px' }).observe(stage);
+  } else set(true);
+})();
+</script>
+
+
+<!-- ═══ 4 · agent —— 协同办公、代码小镇 ═══ -->
+<section class="section home-sec" id="agents-social" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto 26px">
+      <div class="label">agent 协同办公 · 代码小镇</div>
+      <h2>agent 时代的<br><span class="gradient-text">社交网络。</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">邀请好友,各自带上本地的编程 agent,在同一个房间一起干活。每个项目都会变成代码小镇里的一栋别墅 —— 一座第一人称的粒子小镇,就在这个网页里能逛。</p>
+    </div>
   <!-- 代码小镇,实时:网页版自己的小镇(/town-wall,和手机广场同一台引擎、同一份数据),点一下才加载。
        访客以游客身份逛;下载 app 才是真正的居民。 -->
   <div class="town-wrap rv" id="town">
@@ -1219,32 +1386,9 @@
   <div class="more-row rv">
     <a href="/agents" class="more-link">协同办公、Cloud 和广场的全部介绍 →</a>
   </div>
-</section>
-
-
-<!-- ═══ 2 · 3D 粒子壁纸 ═══ -->
-<section class="section home-sec" id="wallpaper" style="border-top:1px solid var(--bd)">
-  <div class="wp-inner">
-    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
-      <div class="label">3D 粒子壁纸</div>
-      <h2>你的 agent,<br><span class="gradient-text">写在你自己的桌面上。</span></h2>
-      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">Terse 把你的壁纸变成一片 3D 粒子场,颜色还是你原来那张图的颜色。agent 做的事 —— 工具调用、token、房间里队友的一句话 —— 从粒子里凝成字,停一会儿,再散回去。</p>
-    </div>
-    <div class="wp-live rv" style="max-width:780px;margin:26px auto 0">
-      <span class="wp-live-dot" aria-hidden="true"></span>
-      <p>这个网页的背景就是同一台引擎,正在实时运行 —— 回放的是一个 agent 房间:三个人、三个 agent、一只手。</p>
-    </div>
-    <div class="wp-grid rv" style="max-width:980px;margin:30px auto 0">
-      <div class="wp-card"><div class="wp-k">真实的工作在驱动它</div><p>每一次 token 变化,都从字落下的地方荡开一圈涟漪。agent 安静下来,粒子场也就静下来 —— 从不假装在忙。</p></div>
-      <div class="wp-card"><div class="wp-k">屏幕边上的控制台</div><p>手指碰一下左边缘,每个在跑的 agent 都展开成一张卡片,按谁在等你排序。先看改动,再当场批准。</p></div>
-      <div class="wp-card"><div class="wp-k">代码小镇当壁纸</div><p>打开后小镇就是你的桌面:平时自己慢慢转,开关一拨就能进去走,桌面图标照样能用。</p></div>
-      <div class="wp-card"><div class="wp-k">手势控制(Pro)</div><p>摄像头 + Apple Vision 在本机识别你的手:张开手掌推开粒子,张掌停住就定格,捏一下就是批准。</p></div>
-    </div>
-    <div class="more-row rv">
-      <a href="/wallpaper" class="more-link">壁纸、控制台和八种 Pro 风格 →</a>
-    </div>
   </div>
 </section>
+
 
 
 <!-- ═══ 3 · token 优化与提速 ═══ -->
@@ -1261,7 +1405,7 @@
       <div><b>&lt;5 ms</b><span>本机运行,不上云</span></div>
       <div><b>8</b><span>种 agent:Claude Code、Cursor、Codex、Copilot…</span></div>
     </div>
-    <div class="tk-demo">
+    <div class="tk-demo" style="display:none" aria-hidden="true">
 
   <div class="hero-stage rv d3">
     <!-- Scene 0: OpenClaw — comprehensive agent auto-reduction demo -->
@@ -1428,8 +1572,8 @@
 <!-- ═══ CTA ═══ -->
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
-  <h2 class="rv" data-i18n-html="cta.heading">别再浪费 token 和金钱。</h2>
-  <p class="rv d1" data-i18n="cta.subtitle">优化每一条提示，监控每一个会话。用 Terse Cloud 为全团队提供可视化——按开发者、项目和工具分析。</p>
+  <h2 class="rv">让你的桌面<br><span class="gradient-text">活起来。</span></h2>
+  <p class="rv d1">你的音乐、你的通知、你的 agent 和你的小镇 —— 都用粒子,放在你自己的壁纸上。macOS 和 Windows 免费下载。</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;justify-content:center;gap:10px">
     <a href="#" onclick="handleDownload(event,'mac')" class="btn-primary" style="text-decoration:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</a>
     <a href="#" onclick="handleDownload(event,'windows')" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M3 3h9v9H3zm0 9h9v9H3zm9-9h9v9h-9zm0 9h9v9h-9z"/></svg> Windows</a>
@@ -2878,7 +3022,7 @@ function showPricingToast(msg) {
 })();
 </script>
 <script>try{localStorage.setItem('terse-lang','zh-Hans')}catch(e){}</script>
-<script src="/i18n.js?v=97dfd08d"></script>
+<script src="/i18n.js?v=581ea9a9"></script>
 <script>
 // Language switcher
 function initLangSwitcher(){

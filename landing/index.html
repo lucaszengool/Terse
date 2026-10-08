@@ -11,14 +11,14 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terse — The Social Network for the Agent Era: Agent Cowork, Code Town &amp; Token Savings</title>
-  <meta name="description" content="Invite friends, bring your own coding agents and build in one room. Walk Code Town in your browser, turn your desktop into a 3D particle wallpaper, and cut token costs 40-70%.">
+  <title>Terse — Put Everything on Your Wallpaper: Live Particle Wallpaper, Music Lyrics &amp; AI Agents</title>
+  <meta name="description" content="Terse turns your desktop into a live 3D particle wallpaper: the synced lyrics of the song you are playing, notifications, window titles and your coding agents' work, all made of particles. For macOS and Windows.">
 
   <!-- Open Graph (Facebook, LinkedIn, iMessage, Slack, Discord) -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.terseai.org/">
-  <meta property="og:title" content="Terse — The AI Agent Butler for Claude Code, Cursor & More">
-  <meta property="og:description" content="The on-device butler for your AI coding agents: live-monitor 8 agents, cap runaway spend, manage MCP servers, and cut token costs 40-70%.">
+  <meta property="og:title" content="Terse — Put Everything on Your Desktop Wallpaper">
+  <meta property="og:description" content="Terse turns your desktop into a live 3D particle wallpaper: the synced lyrics of the song you are playing, notifications, window titles and your coding agents' work, all made of particles. For macOS and Windows.">
   <meta property="og:image" content="https://www.terseai.org/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -27,8 +27,8 @@
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://www.terseai.org/">
-  <meta name="twitter:title" content="Terse — The AI Agent Butler for Claude Code, Cursor & More">
-  <meta name="twitter:description" content="The on-device butler for your AI coding agents: live-monitor 8 agents, cap runaway spend, manage MCP servers, and cut token costs 40-70%.">
+  <meta name="twitter:title" content="Terse — Put Everything on Your Desktop Wallpaper">
+  <meta name="twitter:description" content="Terse turns your desktop into a live 3D particle wallpaper: the synced lyrics of the song you are playing, notifications, window titles and your coding agents' work, all made of particles. For macOS and Windows.">
   <meta name="twitter:image" content="https://www.terseai.org/og-image.png">
 
   <!-- Extras: theme color, canonical, robots, author -->
@@ -67,7 +67,7 @@
         "height": 180
       },
       "image": "https://www.terseai.org/og-image.png",
-      "description": "Terse is an on-device AI agent butler for macOS and Windows: it live-monitors 8 coding agents, caps runaway spend with a budget circuit breaker, manages MCP servers, runs waste-scan diagnostics, and cuts token costs 40-70% through prompt compression.",
+      "description": "Terse puts everything on your desktop wallpaper: a live 3D particle wallpaper for macOS and Windows that shows the synced lyrics of the song you are playing, notifications, window titles and what your AI coding agents are doing. It also monitors coding agents, caps runaway spend and cuts token costs 40-70% through prompt compression.",
       "foundingDate": "2026",
       "knowsAbout": [
         "LLM token optimization",
@@ -109,7 +109,7 @@
       "url": "https://www.terseai.org",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "macOS, Windows",
-      "description": "Terse is a macOS token optimization tool that reduces AI prompt costs by 40-70% through intelligent compression, duplicate tool call detection, redundant file read flagging, and real-time per-turn cost tracking across Claude Code, Cursor, ChatGPT, OpenClaw, and Aider.",
+      "description": "Terse is a live 3D particle wallpaper for macOS and Windows that puts everything on your desktop: synced song lyrics, notifications, window titles, Code Town and your AI coding agents' work. It also cuts AI prompt costs by 40-70% through on-device compression, duplicate tool call detection and per-turn cost tracking across Claude Code, Cursor and more.",
       "offers": [
         {
           "@type": "Offer",
@@ -1033,7 +1033,28 @@
        Purely additive: both files only override existing tokens and
        insert their own two elements. Remove these two lines to revert. -->
   <link rel="stylesheet" href="/terse-glass.css?v=4f8b6d3d">
-  <script defer src="/terse-cosmos.js?v=2ed78080"></script>
+  <!-- The background engine says what a Terse wallpaper says (terse-cosmos.js
+       reads window.TERSE_COSMOS): notifications, an agent finishing, a song and
+       its lyrics. No cowork-room console here, so no code behind the hero.
+       Lyrics: Daisy Bell (Harry Dacre, 1892), public domain. -->
+  <script>
+  window.TERSE_COSMOS = {
+    console: false,
+    lines: [
+      ['cache', 'Daisy, Daisy,'], ['agents', 'Claude Code: all done'], ['saved', 'Mia: dinner at 8?'],
+      ['compact', 'give me your answer, do'], ['cost', 'Stand-up in 5 minutes'], ['agents', 'Codex: build passed'],
+      ['spent', 'Now playing · Daisy Bell'], ['saved', 'Lin sent you a photo'], ['compact', 'On your wallpaper'],
+      ['cost', 'Calendar · lunch at 12'], ['agents', 'Your town is awake'], ['spent', 'Mail · 2 new messages']
+    ],
+    cycle: [
+      ['saved', 'Messages · 2 new'], ['cache', 'Now playing'], ['agents', 'Claude Code · running'],
+      ['compact', 'Mail · 1 unread'], ['cost', 'Calendar · 10:30'], ['spent', 'Safari · reading'],
+      ['agents', 'Codex · done'], ['saved', 'Lin joined the room'], ['compact', 'Music · paused'],
+      ['spent', 'Slack · 3 mentions'], ['cost', 'Lyrics synced'], ['agents', 'Code Town · live']
+    ]
+  };
+  </script>
+  <script defer src="/terse-cosmos.js?v=d6e65529"></script>
   <link rel="alternate" hreflang="en" href="https://www.terseai.org/">
   <link rel="alternate" hreflang="zh-Hans" href="https://www.terseai.org/zh/">
   <link rel="alternate" hreflang="x-default" href="https://www.terseai.org/">
@@ -1108,6 +1129,43 @@
 .tk-stats span{font-size:12.5px;color:var(--t2)}
 .tk-demo{display:flex;justify-content:center;margin-top:34px}
 .tk-demo .hero-stage{margin:0 auto}
+/* ── wallpaper-first homepage (hero · wallpaper · music · agents · tokens) ── */
+.hero#home{min-height:auto;padding-bottom:90px}
+.hero-feeds{position:relative;z-index:1;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:760px;margin:0 auto 30px}
+.hero-feeds a{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;font-size:13px;font-weight:700;color:var(--t1);text-decoration:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13)}
+.hero-feeds a:hover{border-color:rgba(110,231,183,.45);color:var(--ac)}
+.mu-stage{position:relative;max-width:980px;margin:30px auto 0;padding:46px 22px 96px;border-radius:18px;overflow:hidden;text-align:center;
+  background:radial-gradient(110% 90% at 50% 38%,rgba(185,140,255,.13),rgba(4,6,12,.72) 68%);border:1px solid rgba(160,200,255,.15);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.mu-lyric{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.mu-line{position:relative;display:inline-block;font-weight:900;letter-spacing:-.5px;line-height:1.1;font-size:clamp(30px,5vw,60px);transition:opacity .7s,transform .9s,filter .9s;
+  filter:drop-shadow(0 0 5px rgba(185,140,255,.9)) drop-shadow(0 0 16px rgba(185,140,255,.45))}
+/* no filter on the clipped spans themselves: Chrome drops background-clip:text under a filter */
+/* terse-glass.css forces color:#fff !important on every element; the text FILL is a separate
+   property, so the dotted lyric sets that instead of color */
+.mu-line span{display:block;background-size:5px 5px,7px 7px,3px 3px;background-position:0 0,2px 3px,1px 1px;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  text-shadow:none !important}/* the glass theme's readability halo would paint over the dots */
+.mu-line .b{background-image:radial-gradient(circle,#fff 0 1.1px,transparent 1.7px),radial-gradient(circle,rgba(225,210,255,.95) 0 1.3px,transparent 2px),radial-gradient(circle,rgba(255,255,255,.45) 0 .6px,transparent 1px)}
+.mu-line .h{position:absolute;inset:0;background-image:radial-gradient(circle,#E4FF6B 0 1.2px,transparent 1.8px),radial-gradient(circle,#C9F03D 0 1.4px,transparent 2.1px),radial-gradient(circle,rgba(201,240,61,.6) 0 .7px,transparent 1.1px);clip-path:inset(0 100% 0 0)}
+.mu-line.go .h{animation:muSweep var(--d,4s) linear forwards}
+.mu-next{font-size:clamp(17px,2.4vw,26px);font-weight:800;opacity:.38;transition:opacity .7s}
+.mu-line.out{opacity:0;transform:translateY(-10px) scale(1.05);filter:blur(7px) drop-shadow(0 0 10px rgba(185,140,255,.55))}
+@keyframes muSweep{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.mu-now{position:absolute;right:18px;bottom:18px;display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px;border-radius:14px;text-align:left;
+  background:rgba(14,16,24,.82);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 30px rgba(0,0,0,.4);max-width:calc(100% - 36px)}
+.mu-art{width:38px;height:38px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#0b0d12;background:linear-gradient(135deg,#C9F03D,#7CF5C0)}
+.mu-k{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;opacity:.8}
+.mu-t{font-size:13.5px;font-weight:800;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mu-bar{height:3px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:7px;overflow:hidden}
+.mu-bar i{display:block;height:100%;width:0;background:#C9F03D;border-radius:3px}
+.mu-eq{display:flex;align-items:flex-end;gap:2px;height:16px;flex:none}
+.mu-eq i{width:3px;height:40%;border-radius:2px;background:#C9F03D;animation:muEq 1s ease-in-out infinite}
+.mu-eq i:nth-child(2){animation-delay:-.3s}.mu-eq i:nth-child(3){animation-delay:-.6s}.mu-eq i:nth-child(4){animation-delay:-.15s}
+@keyframes muEq{0%,100%{height:30%}50%{height:100%}}
+.wp-grid-3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:900px){.wp-grid-3{grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}}
+.mu-cap{max-width:780px;margin:14px auto 0;font-size:12.5px;color:var(--t3);text-align:center;line-height:1.6}
+@media(max-width:760px){.mu-stage{padding:34px 14px 92px}.mu-lyric{min-height:130px}.mu-now{left:12px;right:12px;bottom:12px}}
+@media (prefers-reduced-motion:reduce){.mu-eq i{animation:none}.mu-line.go .h{animation:none;clip-path:none}}
 @media(max-width:760px){
   .tk-stats{grid-template-columns:repeat(2,1fr)}
   .town-stage{aspect-ratio:4/5;max-height:72vh}
@@ -1122,7 +1180,7 @@
 <nav id="nav">
   <a href="#" class="nav-logo"><div class="logo-icon">T</div>Terse</a>
   <div class="nav-links">
-            <a href="/#agents-social">Agents &amp; Town</a><a href="/wallpaper">Wallpaper</a><a href="/tokens">Token savings</a><a href="/pricing-faq" data-i18n="nav.pricing">Pricing</a><a href="guide.html" data-i18n="nav.guide">Guide</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API Docs</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Demo <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Phone <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
+            <a href="/wallpaper">Wallpaper</a><a href="/#music">Music</a><a href="/#agents-social">Agents &amp; Town</a><a href="/tokens">Token savings</a><a href="/pricing-faq" data-i18n="nav.pricing">Pricing</a><a href="guide.html" data-i18n="nav.guide">Guide</a><a href="/api-docs" style="color:var(--ac);font-weight:700">API Docs</a><a href="/workspace" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Docs <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="/demo" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Demo <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">LIVE</span></a><a href="/mobile" style="display:inline-flex;align-items:center;gap:5px;color:var(--ac) !important;font-weight:700">Phone <span style="background:var(--acd);border:1px solid var(--acm);color:var(--ac);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.3px">NEW</span></a><a href="https://github.com/Terse-AI/terseai" target="_blank" rel="noopener" title="Star Terse on GitHub" style="display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub <span style="color:var(--ac)">★</span></a></div>
   <div style="display:flex;gap:10px;align-items:center">
     <div style="position:relative" id="lang-switcher">
       <button onclick="document.getElementById('lang-menu').style.display=document.getElementById('lang-menu').style.display==='block'?'none':'block'" style="padding:6px 12px;background:transparent;color:var(--t2);border:1px solid var(--bd);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px">
@@ -1155,12 +1213,15 @@
 
 <!-- ═══ HERO ═══ -->
 <main>
-<!-- ═══ 1 · AGENT COWORK + THE SOCIAL NETWORK — hero, Code Town window, cowork ═══ -->
-<section class="hero" id="agents-social" aria-label="The social network for the agent era">
+<!-- ═══ 1 · HERO — put everything on your wallpaper ═══ -->
+<section class="hero" id="home" aria-label="Put everything on your desktop wallpaper">
   <div class="hero-glow"></div>
-  <div class="hero-kicker rv">Agent cowork · Code Town</div>
-  <h1 class="rv">The social network<br><span class="gradient-text">for the agent era.</span></h1>
-  <p class="sub rv d1">Invite friends, bring your own coding agents, and build in one room. Every project becomes a villa in Code Town — a first-person particle town you can walk right here, in this page.</p>
+  <div class="hero-kicker rv">Live particle wallpaper</div>
+  <h1 class="rv">Put everything<br><span class="gradient-text">on your wallpaper.</span></h1>
+  <p class="sub rv d1">Terse casts what is happening on your computer onto your desktop as live 3D particles — the song you are playing and its lyrics, notifications from every app, the window you are in, what your coding agents are doing, even a whole particle town. Your own picture keeps its colours.</p>
+  <div class="hero-feeds rv d1">
+    <a href="#music">🎵 Music &amp; lyrics</a><a href="#wallpaper">🔔 Notifications</a><a href="#wallpaper">🪟 Window titles</a><a href="#agents-social">🤖 Coding agents</a><a href="#agents-social">🏘️ Code Town</a><a href="#wallpaper">🖼️ Your own picture</a>
+  </div>
 
   <div class="hero-actions rv d2" style="flex-wrap:wrap;gap:10px">
     <a href="/demo" class="btn-primary" style="text-decoration:none;background:var(--gradient);color:#000"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><polygon points="5 3 19 12 5 21 5 3"/></svg> Try Live Demo</a>
@@ -1195,6 +1256,164 @@
       Join our Slack
     </a>
   </div>
+  <div class="rv d2" style="margin:12px auto 36px;max-width:560px;position:relative;z-index:1">
+    <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.18);border-radius:12px;padding:18px 20px;text-align:left">
+      <p style="font-size:14px;font-weight:700;color:var(--ac);margin:0 0 12px;display:flex;align-items:center;gap:8px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span data-i18n="security.heading">First Launch &mdash; macOS Security Step (one-time only)</span>
+      </p>
+      <p style="font-size:13px;color:var(--t2);margin:0 0 10px" data-i18n="security.subtitle">macOS blocks unsigned apps by default. Pick whichever method works for you:</p>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <!-- Method A -->
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:var(--ac);color:#000;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">A</span>
+            <span data-i18n="security.methodA">System Settings</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodATag">&mdash; easiest, no Terminal needed</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodASteps">
+            1. Open Terse &mdash; click <strong style="color:var(--t1)">OK</strong> on the security warning<br>
+            2. Open <strong style="color:var(--t1)">System Settings → Privacy &amp; Security</strong><br>
+            3. Scroll to the Security section &mdash; click <strong style="color:var(--ac)">"Open Anyway"</strong> next to Terse<br>
+            4. Confirm in the popup &mdash; done. Terse opens normally from now on.
+          </div>
+        </details>
+
+        <!-- Method B -->
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">B</span>
+            <span data-i18n="security.methodB">Right-click to open</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodBTag">&mdash; works on macOS Ventura and earlier</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodBSteps">
+            1. In Finder, <strong style="color:var(--t1)">right-click</strong> (or Control+click) on Terse.app<br>
+            2. Choose <strong style="color:var(--t1)">Open</strong> from the menu<br>
+            3. Click <strong style="color:var(--ac)">Open</strong> in the dialog that appears<br>
+            <span style="color:var(--t3);font-size:12px">Note: macOS Sequoia (15+) removed this option — use Method A instead.</span>
+          </div>
+        </details>
+
+        <!-- Method C -->
+        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
+            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">C</span>
+            <span data-i18n="security.methodC">Terminal command</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodCTag">&mdash; one command, works on all versions</span>
+          </summary>
+          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
+            <span data-i18n-html="security.methodCStep">Drag Terse to <strong style="color:var(--t1)">/Applications</strong>, then paste this in Terminal:</span><br>
+            <code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 12px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ac);cursor:pointer;word-break:break-all;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app &amp;&amp; /Applications/Terse.app/Contents/MacOS/terse 2&gt;/dev/null &amp; <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:5px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+
+
+<!-- ═══ 2 · THE 3D PARTICLE WALLPAPER ═══ -->
+<section class="section home-sec" id="wallpaper" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
+      <div class="label">3D particle wallpaper</div>
+      <h2>Your desktop,<br><span class="gradient-text">made of particles.</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">Terse rebuilds your own wallpaper as a 3D field of particles that keeps your picture's colours. Whatever it picks up — a notification, a song title, an agent finishing its task, a friend's message — condenses out of the field as text, holds, and dissolves back.</p>
+    </div>
+    <div class="wp-live rv" style="max-width:780px;margin:26px auto 0">
+      <span class="wp-live-dot" aria-hidden="true"></span>
+      <p>The background of this page is the same engine, running now — showing the kind of lines Terse puts on a wallpaper.</p>
+    </div>
+    <div class="wp-grid wp-grid-3 rv" style="max-width:980px;margin:30px auto 0">
+      <div class="wp-card"><div class="wp-k">Everything that happens</div><p>Notifications from any app, system alerts, the window you are in, what is playing. New sources are picked up on their own, and each one has its own switch.</p></div>
+      <div class="wp-card"><div class="wp-k">Your picture, rebuilt</div><p>Your own desktop picture is lifted out and rebuilt as a plate of particles, so the wallpaper you chose is still the one you see.</p></div>
+      <div class="wp-card"><div class="wp-k">Calm when you are</div><p>Each new line sends a ripple from where it landed. When nothing is happening the field settles — it never fakes activity.</p></div>
+      <div class="wp-card"><div class="wp-k">Code Town as a wallpaper</div><p>Turn it on and the town is your desktop: it drifts on its own, and one switch lets you walk it while your icons stay usable.</p></div>
+      <div class="wp-card"><div class="wp-k">Styles, 3D and always on top (Pro)</div><p>Cinematic typography, Orbit Burst rings, the Chladni plate, eight styles and ten themes. Float the field over every window, or turn it in 3D.</p></div>
+      <div class="wp-card"><div class="wp-k">Gesture control (Pro)</div><p>Camera and Apple Vision track your hand on-device: an open palm pushes the particles, a held palm freezes them, a pinch allows.</p></div>
+    </div>
+    <div class="more-row rv">
+      <a href="/wallpaper" class="more-link">The wallpaper, the console and the eight Pro styles →</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 3 · MUSIC MODE ═══ -->
+<section class="section home-sec" id="music" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
+      <div class="label">Music mode</div>
+      <h2>The song you are playing,<br><span class="gradient-text">sung across your desktop.</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">Play anything — Apple Music, Spotify, NetEase Cloud Music. Terse recognises the song from your system's Now Playing, fetches its synced lyrics, and builds every line out of particles on your wallpaper, in time with the music.</p>
+    </div>
+    <div class="mu-stage rv" id="muStage">
+      <div class="mu-lyric">
+        <div class="mu-line" id="muLine" data-no-i18n><span class="b">Daisy, Daisy,</span><span class="h" aria-hidden="true">Daisy, Daisy,</span></div>
+        <div class="mu-next" id="muNext" data-no-i18n>give me your answer, do</div>
+      </div>
+      <div class="mu-now">
+        <div class="mu-art" aria-hidden="true">♪</div>
+        <div style="min-width:0">
+          <div class="mu-k">Music · particle lyrics</div>
+          <div class="mu-t" data-no-i18n>Daisy Bell · Harry Dacre (1892)</div>
+          <div class="mu-bar"><i id="muBar"></i></div>
+        </div>
+        <div class="mu-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <p class="mu-cap">Lyrics: Daisy Bell (1892) — public domain, and the first song a computer ever sang. In the app every line is made of particles; a few of these lines also drift through this page's background, drawn by the particle engine.</p>
+    <div class="wp-grid rv" style="max-width:980px;margin:26px auto 0">
+      <div class="wp-card"><div class="wp-k">Recognises what is playing</div><p>It reads your system's Now Playing, so it works with Apple Music, Spotify, NetEase Cloud Music and most other players. No microphone, nothing recorded.</p></div>
+      <div class="wp-card"><div class="wp-k">Synced lyrics, fetched once</div><p>From your own .lrc files, the lyrics inside the song file, or LRCLIB's free synced-lyrics library. Each song is fetched once and kept on your machine.</p></div>
+      <div class="wp-card"><div class="wp-k">A layer of its own</div><p>Lyrics are drawn on their own layer, so they play alongside your agents' text and the wallpaper you already have.</p></div>
+      <div class="wp-card"><div class="wp-k">Free, with Pro styling</div><p>Music mode is free. Pro lets the lyrics float above every window and adds 15 controls: density, glow, size, weight, colours, position and more.</p></div>
+    </div>
+  </div>
+</section>
+<script>
+/* The music stage: a few lines of Daisy Bell (public domain), each one swept
+   left to right over its own length, the way the app interpolates a line's
+   timing (LRC lyrics are timed per line, not per word). Runs only while the
+   stage is on screen. */
+(function () {
+  var L = ["Daisy, Daisy,", "give me your answer, do", "I'm half crazy", "all for the love of you",
+           "It won't be a stylish marriage,", "I can't afford a carriage,",
+           "But you'll look sweet upon the seat", "of a bicycle made for two"];
+  var D = 3600, stage = document.getElementById('muStage');
+  var line = document.getElementById('muLine'), next = document.getElementById('muNext'), bar = document.getElementById('muBar');
+  if (!stage || !line) return;
+  var i = 0, timer = 0, on = false, t0 = Date.now();
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function show() {
+    var t = L[i % L.length];
+    line.classList.remove('go'); line.classList.add('out');
+    setTimeout(function () {
+      line.children[0].textContent = t; line.children[1].textContent = t;
+      next.textContent = L[(i + 1) % L.length];
+      line.style.setProperty('--d', (D - 400) + 'ms');
+      line.classList.remove('out'); void line.offsetWidth; line.classList.add('go');
+      if (bar) bar.style.width = (((i % L.length) + 1) / L.length * 100).toFixed(1) + '%';
+      i++;
+    }, 450);
+  }
+  function tick() { if (!on) return; show(); timer = setTimeout(tick, D); }
+  function set(v) { if (v === on) return; on = v; clearTimeout(timer); if (on) tick(); }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) { set(es[0].isIntersecting); }, { rootMargin: '80px' }).observe(stage);
+  } else set(true);
+})();
+</script>
+
+
+<!-- ═══ 4 · AGENTS — cowork, the social card, Code Town ═══ -->
+<section class="section home-sec" id="agents-social" style="border-top:1px solid var(--bd)">
+  <div class="wp-inner">
+    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto 26px">
+      <div class="label">Agent cowork · Code Town</div>
+      <h2>The social network<br><span class="gradient-text">for the agent era.</span></h2>
+      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">Invite friends, bring your own coding agents, and build in one room. Every project becomes a villa in Code Town — a first-person particle town you can walk right here, in this page.</p>
+    </div>
   <!-- The signup, and there is no other one: a prompt the visitor hands to the
        agent they already run. Folded to one bar so it does not push the hero
        down — the two things people come for (copy it, or sign in) sit on the
@@ -1275,58 +1494,6 @@
     }
   }
   </script>
-  <div class="rv d2" style="margin:12px auto 36px;max-width:560px;position:relative;z-index:1">
-    <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.18);border-radius:12px;padding:18px 20px;text-align:left">
-      <p style="font-size:14px;font-weight:700;color:var(--ac);margin:0 0 12px;display:flex;align-items:center;gap:8px">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span data-i18n="security.heading">First Launch &mdash; macOS Security Step (one-time only)</span>
-      </p>
-      <p style="font-size:13px;color:var(--t2);margin:0 0 10px" data-i18n="security.subtitle">macOS blocks unsigned apps by default. Pick whichever method works for you:</p>
-
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <!-- Method A -->
-        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
-          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
-            <span style="background:var(--ac);color:#000;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">A</span>
-            <span data-i18n="security.methodA">System Settings</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodATag">&mdash; easiest, no Terminal needed</span>
-          </summary>
-          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodASteps">
-            1. Open Terse &mdash; click <strong style="color:var(--t1)">OK</strong> on the security warning<br>
-            2. Open <strong style="color:var(--t1)">System Settings → Privacy &amp; Security</strong><br>
-            3. Scroll to the Security section &mdash; click <strong style="color:var(--ac)">"Open Anyway"</strong> next to Terse<br>
-            4. Confirm in the popup &mdash; done. Terse opens normally from now on.
-          </div>
-        </details>
-
-        <!-- Method B -->
-        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
-          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
-            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">B</span>
-            <span data-i18n="security.methodB">Right-click to open</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodBTag">&mdash; works on macOS Ventura and earlier</span>
-          </summary>
-          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7" data-i18n-html="security.methodBSteps">
-            1. In Finder, <strong style="color:var(--t1)">right-click</strong> (or Control+click) on Terse.app<br>
-            2. Choose <strong style="color:var(--t1)">Open</strong> from the menu<br>
-            3. Click <strong style="color:var(--ac)">Open</strong> in the dialog that appears<br>
-            <span style="color:var(--t3);font-size:12px">Note: macOS Sequoia (15+) removed this option — use Method A instead.</span>
-          </div>
-        </details>
-
-        <!-- Method C -->
-        <details style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0">
-          <summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);list-style:none;display:flex;align-items:center;gap:8px">
-            <span style="background:rgba(110,231,183,0.3);color:var(--ac);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">C</span>
-            <span data-i18n="security.methodC">Terminal command</span> <span style="color:var(--t3);font-weight:400" data-i18n="security.methodCTag">&mdash; one command, works on all versions</span>
-          </summary>
-          <div style="padding:0 14px 12px;font-size:13px;color:var(--t2);line-height:1.7">
-            <span data-i18n-html="security.methodCStep">Drag Terse to <strong style="color:var(--t1)">/Applications</strong>, then paste this in Terminal:</span><br>
-            <code onclick="navigator.clipboard.writeText('xattr -cr /Applications/Terse.app && /Applications/Terse.app/Contents/MacOS/terse 2>/dev/null &');this.dataset.copied='1';this.style.borderColor='var(--ac)';var c=this;setTimeout(function(){c.dataset.copied='';c.style.borderColor=''},1500)" style="display:inline-block;margin-top:8px;padding:8px 12px;background:rgba(110,231,183,0.08);border:1px solid rgba(110,231,183,0.2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ac);cursor:pointer;word-break:break-all;transition:border-color .2s" title="Click to copy">xattr -cr /Applications/Terse.app &amp;&amp; /Applications/Terse.app/Contents/MacOS/terse 2&gt;/dev/null &amp; <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-left:5px;opacity:0.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></code>
-          </div>
-        </details>
-      </div>
-    </div>
-  </div>
-
   <!-- Code Town, live: the web app's own town (/town-wall — the phone plaza's engine and data),
        loaded on the first click. Visitors walk as anonymous guests; the app makes them residents. -->
   <div class="town-wrap rv" id="town">
@@ -1378,32 +1545,9 @@
   <div class="more-row rv">
     <a href="/agents" class="more-link">Everything about cowork, Cloud and the plaza →</a>
   </div>
-</section>
-
-
-<!-- ═══ 2 · THE 3D PARTICLE WALLPAPER ═══ -->
-<section class="section home-sec" id="wallpaper" style="border-top:1px solid var(--bd)">
-  <div class="wp-inner">
-    <div class="rvl" style="text-align:center;max-width:780px;margin:0 auto">
-      <div class="label">3D particle wallpaper</div>
-      <h2>Your agents, written on<br><span class="gradient-text">your own desktop.</span></h2>
-      <p class="desc" style="margin-left:auto;margin-right:auto;max-width:640px">Terse turns your wallpaper into a 3D particle field that keeps the colours of your own picture. What your agents do — tool calls, tokens, a teammate's message in your room — condenses out of it as text, holds, and dissolves back.</p>
-    </div>
-    <div class="wp-live rv" style="max-width:780px;margin:26px auto 0">
-      <span class="wp-live-dot" aria-hidden="true"></span>
-      <p>The background of this page is the same engine, running now — replaying an agent room: three people, three agents, one hand.</p>
-    </div>
-    <div class="wp-grid rv" style="max-width:980px;margin:30px auto 0">
-      <div class="wp-card"><div class="wp-k">Driven by real work</div><p>A token delta sends a ripple from where the text landed. When your agents go quiet the field settles — it never fakes activity.</p></div>
-      <div class="wp-card"><div class="wp-k">A console at the screen edge</div><p>Touch the left edge and every running agent opens as a card, sorted by who needs you. See the diff, then allow it right there.</p></div>
-      <div class="wp-card"><div class="wp-k">Code Town as a wallpaper</div><p>Turn it on and the town is your desktop: it drifts on its own, and one switch lets you walk it while your icons stay usable.</p></div>
-      <div class="wp-card"><div class="wp-k">Gesture control (Pro)</div><p>Camera and Apple Vision track your hand on-device: an open palm pushes the particles, a held palm freezes them, a pinch allows.</p></div>
-    </div>
-    <div class="more-row rv">
-      <a href="/wallpaper" class="more-link">The wallpaper, the console and the eight Pro styles →</a>
-    </div>
   </div>
 </section>
+
 
 
 <!-- ═══ 3 · TOKEN OPTIMIZATION + SPEED ═══ -->
@@ -1420,7 +1564,7 @@
       <div><b>&lt;5 ms</b><span>on-device, zero cloud</span></div>
       <div><b>8</b><span>agents: Claude Code, Cursor, Codex, Copilot…</span></div>
     </div>
-    <div class="tk-demo">
+    <div class="tk-demo" style="display:none" aria-hidden="true">
 
   <div class="hero-stage rv d3">
     <!-- Scene 0: OpenClaw — comprehensive agent auto-reduction demo -->
@@ -1588,8 +1732,8 @@
 <!-- ═══ CTA ═══ -->
 <section class="cta" id="dl">
   <div class="cta-glow"></div>
-  <h2 class="rv" data-i18n-html="cta.heading">Stop wasting<br><span class="gradient-text">tokens and money.</span></h2>
-  <p class="rv d1" data-i18n="cta.subtitle">Optimize every prompt. Monitor every agent session. And give your whole team visibility with Terse Cloud &mdash; analytics by developer, project, and tool.</p>
+  <h2 class="rv">Make your desktop<br><span class="gradient-text">come alive.</span></h2>
+  <p class="rv d1">Your music, your notifications, your agents and your town — in particles, on your own wallpaper. Free to download for macOS and Windows.</p>
   <div class="hero-actions rv d2" style="flex-wrap:wrap;justify-content:center;gap:10px">
     <a href="#" onclick="handleDownload(event,'mac')" class="btn-primary" style="text-decoration:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</a>
     <a href="#" onclick="handleDownload(event,'windows')" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid rgba(255,255,255,0.15);color:var(--t1);background:rgba(255,255,255,0.04);transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M3 3h9v9H3zm0 9h9v9H3zm9-9h9v9h-9zm0 9h9v9h-9z"/></svg> Windows</a>
@@ -3056,7 +3200,7 @@ function showPricingToast(msg) {
   }
 })();
 </script>
-<script src="/i18n.js?v=97dfd08d"></script>
+<script src="/i18n.js?v=581ea9a9"></script>
 <script>
 // Language switcher
 function initLangSwitcher(){

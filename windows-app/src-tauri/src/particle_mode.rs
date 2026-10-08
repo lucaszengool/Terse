@@ -475,20 +475,50 @@ mod tests {
     /// feature in one line: PrintWindow into a DIB, BGRA to RGB, JPEG out.
     #[test]
     fn captures_a_frame_from_a_real_window() {
-        let wins = enumerate_windows(1.0);
-        let mut last = String::new();
-        for w in &wins {
-            let Ok(h) = find_window(w.id) else { continue };
-            match grab_jpeg(h) {
-                Ok((jpg, dw, dh)) => {
-                    assert!(dw > 0 && dh > 0, "captured a frame with no size");
-                    assert!(jpg.len() > 512, "frame is too small to be a picture: {} bytes", jpg.len());
-                    assert_eq!(&jpg[..2], &[0xFF, 0xD8], "not a JPEG");
-                    return;
+        // Bring a window when the desktop has none. What the CI runner has open
+        // while unit tests run is not ours to count on: two runs had a titled
+        // window at this point and the next had none, and this failed with
+        // nothing to capture — a red test that said nothing about the code.
+        let mut wins = enumerate_windows(1.0);
+        let mut spawned = None;
+        if wins.is_empty() {
+            spawned = std::process::Command::new("notepad.exe").spawn().ok();
+            for _ in 0..40 {
+                std::thread::sleep(std::time::Duration::from_millis(250));
+                wins = enumerate_windows(1.0);
+                if !wins.is_empty() {
+                    break;
                 }
-                Err(e) => last = e,
             }
         }
-        panic!("no window on this desktop could be captured (last error: {last})");
+        let n = wins.len();
+        let mut unresolved = 0;
+        let mut outcome = Err(String::new());
+        for w in &wins {
+            let Ok(h) = find_window(w.id) else {
+                unresolved += 1;
+                continue;
+            };
+            match grab_jpeg(h) {
+                Ok(frame) => {
+                    outcome = Ok(frame);
+                    break;
+                }
+                Err(e) => outcome = Err(e),
+            }
+        }
+        if let Some(mut child) = spawned {
+            let _ = child.kill();
+        }
+        match outcome {
+            Ok((jpg, dw, dh)) => {
+                assert!(dw > 0 && dh > 0, "captured a frame with no size");
+                assert!(jpg.len() > 512, "frame is too small to be a picture: {} bytes", jpg.len());
+                assert_eq!(&jpg[..2], &[0xFF, 0xD8], "not a JPEG");
+            }
+            Err(last) => panic!(
+                "no window could be captured: {n} listed, {unresolved} could not be found again, last error: {last:?}"
+            ),
+        }
     }
 }

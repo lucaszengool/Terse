@@ -71,6 +71,16 @@ pub fn window_text(pid: u32, cap_chars: usize) -> Vec<WindowText> {
                     continue;
                 };
                 let title = root.CurrentName().map(|s| s.to_string()).unwrap_or_default();
+                // A terminal: read what is ON SCREEN from the element that holds
+                // the text, and nothing else. See terminal_text for why the
+                // window itself cannot be asked.
+                if is_terminal_window(h) {
+                    let text = terminal_text(&uia, &root, cap_chars);
+                    if !text.is_empty() {
+                        out.push(WindowText { title, text });
+                        continue;
+                    }
+                }
                 let mut text = String::new();
                 // A CONSOLE keeps its contents in a text pattern, not in the
                 // names of child elements — a terminal window walked the way a
@@ -125,6 +135,93 @@ pub fn window_text(pid: u32, cap_chars: usize) -> Vec<WindowText> {
         CoUninitialize();
     }
     out
+}
+
+/// Is this a terminal's top-level window — classic conhost, or Windows Terminal
+/// (the default terminal on Windows 11)?
+///
+/// Decided by window class, so the dialog path that already works for Electron
+/// agents (Claude, Cursor, Code) is left exactly as it was.
+fn is_terminal_window(h: isize) -> bool {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::GetClassNameW;
+    let mut buf = [0u16; 128];
+    let n = unsafe { GetClassNameW(HWND(h as *mut core::ffi::c_void), &mut buf) };
+    let class = String::from_utf16_lossy(&buf[..n.max(0) as usize]);
+    matches!(class.as_str(), "ConsoleWindowClass" | "CASCADIA_HOSTING_WINDOW_CLASS")
+}
+
+/// The text a terminal is SHOWING, read from the element that holds it.
+///
+/// Two things had to change from asking the window, and CI showed both. A
+/// console window's own element has no text pattern: its tree is a scrollbar,
+/// a title bar and a child called "Text Area", and the text pattern is on that
+/// child. Asked at the window, a PowerShell window with "Do you want to
+/// proceed?" on screen read back as `Vertical / Line up / … / Close / Text
+/// Area` — chrome only, so no prompt was ever recognised.
+///
+/// And the range: DocumentRange starts at the TOP of the scrollback, so the
+/// first few thousand characters of a long Claude Code session are its
+/// beginning, and the prompt waiting at the bottom is never reached. A blocked
+/// prompt is by definition on screen, so the visible ranges are what is read;
+/// the document range is only the fallback.
+fn terminal_text(
+    uia: &windows::Win32::UI::Accessibility::IUIAutomation,
+    root: &windows::Win32::UI::Accessibility::IUIAutomationElement,
+    cap_chars: usize,
+) -> String {
+    use windows::core::{Interface, VARIANT};
+    use windows::Win32::UI::Accessibility::{
+        IUIAutomationTextPattern, TreeScope_Subtree, UIA_IsTextPatternAvailablePropertyId,
+        UIA_TextPatternId,
+    };
+    let mut raw = String::new();
+    unsafe {
+        let Ok(cond) =
+            uia.CreatePropertyCondition(UIA_IsTextPatternAvailablePropertyId, &VARIANT::from(true))
+        else {
+            return String::new();
+        };
+        // Subtree includes the window itself, so a terminal that does put the
+        // pattern on its root is still covered.
+        let Ok(found) = root.FindAll(TreeScope_Subtree, &cond) else { return String::new() };
+        let n = found.Length().unwrap_or(0).min(4);
+        for i in 0..n {
+            let Ok(el) = found.GetElement(i) else { continue };
+            let Ok(pat) = el.GetCurrentPattern(UIA_TextPatternId) else { continue };
+            let Ok(tp) = pat.cast::<IUIAutomationTextPattern>() else { continue };
+            let before = raw.len();
+            if let Ok(ranges) = tp.GetVisibleRanges() {
+                for r in 0..ranges.Length().unwrap_or(0) {
+                    if let Ok(range) = ranges.GetElement(r) {
+                        if let Ok(t) = range.GetText(cap_chars as i32) {
+                            raw.push_str(&t.to_string());
+                            raw.push('\n');
+                        }
+                    }
+                }
+            }
+            if raw.len() == before {
+                if let Ok(range) = tp.DocumentRange() {
+                    if let Ok(t) = range.GetText(cap_chars as i32) {
+                        raw.push_str(&t.to_string());
+                        raw.push('\n');
+                    }
+                }
+            }
+        }
+    }
+    // Consoles pad every line to the buffer width, and the rows below the
+    // cursor are blank.
+    let mut text = String::new();
+    for line in raw.lines() {
+        let line = line.trim_end();
+        if !line.is_empty() {
+            text.push_str(line);
+            text.push('\n');
+        }
+    }
+    text
 }
 
 /// The visible top-level windows belonging to a process.

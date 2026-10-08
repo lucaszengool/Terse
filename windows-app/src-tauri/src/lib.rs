@@ -36,6 +36,7 @@ mod particle_mode;
 mod desk;
 mod approvals;
 mod splash;
+mod music;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -4887,6 +4888,9 @@ pub fn run() {
             // 信息流: notifications, system alerts and window titles, as one
             // stream for the wallpaper's big text.
             feeds::start(app.handle().clone());
+            // 音乐模式 (off by default): what is playing + its synced lyrics,
+            // pushed to the wallpaper as particle text — as on macOS.
+            music::start(app.handle().clone());
             dock_hook::start(app.handle().clone());
             // The session dock (会话栏): a 14px strip on the left edge that opens
             // when the cursor touches it — started at launch, as on macOS.
@@ -5170,6 +5174,8 @@ pub fn run() {
             list_open_windows,
             app_icon,
             splash::app_ready,
+            music::music_state,
+            music::music_probe,
             particle_mode::pm_windows,
             particle_mode::pm_window_rect,
             particle_mode::pm_start,
@@ -7069,6 +7075,15 @@ fn get_wallpaper_config() -> serde_json::Value {
         .unwrap_or_else(wallpaper_default_config)
 }
 
+/// The same config, for other modules in the crate (music.rs asks whether music
+/// mode is on).
+///
+/// ⚠ `get_wallpaper_config` itself cannot be made `pub(crate)`: it carries
+/// `#[tauri::command]`, whose macro generates a same-named `__cmd__…` item, and
+/// changing the visibility collides with it (E0255). Hence the wrapper — as on
+/// macOS.
+pub(crate) fn wallpaper_cfg() -> serde_json::Value { get_wallpaper_config() }
+
 /// Persist wallpaper config and push it live to the running wallpaper window.
 #[tauri::command]
 fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
@@ -7691,6 +7706,15 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     // alpha:true canvas — so it lifts above other windows like the other two.
     // Without it here, always-on-top is silently refused for that engine.
     let particle = matches!(engine, "mineradio" | "cinematic" | "orbit");
+    // 「歌词浮在所有窗口之上」(音乐模式) lifts the window as well, and is NOT
+    // limited to the particle engines: the page (applyMusicLayer in
+    // wallpaper.html) hides an opaque engine's canvas while lifted, so what goes
+    // above other windows is a transparent canvas plus the lyric particles. It
+    // still needs Pro — lifting is the Pro capability, and the page asks the
+    // same question, so both halves must reach the same answer.
+    let music_top = cfg.get("music").and_then(|v| v.as_bool()).unwrap_or(false)
+        && cfg.get("musicTop").and_then(|v| v.as_bool()).unwrap_or(false)
+        && cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
     let pro = license::License::load().is_pro();
     // Logged, not inferred. Four diagnoses of the black-sheet overlay were wrong
     // because the inputs to this decision were never printed - a screenshot
@@ -7698,11 +7722,11 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     diag_log(
         "wallpaper",
         &format!(
-            "overlay_allowed -> {} (flag={on} engine={engine} particle={particle} pro={pro})",
-            on && particle && pro
+            "overlay_allowed -> {} (flag={on} engine={engine} particle={particle} music_top={music_top} pro={pro})",
+            ((on && particle) || music_top) && pro
         ),
     );
-    on && particle && pro
+    ((on && particle) || music_top) && pro
 }
 
 /// Let a page write into the same diagnostic log the Rust side uses.

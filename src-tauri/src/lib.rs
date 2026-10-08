@@ -17,6 +17,8 @@ mod feeds;
 mod particle_mode;
 /// 左侧会话栏:hover 展开 Claude Desktop 的会话列表,再 hover 看全文。
 mod session_dock;
+mod splash;
+mod music;
 mod dock_hook;
 /// 房间里的 agent 通道:把一段会话接进 Terse 房间(本机 MCP + dock_hook 的 peer 队列)
 mod room_link;
@@ -3114,6 +3116,12 @@ fn get_wallpaper_config() -> serde_json::Value {
         .unwrap_or_else(wallpaper_default_config)
 }
 
+/// 同一份配置,给 crate 内部别的模块读(music.rs 要知道音乐模式开没开)。
+///
+/// ⚠ 不能把 `get_wallpaper_config` 直接标成 `pub(crate)` —— 它挂着 `#[tauri::command]`,
+/// 宏会生成一个同名的 `__cmd__…`,改可见性就撞上(E0255)。所以包一层。
+pub(crate) fn wallpaper_cfg() -> serde_json::Value { get_wallpaper_config() }
+
 /// Persist wallpaper config and push it live to the running wallpaper window.
 #[tauri::command]
 fn set_wallpaper_config(config: serde_json::Value, app: AppHandle) -> bool {
@@ -3157,7 +3165,22 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     // flag and the engine) while the page refused to go transparent (it also
     // checked Pro) — a lifted opaque window is the entire screen turned into
     // wallpaper. Whatever decides the LEVEL must also decide the PAINT.
-    on && matches!(engine, "mineradio" | "cinematic") && license::License::load().is_pro()
+    // "orbit"(星轨炸环)是 mineradio 那台渲染器的另一套场景,同样 alpha:true,
+    // 所以它和前两者一样可以抬到窗口之上。
+    /* 「歌词浮在所有窗口之上」(音乐模式)也要抬窗口。它不受"只有粒子引擎能置顶"
+       那条限制 —— 页面(wallpaper.html 的 applyMusicLayer)把两件事拆开管:
+         · 引擎本身能抬(mineradio / cinematic / orbit)且用户又真开了「始终置顶」
+           → 引擎跟歌词一起浮上去,两条轨道同时在画。
+         · 引擎不能抬(光柱地形 / 声之形)或者「始终置顶」没开 → 引擎画布 visibility:
+           hidden,抬上去的只有一块透明画布 + 歌词粒子,不会糊住屏幕。
+       所以从 Rust 看,只要 musicTop(或任何合法的 engine overlay)成立就允许抬 ——
+       **但一样要 Pro**:抬窗口这件事本身是 Pro 的能力,而且这里必须和页面那一半得出
+       同一个答案。 */
+    let music_top = cfg.get("music").and_then(|v| v.as_bool()).unwrap_or(false)
+        && cfg.get("musicTop").and_then(|v| v.as_bool()).unwrap_or(false)
+        && cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+    let engine_ok = on && matches!(engine, "mineradio" | "cinematic" | "orbit");
+    (engine_ok || music_top) && license::License::load().is_pro()
 }
 
 /// The effective overlay state — the single answer both halves must agree on.
@@ -5865,6 +5888,10 @@ pub fn run() {
             // 左侧会话栏开机就在 —— 从 Rust 这边直接起,不等任何一页加载完。
             // (pm-target 那次的教训:靠页面加载后再来叫,第一下一定会丢。)
             session_dock::start(app.handle().clone());
+            // 启动画面的兜底:8 秒之内前端没喊"准备好了",就自己把主窗口亮出来
+            splash::start(app.handle().clone());
+            // 音乐模式(默认关):认歌 + 取同步歌词,推给壁纸聚成粒子字
+            music::start(app.handle().clone());
             dock_hook::start(app.handle().clone());
             room_link::start(app.handle().clone());
             // 手势控制(Pro):开着、而且还是 Pro,就在后台起摄像头追踪
@@ -7123,6 +7150,9 @@ pub fn run() {
             particle_mode::pl_send,
             pl_transcript,
             pl_target,
+            splash::app_ready,
+            music::music_state,
+            music::music_probe,
             session_dock::sd_sessions,
             session_dock::sd_active,
             session_dock::sd_usage,

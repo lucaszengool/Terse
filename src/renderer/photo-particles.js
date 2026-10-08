@@ -59,7 +59,7 @@ uniform sampler2D uPhoto;
 uniform vec2 uViewport;             // 画布像素
 uniform float uHalfW, uHalfH;       // 板子的半宽/半高(世界单位)
 uniform float uF, uD, uYaw, uPitch; // 焦距(像素)、相机距离、缓慢飘动的机位
-uniform float uTime, uAlive, uPtPx, uRelief, uBloomSize;
+uniform float uTime, uAlive, uPtPx, uRelief, uBloomSize, uThick;
 /* uLayer 0 = 板身(那张壁纸),1 = **浮在它前面的点云**(见下面 GLINT 那一段)。 */
 uniform float uLayer, uSpread, uCloudCut;
 uniform int uGrid;
@@ -122,7 +122,12 @@ void main(){
   float cloudZ = (uLayer > 0.5) ? (0.15 + 0.85 * r2) * uSpread * uHalfH : 0.0;
 
   /* 高度 = 壁纸自己的明暗(亮处浮起来)+ 这一拍的浪。板不动,是**面**在起伏。 */
-  float z = ((lum - 0.45) * uRelief + w.h * 0.55 * uAlive) * uHalfH * 0.30 + cloudZ;
+  /* 高度 = 明暗浮雕 + 这一拍的浪 + **每颗自己的厚度**。
+     厚度用另一条随机数(r3),和挑点云那条无关 —— 共用的话"浮起来的"和"会闪的"
+     就是同一批粒子,云分不出层。 */
+  float r3 = float(uhash(uint(id) * 7919u) & 0xffffu) / 65535.0;
+  float z = ((lum - 0.45) * uRelief + w.h * 0.55 * uAlive) * uHalfH * 0.30
+          + (r3 - 0.5) * uThick * uHalfH + cloudZ;
 
   vec3 p = vec3((g.x - 0.5) * 2.0 * uHalfW + w.disp.x * uHalfH * 0.035 * uAlive,
                 (0.5 - g.y) * 2.0 * uHalfH + w.disp.y * uHalfH * 0.035 * uAlive,
@@ -156,7 +161,7 @@ void main(){
 const FS = `#version 300 es
 precision highp float;
 uniform sampler2D uPhoto;
-uniform float uDim, uBloomAmt, uGlowGate, uLayer;
+uniform float uDim, uBloomAmt, uGlowGate, uLayer, uBoost, uSat;
 in vec2 vUv;
 in float vShade;
 in float vGlint;
@@ -180,15 +185,25 @@ void main(){
     return;
   }
   vec3 raw = texture(uPhoto, vUv).rgb;
+  /* 提亮 + 提饱和。这一层现在是"整张桌面变成一团发光的点云",不是一张忠实的复制品:
+     照片子里那几幕,粒子读起来比原图**亮一档、艳一档**,白的地方要烫。
+     (之前刻意一动不动,是因为当时的定位是"板里就是那张壁纸";用户 2026-09-29 改口:
+      要亮、要视觉震撼。出场那一秒仍然是原壁纸,所以"认得出是自己的图"没丢。) */
+  float l0 = dot(raw, vec3(0.2126, 0.7152, 0.0722));
+  raw = mix(vec3(l0), raw, uSat);
+  raw = pow(max(raw, vec3(0.0)), vec3(0.9)) * uBoost;
   /* 颗粒感要**让着高光**。天空本来就 0.93 上下,再乘一个 ±12% 的抖动必然出界,
      出界之后无论硬截还是等比压,云的层次都会被抹平(量过:板内 5% 的像素变成纯白,
      而原图一个都没有)。所以越亮的地方抖得越轻 —— 暗部和中间调照常有颗粒。 */
   float lum = dot(raw, vec3(0.2126, 0.7152, 0.0722));
   float shade = 1.0 + (vShade - 1.0) * mix(1.0, 0.30, smoothstep(0.55, 0.95, lum));
   vec3 c = raw * shade * uDim;
-  // 还是出界的话按最大通道等比压回去 —— 色相不变。
-  float mx = max(c.r, max(c.g, c.b));
-  c /= 1.0 + max(0.0, mx - 1.0);
+  /* 高光肩部:0.8 以下一动不动,之上渐近压到 1.0。
+     原来那条"按最大通道等比压回去"会把**所有**出界的值都落到正好 1.0 —— 提亮之后
+     天空整片压成同一个纯白,量出来 11.6% 的像素是死白,云的层次没了。
+     这条肩部只压超出的那一段,所以亮是亮了,里面还有东西。 */
+  vec3 hi = max(c - 0.8, vec3(0.0));
+  c = min(c, vec3(0.8)) + 0.2 * hi / (0.2 + hi);
   float alpha = a * uBloomAmt;
   /* 辉光那一趟只许**亮的地方**发光。加性叠加是按"有多少颗盖住这个像素"算的,
      这里一个像素上压着十几颗 —— 不设门槛的话整块板会被抬亮四成,天空直接烧成白纸
@@ -207,13 +222,18 @@ export default class PhotoParticles {
     this.opts = opts;
     this.GRID = opts.grid || 620;          // 约 38 万颗,铺在板子上
     this.DIM = opts.dim ?? 1.0;            // 不压暗:板里就是那张壁纸
-    this.RELIEF = opts.relief ?? 0.85;     // 明暗 → 起伏
-    /* 板子最多占多宽/多高(比例)。Mineradio 的方封面大约占屏幕高的一半;
-       壁纸是宽的,所以两个方向各给一个上限,按壁纸自己的比例装进去。 */
-    this.FILL_W = opts.fillWidth ?? 0.62;
-    this.FILL_H = opts.fillHeight ?? 0.52;
-    /** 'contain' = 整块板都看得见(封面板);'cover' = 铺满、超出的裁掉(窗口背景)。 */
-    this.FIT = opts.fit || 'contain';
+    this.RELIEF = opts.relief ?? 2.2;      // 明暗 → 起伏
+    /** 云的**厚度**:每颗粒子自己的一个 z 偏移。这一条才是"看着像一团"的来源 ——
+     *  只有明暗浮雕的话,那还是一张有起伏的图;有厚度,镜头一动才有视差。 */
+    this.THICK = opts.thick ?? 0.55;
+    /* **铺满整屏**。用户 2026-09-29:「我要的是那些粒子封面 scene 整个背景壁纸变成
+       3d 粒子炫酷的感觉,然后要亮视觉震撼」——参照 `remotion-flash/out/terse-flash-v33-cyber.mp4`:
+       那里面的封面 scene 是**整张桌面**变成一团发光的点云,不是黑底里浮着一块小板。
+       (中间做过一版 Mineradio 那样的小封面板 0.62/0.52 + contain,已按这条推翻。) */
+    this.FILL_W = opts.fillWidth ?? 1.04;
+    this.FILL_H = opts.fillHeight ?? 1.04;
+    /** 'cover' = 铺满、超出的裁掉(默认);'contain' = 整块板都看得见。 */
+    this.FIT = opts.fit || 'cover';
     this.DIST = opts.dist || 3.4;          // 相机到板子的距离(世界单位)
     /* ── 出场:先是你原本那张壁纸,再化开成粒子封面 ──────────────────────
        和宣传片里那一版**同一个做法**(remotion-flash 的 `WallReveal`,
@@ -229,9 +249,11 @@ export default class PhotoParticles {
     /* 点云那一层(见着色器里的 GLINT):多少比例的粒子参与、浮多厚、多亮。 */
     /* 少而亮,不是多而匀:片子里那是一颗颗看得清的光点,不是一层白毛。
        参与的粒子只有 6%,但每颗更大更亮 —— 整块板的平均亮度因此没被抬起来。 */
-    this.CLOUD = opts.cloud ?? 0.06;
-    this.SPREAD = opts.spread ?? 0.55;
-    this.GLINT = opts.glint ?? 1.25;
+    this.BOOST = opts.boost ?? 1.12;       // 亮一档
+    this.SAT = opts.sat ?? 1.25;           // 艳一档
+    this.CLOUD = opts.cloud ?? 0.07;
+    this.SPREAD = opts.spread ?? 0.8;
+    this.GLINT = opts.glint ?? 0.5;
     this.DRIFT = opts.drift ?? 1.0;        // 机位飘动幅度(0 = 钉死正对)
     this.raf = 0; this.t = 0; this.last = 0;
     this.hasPhoto = false;
@@ -403,8 +425,12 @@ export default class PhotoParticles {
     gl.uniform1f(this.u.uAlive, (this.opts.alive ?? 1.0) * (0.7 + 0.5 * (this.act || 0)));
     gl.uniform1f(this.u.uPtPx, this.ptPx);
     gl.uniform1f(this.u.uRelief, this.RELIEF * u);
+    gl.uniform1f(this.u.uThick, this.THICK * u);
     gl.uniform1i(this.u.uGrid, this.GRID);
     gl.uniform1f(this.u.uDim, this.DIM);
+    /* 提亮/提饱和只在**化开之后**给满 —— 出场那一秒还要和真壁纸对得上。 */
+    gl.uniform1f(this.u.uBoost, 1.0 + (this.BOOST - 1.0) * u);
+    gl.uniform1f(this.u.uSat, 1.0 + (this.SAT - 1.0) * u);
     gl.uniform1f(this.u.uSpread, this.SPREAD);
     gl.uniform1f(this.u.uCloudCut, 1.0 - this.CLOUD);
     gl.bindVertexArray(this.vao);
@@ -421,6 +447,29 @@ export default class PhotoParticles {
     const burst = Math.max(0, 1 - Math.abs(u - 0.45) / 0.45);
     this._pass(1.0, this.GLINT * u * (1 + 1.7 * burst), false, true);
     gl.disable(gl.BLEND);
+    this._healthCheck();
+  }
+
+  /** 画完之后看一眼**真的画上去了没有**,没有就把这一层拆掉。
+   *
+   *  ⚠ 这条不是防御性编程的过度设计,是看着发生过的:GPU 进程可以进入一种
+   *  "还活着但什么都不画"的状态 —— `gl.isContextLost()` 返回 false、
+   *  `gl.getError()` 是 0、drawArrays 不报错,但把画布清成纯红再读回来是全 0。
+   *  (2026-09-29 在预览面板里连着遇到,换新标签页也一样。)
+   *  这时 `webglcontextlost` **不会**触发,所以那条处理接不住。
+   *  而这块画布是 alpha:false 的:画不出来 = 一块纯黑盖住整张壁纸。
+   *  所以画完之后读一个像素:alpha 必须是 255(清屏色就是不透明黑);
+   *  读到 0 说明这个上下文是死的,拆掉,让底下那张真壁纸露出来。
+   *  只在开头查几次 —— 每帧都读一次像素会强制同步 GPU,那是实打实的掉帧。 */
+  _healthCheck() {
+    if (this._checked > 3) return;
+    this._checked = (this._checked || 0) + 1;
+    const gl = this.gl;
+    const px = new Uint8Array(4);
+    try { gl.readPixels(1, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); } catch (e) { return; }
+    if (px[3] !== 0) return;               // 正常:不透明
+    try { console.warn('[photo-particles] 这个 WebGL 上下文画不出东西,拆掉这一层'); } catch (e) {}
+    this.dispose();
   }
 
   start(photo) {

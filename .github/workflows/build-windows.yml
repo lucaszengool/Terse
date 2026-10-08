@@ -2496,7 +2496,22 @@ jobs:
           # Windows Terminal here, and the text then belongs to a window owned by
           # a different process — the first two attempts at this check were
           # reading someone else's window and reporting the feature broken.
-          $np = Start-Process conhost -PassThru -ArgumentList "powershell", "-NoProfile", "-NoExit", "-Command", "Get-Content '$prompt'"
+          # 300 lines of output FIRST, so the prompt sits at the bottom of a long
+          # buffer the way it does in a real session. Reading the buffer from the
+          # top (DocumentRange) finds the first screenful and never the prompt;
+          # only what is on screen does.
+          $show = "1..300 | ForEach-Object { 'build output line ' + `$_ }; Get-Content '$prompt'"
+          $np = Start-Process conhost -PassThru -ArgumentList "powershell", "-NoProfile", "-NoExit", "-Command", $show
+          # The same prompt in Windows Terminal — the default terminal on
+          # Windows 11, and a different text provider from conhost's.
+          $wtProc = $null
+          $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+          if ($wt) {
+            # wt.exe reads ";" as its own subcommand separator; "\;" passes it through.
+            $wtProc = Start-Process $wt.Source -PassThru -ArgumentList "-w", "new", "powershell", "-NoProfile", "-NoExit", "-Command", ($show -replace ';', '\;')
+          } else {
+            Write-Host "  (no wt.exe on this runner — Windows Terminal not exercised)"
+          }
           Start-Sleep -Seconds 8
 
           $t0 = Get-Date
@@ -2524,6 +2539,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           if (Test-Path $al) { Copy-Item $al artifacts/approvals.log }
           $at = if (Test-Path $al) { Get-Content $al -Raw } else { "" }
+          foreach ($hostName in @("powershell", "conhost", "WindowsTerminal")) {
+            if ($at -match "\[$hostName pid=\d+\] >>> MATCHED") { Write-Host "  matched in: $hostName" }
+          }
           if ($at -match 'MATCHED') {
             Write-Host "APPROVALS OK: the prompt on screen was read through UI Automation and recognised"
           } elseif ($at -match 'textlen=([1-9]\d+)') {
@@ -2556,6 +2574,7 @@ jobs:
             Write-Warning "DESK: no cursor layer window (Pro gate or autostart) — not failing the build on it"
           }
           $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          if ($wtProc) { $wtProc | Stop-Process -Force -ErrorAction SilentlyContinue }
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
           Remove-Item (Join-Path $dir "desk.json") -ErrorAction SilentlyContinue
           if ($bad) { throw "a ported feature did not run" }
@@ -2706,6 +2725,134 @@ jobs:
             throw "a wallpaper engine does not draw on Windows"
           }
           Write-Host "ENGINES OK: every wallpaper engine draws and animates on Windows"
+
+
+      # 音乐模式, end to end, on a real media session.
+      #
+      # A track is published to Windows the way a player does it (see
+      # windows-app/ci/media-host.ps1), music mode is switched on, and the proof
+      # is on disk: a cold lyrics cache that Terse filled with synced lines for
+      # that exact track. That one file needs every link — the WinRT read, the
+      # 3 s config poll that starts the reader, the LRCLIB lookup, curl without a
+      # console window — so a pass cannot be partial.
+      #
+      # 「歌词浮在所有窗口之上」 is on as well, with an OPAQUE engine (topography),
+      # which is the dangerous case: the window is lifted above everything, and
+      # the page must hide the engine so only the lyrics go up. If it does not,
+      # the screen becomes a sheet of terrain. A maximised Notepad sits under it
+      # and has to stay readable, and the lifted window has to pass clicks.
+      - name: 音乐模式 must recognise a track and fetch its lyrics
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Drawing,System.Windows.Forms
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class Mu{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern IntPtr GetWindowLongPtrW(IntPtr h,int i);[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int c);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $ci = Join-Path $env:GITHUB_WORKSPACE "windows-app\ci"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          $bad = @()
+
+          $hostLog = Join-Path $env:RUNNER_TEMP "media-host.log"
+          $mh = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $ci "media-host.ps1"), $hostLog
+          Start-Sleep -Seconds 8
+          $sys = (& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ci "media-observe.ps1")) -join " "
+          Write-Host "  $sys"
+          if (Test-Path $hostLog) { Get-Content $hostLog -TotalCount 3 | ForEach-Object { Write-Host "  $_" } }
+          $sysSees = $sys -match 'title=Yellow'
+
+          # Cold cache, so a pass is a real fetch and not yesterday's file.
+          Remove-Item (Join-Path $dir "lyrics") -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item (Join-Path $dir "wallpaper.log") -ErrorAction SilentlyContinue
+          '{"enabled":true,"engine":"topography","overlay":false,"music":true,"musicTop":true,"theme":"neon","quality":56,"angle":55,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 40
+
+          # ── 1. the track was recognised and its lyrics fetched ──
+          $srcs = @(Get-ChildItem (Join-Path $dir "lyrics") -Filter *.src -ErrorAction SilentlyContinue)
+          $got = $null
+          foreach ($s in $srcs) {
+            $from = (Get-Content $s.FullName -Raw).Trim()
+            $lrc = [IO.Path]::ChangeExtension($s.FullName, ".lrc")
+            $n = if (Test-Path $lrc) { @(Select-String -Path $lrc -Pattern '^\[\d+:\d+').Count } else { 0 }
+            Write-Host ("  cache: {0} source={1} timed_lines={2}" -f $s.Name, $(if ($from) { $from } else { "(none)" }), $n)
+            if ($n -ge 10) { $got = @{ From = $from; N = $n }; Copy-Item $lrc artifacts/music-lyrics.lrc }
+          }
+          if ($got) {
+            Write-Host ("MUSIC OK: Coldplay — Yellow recognised through the system media controls, {0} synced lines from {1}" -f $got.N, $got.From)
+          } elseif (-not $sysSees) {
+            Write-Warning "MUSIC SKIPPED: the runner published no media session (no sound device?) — nothing for Terse to find, so this is not a Terse result"
+          } elseif ($srcs.Count -gt 0) {
+            $bad += "the track was recognised but no usable synced lyrics were stored (LRCLIB reachable from the runner?)"
+          } else {
+            $bad += "Windows reported the track but Terse never looked it up — the music reader did not run"
+          }
+
+          # ── 2. lyrics-on-top lifted the window, and it still passes clicks ──
+          $wl = Join-Path $dir "wallpaper.log"
+          $lift = if (Test-Path $wl) { @(Select-String -Path $wl -Pattern 'overlay_allowed' | Select-Object -Last 1) } else { @() }
+          if ($lift.Count -gt 0) { Write-Host "  $($lift[0].Line)" }
+          $script:wp = [IntPtr]::Zero
+          $script:scan = [Mu+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][Mu]::GetWindowTextW($h, $sb, 256)
+            if ($sb.ToString() -eq 'Terse Wallpaper') { $script:wp = $h; return $false }
+            [void][Mu]::EnumChildWindows($h, $script:scan, [IntPtr]::Zero)
+            return $true }
+          [void][Mu]::EnumWindows($script:scan, [IntPtr]::Zero)
+          if ($script:wp -eq [IntPtr]::Zero) {
+            $bad += "no wallpaper window"
+          } else {
+            $ex = [Mu]::GetWindowLongPtrW($script:wp, -20)
+            $top = ($ex -band 0x8) -ne 0           # WS_EX_TOPMOST
+            $through = ($ex -band 0x20) -ne 0      # WS_EX_TRANSPARENT
+            Write-Host "  wallpaper window: topmost=$top click_through=$through"
+            if ($lift.Count -gt 0 -and $lift[0].Line -match 'music_top=true' -and $lift[0].Line -match '-> true') {
+              if (-not $top) { $bad += "lyrics-on-top was allowed but the wallpaper window was not lifted" }
+            } else {
+              $bad += "lyrics-on-top did not lift the window (overlay_allowed never said music_top=true -> true)"
+            }
+            if ($top -and -not $through) { $bad += "the lifted wallpaper takes clicks — the desktop would stop responding" }
+          }
+
+          # ── 3. the opaque engine stayed behind: Notepad under it is readable ──
+          $np = Start-Process notepad -PassThru
+          Start-Sleep -Seconds 3
+          if ($np.MainWindowHandle -ne [IntPtr]::Zero) {
+            [void][Mu]::ShowWindow($np.MainWindowHandle, 3)
+            [void][Mu]::SetForegroundWindow($np.MainWindowHandle)
+            Start-Sleep -Seconds 5
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size); $g.Dispose()
+            $bmp.Save("artifacts/music-top-over-notepad.png")
+            $white = 0; $all = 0
+            for ($y = 0; $y -lt $b.Height; $y += 12) {
+              for ($x = 0; $x -lt $b.Width; $x += 12) {
+                $p = $bmp.GetPixel($x, $y); $all++
+                if ($p.R -gt 225 -and $p.G -gt 225 -and $p.B -gt 225) { $white++ }
+              }
+            }
+            $bmp.Dispose()
+            $pct = [math]::Round(100.0 * $white / [math]::Max(1, $all), 1)
+            Write-Host "  notepad under the lifted lyrics: $pct% of the screen still near-white"
+            if ($pct -lt 30) { $bad += "the screen was covered ($pct% white) — the opaque engine went up with the lyrics" }
+          } else {
+            Write-Warning "  notepad did not open — skipping the see-through half"
+          }
+          if (Test-Path $wl) { Copy-Item $wl artifacts/wallpaper-music.log }
+          if (Test-Path $hostLog) { Copy-Item $hostLog artifacts/media-host.log }
+
+          $np | Stop-Process -Force -ErrorAction SilentlyContinue
+          $mh | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          '{"enabled":false}' | Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          if ($bad.Count -gt 0) {
+            foreach ($x in $bad) { Write-Warning "MUSIC FAIL: $x" }
+            throw "音乐模式 does not work on Windows"
+          }
 
 
       - name: Upload the evidence

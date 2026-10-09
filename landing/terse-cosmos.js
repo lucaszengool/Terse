@@ -82,6 +82,14 @@
     return a;
   }
   LINES = pageWords(PAGE.lines) || LINES;
+  /* The view is locked by default: the film's camera choreography (swings,
+     sweeps, push-ins, "drags") and the pointer parallax made visitors dizzy
+     behind a page they are trying to read. One still pose — the film's own
+     rest angle, which keeps the depth visible — and a steady swell in place of
+     the pulses that rode on the camera moves. A page can opt back into the
+     film with window.TERSE_COSMOS = { lockView: false }. */
+  var LOCK = PAGE.lockView !== false;
+  var LOCK_YAW = -16, LOCK_PITCH = 6, LOCK_ZOOM = 0.88, LOCK_BOOST = 0.3;
   CYCLE = pageWords(PAGE.cycle) || CYCLE;
 
   /* ── tokenbeat.ts: the impact envelope ──────────────────────────────────── */
@@ -1287,7 +1295,8 @@
     var cam = camAt(gf, this.cam), p = this.par;
     p.x += (p.tx - p.x) * 0.06; p.y += (p.ty - p.y) * 0.06;
     var yaw = cam.yaw + p.x * 10, pitch = cam.pitch - p.y * 6, zoom = cam.zoom;
-    var boost = boostAt(gf);
+    if (LOCK) { yaw = LOCK_YAW; pitch = LOCK_PITCH; zoom = LOCK_ZOOM; }
+    var boost = LOCK ? LOCK_BOOST : boostAt(gf);
     var pAlpha = Math.min(1, PULSE_ALPHA * (1 + 0.10 * boost)), pScale = PULSE_POINT * (1 + 0.55 * boost);
     var ps = this.pose; ps.yaw = yaw; ps.pitch = pitch; ps.zoom = zoom; ps.boost = boost;
     var H = this._handFrame(lf, yaw, pitch, zoom);
@@ -1608,7 +1617,7 @@
     /* The film DRAGS the view; on a page that would fight text selection and
        links, so the visitor's pointer adds a gentle parallax on top of the loop
        instead (±10° yaw, ±6° pitch, eased). */
-    window.addEventListener('pointermove', function (ev) {
+    if (!LOCK) window.addEventListener('pointermove', function (ev) {
       c.par.tx = (ev.clientX / (window.innerWidth || 1)) * 2 - 1;
       c.par.ty = (ev.clientY / (window.innerHeight || 1)) * 2 - 1;
     }, { passive: true });

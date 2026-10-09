@@ -23,6 +23,7 @@
 - [Home](https://www.terseai.org/): Put everything on your wallpaper — overview of the wallpaper, music mode, agents and token savings
 - [Live particle wallpaper](https://www.terseai.org/wallpaper): The wallpaper engines, the agent console at the screen edge, Code Town and the eight Pro styles
 - [Music mode](https://www.terseai.org/music): Synced lyrics of whatever is playing, drawn as particles on the desktop — sources, privacy, free vs Pro, FAQ
+- [Lyrics on your Mac desktop, 6 ways compared](https://www.terseai.org/lyrics-on-desktop-mac): Apple Music, Spotify, LyricsX, Lyric Fever, DesktopLyrics and Terse — where the lyrics appear, which players work, what is free
 - [Agent cowork & Code Town](https://www.terseai.org/agents): Rooms where friends' coding agents work together, end-to-end encrypted; the plaza and Code Town
 - [Token savings](https://www.terseai.org/tokens): The on-device prompt-compression pipeline, benchmarks and API
 - [Pricing & FAQ](https://www.terseai.org/pricing-faq): Plans and common questions

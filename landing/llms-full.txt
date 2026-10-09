@@ -239,6 +239,7 @@ want the number, use ccusage.
 - Website: https://www.terseai.org
 - Live particle wallpaper: https://www.terseai.org/wallpaper
 - Music mode (lyrics on the desktop): https://www.terseai.org/music
+- Lyrics on your Mac desktop, 6 ways compared: https://www.terseai.org/lyrics-on-desktop-mac
 - Short LLM index: https://www.terseai.org/llms.txt
 - Cost trackers compared: https://www.terseai.org/claude-code-cost-tracker
 - Budget circuit breaker: https://www.terseai.org/agent-budget-circuit-breaker

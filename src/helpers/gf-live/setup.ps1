@@ -158,6 +158,33 @@ function Extract-Zip([string]$zip, [string]$to) {
     if ($LASTEXITCODE -ne 0) { Expand-Archive -Force -Path $zip -DestinationPath $to }
 }
 
+# ── her clips in H.264 for Windows ──
+# The clips the wallpaper page plays are HEVC. Windows' WebView2 decodes HEVC only with a hardware decoder AND
+# Microsoft's HEVC Video Extensions installed — not something every PC has; without them she would never appear. H.264
+# plays everywhere (software decode included), so each HEVC clip is re-encoded here with the ffmpeg setup installs:
+# every frame kept (her gesture timings, blink and teeth data are frame-indexed), a keyframe every 8 frames (the idle's
+# random-walk seeks need that), BT.709 tags kept, frame count checked before the original is replaced.
+function Mia-H264([string]$dir) {
+    $ff = P 'bin\ffmpeg\ffmpeg.exe'; $fp = P 'bin\ffmpeg\ffprobe.exe'
+    if (-not (Test-Path $ff) -or -not (Test-Path $dir)) { return $false }
+    $all = $true
+    foreach ($c in @(Get-ChildItem -Path $dir -Filter *.mp4 -File)) {
+        $codec = (& $fp -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 $c.FullName) -join ''
+        if ($codec.Trim() -ne 'hevc') { continue }
+        $n0 = (& $fp -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 $c.FullName) -join ''
+        $w = (& $fp -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 $c.FullName) -join ''
+        $level = if ([int]$w.Trim() -gt 1920) { '5.1' } else { '4.1' }
+        $tmp = "$($c.FullName).h264.mp4"
+        & $ff -nostdin -v error -y -i $c.FullName -an -fps_mode passthrough -c:v libx264 -preset faster -crf 18 -profile:v high `
+            -level $level -pix_fmt yuv420p -g 8 -keyint_min 8 -sc_threshold 0 -colorspace bt709 -color_primaries bt709 `
+            -color_trc bt709 -movflags +faststart $tmp 2>&1 | Out-Null
+        $n1 = if (Test-Path $tmp) { (& $fp -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 $tmp) -join '' } else { '' }
+        if ($LASTEXITCODE -eq 0 -and $n1.Trim() -ne '' -and $n1.Trim() -eq $n0.Trim()) { Move-Item -Force $tmp $c.FullName }
+        else { Remove-Item -Force $tmp -ErrorAction SilentlyContinue; $all = $false }
+    }
+    return $all
+}
+
 # ── 0. her clips (same packs as the Mac) ──
 function Mia-Step {
     if (-not (Test-Path (Join-Path $MIA_DIR '.pack1'))) {
@@ -193,6 +220,12 @@ function Mia-Step {
 }
 if ($env:GF_ONLY -eq 'mia') {
     try { Mia-Step } catch { Fail $_.Exception.Message }
+    if (Test-Path (P 'bin\ffmpeg\ffmpeg.exe')) {
+        Say 'S optimize'
+        if (-not (Mia-H264 $MIA_DIR)) { Fail 'her clips (H.264)' }
+        if (Test-Path (Join-Path $MIA_DIR '4k')) { if (-not (Mia-H264 (Join-Path $MIA_DIR '4k'))) { Fail 'her 4K clips (H.264)' } }
+        New-Item -ItemType File -Force -Path (Join-Path $MIA_DIR '.h264') | Out-Null
+    }
     Say "P $TOTAL $TOTAL"; Say 'OK'; exit 0
 }
 # in the full setup a failure here must not stop the models: step 11 names it and Terse's retry fetches just the clips
@@ -281,6 +314,15 @@ if (-not (Test-Path (P 'bin\ffmpeg\ffmpeg.exe'))) {
     Move-Item -Force $ff.FullName (P 'bin\ffmpeg\ffmpeg.exe')
     Remove-Item -Recurse -Force (P 'tmp\ffmpeg'), $z -ErrorAction SilentlyContinue
 }
+# her clips → H.264 (see Mia-H264), before step 10 builds the engine's caches from them
+if ((Test-Path (Join-Path $MIA_DIR '.pack1')) -and -not (Test-Path (Join-Path $MIA_DIR '.h264'))) {
+    Say 'S optimize'
+    $ok = Mia-H264 $MIA_DIR
+    if ($ok -and (Test-Path (Join-Path $MIA_DIR '4k'))) { $ok = Mia-H264 (Join-Path $MIA_DIR '4k') }
+    if ($ok) { New-Item -ItemType File -Force -Path (Join-Path $MIA_DIR '.h264') | Out-Null }
+    else { Fail 'her clips (H.264)' }
+}
+
 # ── 6. brain model: Hunyuan-1.8B-Instruct Q4_K_M (the Mac's brain) ──
 if (-not (Test-Path (P 'models\.brain-hunyuan-1.8b'))) {
     Say 'S download'
@@ -367,6 +409,7 @@ foreach ($f in @('models\brain.gguf', 'models\.brain-hunyuan-1.8b', 'models\vits
                  'models\duix\pfpld_robust_sim_bs1_8003.onnx', 'models\duix\dinet_v1_meta.npz', 'models\duix\mel_16k_1024_80.npy')) {
     if (-not (Test-Path (P $f))) { Remove-Item -Force (P 'models\duix\.ok') -ErrorAction SilentlyContinue; Fail 'missing after setup' }
 }
+if (-not (Test-Path (Join-Path $MIA_DIR '.h264'))) { Fail 'her clips (H.264)' }
 foreach ($f in @('idle_calm.mp4', 'my_avatar.mp4', 'manifest.json')) {
     if (-not (Test-Path (Join-Path $MIA_DIR $f))) { Remove-Item -Force (Join-Path $MIA_DIR '.pack1') -ErrorAction SilentlyContinue; Fail 'her clips missing' }
 }

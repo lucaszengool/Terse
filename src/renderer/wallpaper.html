@@ -522,7 +522,9 @@
          没配好的时候(一键配置还在跑)根本不显示,不再退回经典模式(经典模式说话用的是 macOS 自带声音);
          配好以后她也要等引擎全部预热完(startLive 里等 /health ready)才出现。用户明确关掉实时(live === false)才是经典模式;
          Windows 没有实时引擎,照旧。 */
-      const macLive = /Macintosh|Mac OS X/.test(navigator.userAgent || '');
+      // 有实时引擎的平台:macOS,以及 10-24 起的 Windows(setup.ps1 一键配置 + ONNX Runtime 上的 DUIX)——
+      // 之前 Windows 没有引擎,这里只认 Mac,Windows 配好了也会一直停在经典模式
+      const macLive = /Macintosh|Mac OS X|Windows/.test(navigator.userAgent || '');
       const liveFlag = g.live === true || (macLive && g.live !== false);
       let liveReady = false, silent = false;
       if (want && liveFlag) {
@@ -698,6 +700,11 @@
       }
       if (wp && wp.setOnlyDirected) wp.setOnlyDirected(!!(want && gf));
       gfShows(!!(want && gf && g.characterFull === true));
+      // what was built, in the page's own words (Windows: wallpaper.log via diag_note; macOS: no diag_note, a no-op)
+      try { if (window.terse && window.terse.diagNote) window.terse.diagNote('wallpaper',
+        'girlfriend layer: ' + (want && gf ? 'shown' : 'off') + '  clips=' + clipUrls.length +
+        '  mode=' + (calmLive ? (silent ? 'calm-silent' : 'calm-live') : live ? 'live' : 'classic') +
+        '  full=' + (g.characterFull === true)).catch(function(){}); } catch (e) {}
       attachGfHooks();
     }
 

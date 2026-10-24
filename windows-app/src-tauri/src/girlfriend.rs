@@ -162,11 +162,17 @@ pub async fn gf_pick_file(kind: String, app: AppHandle) -> Result<Option<String>
         _       => b.add_filter("Video", &["mp4", "mov", "webm", "m4v"]),
     };
     b.pick_file(move |path| {
-        let s = path.and_then(|p| p.into_path().ok()).map(|pb| pb.display().to_string());
+        let s = path.and_then(|p| p.into_path().ok()).map(|pb| gf_slash(&pb));
         let _ = tx.send(s);
     });
     rx.recv().map_err(|e| format!("pick failed: {e}"))
 }
+/// A path as the pages handle paths: with `/`. The wallpaper takes file names with `split('/')` and swaps in the 4K
+/// twin with a `/` regex — written against macOS paths — so a Windows `C:\...\idle_calm.mp4` came back whole: her
+/// gestures never matched the calm base (`livePath.base === calmName`) and the 4K path was garbage. Windows, Python and
+/// ffmpeg all take `C:/...`, so the paths the pages get use forward slashes.
+fn gf_slash(p: &std::path::Path) -> String { p.display().to_string().replace('\\', "/") }
+
 /// Deprecated alias so UIs built against the earlier API still work.
 #[tauri::command]
 pub async fn gf_pick_video(app: AppHandle) -> Result<Option<String>, String> {
@@ -206,7 +212,7 @@ pub fn gf_presets() -> Vec<serde_json::Value> {
                     let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
                     if !is_media(&ext) { return None; }
                     let size = e.metadata().map(|m| m.len()).unwrap_or(0);
-                    Some((p.display().to_string(), size))
+                    Some((gf_slash(&p), size))
                 })
                 .collect::<Vec<_>>())
             .unwrap_or_default()
@@ -220,7 +226,7 @@ pub fn gf_presets() -> Vec<serde_json::Value> {
         let mut clips = media_of(&cdir);
         // 按文件名自然排序 —— clip_1, clip_2, …(字典序即可,我们自己命名的)
         clips.sort_by(|a, b| a.0.cmp(&b.0));
-        let poster = dirs.iter().map(|d| d.join("poster.jpg")).find(|p| p.exists()).map(|p| p.display().to_string());
+        let poster = dirs.iter().map(|d| d.join("poster.jpg")).find(|p| p.exists()).map(|p| gf_slash(&p));
         /* 文件名前缀 = 动作标签:wave_*.mp4 / point_* / write_* / think_* / nod_* / talk_*。
            其余(clip_*)都是 idle 池。前端收到对应 agent 事件时播那一段真动作,播完淡回 idle。 */
         let tag_of = |p: &str| -> &'static str {
@@ -799,7 +805,7 @@ fn gf_live_missing() -> u64 {
     // setup.ps1's markers, weighted as it weighs them. No wav2lip and no qwentts on Windows; DUIX is duix-win-1.tar
     // (both models, split ONNX + the small real-time one); ffmpeg is installed (macOS has its own).
     let h = gf_live_home();
-    let parts: [(&str, u64); 12] = [
+    let parts: [(&str, u64); 13] = [
         ("bin/uv.exe", 15_264_056),
         ("venv/.ok", 130_000_000),
         ("venv/.ok2", 80_000_000),
@@ -812,6 +818,8 @@ fn gf_live_missing() -> u64 {
         ("models/asr/paraformer/sherpa-onnx-paraformer-zh-2023-09-14/model.int8.onnx", 234_051_698),
         ("models/duix/.ok", 604_664_320),
         ("presets/char_mia/.pack1", 44_037_120),
+        // her clips re-encoded to H.264 (WebView2 plays HEVC only with Microsoft's extension; setup.ps1 Mia-H264)
+        ("presets/char_mia/.h264", 30_000_000),
     ];
     parts.iter().filter(|(p, _)| !h.join(p).exists()).map(|(_, b)| *b).sum()
 }

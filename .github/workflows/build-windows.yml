@@ -2855,6 +2855,92 @@ jobs:
           }
 
 
+      # AI 女友 on the Windows wallpaper — the 启用 (enable) mode, which needs no engine: her clips from the one-click
+      # setup, the config the settings page writes, Terse launched. The page must say it built her layer (calm base,
+      # silent until the engine is set up), Rust must refuse to lift the wallpaper while she is on (a full-frame video
+      # above every window would cover the screen), and the picture is kept as evidence.
+      - name: AI 女友 appears on the Windows wallpaper
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class G{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumChildWindows(IntPtr p,Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr h,IntPtr dc,uint f);public struct R{public int L,T,Rr,B;}}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $gf = Join-Path $dir "gf-live"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          # the one-click setup, as Terse runs it — her clips come first; without the face model it stops later, which
+          # this check does not need
+          $p = Start-Process powershell -PassThru -NoNewWindow -RedirectStandardOutput gf-setup.out -RedirectStandardError gf-setup.err `
+               -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "$env:GITHUB_WORKSPACE\src\helpers\gf-live\setup.ps1"
+          $p.WaitForExit()
+          Get-Content gf-setup.out | Where-Object { $_ -notmatch '^P ' } | Select-Object -Last 6 | ForEach-Object { Write-Host "  setup: $_" }
+          $mia = Join-Path $gf "presets\char_mia"
+          if (-not (Test-Path (Join-Path $mia ".pack1"))) { throw "GIRLFRIEND FAIL: her clips were not installed" }
+          Write-Host ("  clips in H.264: {0}" -f (Test-Path (Join-Path $mia ".h264")))
+          # the config the settings page writes for her (app.js presetPatch over girlfriend.rs gf_presets)
+          $man = Get-Content (Join-Path $mia "manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+          $files = Get-ChildItem $mia -Filter *.mp4 -File | Sort-Object FullName
+          $tagOf = { param($stem)
+            $s = $stem.ToLower()
+            if ($s.StartsWith('idle_live')) { return 'live' }; if ($s.StartsWith('idle_calm')) { return 'calm' }
+            if ($s.StartsWith('my_avatar')) { return 'avatar' }; if ($s.StartsWith('bridge')) { return 'bridge' }
+            foreach ($t in 'wave','point','write','think','nod','talk','listen','life') { if ($s.StartsWith($t)) { return $t } }
+            return 'idle' }
+          $paths = @(); $tags = @(); $metas = @()
+          foreach ($f in $files) {
+            $paths += ($f.FullName -replace '\\', '/')
+            $tags += (& $tagOf $f.BaseName)
+            $m = $null; if ($man.clips -and $man.clips.PSObject.Properties[$f.Name]) { $m = $man.clips.($f.Name) }
+            if ($m -and $m.PSObject.Properties['hi'] -and -not (Test-Path (Join-Path $mia $m.hi))) { $m.PSObject.Properties.Remove('hi') }
+            $metas += ,$m
+          }
+          $girl = [ordered]@{
+            on = $true; live = $true; character = 'char_mia'
+            characterClips = $paths; characterClipTags = $tags; characterClipMeta = $metas
+            characterAlpha = [bool]$man.alpha; characterSeamless = [bool]$man.seamless; characterFull = ($man.frame -eq 'full')
+            characterFit = "$($man.fit)"; characterFace = $man.face; characterKeepU = [double]$man.keepU; characterName = $man.name
+            idleSrc = $paths[0]; speakingSrc = $(if ($paths.Count -gt 1) { $paths[1] } else { $paths[0] })
+          }
+          # overlay asked for on purpose: with her on, Rust must refuse it
+          $cfg = [ordered]@{ enabled = $true; engine = 'mineradio'; theme = 'neon'; quality = 44; angle = 42; intensity = 1.0; overlay = $true; girlfriend = $girl }
+          [IO.File]::WriteAllText((Join-Path $dir "wallpaper.json"), ($cfg | ConvertTo-Json -Depth 12))
+          Write-Host ("  config: {0} clips, tags {1}" -f $paths.Count, (($tags | Group-Object | ForEach-Object { "$($_.Name)×$($_.Count)" }) -join ' '))
+          New-Item -ItemType File -Force -Path (Join-Path $gf "setup.paused") | Out-Null     # no background setup during the check
+          $wl = Join-Path $dir "wallpaper.log"; Remove-Item $wl -ErrorAction SilentlyContinue
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 60
+          $log = if (Test-Path $wl) { Get-Content $wl -Raw } else { "" }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $wl) { Copy-Item $wl artifacts/wallpaper-girlfriend.log }
+          $layer = ([regex]::Matches($log, 'girlfriend layer: [^\r\n]*') | Select-Object -Last 1).Value
+          $lift = ([regex]::Matches($log, 'overlay_allowed -> [^\r\n]*') | Select-Object -Last 1).Value
+          Write-Host "  page:  $layer"; Write-Host "  rust:  $lift"
+          # the wallpaper window, photographed
+          $script:wp = [IntPtr]::Zero
+          $script:scan = [G+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][G]::GetWindowTextW($h, $sb, 256)
+            if ($sb.ToString() -eq 'Terse Wallpaper') { $script:wp = $h; return $false }
+            [void][G]::EnumChildWindows($h, $script:scan, [IntPtr]::Zero)
+            return $true }
+          [void][G]::EnumWindows($script:scan, [IntPtr]::Zero)
+          if ($script:wp -ne [IntPtr]::Zero) {
+            $r = New-Object G+R; [void][G]::GetWindowRect($script:wp, [ref]$r)
+            $bmp = New-Object System.Drawing.Bitmap ($r.Rr - $r.L), ($r.B - $r.T)
+            $g = [System.Drawing.Graphics]::FromImage($bmp); $hdc = $g.GetHdc(); [void][G]::PrintWindow($script:wp, $hdc, 2); $g.ReleaseHdc($hdc); $g.Dispose()
+            $bmp.Save("artifacts/girlfriend-wallpaper.png"); $bmp.Dispose()
+            Write-Host "  saved artifacts/girlfriend-wallpaper.png"
+          }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          '{"enabled":false}' | Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          $bad = @()
+          if ($layer -notmatch 'shown' -or $layer -notmatch 'clips=([1-9]\d*)') { $bad += "the page did not build her layer ($layer)" }
+          if ($layer -notmatch 'mode=calm-silent') { $bad += "not the enable mode (calm base, silent): $layer" }
+          if ($lift -notmatch 'gf_full=true' -or $lift -notmatch '-> false') { $bad += "Rust did not keep the wallpaper at desktop level while she is on ($lift)" }
+          if ($bad.Count -gt 0) { foreach ($x in $bad) { Write-Warning "GIRLFRIEND FAIL: $x" }; throw "AI 女友 does not appear on Windows" }
+          Write-Host "GIRLFRIEND OK: her layer is built on the Windows wallpaper (calm, silent until set up) and keeps the wallpaper at desktop level"
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

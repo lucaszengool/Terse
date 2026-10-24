@@ -19,6 +19,10 @@ mod particle_mode;
 mod session_dock;
 mod splash;
 mod music;
+/// 把全局鼠标位置推给壁纸窗口 —— 它是点击穿透的、收不到 mousemove,所以这一刀必须在 Rust 这边。
+mod wallpaper_cursor;
+/// 壁纸里的 AI 女友:TTS(macOS `say`)+ 和 agent 的桥。前端画,这里出声。
+mod girlfriend;
 mod dock_hook;
 /// 房间里的 agent 通道:把一段会话接进 Terse 房间(本机 MCP + dock_hook 的 peer 队列)
 mod room_link;
@@ -3180,7 +3184,21 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
         && cfg.get("musicTop").and_then(|v| v.as_bool()).unwrap_or(false)
         && cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
     let engine_ok = on && matches!(engine, "mineradio" | "cinematic" | "orbit");
-    (engine_ok || music_top) && license::License::load().is_pro()
+    /* 整幅原片的 AI 女友开着时,她就是壁纸本身(一整块不透明画面),只能活在桌面层。
+       抬上去只有两种结果:页面把她藏掉(用户 10-19:"开启了女友但是没显示在壁纸上"),
+       或者页面和窗口层级有一瞬间对不上,她整块盖住所有窗口和图标("占据了整个屏幕")。
+       所以和不透明引擎一样,她开着就一票否决:窗口留在桌面层,粒子字和歌词照常画在壁纸里。 */
+    let gf = cfg.get("girlfriend");
+    /* …但只在她真的能出现的时候(10-22,用户:"没开启 AI 女友的时候壁纸里的置顶功能就失效了"):开着、但她的片子不在磁盘上
+       (一键配置还没把片包下载下来、或者存的还是旧版 app 里的路径)→ 壁纸里根本没有她,置顶照常。页面 overlayOK 同一条规矩。 */
+    let gf_clips = gf.and_then(|g| g.get("characterClips")).and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|p| p.as_str()).any(|p| std::path::Path::new(p).exists()))
+        .unwrap_or(false);
+    let gf_full = cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true)
+        && gf.and_then(|g| g.get("on")).and_then(|v| v.as_bool()).unwrap_or(false)
+        && gf.and_then(|g| g.get("characterFull")).and_then(|v| v.as_bool()).unwrap_or(false)
+        && gf_clips;
+    (engine_ok || music_top) && !gf_full && license::License::load().is_pro()
 }
 
 /// The effective overlay state — the single answer both halves must agree on.
@@ -3610,6 +3628,32 @@ fn pet_chat_show(app: AppHandle, focus: Option<bool>) -> Result<(), String> {
         w.show().map_err(|e| e.to_string())?;
         if focus.unwrap_or(true) { w.set_focus().map_err(|e| e.to_string())?; }
     }
+    Ok(())
+}
+
+/// 和 AI 女友聊天的独立窗口(用户 10-19:"把聊天窗放到另一个窗口,专门用来打字对话")。第一次打开时才建。
+#[tauri::command]
+fn gf_chat_open(app: AppHandle) -> Result<(), String> {
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    if let Some(w) = app.get_webview_window("gfchat") {
+        w.show().map_err(|e| e.to_string())?;
+        let _ = w.unminimize();
+        w.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    let w = WebviewWindowBuilder::new(&app, "gfchat", WebviewUrl::App("gf-chat.html".into()))
+        .title("和她聊天")
+        .inner_size(420.0, 640.0)
+        .min_inner_size(340.0, 420.0)
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+        .transparent(true)
+        .resizable(true)
+        .focused(true)
+        .accept_first_mouse(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let _ = w.set_focus();
     Ok(())
 }
 
@@ -5813,7 +5857,7 @@ pub fn run() {
                     window.app_handle().exit(0);
                 }
             }
-            if window.label() == "room" || window.label() == "petchat" {
+            if window.label() == "room" || window.label() == "petchat" || window.label() == "gfchat" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
@@ -5892,12 +5936,16 @@ pub fn run() {
             splash::start(app.handle().clone());
             // 音乐模式(默认关):认歌 + 取同步歌词,推给壁纸聚成粒子字
             music::start(app.handle().clone());
+            // 鼠标 hover 水波(默认开):壁纸是点击穿透的,只能从 Rust 这边轮询全局光标
+            wallpaper_cursor::start(app.handle().clone());
             dock_hook::start(app.handle().clone());
             room_link::start(app.handle().clone());
             // 手势控制(Pro):开着、而且还是 Pro,就在后台起摄像头追踪
             { let h = app.handle().clone(); std::thread::spawn(move || hands::autostart(h)); }
             // 粒子光标控制桌面(Pro):开着就把光标层建出来(窗口要在主线程建,这里直接调)
             desk::autostart(app.handle().clone());
+            // AI 女友一键配置做到一半被关掉(退出 / 关机 / 崩溃):开机自动从断点接着下,不用用户再点
+            { let h = app.handle().clone(); std::thread::spawn(move || girlfriend::gf_live_autoresume(h)); }
             // 让**每一块 webview 都接住第一下点击**。
             //
             // AppKit 的默认规矩:点击一个非活动 app 的窗口,那一下只用来激活它,
@@ -7153,6 +7201,31 @@ pub fn run() {
             splash::app_ready,
             music::music_state,
             music::music_probe,
+            girlfriend::gf_voices,
+            girlfriend::gf_speak,
+            girlfriend::gf_stop,
+            girlfriend::gf_pick_video,
+            girlfriend::gf_pick_file,
+            girlfriend::gf_presets,
+            girlfriend::gf_read_asset,
+            girlfriend::gf_is_speaking,
+            girlfriend::gf_chat,
+            girlfriend::gf_agents,
+            girlfriend::gf_listen,
+            girlfriend::gf_live_status,
+            girlfriend::gf_live_setup,
+            girlfriend::gf_live_cancel,
+            girlfriend::gf_live_start,
+            girlfriend::gf_live_stop,
+            girlfriend::gf_brain_restart,
+            girlfriend::gf_live_fetch_4k,
+            girlfriend::gf_duplex_on,
+            girlfriend::gf_voice,
+            girlfriend::gf_live_chat,
+            girlfriend::gf_live_voice,
+            gf_chat_open,
+            girlfriend::gf_live_say,
+            girlfriend::gf_live_interrupt,
             session_dock::sd_sessions,
             session_dock::sd_active,
             session_dock::sd_usage,

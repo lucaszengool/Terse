@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Embedded into the terse-listen binary (build-terse-listen.sh, -sectcreate __TEXT __info_plist).
+     Same reason as terse-hands: a bare command-line tool without usage strings is denied the
+     microphone / speech recognition without a prompt. -->
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.pruneai.app.listen</string>
+  <key>CFBundleName</key>
+  <string>Terse Voice Chat</string>
+  <key>CFBundleDisplayName</key>
+  <string>Terse Voice Chat</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Hold the mic button to talk to your Terse girlfriend. The microphone is on only while you hold it; nothing is recorded or stored.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Terse turns what you say to your girlfriend into text, on this Mac where the language supports it, so your agent can answer.</string>
+</dict>
+</plist>

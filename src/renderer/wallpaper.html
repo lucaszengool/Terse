@@ -13,6 +13,9 @@
     /* 置顶模式:页面自己不能有底色。窗口已经是 non-opaque + clearColor,
        只要这里还留着 #05060a,置顶后就是一块盖住整个屏幕的黑板。 */
     html.overlay, html.overlay body, html.overlay #stage { background: transparent !important; }
+    /* 整幅原片的 AI 女友是不透明的一整块画面:只活在桌面层(图标下面)。壁纸一被抬到图标 / 窗口之上
+       (始终置顶、调整模式、小镇接文件),她和她的背景整块隐藏 —— 绝不盖住桌面文件、图标和别的窗口。 */
+    html.overlay .gf-full { visibility: hidden !important; }
     /* 歌词置顶、但引擎自己不画(光柱地形 / 声之形这种不透明引擎抬到最上面就是糊屏) ——
        这时窗口里只该剩歌词那一层。HUD 面板也要跟着让位,否则一块玻璃卡片
        会浮在所有窗口之上。壁纸粒子层(photo-particles)在置顶状态下 photoLayerOK()
@@ -180,6 +183,8 @@
     let PhotoParticles = null;
     /** 粒子歌词(音乐模式)。和 agent 那条字是两条独立通道,所以它也是单独一层。 */
     let MusicLyrics = null, music = null;
+    /** AI 女友粒子层:住在壁纸里的一个人形粒子团,用户可以在侧栏开关。 */
+    let GirlfriendLayer = null, gf = null;
     async function loadEngines(){
       const one = async (path) => {
         try { return (await import(path)).default; }
@@ -193,6 +198,7 @@
       ChladniWallpaper   = await one('./chladni-wallpaper.js');
       PhotoParticles     = await one('./photo-particles.js');
       MusicLyrics        = await one('./music-lyrics.js');
+      GirlfriendLayer    = await one('./girlfriend-avatar.js');
       reportOverlayState('page engines loaded mineradio=' + !!MineradioWallpaper +
                          ' topography=' + !!TokenWallpaper3D +
                          ' chladni=' + !!ChladniWallpaper +
@@ -302,6 +308,10 @@
       // 引擎换了,这一层要不要画也可能跟着变(光柱地形不透明,垫在它后面没有意义)。
       applyPhotoLayer();
       applyMusicLayer();
+      /* 女友层也在这里建(10-21):以前只有 applyConfig 建她,而开机只 mountEngine、不走 applyConfig —— Rust 只在
+         set_wallpaper_config 时推 wallpaper-config,开机后没人写配置她就一直不出来(“开了女友但壁纸上没有”)。 */
+      applyGirlfriendLayer();
+      attachGfHooks();     // 新引擎不认识女友 —— 把导演 / 手势钩子重新挂上
     }
 
     /* ── 壁纸粒子层 ────────────────────────────────────────────────────────
@@ -317,8 +327,10 @@
            之上就是一块糊死屏幕的黑板。
          · 光柱地形的画布本身不透明,垫在它后面只是白烧一块 GPU。 */
     function photoLayerOK(){
+      const g = cfg.girlfriend || {};
       return cfg.photoParticles === true &&
              cfg.enabled !== false &&
+             !(g.on === true && g.live === true) &&      // 实时数字人是这一层的背景
              !document.documentElement.classList.contains('overlay') &&
              cfg.engine !== 'topography';
     }
@@ -371,6 +383,10 @@
      *  真正的答案由 Rust 用 wallpaper-overlay 事件推过来,见 boot()。 */
     function overlayOK(c){
       const k = c || cfg;
+      /* 整幅原片的 AI 女友开着:她就是壁纸,只活在桌面层 —— 和 Rust 的 overlay_allowed 同一条否决
+         (不然要么她被藏掉看不见,要么她整块盖住所有窗口)。 */
+      const g = k.girlfriend || {};
+      if (k.enabled !== false && g.on === true && g.characterFull === true && gfCanShow !== false) return false;
       /* 「歌词置顶」也要抬窗口,而且不受"只有粒子引擎能置顶"那条限制 ——
          因为不透明的引擎在这种模式下会被**藏起来**(见 applyMusicLayer),
          抬上去的只剩一块透明画布 + 歌词粒子,不可能糊住屏幕。
@@ -444,6 +460,331 @@
       }
     }
 
+    /* ── AI 女友粒子层 ─────────────────────────────────────────────────────
+       cfg.girlfriend = { on, voice, rate, pose, x, y, scale, tint, reachText, speakAgent }
+       on=false 时整层不建,壁纸就只剩原来那些粒子(用户 10-16:"也可以把女友关掉")。 */
+    /* 把女友接到引擎上。引擎会被重建(换引擎 / 换风格),所以每次 mountEngine 之后也要再调一次。
+       · glyphDirector:大字(agent 日志)出现之前先问她 —— 她先做写 / 指的动作,引擎压住字,
+         到她手到位那一刻才在她指的地方聚出来(用户 10-17)
+       · onGlyphShow:只管统计里"agent 上线 / 同伴消息"这两种,挥手 / 打招呼;其余统计字不打扰她 */
+    function attachGfHooks(){
+      if (!wp) return;
+      // 她开着,中间那句大字就只由她来"写":没有开关可以绕开(用户 10-17)
+      // 她的层还在建(或重建)的那几秒也一样:这句不出,不让大字自己冒出来(用户 10-21:"只能被女友手势导出控制出现")
+      const on = !!(cfg.girlfriend && cfg.girlfriend.on && cfg.enabled !== false);
+      wp.glyphDirector = on ? (info) => (gf && gf.directGlyph ? (gf.directGlyph(info) || { drop: true }) : { drop: true }) : null;
+      // 用户 10-19:"一直重复挥手的动作太假了" —— 字出现、agent 连上 / 有动静时她都不再做反应动作;
+      // 她只在把大字带出来的那一下动(directGlyph,30–40 秒最多一次)
+      wp.onGlyphShow = null;
+    }
+    /* agent 活动 → 对应动作。这些事件 agent_monitor.rs 一直在推;只注册一次(以前每开一次女友就多叠一份监听)。 */
+    let gfAgentListeners = false;
+    function wireGfAgentEvents(){
+      if (gfAgentListeners || !(window.__TAURI__ && window.__TAURI__.event)) return;
+      gfAgentListeners = true;
+      const L = window.__TAURI__.event.listen;
+      // agent-connected / agent-detected / agent-attention 不再触发挥手 / 点头 / 想(见 attachGfHooks)
+      /* 和她聊天(gf_chat):等回答时她在想;回答到了,按模型挑的动作标签播一段 —— 和直播数字人
+         "读弹幕 → 回话 + 表情动作"一个思路。嘴型 / 说话姿态另走 girlfriend-speaking。 */
+      // 用户按住麦克风说话:她侧耳听(有 listen 段就停在那一段)
+      L('girlfriend-heard', (ev) => {
+        if (!gf || !gf.setListening) return;
+        const st = ev && ev.payload && ev.payload.status;
+        if (st === 'listening') gf.setListening(true);
+        else if (st === 'stopped' || st === 'error' || st === 'denied') gf.setListening(false);
+      });
+      // 聊天时也不演"想 / 挥手":她直接带着表情开口(情绪底片),动作只留给带出大字
+    }
+
+    async function applyGirlfriendLayer(){
+      const g = cfg.girlfriend || {};
+      const want = g.on === true && cfg.enabled !== false;
+      // 本机路径 → blob URL(gf_read_asset)。terseAssetUrl 是 async,先 await 完再交给 avatar。
+      const resolve = async (p) => {
+        if (!p) return null;
+        if (window.terseAssetUrl) { try { return await window.terseAssetUrl(p); } catch (e) { return null; } }
+        return p;
+      };
+      const [idleU, spkU, phU] = await Promise.all([resolve(g.idleSrc), resolve(g.speakingSrc), resolve(g.photoSrc)]);
+      // 一个角色的全部片段 + 每段的动作标签 + 标注(什么时候手到位、指尖在哪、字落哪)
+      const tags0 = Array.isArray(g.characterClipTags) ? g.characterClipTags : [];
+      const meta0 = Array.isArray(g.characterClipMeta) ? g.characterClipMeta : [];
+      /* 画质(设置,10-22 用户:"默认 1080p,也可以选 4K"):她的片子默认 1080p —— 4K 的解码 + 合成让这台 Mac 一直发热降频;
+         选 4K 就换成 manifest 里同名的 4K 母版(clip meta "hi",在角色目录的 4k/ 里,帧数 / 帧率 / 关键帧和 1080p 完全一样) */
+      const hiQ = g.videoQuality === '4k';
+      const clips = (Array.isArray(g.characterClips) ? g.characterClips : []).map((c, i) => {
+        const m = meta0[i];
+        return hiQ && m && m.hi && typeof c === 'string' ? c.replace(/[^/]*$/, '') + m.hi : c;
+      });
+      /* 实时模式只在引擎真的配好时才进(用户 10-19:更新后组件变了、还没重新配置,实时模式每次起引擎都失败,
+         她就一直停在实时模式的空等里)。没配好 → 走经典模式,先把她显示出来;配好后下一次配置事件自动切回实时。 */
+      /* 10-21(用户:"一键配置所有环境,完成所有预热后才显示AI女友在壁纸上,用户就可以直接用"):Mac 上她只走实时引擎 ——
+         没配好的时候(一键配置还在跑)根本不显示,不再退回经典模式(经典模式说话用的是 macOS 自带声音);
+         配好以后她也要等引擎全部预热完(startLive 里等 /health ready)才出现。用户明确关掉实时(live === false)才是经典模式;
+         Windows 没有实时引擎,照旧。 */
+      const macLive = /Macintosh|Mac OS X/.test(navigator.userAgent || '');
+      const liveFlag = g.live === true || (macLive && g.live !== false);
+      let liveReady = false, silent = false;
+      if (want && liveFlag) {
+        try {
+          const inv = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+          const st = inv ? await inv('gf_live_status') : null;
+          liveReady = !!(st && st.ready);
+        } catch (e) {}
+        /* 10-22(用户:"点击启用后,AI女友就应该在壁纸里控制 agent 粒子那些,只是不能对话没有声音 voice DUIX 那些"):声音和嘴还没配好
+           也照样显示她 —— 平静底片 + 手势带出粒子字(silent:不连引擎);配好、引擎热好之后同一层接上声音和口型 */
+        if (macLive && !liveReady) silent = true;
+      }
+      /* 10-21 新管线:角色有平静底片(标签 calm,manifest calmIdle:头几乎不动、不笑 —— DUIX 在稳头上最自然)就一直待在它上面;
+         说话 = 引擎把整段回复做成一条数字人视频流(引擎自己的说话底片 my_avatar,标签 avatar,页面从不播放),淡入盖在她上面;
+         动作只用封在平静种子帧上的那几段(manifest livePath.base = 平静底片)—— 旧的 idle_live 那一套和它对不上帧,不加载。
+         先按标签 / 标注决定要哪些片段,只读这些(每段都要整段读成 blob)。 */
+      const calmK = tags0.indexOf('calm');
+      const calmName = calmK >= 0 ? String(clips[calmK] || '').split('/').pop() : null;
+      const calmLive = want && liveFlag && (liveReady || silent) && calmK >= 0;
+      const keep = clips.map((c, i) => {
+        const t = tags0[i] || 'idle', m = meta0[i] || null;
+        if (t === 'avatar') return false;
+        if (calmLive) return t === 'calm' || !!(m && m.livePath && m.livePath.base === calmName);
+        return t !== 'calm' || !tags0.includes('idle');       // 经典模式:没有 clip_* 池时平静底片就是 idle
+      });
+      const resolved = await Promise.all(clips.map((c, i) => keep[i] ? resolve(c) : null));
+      const clipUrls = [], clipTags = [], clipMeta = [], clipNames = [];
+      resolved.forEach((u, i) => { if (u) {
+        clipUrls.push(u); clipTags.push(tags0[i] || 'idle'); clipMeta.push(meta0[i] || null);
+        clipNames.push(String(clips[i] || '').split('/').pop());
+      } });
+      /* 存的角色已经不在了(比如 repo 里那几个被撤掉了):别让她变成空白占位,换成默认角色。
+         10-22:她的片子从 app 里搬到了一键配置下载的目录(<GF_HOME>/presets)—— 同一个角色、路径变了,或者配置前选的
+         (那时还没有片子):照预设重读一次。只管预设角色;自己的照片 / 视频不动 */
+      if (want && !clipUrls.length) { if (wp && wp.setOnlyDirected) wp.setOnlyDirected(false); gfShows(false); }
+      if (want && (clips.length || g.character) && !clipUrls.length && window.terse && window.terse.gfPresets && !applyGirlfriendLayer._migrating) {
+        applyGirlfriendLayer._migrating = true;
+        try {
+          const presets = (await window.terse.gfPresets()) || [];
+          const has = (x) => !!(x && (x.clips || []).length);
+          const p0 = presets.find(x => x.key === g.character && has(x)) || (has(presets[0]) ? presets[0] : null);
+          const paths = p0 ? (p0.clips || []).map(c => c.path) : [];
+          const stored = Array.isArray(g.characterClips) ? g.characterClips : [];
+          if (p0 && (p0.key !== g.character || paths.join('|') !== stored.join('|'))) {
+            const full = Object.assign({}, cfg);
+            full.girlfriend = Object.assign({}, g, {
+              character: p0.key,
+              characterClips: paths,
+              characterClipTags: (p0.clips || []).map(c => c.tag || 'idle'),
+              characterClipMeta: (p0.clips || []).map(c => c.meta || null),
+              characterAlpha: !!p0.alpha, characterSeamless: !!p0.seamless, characterFull: !!p0.full, characterFit: p0.fit || '', characterFace: p0.face || null,
+              characterKeepU: +p0.keepU || 0,
+              idleSrc: null, speakingSrc: null, photoSrc: null,
+            });
+            await window.terse.setWallpaperConfig(full);   // 回来的 wallpaper-config 事件会重新进这里
+          }
+        } catch (e) {} finally { applyGirlfriendLayer._migrating = false; }
+        return;
+      }
+      /* 实时模式(教程「小雅」同款):只有往返循环的 idle_live 当 idle(说话就在它上面实时生成嘴),
+         动作片段照旧(先指、字再出现),动作结束接回 idle_live 的动作匹配帧(manifest 的 exitLive)。
+         经典的 clip_* idle 池在实时模式下不用。 */
+      const live = calmLive || (want && liveFlag && liveReady && clipTags.includes('live'));
+      let liveIdlePath = null;
+      if (calmLive) {
+        clipTags.forEach((t, i) => { if (t === 'calm') { clipTags[i] = 'idle'; liveIdlePath = clips[calmK]; } });
+      } else if (live) {
+        for (let i = clipUrls.length - 1; i >= 0; i--) {
+          if (clipTags[i] === 'idle') { clipUrls.splice(i, 1); clipTags.splice(i, 1); clipMeta.splice(i, 1); clipNames.splice(i, 1); }
+        }
+        clipTags.forEach((t, i) => {
+          if (t === 'live') { clipTags[i] = 'idle'; liveIdlePath = clips.find(c => String(c).endsWith('/' + clipNames[i])) || null; }
+          const m = clipMeta[i];
+          if (m && m.exitLive) clipMeta[i] = Object.assign({}, m, { exit: m.exitLive });
+        });
+        /* 用户 10-18:"把所有手势动作先去掉吧,只保留静止的有口型的,这样更自然更丝滑不会有卡点"。
+           实时模式只留 idle_live 一段:她一直在同一段片子上呼吸、眨眼、说话,从不换片段 → 没有任何切换。
+           agent 大字改成她"吹一口气"吐出来(girlfriend-avatar.js directGlyph → 引擎 /blow)。 */
+        /* 10-18 晚:动作回来了,但只要能**无缝**进出的那几段(manifest livePath,动作图算出来的路径)+ 它们要用的
+           过桥片段(bridge_*)。其余动作片段在实时模式下不加载 —— 进出对不上帧就会重影。 */
+        const bridges = new Set(clipMeta.map(m => m && m.livePath && m.livePath.bridge && m.livePath.bridge.clip).filter(Boolean));
+        clipMeta.forEach(m => { if (m && m.enterBridge && m.enterBridge.clip) bridges.add(m.enterBridge.clip); });   // 入场过桥(idle_live)
+        for (let i = clipUrls.length - 1; i >= 0; i--) {
+          const keep = clipTags[i] === 'idle' || (clipMeta[i] && clipMeta[i].livePath) || bridges.has(clipNames[i]) ||
+                       (clipTags[i] === 'talk' && clipMeta[i] && clipMeta[i].emo);       // 情绪底片:她带着表情说话
+          if (!keep) { clipUrls.splice(i, 1); clipTags.splice(i, 1); clipMeta.splice(i, 1); clipNames.splice(i, 1); }
+        }
+      } else if (clipTags.includes('calm')) {
+        // 经典模式、有平静底片:它当 idle(不笑、不晃),往返 idle_live 不用
+        for (let i = clipUrls.length - 1; i >= 0; i--) {
+          if (clipTags[i] === 'live') { clipUrls.splice(i, 1); clipTags.splice(i, 1); clipMeta.splice(i, 1); clipNames.splice(i, 1); }
+        }
+        clipTags.forEach((t, i) => { if (t === 'calm') clipTags[i] = 'idle'; });
+      } else if (!clipTags.includes('idle') && clipTags.includes('live')) {
+        // 只有往返 idle_live 没有经典 clip_* 池的角色(豆包首尾帧那一套):经典模式就拿 idle_live 当 idle
+        clipTags.forEach((t, i) => { if (t === 'live') clipTags[i] = 'idle'; });
+      } else {
+        for (let i = clipUrls.length - 1; i >= 0; i--) {
+          if (clipTags[i] === 'live') { clipUrls.splice(i, 1); clipTags.splice(i, 1); clipMeta.splice(i, 1); clipNames.splice(i, 1); }
+        }
+      }
+      /* 整幅原片角色(manifest frame:"full",用户 10-18:"不应该截取人物轮廓,就和视频里数字人一样带原本的背景"):
+         她就是壁纸的底(z 0,教程「小雅」:网页背景是数字人),粒子层(#stage, z 1)在她上面,
+         环境粒子场压到 0 —— 画面只剩她 + 她指尖写出来的 agent 大字。 */
+      // 平静底片的眨眼图(manifest blink.sprite,和片子在同一个文件夹):和片子一样读成 blob —— blob: 地址没有"文件夹",
+      // 播放器按片子地址拼相对路径会拼出一个打不开的地址,她就一直不眨眼(10-21)
+      await Promise.all(clipMeta.map(async (m, i) => {
+        if (!m || !m.blink || !m.blink.sprite || m.blink.spriteUrl) return;
+        const own = clips.find(c => String(c).endsWith('/' + clipNames[i]));
+        const u = own ? await resolve(String(own).replace(/[^/]*$/, '') + m.blink.sprite) : null;
+        if (u) clipMeta[i] = Object.assign({}, m, { blink: Object.assign({}, m.blink, { spriteUrl: u }) });
+      }));
+      const full = want && g.characterFull === true;
+      setLiveBackdrop(live || full);
+      { const bd = document.getElementById('gfLiveBackdrop'); if (bd) bd.classList.toggle('gf-full', full); }
+      if (wp && wp.setFieldDim) wp.setFieldDim(full ? 0 : 1);
+      // she is on: every particle line — the agent line and the numbers around it — leaves her hand (user 10-22), full-frame or not
+      // (set again below once her layer exists: no layer = nobody to bring the lines out = the wallpaper's own text)
+      const opts = {
+        // 抠像角色在粒子层之上(实时模式也是):粒子场画在暗场背景里,不会落在她脸上变成一层"灰";
+        // 暗场背景(setLiveBackdrop, z 0)在粒子层(#stage, z 1)之下 —— 和教程一样人是干净的
+        zIndex: full ? 0 : 3,
+        fullFrame: full,
+        fit: full ? (g.characterFit || '') : '',
+        faceUV: Array.isArray(g.characterFace) ? g.characterFace : undefined,
+        keepU: full ? (+g.characterKeepU || 0) : 0,
+        still: live,
+        // 默认:脸锚在屏幕右侧 (72%, 34%),胸口以下被屏幕底边截掉 —— 脸大、近,像对着你。
+        // 实时模式默认 0.85:片子超分到 1440×1920 之后,这个大小在 Retina 上接近 1:1,清楚;
+        // 人物仍在右侧三分之一(教程构图),左边暗部留给粒子大字
+        fx: g.fx != null ? +g.fx : 0.72, fy: g.fy != null ? +g.fy : (live ? 0.31 : 0.34),
+        zoom: live ? (+g.liveZoom || 0.85) : (+g.zoom || 1.0),
+        x: g.fx != null ? +g.fx : 0.74, y: 1.0, scale: +g.zoom || 1.0,   // 占位剪影(没有素材时)用
+        tint: g.tint || '#9db7ff',
+        idleSrc: idleU, speakingSrc: spkU,
+        clipUrls, clipTags, clipMeta, clipNames,
+        alpha: g.characterAlpha === true,
+        seamless: g.characterSeamless === true,
+        feather: g.feather != null ? +g.feather : 0.6,
+        fadeMs: +g.fadeMs || 750,
+        textEveryMs: +g.textEveryMs || 0,                     // 两次带 agent 大字的动作至少隔多久(默认 40–60 s)
+        volume: g.volume != null ? +g.volume : 1,             // 她的音量(设置)
+        // 10-22 duplex:app 的麦克风 helper 在跑时,她的声音交给它播(回声消除的参考),视频静音、跟它的时钟
+        voiceCmd: (line) => { try { window.__TAURI__.core.invoke('gf_voice', { line }).catch(() => {}); } catch (e) {} },
+        photoSrc: phU,
+        mouthX: g.mouthX != null ? +g.mouthX : 0.5,
+        mouthY: g.mouthY != null ? +g.mouthY : 0.72,
+      };
+      // 实时 / 经典切换(或换成整幅原片角色):片段集合和层级都变了,重建一次最干净
+      if (gf && (gf._liveMode !== live || !!gf.opts.fullFrame !== full || (live && (gf._renderer || '') !== (g.renderer || '')))) { try { gf.dispose(); } catch (e) {} gf = null; window.__terseGF = null; }
+      if (want && !gf) {
+        if (!GirlfriendLayer) return;
+        try {
+          gf = new GirlfriendLayer(document.body, Object.assign({}, opts, { hold: false }));   // 10-22: shown at once (startLive), voice joins later
+          gf._liveMode = live; gf._renderer = g.renderer || '';
+          gf.start(); window.__terseGF = gf;
+          try { window.__TAURI__.core.invoke('gf_duplex_on').then(on => { if (gf && gf.setDuplex) gf.setDuplex(!!on); }).catch(() => {}); } catch (e) {}
+          wireGfAgentEvents();
+        } catch (e) { gf = null; reportOverlayState('page gf layer FAILED ' + (e && e.message || e)); }
+      } else if (!want && gf) {
+        try { gf.dispose(); } catch (e) {}
+        gf = null; window.__terseGF = null;
+      } else if (want && gf) {
+        gf.setConfig(opts);
+      }
+      if (live && gf && liveIdlePath) {
+        // 引擎要的帧空间:idle 在前,后面是各段情绪底片(本地路径);order = 这些片段在 gf 里的下标
+        const talks = [];
+        clipTags.forEach((t, i) => { if (t === 'talk' && clipMeta[i] && clipMeta[i].emo) {
+          const pth = clips.find(c => String(c).endsWith('/' + clipNames[i])); if (pth) talks.push({ i, pth });
+        } });
+        startLive(gf, liveIdlePath, talks, silent);
+      }
+      if (wp && wp.setOnlyDirected) wp.setOnlyDirected(!!(want && gf));
+      gfShows(!!(want && gf && g.characterFull === true));
+      attachGfHooks();
+    }
+
+    /* 她能不能真的出现在壁纸上(10-22,用户:"没开启 AI 女友的时候壁纸里的置顶功能就失效了"):「始终置顶」的那条否决(整幅原片的她
+       只活在桌面层)只在她真的在的时候才算 —— 开了但片子还没下载 / 下不来,壁纸就照原来那样,置顶也照常。Rust 的 overlay_allowed
+       用同一条规矩(她的片子在不在磁盘上);这里变了就请 Rust 再判一次 */
+    var gfCanShow = null;     // var: overlayOK can run before this line (boot) — undefined = unknown, like null
+    function gfShows(on){
+      if (gfCanShow === on) return;
+      gfCanShow = on;
+      try { if (window.terse && window.terse.relevelWallpaperWindow) window.terse.relevelWallpaperWindow(overlayOK()); } catch (e) {}
+    }
+
+    /* 实时模式:起引擎(Terse 管进程,没配置好就什么都不做)→ 把 idle_live 交给引擎预计算 → 开嘴部叠加。 */
+    async function startLive(layer, idlePath, talks, silent){
+      talks = talks || [];
+      const key = (silent ? 'silent|' : 'engine|') + [idlePath].concat(talks.map(t => t.pth)).join('|');
+      if (layer._liveStarted === key) return;
+      layer._liveStarted = key;
+      /* 10-22(用户:"点击启用后,AI女友就应该在壁纸里控制 agent 粒子…只是不能对话没有声音"):她马上出现在平静底片上,手势带出
+         粒子字 —— 这不需要引擎。还没有引擎(silent)就停在这;有引擎的话,下面登记她的底片,声音和口型接上来(同一层,不再等热身才显示) */
+      if (!layer._live) {
+        const idleIdx = layer._clipTags.indexOf('idle'), v = layer._clipVideos && layer._clipVideos[idleIdx];
+        if (v && !(v.duration > 0)) await new Promise(r => { v.addEventListener('loadedmetadata', r, { once: true }); setTimeout(r, 5000); });
+        if (gf !== layer) return;
+        const fps = 24, n = Math.max(2, Math.round(((v && v.duration) || 4.54) * fps));     // 帧空间就是这段 idle 自己
+        layer.enableLive(null, idleIdx);
+        layer.setLiveAvatar({ fps, n, w: v && v.videoWidth, h: v && v.videoHeight, dh: false }, [idleIdx]);
+      }
+      layer.release();
+      if (silent) return;
+      try {
+        const inv = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+        if (!inv) return;
+        const r = await inv('gf_live_start');
+        const engine = (r && r.engine) || 'http://127.0.0.1:8770';
+        const register = async () => (await fetch(engine + '/avatar', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ video: talks.length ? [idlePath].concat(talks.map(t => t.pth)) : idlePath }) })).json();
+        // 口型引擎(设置):高清 DUIX / 实时小模型;空 = 按这台 Mac(引擎读 hw.json)。换了就整层重建,在登记底片之前切
+        const rd = (cfg.girlfriend || {}).renderer;
+        try { await fetch(engine + '/renderer', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: rd === 'big' || rd === 'mobile' ? rd : 'default' }) }); } catch (e) {}
+        const info = await register();
+        if (gf !== layer) return;
+        const idleIdx = layer._clipTags.indexOf('idle'), order = [idleIdx].concat(talks.map(t => t.i));
+        layer.enableLive(engine, idleIdx);
+        layer.setLiveAvatar(info, order);
+        // the engine restarted under her (crash / update): register her avatar again, or she answers in silence
+        if (layer._live) layer._live.onReconnect = async () => {
+          for (let i = 0; i < 20 && gf === layer; i++) {
+            try { const again = await register(); if (gf === layer && layer._live) layer.setLiveAvatar(again, order); return; }
+            catch (e) { await new Promise(r => setTimeout(r, 1500)); }
+          }
+        };
+        layer._live && (layer._live.onSpeaking = (on) => {
+          try { window.__TAURI__.event.emit('girlfriend-speaking', { on, live: true }); } catch (e) {}
+        });
+        // 预热完才出现:声音、大脑、语音识别、她的底片、DUIX 嘴型、手势全部就绪(引擎 /health 的 ready);最多等 15 分钟
+        const t0 = Date.now();
+        while (gf === layer && layer._held) {
+          try { const h = await (await fetch(engine + '/health')).json(); if (h && h.ready) break; } catch (e) {}
+          if (Date.now() - t0 > 15 * 60e3) { reportOverlayState('page gf: engine still warming after 15 min, showing her'); break; }
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        if (gf === layer) layer.release();
+      } catch (e) {
+        layer._liveStarted = null;
+        reportOverlayState('page gf live FAILED ' + (e && e.message || e));
+        // the engine was not up yet (first start after setup, a crash): try again — she stays hidden until it works
+        setTimeout(() => { if (gf === layer && !layer._liveStarted) startLive(layer, idlePath, talks); }, 8000);
+      }
+    }
+
+    /** 教程那种电影感暗场:右侧一点暖光、四周压暗。只在实时模式下垫在她身后。 */
+    function setLiveBackdrop(on){
+      let el = document.getElementById('gfLiveBackdrop');
+      if (on && !el) {
+        el = document.createElement('div'); el.id = 'gfLiveBackdrop';
+        el.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;transition:opacity .9s ease;opacity:0;' +
+          'background:radial-gradient(ellipse 55% 75% at 74% 42%, #1b1a20 0%, #0b0b10 46%, #030305 78%, #000 100%)';
+        document.body.insertBefore(el, document.body.firstChild);    // 永远在她(同为 z 0 的整幅原片)下面
+        requestAnimationFrame(() => { el.style.opacity = '1'; });
+      } else if (!on && el) {
+        el.style.opacity = '0'; setTimeout(() => el.remove(), 900);
+      }
+    }
+
     /** 置顶模式的页面这一半:窗口层级由 Rust 改,这里只负责"别画背景"。 */
     function applyOverlay(on){
       document.documentElement.classList.toggle('overlay', !!on);
@@ -493,6 +834,7 @@
       applyOverlay(overlayOK());   // 里面会跟着把壁纸粒子层开/关
       applyPhotoLayer();           // 开关本身变了的情况(引擎没换,applyOverlay 的结论也没变)
       applyMusicLayer();
+      applyGirlfriendLayer();      // AI 女友粒子层(默认关)
       wp.setTheme(cfg.theme); wp.setQuality(cfg.quality|0); wp.setAngle(cfg.angle|0);
       wp.setIntensity(+cfg.intensity || 1);
       // 3D 自由视角。控制面板里一拖,桌面上这幅画就跟着转 —— 那是这个功能最直接的
@@ -641,7 +983,11 @@
     // Map one recent agent message → a log line (matches the Dynamic Island's step vocabulary).
     function fmtTok(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(n); }
     function msgToLine(m){
-      const name = (m.toolName||m.tool_name||'').toString();
+      // MCP tools read "mcp__Claude_in_Chrome__computer" — as particle text that truncated to "mcp__Claude_Br…" (10-21);
+      // "Chrome · computer" says the same in the width the line has
+      const name = (m.toolName||m.tool_name||'').toString()
+        .replace(/^mcp__(?:[0-9a-f]{8}-[0-9a-f-]{27}__)?/i, '').replace(/^(claude[-_ ]?in[-_ ]?)|^Claude_/i, '')
+        .replace(/__/g, ' · ').replace(/_/g, ' ');
       if (m.type==='tool_use')    return { kind:'tool',   ico:'⚙', label: name||'tool',                    tok:+m.tokens||0 };
       if (m.type==='tool_result') return { kind:'result', ico:'←', label: (name? name+' → result':'result'), tok:+m.tokens||0 };
       if (m.role==='assistant')   return { kind:'asst',   ico:'◆', label: shortLog(m.text)||'responding',   tok:+m.tokens||0 };
@@ -786,13 +1132,16 @@
      *  paint a background for. */
     let bootUnsure = false;
     function settle(p, ms, tag){
+      let answered = false;               // the timer used to fire anyway: every boot logged "DID NOT ANSWER" and went unsure
       return Promise.race([
-        Promise.resolve(p).catch(e => {
+        Promise.resolve(p).then(v => { answered = true; return v; }, e => {
+          answered = true;
           bootUnsure = true;
           reportOverlayState('boot ' + tag + ' THREW ' + (e && e.message || e));
           return LATE;
         }),
         new Promise(r => setTimeout(() => {
+          if (answered) return;
           bootUnsure = true;
           reportOverlayState('boot ' + tag + ' DID NOT ANSWER in ' + ms + 'ms — carrying on without it');
           r(LATE);
@@ -911,6 +1260,21 @@
         reportOverlayState('boot UNSURE — going transparent and dropping to the desktop layer');
         try { document.documentElement.classList.add('overlay'); } catch (e) {}
         try { if (T && T.relevelWallpaperWindow) T.relevelWallpaperWindow(false); } catch (e) {}
+        /* 保险模式只是暂时的:那个 overlay class 会把整幅原片的她一直藏着(用户 10-19:"开了女友但壁纸上没有")。
+           等 Rust 回过神来再问一遍真正的答案,照它摆;一直问不到就保持透明 + 桌面层(安全)。 */
+        let tries = 0;
+        const resync = async () => {
+          tries++;
+          try {
+            const eff = await T.wallpaperOverlayEffective();
+            if (typeof eff === 'boolean') {
+              try { if (T.relevelWallpaperWindow) await T.relevelWallpaperWindow(eff); } catch (e) {}
+              applyOverlay(eff); reportOverlayState('boot resync ' + eff); return;
+            }
+          } catch (e) {}
+          if (tries < 6) setTimeout(resync, 5000);
+        };
+        setTimeout(resync, 4000);
       }
       // 配置里存着 3D 的话,开机就要把窗口摆成能拖的样子 —— 否则要等到用户下一次
       // 改配置才生效,而他上次关掉 app 时明明是开着的。
@@ -940,9 +1304,34 @@
       // actual deltas) and agent activity (setActivity), so the 律动 always means something.
       if (window.__TAURI__?.event?.listen){
         window.__TAURI__.event.listen('wallpaper-config', ev => applyConfig(ev.payload || {}));
+        // 一键配置跑完(可能是开机自动补的,设置页根本没开):她现在可以出现了 —— 预热完就淡入
+        window.__TAURI__.event.listen('gf-live-setup', ev => { if (ev && ev.payload && ev.payload.done === true) applyGirlfriendLayer(); });
+        // 语音对话(duplex)开 / 关,和 helper 播她声音的时钟
+        window.__TAURI__.event.listen('gf-duplex', ev => { if (gf && gf.setDuplex) gf.setDuplex(!!(ev && ev.payload && ev.payload.on)); });
+        window.__TAURI__.event.listen('gf-voice', ev => { if (gf && gf.onVoicePos) gf.onVoicePos(ev && ev.payload); });
         // 音乐模式:Rust 两秒推一次(在放什么 + 播到第几秒 + 整首的歌词)
         window.__TAURI__.event.listen('music-state', ev => {
           if (music) music.setState(ev.payload && ev.payload.off ? null : ev.payload);
+        });
+        /* AI 女友:正在说话时让嘴跟着动。
+           没有真正的 viseme 数据(macOS `say` 不吐音位),就用一条简单的脉冲 ——
+           "开始说" → 周期性开合;"说完了" → 回到闭合。 */
+        let __gfMouthTimer = 0;
+        window.__TAURI__.event.listen('girlfriend-speaking', ev => {
+          const on = ev && ev.payload && ev.payload.on;
+          if (__gfMouthTimer) { clearInterval(__gfMouthTimer); __gfMouthTimer = 0; }
+          if (!gf) return;
+          if (on) {
+            // 有 talk 片段的角色:整段话都停在说话的片子里(真嘴型);没有的就靠嘴型 overlay
+            try { gf.setSpeaking && gf.setSpeaking(true); } catch (e) {}
+            // 每 110ms 换一次目标开合度,看上去就是在"说话"
+            __gfMouthTimer = setInterval(() => {
+              if (!gf) { clearInterval(__gfMouthTimer); __gfMouthTimer = 0; return; }
+              gf.setMouthOpen(0.35 + Math.random() * 0.55);
+            }, 110);
+          } else {
+            try { gf.setMouthOpen(0); gf.setSpeaking && gf.setSpeaking(false); gf.setPose('idle'); } catch (e) {}
+          }
         });
         // 项目缩影:一段有头有尾的演出(默认 20 秒),不是一个设置 —— 所以走事件,
         // 不写 wallpaper.json。自己在列表里点预览、和广场上点别人的项目,同一条路。
@@ -953,6 +1342,34 @@
         // 抬到图标层之上时窗口是透明的 —— 页面必须同时停止画自己的底色,
         // 否则那就是一块盖住桌面图标的黑板(和「始终置顶」同一个坑,同一套画法)。
         window.__TAURI__.event.listen('wallpaper-lift', ev => applyOverlay(!!ev.payload || overlayOK()));
+        /* 鼠标 hover 水波:Rust (wallpaper_cursor) 每 ~33ms 推一次全局光标坐标过来。
+           壁纸窗口 setIgnoresMouseEvents:YES —— DOM 没有 mousemove,只能走这条道。
+           手法:算这一下和上一下的距离 + 时间差 → 大致的"手速",
+           每 ~100ms 下一个 ripple(_triggerRipple 的环形缓冲 32 个槽,打太密直接饱和;
+           稀疏地打反而每一圈都看得清)。强度 = 速度 → 慢移是软涟漪,快划是硬波。 */
+        (function wireHoverRipple(){
+          let lastX = -1, lastY = -1, lastT = 0, lastSpawnT = 0;
+          window.__TAURI__.event.listen('wallpaper-cursor', ev => {
+            if (!wp || !wp.screenToPlane || !wp._triggerRipple) return;
+            const p = ev && ev.payload; if (!p) return;
+            const x = +p.x, y = +p.y;
+            if (!(x >= 0 && x <= (wp.W || 99999) && y >= 0 && y <= (wp.H || 99999))) return;  // 副屏/边界外
+            const now = performance.now();
+            if (lastX < 0) { lastX = x; lastY = y; lastT = now; return; }
+            const dt = Math.max(1, now - lastT);
+            const dx = x - lastX, dy = y - lastY;
+            const speed = Math.sqrt(dx*dx + dy*dy) / dt;    // px / ms
+            lastX = x; lastY = y; lastT = now;
+            // 100ms 节流:太密了 32 槽的环形缓冲马上覆盖掉自己,看不见"一圈一圈"
+            if (now - lastSpawnT < 100) return;
+            // 慢移 ≈ 0.1 px/ms → str 0.08;正常 1 px/ms → 0.4;甩手 5+ → 1.0
+            const str = Math.max(0.08, Math.min(1.0, 0.08 + speed * 0.32));
+            const plane = wp.screenToPlane(x, y);
+            if (!plane) return;
+            try { wp._triggerRipple(plane[0], plane[1], str); } catch(e) {}
+            lastSpawnT = now;
+          });
+        })();
       }
       document.addEventListener('visibilitychange', () => {
         if (window.__terseTownOn) return;

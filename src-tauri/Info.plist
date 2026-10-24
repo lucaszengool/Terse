@@ -10,5 +10,11 @@
          Terse.app 头上(子进程由它负责),没有这条说明系统会直接杀掉进程。 -->
     <key>NSCameraUsageDescription</key>
     <string>Gesture Control lets you steer Terse's particles with your hands. Terse reads only hand joint positions from the camera, on this Mac — no video is recorded, stored or sent anywhere.</string>
+    <!-- AI 女友「按住说话」:terse-listen 只在按住麦克风按钮时开麦,Apple Speech 能本机识别的语言
+         就强制本机识别。权限由 Terse 主进程请求(girlfriend.rs),子进程沿用 —— 和摄像头一样。 -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Talk to your Terse girlfriend by voice. The microphone is on only while you hold the mic button or keep conversation mode on; nothing is recorded or stored.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Terse turns what you say to your girlfriend into text — on this Mac where the language supports it — so your agent can answer.</string>
 </dict>
 </plist>

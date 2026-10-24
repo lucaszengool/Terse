@@ -1382,7 +1382,12 @@
         t.disabled = !particle && cfg.overlay !== true;
         if (row) row.style.opacity = particle ? '' : '.45';
         const rd = row && row.querySelector('.rd');
-        if (rd) rd.textContent = particle
+        // 整幅原片的 AI 女友开着:她就是壁纸,窗口不再被抬起(lib.rs overlay_allowed 的同一条否决)—— 如实说明
+        const g = cfg.girlfriend || {};
+        const gfHolds = cfg.enabled !== false && g.on === true && g.characterFull === true;
+        if (rd) rd.textContent = gfHolds
+          ? (window.i18n&&window.i18n.t ? window.i18n.t('wp_top_gf') : 'While the AI girlfriend is on she is the wallpaper itself, so the wallpaper stays behind your windows.')
+          : particle
           ? (window.i18n&&window.i18n.t ? window.i18n.t('wp_top_label') : 'Float the particles above every window')
           : (window.i18n&&window.i18n.t ? window.i18n.t('wp_top_engine') : 'Only the particle engines can float on top — the spectrum terrain is not transparent.');
         paintTopDemo(t.checked, particle);

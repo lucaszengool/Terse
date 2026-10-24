@@ -3,7 +3,7 @@ const $$ = s => document.querySelectorAll(s);
 const T = window.terse;
 
 let prevView = 'sessions';
-const views = { gesture: $('#gestureView'), particles: $('#particlesView'), msgs: $('#msgsView'), sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView'), pair: $('#pairView'), category: $('#categoryView'), collab: $('#collabView'), music: $('#musicView') };
+const views = { gesture: $('#gestureView'), particles: $('#particlesView'), msgs: $('#msgsView'), sessions: $('#sessionsView'), pick: $('#pickOverlay'), manual: $('#manualResult'), settings: $('#settingsPanel'), cleanup: $('#cleanupView'), boost: $('#boostView'), prompts: $('#promptsView'), observe: $('#observeView'), mcp: $('#mcpView'), rules: $('#rulesView'), connection: $('#connectionView'), island: $('#islandView'), friends: $('#friendsView'), room: $('#roomView'), plaza: $('#plazaView'), pair: $('#pairView'), category: $('#categoryView'), collab: $('#collabView'), music: $('#musicView'), gf: $('#gfView') };
 // 两级导航:大部分老页面(data-page)现在住在某个分类落地页或协同门户里,不再
 // 各占一个侧栏按钮。子页面点亮它的**父入口**,这张表就是"子页面 → 分类"。
 const CAT_OF = {
@@ -2324,6 +2324,7 @@ const SB_ACTIONS = {
   overview: () => show('sessions'),
   gesture:  () => { show('gesture'); gestureInit(); },
   music:    () => { show('music'); musicInit(); },
+  gf:       () => { show('gf'); gfInit(); },
   cleanup:  () => { show('cleanup'); if (!clState.scanned) clScan(); },
   alerts:   () => T.navigateToAlerts && T.navigateToAlerts(),
   settings: () => show('settings'),
@@ -4551,4 +4552,481 @@ async function musicTune(repaint) {
     });
   }
   await render();
+}
+
+/* ── AI 女友 ───────────────────────────────────────────────────────────────
+   侧栏的 gfView 控制:开关 / 外观 / 让她说话。她的粒子画在**壁纸窗口**里
+   (wallpaper.html 的 girlfriend-particles.js);这里只写配置 + 发命令。
+   关掉之后壁纸立刻回到只有粒子字的状态(用户 10-16:"也可以关掉只留粒子字")。 */
+let gfWired = false, gfStateTimer = null, gfSpeaking = false, gfLiveReady = false;
+/** 实时数字人开着(而且这台 Mac 配置好了)。 */
+function liveOn(g) { return !!(g && g.on && g.live === true && gfLiveReady); }
+/** 设置页(Pro)→ 引擎:人设(性格 / 语气 / 补充)+ 声音。高清回复 = DUIX 脸 + 设计好的声音。
+ *  OmniVoice(抖音同款声音)的模型是 CC-BY-NC,Terse 收费 → 不进安装包;只有开发者本机手动装了才用(hdVoice: 'omnivoice')。 */
+function voiceOf(g) {
+  // breeze2 = MediaTek Breeze2-VITS 台湾腔(用户 10-21 从 7 个候选里选的 3:实时、自然);bz_<style> = 它的声音风格(engine
+  // VOICE_STYLES,10-21 晚 "更清晰、不要太尖、温柔更自然":不过 WORLD),'breeze2' = 旧的细甜(WORLD);mandarin = Matcha 标准普通话
+  const v = g.liveVoice || 'bz_sweet', melo = /^melo[123]$/.test(v), bz = /^bz_/.test(v);
+  return { engine: g.hd !== false && g.hdVoice === 'omnivoice' ? 'omnivoice' : bz || v === 'breeze2' ? 'breeze2' : v === 'mandarin' ? 'matcha' : melo ? 'melo' : 'qwenclone',
+           style: bz ? v.slice(3) : v === 'mandarin' ? 'mandarin' : v === 'breeze2' ? 'world' : undefined,
+           clone_voice: melo ? 'wenrou' : v, sweet: melo ? +v.slice(4) : 3, speed: +g.liveSpeed || 1, hd: g.hd !== false };
+}
+function gfLiveSettings(g) {
+  g = g || {};
+  return {
+    personality: g.personality || '', tone: g.tone || '', custom: g.customPersona || '',
+    // melo1/2/3 = 实时甜妹声音(MeloTTS + 甜化强度,用户 10-20 选的是 3);其余是设计好的声音(Qwen3-TTS,更像真人但慢)
+    voice: voiceOf(g),
+  };
+}
+async function gfInit() {
+  const sw = $('#gfOn');
+  const read = async () => { try { return (await T.getWallpaperConfig()) || {}; } catch (e) { return {}; } };
+  const write = async (patch) => {
+    const cfg = await read();
+    cfg.girlfriend = Object.assign({}, cfg.girlfriend || {}, patch);
+    try { await T.setWallpaperConfig(cfg); } catch (e) {}
+  };
+  const paint = async () => {
+    const cfg = await read();
+    const g = cfg.girlfriend || {};
+    // 10-21 用户换声音:"use the one 3 — Breeze2 台湾腔"。以前存下来的默认 melo3 一次性换成 breeze2(自己选过别的声音的不动)
+    if (!g.voiceV2) {
+      const patch = { voiceV2: true };
+      if (!g.liveVoice || g.liveVoice === 'melo3') patch.liveVoice = 'breeze2';
+      Object.assign(g, patch); await write(patch);
+    }
+    // 10-21 晚 用户:"更清晰一点并且不要太尖，温柔但是更自然一点",从 7 个候选里选了 C4 甜而不尖 → 旧默认的细甜(breeze2)
+    // 一次性换过去(其余自己选的不动)
+    if (!g.voiceV3) {
+      const patch = { voiceV3: true };
+      if (!g.liveVoice || g.liveVoice === 'breeze2') patch.liveVoice = 'bz_sweet';
+      Object.assign(g, patch); await write(patch);
+    }
+    if (sw) sw.checked = g.on === true;
+    // 取景按"脸"算:fx/fy = 脸在屏幕上的位置,zoom = 脸有多大(1 = 胸口以上占满半屏高)
+    const x = $('#gfX'), xv = $('#gfXv');
+    if (x) { x.value = g.fx != null ? g.fx : 0.72; if (xv) xv.textContent = Math.round(+x.value * 100) + '%'; }
+    const y = $('#gfY'), yv = $('#gfYv');
+    if (y) { y.value = g.fy != null ? g.fy : 0.34; if (yv) yv.textContent = Math.round(+y.value * 100) + '%'; }
+    const sc = $('#gfScale'), scv = $('#gfScaleV');
+    if (sc) { sc.value = g.zoom || 1.0; if (scv) scv.textContent = (+sc.value).toFixed(2) + '×'; }
+    const t = $('#gfTint'); if (t && g.tint) t.value = g.tint;
+    const fe = $('#gfFeather'), fev = $('#gfFeatherV');
+    if (fe) { fe.value = g.feather != null ? g.feather : 0.6; if (fev) fev.textContent = Math.round(+fe.value * 100) + '%'; }
+    const fa = $('#gfFade'), fav = $('#gfFadeV');
+    if (fa) { fa.value = g.fadeMs || 750; if (fav) fav.textContent = (+fa.value / 1000).toFixed(2) + 's'; }
+    const re = $('#gfReach'); if (re) re.checked = g.reachText !== false;
+    const sa = $('#gfSpeakAgent'); if (sa) sa.checked = g.speakAgent === true;
+    // "连接" 按钮:speakAgent=true 就是"已连接",再按一下断开
+    const cb = $('#gfAgentConnect');
+    if (cb) {
+      const on = g.speakAgent === true;
+      cb.textContent = on ? TT('gf_agent_connected', '已连接') : TT('gf_agent_btn', '连接');
+      cb.classList.toggle('btn', !on);
+      cb.classList.toggle('btn-ghost', on);
+    }
+    const basename = (p) => (p || '').split('/').pop() || '—';
+    const pnm = $('#gfPhotoName'); if (pnm) pnm.textContent = basename(g.photoSrc);
+    const inm = $('#gfIdleName');  if (inm) inm.textContent = basename(g.idleSrc);
+    const snm = $('#gfSpkName');   if (snm) snm.textContent = basename(g.speakingSrc);
+    // 嘴型锚点只在有照片时显示
+    const mr = $('#gfMouthRow'); if (mr) mr.style.display = g.photoSrc ? '' : 'none';
+    const mx = $('#gfMouthX'), mxv = $('#gfMouthXv');
+    if (mx) { mx.value = g.mouthX != null ? g.mouthX : 0.5; if (mxv) mxv.textContent = Math.round(+mx.value * 100) + '%'; }
+    const my = $('#gfMouthY'), myv = $('#gfMouthYv');
+    if (my) { my.value = g.mouthY != null ? g.mouthY : 0.72; if (myv) myv.textContent = Math.round(+my.value * 100) + '%'; }
+    // 她的设置(Pro)
+    const sn = $('#gfSetName'); if (sn && document.activeElement !== sn) sn.value = g.herName || '';
+    const sp = $('#gfSetPersonality'); if (sp) sp.value = g.personality || '';
+    const sto = $('#gfSetTone'); if (sto) sto.value = g.tone || '';
+    const svo = $('#gfSetVoice'); if (svo) svo.value = g.liveVoice || 'bz_sweet';
+    const ssp = $('#gfSetSpeed'), sspv = $('#gfSetSpeedV');
+    if (ssp) { ssp.value = +g.liveSpeed || 1; if (sspv) sspv.textContent = (+ssp.value).toFixed(2) + '×'; }
+    const svl = $('#gfSetVolume'), svlv = $('#gfSetVolumeV');
+    if (svl) { svl.value = g.volume != null ? +g.volume : 1; if (svlv) svlv.textContent = Math.round(+svl.value * 100) + '%'; }
+    const srd = $('#gfSetRenderer'); if (srd) srd.value = g.renderer || '';
+    const stf = $('#gfSetTextFreq'); if (stf) stf.value = g.textEveryMs ? String(g.textEveryMs) : '';
+    const sq = $('#gfSetQuality'); if (sq) sq.value = g.videoQuality === '4k' ? '4k' : '';
+    const scu = $('#gfSetCustom'); if (scu && document.activeElement !== scu) scu.value = g.customPersona || '';
+    const shd = $('#gfSetHd'); if (shd) shd.checked = g.hd !== false;          // 默认开(DUIX 嘴型,用户 10-20)
+    const sbs = $('#gfSetBrainSaver'); if (sbs) sbs.checked = g.brainSaver === true;
+    const sbr = $('#gfSetBrain'); if (sbr && document.activeElement !== sbr) sbr.value = g.chatAgent || 'local';
+    const st = $('#gfStatus');
+    if (st) st.textContent = !g.on ? TT('gf_off', '关着') : gfSpeaking ? TT('gf_speaking', '正在说……') : TT('gf_idle', '闲着');
+  };
+
+  if (!gfWired) {
+    gfWired = true;
+    // 用一个预设 = 她的全部片段 + 每段的动作标签 + 标注写进配置,壁纸按事件切换;tag = 这一段是哪个真动作
+    const presetPatch = (p) => {
+      const clipPaths = (p.clips || []).map(c => c.path);
+      return {
+        character: p.key,
+        characterClips: clipPaths,
+        characterClipTags: (p.clips || []).map(c => c.tag || 'idle'),
+        characterClipMeta: (p.clips || []).map(c => c.meta || null),
+        characterAlpha: !!p.alpha,
+        characterSeamless: !!p.seamless,
+        characterFull: !!p.full,
+        characterFit: p.fit || '', characterFace: p.face || null, characterKeepU: +p.keepU || 0,
+        characterName: p.label || null,
+        idleSrc: clipPaths[0] || null,          // 向后兼容:老的 avatar.setConfig 还看 idleSrc
+        speakingSrc: clipPaths[1] || clipPaths[0] || null,
+      };
+    };
+    /* 10-22:她的片子由一键配置下载(app 里只带海报),4K 母版在选 4K 时才下 —— 配置里存的是片段路径,下完就重读一次 */
+    const gfRefreshChar = async () => {
+      try {
+        const presets = (T.gfPresets ? await T.gfPresets() : []) || [];
+        const g = (await read()).girlfriend || {};
+        const p = presets.find(x => x.key === g.character);
+        if (p && (p.clips || []).length) await write(presetPatch(p));
+      } catch (e) {}
+    };
+    // 画预设角色网格,点一下换人。首次打开 + 还没任何素材时自动挑第一个,
+    // 这样用户第一眼就看到一个具体的"她",不用先去配置。
+    const paintPresets = async () => { try {
+      const presets = (T.gfPresets ? await T.gfPresets() : []) || [];
+      const grid = $('#gfPresetGrid');
+      if (grid && presets.length) {
+        grid.innerHTML = '';
+        for (const p of presets) {
+          const nClips = (p.clips || []).length;
+          const card = document.createElement('button');
+          card.className = 'btn-ghost';
+          card.title = `${p.label} · ${nClips} clips`;
+          card.style.cssText = 'padding:0;border-radius:10px;overflow:hidden;position:relative;aspect-ratio:3/4;background:#0a0c15;border:1px solid rgba(255,255,255,.08);cursor:pointer';
+          card.innerHTML = `<video muted autoplay loop playsinline preload="auto"
+                                   style="width:100%;height:100%;object-fit:cover;display:block;background:#0a0c15"></video>
+                            <div style="position:absolute;left:0;right:0;bottom:0;padding:4px 6px;font-size:10px;
+                                        color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.7));display:flex;justify-content:space-between;align-items:center">
+                              <span>${p.label}</span><span style="opacity:.65">${nClips}</span>
+                            </div>`;
+          const vid = card.querySelector('video');
+          const firstPath = (p.clips && p.clips[0] && p.clips[0].path) || null;
+          (async () => {
+            try {
+              if (!firstPath) {                       // 还没一键配置:她的片子还没下载,先放海报
+                if (!p.poster) return;
+                const img = document.createElement('img');
+                img.style.cssText = vid.style.cssText; img.alt = p.label || '';
+                img.src = window.terseAssetUrl ? await window.terseAssetUrl(p.poster) : p.poster;
+                vid.replaceWith(img); return;
+              }
+              const url = window.terseAssetUrl ? await window.terseAssetUrl(firstPath) : firstPath;
+              if (url) { vid.src = url; try { vid.play(); } catch (e) {} }
+            } catch (e) {}
+          })();
+          card.addEventListener('click', async () => { await write(Object.assign(presetPatch(p), { photoSrc: null })); });
+          grid.appendChild(card);
+        }
+        // 自动首选:还没挑过任何角色/素材的话,挑第一个预设的所有 clip 当当前角色
+        const cur = await read(); const gcur = cur.girlfriend || {};
+        // 存的角色已经不在预设里了(被撤掉的 repo 角色)→ 也当作"没选过",换成默认
+        const stale = gcur.character && !presets.some(p => p.key === gcur.character);
+        if (stale || (!gcur.character && !gcur.idleSrc && !gcur.photoSrc)) {
+          await write(presetPatch(presets[0]));
+        }
+      }
+    } catch (e) {} };
+    await paintPresets();
+    // (用户 10-19:"不要出现 mac 模型" —— 不再拉 macOS 的系统声音列表;她只用自己的声音)
+
+    sw && sw.addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      /* 10-22(用户:"免费也能开"):免费用户也能开她 —— 她手势带出的粒子字和壁纸同一档(免费一次一行,Pro 一整片)。
+         开她 = 壁纸 + 粒子字一起开("开了 AI 女友后壁纸粒子就自动打开"),聊天窗跟着打开;关她 = 壁纸一切照旧 */
+      if (on) {
+        if ((await read()).enabled === false && T.setWallpaperEnabled) { try { await T.setWallpaperEnabled(true); } catch (err) {} }
+        const now = await read();
+        now.girlfriend = Object.assign({}, now.girlfriend || {}, { on: true });
+        if (now.showPanel === false) now.showPanel = true;
+        try { await T.setWallpaperConfig(now); } catch (err) {}
+        try { await T.gfChatOpen(); } catch (err) {}
+      } else await write({ on });
+      // 10-21(用户:"一键配置所有环境"):打开她 = 那一下就是一键配置 —— 环境没配好就直接开始配(识别这台 Mac、下载、预热),
+      // 不用再去找按钮;配好后 Terse 自动把实时打开,壁纸等引擎全部预热完才让她出现
+      if (on && T.gfLiveStatus && T.gfLiveSetup) {
+        try {
+          const st = await T.gfLiveStatus();
+          if (st && !st.ready && !st.setting_up) await T.gfLiveSetup();
+        } catch (err) {}
+      }
+    });
+    const bind = (id, key, cast = (v) => v) => {
+      const el = $('#' + id);
+      if (!el) return;
+      el.addEventListener('input', async () => await write({ [key]: cast(el.value) }));
+      el.addEventListener('change', async () => await write({ [key]: cast(el.value) }));
+    };
+    bind('gfX',     'fx',    (v) => +v);
+    bind('gfY',     'fy',    (v) => +v);
+    bind('gfScale', 'zoom',  (v) => +v);
+    bind('gfTint',  'tint');
+    bind('gfFeather', 'feather', (v) => +v);
+    bind('gfFade',    'fadeMs',  (v) => +v);
+    // 她的设置(Pro):免费用户点了弹付费墙;改完推给正在跑的引擎,下一句生效(聊天每轮也会带上)
+    const setBind = (id, key, cast = (v) => v, ev = 'change') => {
+      const el = $('#' + id);
+      if (!el) return;
+      el.addEventListener(ev, async () => {
+        if (document.body.classList.contains('is-free')) {
+          openPaywall(TT('pro_gate_gf_settings', '调她的性格、语气和声音是 Pro 功能。'));
+          paint(); return;
+        }
+        await write({ [key]: cast(el.type === 'checkbox' ? el.checked : el.value) });
+        const g = (await read()).girlfriend || {};
+        if (id === 'gfSetSpeed') { const v = $('#gfSetSpeedV'); if (v) v.textContent = (+el.value).toFixed(2) + '×'; }
+        if (id === 'gfSetVolume') { const v = $('#gfSetVolumeV'); if (v) v.textContent = Math.round(+el.value * 100) + '%'; }
+        if (liveOn(g) && ['gfSetVoice', 'gfSetSpeed', 'gfSetHd'].includes(id)) { try { await T.gfLiveVoice(gfLiveSettings(g).voice); } catch (e) {} }
+      });
+    };
+    setBind('gfSetName', 'herName', (v) => v.trim().slice(0, 16), 'change');
+    setBind('gfSetPersonality', 'personality');
+    setBind('gfSetTone', 'tone');
+    setBind('gfSetVoice', 'liveVoice');
+    setBind('gfSetSpeed', 'liveSpeed', (v) => +v);
+    setBind('gfSetCustom', 'customPersona', (v) => v.slice(0, 400), 'change');
+    setBind('gfSetHd', 'hd', (v) => !!v);
+    // 10-21(用户:"所有可以调节的设定也要有"):音量 / 口型引擎(默认按这台 Mac 自动)/ agent 大字多久一次 —— 壁纸读配置,立刻生效
+    setBind('gfSetVolume', 'volume', (v) => Math.max(0, Math.min(1, +v)), 'input');
+    setBind('gfSetRenderer', 'renderer');
+    setBind('gfSetTextFreq', 'textEveryMs', (v) => +v || 0);
+    setBind('gfSetQuality', 'videoQuality', (v) => v === '4k' ? '4k' : '');     // 10-22:默认 1080p(解码少、不那么热)
+    // 4K 母版不在 app 里(10-22):选 4K 时才下载(~23 MB),下好再刷新她的片段,壁纸才换;下不了就回到 1080p
+    const qsel = $('#gfSetQuality');
+    qsel && qsel.addEventListener('change', async () => {
+      if (qsel.value !== '4k' || !T.gfLiveFetch4k || document.body.classList.contains('is-free')) return;
+      const g = (await read()).girlfriend || {};
+      if ((g.characterClipMeta || []).some(m => m && m.hi)) return;                  // 已经下好了
+      const opt = qsel.querySelector('option[value="4k"]'), label = opt ? opt.textContent : '';
+      if (opt) opt.textContent = TT('gf_q_4k_fetching', '4K(正在下载…)');
+      qsel.disabled = true;
+      try { await T.gfLiveFetch4k(); await gfRefreshChar(); }
+      catch (e) { await write({ videoQuality: '' }); qsel.value = ''; alert(TT('gf_q_4k_failed', '4K 片子没下载成功,先用 1080p。') + '\n' + String(e && e.message || e).slice(0, 160)); }
+      finally { if (opt) opt.textContent = label; qsel.disabled = false; }
+    });
+    setBind('gfSetBrainSaver', 'brainSaver', (v) => !!v);
+    /* 她的大脑(10-22,用户:"所有用户还可以选择不同的大脑模型,但是标明 cpu 消耗,不要出现具体的名称"):和聊天窗的 agent 是同一个
+       设置(chatAgent),所有用户都能选;这台 Mac 没装的置灰。她的实时引擎在跑时立刻试连 —— Claude Code 没登录就打开浏览器的授权页,
+       在那里点一下就好;引擎还没配好时,聊天窗用文字回答,同一个大脑 */
+    const sbrain = $('#gfSetBrain');
+    if (sbrain) {
+      (async () => {
+        try {
+          for (const a of (T.gfAgents ? await T.gfAgents() : []) || []) {
+            const o = sbrain.querySelector(`option[value="${a.id}"]`);
+            if (o && !a.installed && !o.disabled) { o.disabled = true; o.textContent += TT('gf_b_missing', '(这台 Mac 没装)'); }
+          }
+        } catch (e) {}
+      })();
+      let brainTry = 0;
+      sbrain.addEventListener('change', async () => {
+        const id = sbrain.value, my = ++brainTry;
+        await write({ chatAgent: id });
+        if (id === 'ollama') return;
+        let up = false; try { up = !!(await (await fetch('http://127.0.0.1:8770/health')).json()).ok; } catch (e) {}
+        if (!up) return;                                   // 引擎没在跑:聊天窗走文字,用的是同一个设置
+        const opt = sbrain.options[sbrain.selectedIndex], label = opt ? opt.textContent : '';
+        const say = (t) => { if (opt && my === brainTry) opt.textContent = t; };
+        say(label + ' · ' + TT('gf_b_connecting', '正在连接…'));
+        for (const t0 = Date.now(); my === brainTry && Date.now() - t0 < 180000;) {
+          let r = null;
+          try { r = await (await fetch('http://127.0.0.1:8770/brain', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) })).json(); } catch (e) { break; }
+          if (r && r.ok) { say(label); return; }
+          if (r && r.login) { say(label + ' · ' + r.hint); await new Promise(res => setTimeout(res, 3000)); continue; }
+          say(label); if (my === brainTry && r && (r.hint || r.error)) alert(r.hint || r.error);
+          return;
+        }
+        say(label);
+      });
+    }
+    // 线程数在 brain 启动时定:切了就重启它(只重启 Terse 自己起的那个),马上生效
+    const bsw = $('#gfSetBrainSaver');
+    bsw && bsw.addEventListener('change', async () => { if (!document.body.classList.contains('is-free') && T.gfBrainRestart) { try { await T.gfBrainRestart(); } catch (e) {} } });
+    // 换角色素材(照片 / 视频)
+    const pick = async (field, kind) => {
+      try {
+        const p = await (T.gfPickFile ? T.gfPickFile(kind) : T.gfPickVideo());
+        if (p) await write({ [field]: p });
+      } catch (e) {}
+    };
+    const pp = $('#gfPickPhoto'); pp && pp.addEventListener('click', () => pick('photoSrc', 'image'));
+    const pi = $('#gfPickIdle');  pi && pi.addEventListener('click', () => pick('idleSrc', 'video'));
+    const ps = $('#gfPickSpk');   ps && ps.addEventListener('click', () => pick('speakingSrc', 'video'));
+    const cp = $('#gfClearPhoto'); cp && cp.addEventListener('click', async () => await write({ photoSrc: null }));
+    const ci = $('#gfClearIdle');  ci && ci.addEventListener('click', async () => await write({ idleSrc: null }));
+    const cs = $('#gfClearSpk');   cs && cs.addEventListener('click', async () => await write({ speakingSrc: null }));
+    // 嘴型锚点
+    const mx = $('#gfMouthX'), my = $('#gfMouthY');
+    const mxv = $('#gfMouthXv'), myv = $('#gfMouthYv');
+    const bindMouth = (el, lbl, key, pct) => {
+      if (!el) return;
+      el.addEventListener('input', () => { if (lbl) lbl.textContent = Math.round(+el.value * 100) + '%'; });
+      el.addEventListener('change', async () => await write({ [key]: +el.value }));
+    };
+    bindMouth(mx, mxv, 'mouthX');
+    bindMouth(my, myv, 'mouthY');
+    const re = $('#gfReach'); re && re.addEventListener('change', async () => await write({ reachText: re.checked }));
+    const sa = $('#gfSpeakAgent'); sa && sa.addEventListener('change', async () => await write({ speakAgent: sa.checked }));
+    const sayBtn = $('#gfSay'); const txt = $('#gfText');
+    const say = async () => {
+      const t = (txt && txt.value || '').trim();
+      if (!t) return;
+      const cfg = await read(); const g = cfg.girlfriend || {};
+      try {
+        if (liveOn(g)) await T.gfLiveSay(t);                 // 只用她自己的声音;实时数字人没开就不出声(不用 macOS 系统声音)
+      } catch (e) {}
+    };
+    sayBtn && sayBtn.addEventListener('click', say);
+    txt && txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') say(); });
+    const stop = $('#gfSayStop'); stop && stop.addEventListener('click', () => { try { T.gfLiveInterrupt(); } catch (e) {} });
+
+    // ── 和她聊天:搬到独立窗口(gf-chat.html,用户 10-19:"把聊天窗放到另一个窗口,不要放在女友 section 里")。
+    //    语音识别结果 girlfriend-heard 广播给所有窗口,所以这里不再收它 —— 否则一句话会被发两遍。
+    const chatOpen = $('#gfChatOpen');
+    chatOpen && chatOpen.addEventListener('click', async () => {
+      try { await T.gfChatOpen(); } catch (e) {}
+    });
+
+    // ── 实时数字人:一键配置(只显示"好了没 / 还要多久")+ 开关 ──
+    const liveSw = $('#gfLive'), liveState = $('#gfLiveState'), liveBar = $('#gfLiveBar'), liveFill = $('#gfLiveFill');
+    const liveBtn = $('#gfLiveSetup'), liveCancel = $('#gfLiveCancel');
+    const mins = (s) => Math.max(1, Math.round((s || 0) / 60));
+    let liveSetupErr = false, liveSetupWhy = '', clipsSeen = false;
+    const paintLive = async (st) => {
+      if (!liveState) return;
+      st = st || await T.gfLiveStatus().catch(() => null) || {};
+      gfLiveReady = !!st.ready;
+      const g = (await read()).girlfriend || {};
+      if (liveSw) { liveSw.disabled = !st.ready; liveSw.checked = st.ready && g.live === true; }
+      if (liveBar) liveBar.style.display = st.setting_up ? '' : 'none';
+      if (liveFill) liveFill.style.width = (st.pct || 0).toFixed(1) + '%';
+      if (liveBtn) {
+        liveBtn.style.display = st.ready || st.setting_up ? 'none' : '';
+        liveBtn.textContent = liveSetupErr ? TT('gf_live_resume', '继续配置') : TT('gf_live_setup', '一键配置');
+      }
+      if (liveCancel) liveCancel.style.display = st.setting_up ? '' : 'none';
+      liveState.textContent = st.ready ? TT('gf_live_ready', '已就绪')
+        : st.setting_up ? TT('gf_live_progress', '正在配置… {p}% · 还剩约 {m} 分钟').replace('{p}', Math.floor(st.pct || 0)).replace('{m}', mins(st.eta_s))
+        // 说真实的原因(10-22:她的片子不在服务器上时也显示"网络断了?",用户以为是自己网络的问题)
+        : liveSetupErr && /not on the server/.test(liveSetupWhy) ? TT('gf_live_failed_clips', '她的片子暂时还下载不了,过几分钟会自动再试;已经下好的不会重下')
+        : liveSetupErr && /her clips/.test(liveSetupWhy) ? TT('gf_live_failed_net', '下载她的片子时被打断了(网络不稳?)。点「继续配置」接着下,已经下好的不会重下')
+        : liveSetupErr ? TT('gf_live_failed', '配置没完成(网络断了?)。点「继续配置」,已经下好的不会重下')
+        : TT('gf_live_need', '还没配置 · 预计约 {m} 分钟,点一下自动完成').replace('{m}', mins(st.eta_s));
+    };
+    liveBtn && liveBtn.addEventListener('click', async () => {
+      liveSetupErr = false; liveSetupWhy = ''; clipsSeen = false;
+      try { await T.gfLiveSetup(); } catch (e) { liveSetupErr = true; }
+      paintLive();
+    });
+    liveCancel && liveCancel.addEventListener('click', async () => { try { await T.gfLiveCancel(); } catch (e) {} setTimeout(paintLive, 600); });
+    liveSw && liveSw.addEventListener('change', async () => {
+      const on = liveSw.checked;
+      await write({ live: on });                    // 她的大脑照用户选的(10-22:不再一开实时就换回本地)
+      if (!on) { try { await T.gfLiveStop(); } catch (e) {} }
+      else if (gfLiveReady) { try { await T.gfLiveVoice(gfLiveSettings((await read()).girlfriend).voice); } catch (e) {} }
+      paintLive();
+    });
+    try {
+      window.__TAURI__ && window.__TAURI__.event && window.__TAURI__.event.listen('gf-live-setup', async (ev) => {
+        const p = (ev && ev.payload) || {};
+        // 她的片子一下好就让她出现(手势照样带出粒子字),不用等整个配置跑完 —— 声音和口型配好后自己接上
+        if (p.phase === 'clips' && !clipsSeen) { clipsSeen = true; await gfRefreshChar(); paintPresets(); }
+        if (p.done === true) {
+          liveSetupErr = false; liveSetupWhy = '';
+          await gfRefreshChar(); paintPresets();               // 10-22:她的片子刚下好 —— 配置里换成下载的路径,卡片换成视频
+          // 配好了就直接打开:不用用户再找开关
+          const g = (await read()).girlfriend || {};
+          if (g.on) await write({ live: true });
+        } else if (p.done === false) { liveSetupErr = true; liveSetupWhy = String(p.error || ''); clipsSeen = false; }
+        paintLive(p.done === undefined ? { setting_up: true, pct: p.pct, eta_s: p.eta_s } : null);
+      });
+    } catch (e) {}
+    paintLive();
+
+    // 实时数字标签
+    const liveLabel = (id, label, fmt) => {
+      const el = $('#' + id), out = $('#' + label);
+      if (!el || !out) return;
+      el.addEventListener('input', () => out.textContent = fmt(el.value));
+    };
+    liveLabel('gfX',     'gfXv',       v => Math.round(+v * 100) + '%');
+    liveLabel('gfY',     'gfYv',       v => Math.round(+v * 100) + '%');
+    liveLabel('gfScale', 'gfScaleV',   v => (+v).toFixed(2) + '×');
+    liveLabel('gfFeather', 'gfFeatherV', v => Math.round(+v * 100) + '%');
+    liveLabel('gfFade',    'gfFadeV',    v => (+v / 1000).toFixed(2) + 's');
+
+    // 一键连接 agent:开着 speakAgent 就等于"连上",按钮点一下翻转它,
+    // 顺手把订阅到的 agent 事件按时间序显示在下面一个小 feed 里。
+    const connectBtn = $('#gfAgentConnect');
+    const feed = $('#gfAgentFeed');
+    const refreshConnectUi = (on) => {
+      if (!connectBtn) return;
+      connectBtn.textContent = on ? TT('gf_agent_connected', '已连接') : TT('gf_agent_btn', '连接');
+      connectBtn.classList.toggle('btn', !on);
+      connectBtn.classList.toggle('btn-ghost', on);
+    };
+    connectBtn && connectBtn.addEventListener('click', async () => {
+      if (document.body.classList.contains('is-free')) {
+        openPaywall(TT('pro_gate_gf', '壁纸 AI 女友是 Pro 功能。'));
+        return;
+      }
+      const cfg = await read(); const g = cfg.girlfriend || {};
+      const on = !(g.speakAgent === true);
+      await write({ on: true, speakAgent: on });
+      refreshConnectUi(on);
+    });
+    const feedPush = (line) => {
+      if (!feed) return;
+      const d = document.createElement('div');
+      d.textContent = `${new Date().toLocaleTimeString()}  ${line}`;
+      feed.insertBefore(d, feed.firstChild);
+      while (feed.childNodes.length > 20) feed.removeChild(feed.lastChild);
+    };
+    // 听说话事件,刷新状态文案
+    try {
+      if (window.__TAURI__ && window.__TAURI__.event) {
+        window.__TAURI__.event.listen('girlfriend-speaking', (ev) => {
+          gfSpeaking = !!(ev && ev.payload && ev.payload.on);
+          paint();
+        });
+        // 订阅几条和 agent 有关的事件 —— 显示在 feed 里,好让"连上了"有真的反馈
+        const sub = (name, label) => window.__TAURI__.event.listen(name, (ev) => {
+          const p = ev && ev.payload || {};
+          const who = p.agentName || p.name || (p.session && p.session.agentName) || '';
+          feedPush(`${label}${who ? ' · ' + who : ''}`);
+        });
+        sub('agent-connected', TT('gf_feed_connected', '新 agent 连上'));
+        sub('agent-detected',  TT('gf_feed_detected',  '发现 agent'));
+        sub('agent-attention', TT('gf_feed_attention', 'agent 需要注意'));
+        sub('agent-summary',   TT('gf_feed_summary',   'agent 一段话结束'));
+        /* 自动把 agent 的"完成"事件念出来 —— 开着「把 agent 的回复读出来」才生效。
+           目前没有把回复正文抓出来的管线,先用 agent 的名字 + 状态("好了,X 做完了")
+           作为触发信号。Phase 2:接 room_agent_channel 的 assistant 消息文本,念真内容。 */
+        window.__TAURI__.event.listen('agent-attention', async (ev) => {
+          try {
+            const cfg = await read(); const g = cfg.girlfriend || {};
+            if (!g.on || !g.speakAgent) return;
+            const p = ev && ev.payload || {};
+            const name = p.agentName || 'Agent';
+            const done = p.state === 'done';
+            const line = done
+              ? TT('gf_auto_done', '{name} 做完了。').replace('{name}', name)
+              : TT('gf_auto_wait', '{name} 在等你。').replace('{name}', name);
+            if (liveOn(g)) await T.gfLiveSay(line);
+          } catch (e) {}
+        });
+      }
+    } catch (e) {}
+  }
+
+  await paint();
+  // 这一页开着就每两秒重拉一次(切别处就停,别浪费)
+  clearInterval(gfStateTimer);
+  gfStateTimer = setInterval(() => {
+    if (views.gf && !views.gf.classList.contains('hidden')) paint();
+    else clearInterval(gfStateTimer);
+  }, 2000);
 }

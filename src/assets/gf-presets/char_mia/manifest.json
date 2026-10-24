@@ -1,0 +1,795 @@
+{
+  "name": "Mia",
+  "order": 0,
+  "alpha": false,
+  "seamless": false,
+  "frame": "full",
+  "fit": "cover",
+  "face": [
+    0.69,
+    0.5
+  ],
+  "keepU": 0.02,
+  "live": {
+    "idle": "idle_live.mp4"
+  },
+  "clips": {
+    "idle_live.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "turns": [
+        27,
+        31,
+        35,
+        39,
+        43,
+        71,
+        75,
+        79,
+        83,
+        87,
+        91,
+        124,
+        127,
+        131,
+        135,
+        139,
+        172,
+        175,
+        176,
+        179,
+        180,
+        182
+      ],
+      "source": "豆包 Seedance 8s idle (breathe / blink / sweet smile), ping-pong 385 frames, GOP 8",
+      "enterBridge": {
+        "clip": "bridge_in.mp4",
+        "L": 8,
+        "seg": 12,
+        "anchors": [
+          4,
+          26,
+          34,
+          40,
+          50,
+          66,
+          72,
+          82,
+          90,
+          110,
+          130,
+          138,
+          154,
+          170,
+          178,
+          184,
+          192
+        ]
+      },
+      "calm": [
+        0,
+        40
+      ],
+      "calmNote": "frames 0-40 of the forward half: closed mouth, eyes natural, least expression change (10-21: idle stays here, user: no smiles / head sway while idle)"
+    },
+    "point_4.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 1.42,
+      "tip": [
+        0.03,
+        0.365
+      ],
+      "textAt": [
+        0.26,
+        0.22
+      ],
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = the idle seed frame), sealed onto idle_live frame 0 (flf/ramp.py), 10-18 · 食指指向左边"
+    },
+    "point_5.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 1.38,
+      "tip": [
+        0.03,
+        0.24
+      ],
+      "textAt": [
+        0.24,
+        0.12
+      ],
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 120,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = the idle seed frame), sealed onto idle_live frame 0 (flf/ramp.py), 10-18 · 向左摊手展示"
+    },
+    "wave_3.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = the idle seed frame), sealed onto idle_live frame 0 (flf/ramp.py), 10-18 · 双手挥手"
+    },
+    "think_3.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = the idle seed frame), sealed onto idle_live frame 0 (flf/ramp.py), 10-18 · 托腮"
+    },
+    "think_4.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = the idle seed frame), sealed onto idle_live frame 0 (flf/ramp.py), 10-18 · 托腮 2"
+    },
+    "think_5.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = the idle seed frame), sealed onto idle_live frame 0 (flf/ramp.py), 10-18 · 双手捧脸"
+    },
+    "bridge_in.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "source": "optical-flow morph (OpenCV DIS, consistency-weighted) from idle_live anchor frames to the seed frame, 10-18; segment i = anchors[i] → seed, 8 + 4 frames"
+    },
+    "talk_sajiao.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "emo": "撒娇",
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = seed), colour-matched + optical-flow tail seal (bridge/seal_morph.py), 10-18 · 说话时的情绪底片: 撒娇"
+    },
+    "talk_aojiao.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "emo": "傲娇",
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = seed), colour-matched + optical-flow tail seal (bridge/seal_morph.py), 10-18 · 说话时的情绪底片: 傲娇"
+    },
+    "talk_haixiu.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "emo": "害羞",
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = seed), colour-matched + optical-flow tail seal (bridge/seal_morph.py), 10-18 · 说话时的情绪底片: 害羞",
+      "life": true,
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 192,
+        "back": 0
+      }
+    },
+    "talk_kaixin.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "emo": "开心",
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = seed), colour-matched + optical-flow tail seal (bridge/seal_morph.py), 10-18 · 说话时的情绪底片: 开心",
+      "life": true,
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 168,
+        "back": 0
+      }
+    },
+    "talk_weiqu.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "emo": "委屈",
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = seed), colour-matched + optical-flow tail seal (bridge/seal_morph.py), 10-18 · 说话时的情绪底片: 委屈"
+    },
+    "talk_tiaopi.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "emo": "调皮",
+      "life": true,
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 168,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = seed), colour-matched + optical-flow tail seal (bridge/seal_morph.py), 10-18 · 说话时的情绪底片: 调皮"
+    },
+    "life_idle2.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "livePath": {
+        "enter": [
+          382,
+          383,
+          384,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 192,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (both = seed), colour-matched + optical-flow tail seal (bridge/seal_morph.py), 10-18 · 中性待机变体: 眼神飘开又回来、淡淡的笑",
+      "textGesture": true,
+      "impact": 1.5,
+      "tip": [
+        0.62,
+        0.36
+      ],
+      "textAt": [
+        0.25,
+        0.24
+      ]
+    },
+    "idle_calm.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "calm": [
+        0,
+        54
+      ],
+      "source": "豆包 Seedance 10s from Mia's own seed (calm_seed.jpg), 4K 极清 master (变清晰), frames 3–57 only (the neutral stretch before a blink + smile), ping-pong 109 frames 3840×2160 HEVC, GOP 8, 10-21 · 平静底片:头几乎不动、不笑 (DUIX 在头部固定时最自然) · 10-22 (user: \"默认 1080p,也可以选 4K\"): playback copy 1920×1080 (lanczos from the 4K master, x265 crf 16, GOP 8, same frames), the 4K master = hi (4k/)",
+      "blink": {
+        "sprite": "blink_calm.jpg",
+        "n": 9,
+        "fps": 24,
+        "rect0": [
+          2250.89,
+          648.54,
+          851,
+          338
+        ],
+        "alpha": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0.7,
+          0.4
+        ],
+        "source": "calm_4k.mp4 frames 58–66 (her real blink in the same 豆包 take, 4K), eye rect aligned to idle_calm frame 54, 10-21",
+        "rectRes": [
+          3840,
+          2160
+        ]
+      },
+      "hi": "4k/idle_calm.mp4"
+    },
+    "point_c1.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 2.0,
+      "tip": [
+        0.206,
+        0.037
+      ],
+      "textAt": [
+        0.22,
+        0.17
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-21 · 食指指向左上方,眼睛看过去 · 10-22 (user: \"默认 1080p,也可以选 4K\"): playback copy 1920×1080 (lanczos from the 4K master, x265 crf 16, GOP 8, same frames), the 4K master = hi (4k/)",
+      "dh": "dh/point_c1.mp4",
+      "dhPlain": [
+        [
+          15,
+          20
+        ],
+        [
+          57,
+          62
+        ]
+      ],
+      "hi": "4k/point_c1.mp4"
+    },
+    "point_c2.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 2.0,
+      "tip": [
+        0.185,
+        0.425
+      ],
+      "textAt": [
+        0.2,
+        0.27
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-21 · 双手掌心向上向左摊开展示 · 10-22 (user: \"默认 1080p,也可以选 4K\"): playback copy 1920×1080 (lanczos from the 4K master, x265 crf 16, GOP 8, same frames), the 4K master = hi (4k/)",
+      "dh": "dh/point_c2.mp4",
+      "dhPlain": [
+        [
+          14,
+          27
+        ],
+        [
+          53,
+          60
+        ]
+      ],
+      "hi": "4k/point_c2.mp4"
+    },
+    "point_c3.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 1.667,
+      "tip": [
+        0.281,
+        0.01
+      ],
+      "textAt": [
+        0.19,
+        0.15
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-21 · 食指在左上方空中轻点 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "dh": "dh/point_c3.mp4",
+      "dhPlain": [
+        [
+          15,
+          19
+        ],
+        [
+          62,
+          66
+        ]
+      ],
+      "placeholder720": true
+    },
+    "point_c4.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 2.167,
+      "tip": [
+        0.131,
+        0.307
+      ],
+      "textAt": [
+        0.24,
+        0.18
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-21 · 手心握一下再向左弹开五指 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "dh": "dh/point_c4.mp4",
+      "dhPlain": [
+        [
+          17,
+          24
+        ],
+        [
+          54,
+          60
+        ]
+      ],
+      "placeholder720": true
+    },
+    "write_c1.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 1.833,
+      "tip": [
+        0.275,
+        0.014
+      ],
+      "textAt": [
+        0.19,
+        0.14
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-21 · 竖起食指(叮),再指一下 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "placeholder720": true
+    },
+    "point_sprinkle.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 3.042,
+      "tip": [
+        0.242,
+        0.331
+      ],
+      "textAt": [
+        0.11,
+        0.22
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-22 · 掌心向上的手轻轻一抛张开,像撒出一把小星星 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "placeholder720": true
+    },
+    "point_sweep.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 1.75,
+      "tip": [
+        0.282,
+        0.18
+      ],
+      "textAt": [
+        0.12,
+        0.24
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-22 · 张开的手掌向左慢慢抹过,像擦开雾气 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "placeholder720": true
+    },
+    "point_flick2.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 1.833,
+      "tip": [
+        0.128,
+        0.269
+      ],
+      "textAt": [
+        0.1,
+        0.169
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-22 · 指尖向左弹开两下,像弹水珠(豆包画出的水珠已抹掉:calm_gest/dedrop.py) · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "placeholder720": true
+    },
+    "point_release.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 2.042,
+      "tip": [
+        0.299,
+        0.367
+      ],
+      "textAt": [
+        0.13,
+        0.17
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-22 · 合拢的双手向左上方打开,像放走一只萤火虫 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "placeholder720": true
+    },
+    "point_count.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 1.917,
+      "tip": [
+        0.408,
+        0.334
+      ],
+      "textAt": [
+        0.22,
+        0.22
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-22 · 在脸旁边掰着手指数数(四、三、二),每数一下轻轻点头 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "placeholder720": true
+    },
+    "point_piano.mp4": {
+      "align": [
+        1,
+        0,
+        0
+      ],
+      "impact": 2.667,
+      "tip": [
+        0.318,
+        0.38
+      ],
+      "textAt": [
+        0.13,
+        0.2
+      ],
+      "livePath": {
+        "base": "idle_calm.mp4",
+        "enter": [
+          106,
+          107,
+          108,
+          0,
+          1,
+          2
+        ],
+        "g0": 0,
+        "out": 144,
+        "back": 0
+      },
+      "source": "豆包 Seedance 2.0 Mini first-last-frame (图1 = 图2 = calm_seed.jpg), sealed onto idle_calm frame 0 (calm_gest/seal_calm.py), 10-22 · 手心朝下,手指在左上方空中像弹钢琴一样依次轻点 · ⚠ 720p placeholder: 豆包 4K quota resets 10-28 06:11 — re-download 4K 极清 and re-seal",
+      "placeholder720": true
+    }
+  },
+  "calmIdle": "idle_calm.mp4"
+}

@@ -3103,9 +3103,12 @@ jobs:
           Start-Sleep -Seconds 3
           Remove-Item (Join-Path $dir "main-thread.log") -ErrorAction SilentlyContinue
           Get-ChildItem $dir -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | Remove-Item -Force
-          $env:TERSE_TEST_BLOCK_MAIN_SECS = '14'
-          Start-Process -FilePath "$env:TERSE_EXE"
-          Remove-Item Env:TERSE_TEST_BLOCK_MAIN_SECS
+          # Started with an explicit environment: Start-Process goes through ShellExecute, and the first run of this check
+          # never saw the variable (no block happened at all — not a line in main-thread.log)
+          $psi = New-Object Diagnostics.ProcessStartInfo $env:TERSE_EXE
+          $psi.UseShellExecute = $false
+          $psi.EnvironmentVariables['TERSE_TEST_BLOCK_MAIN_SECS'] = '14'
+          [void][Diagnostics.Process]::Start($psi)
           Start-Sleep -Seconds 45
           $mt = Join-Path $dir "main-thread.log"
           $log = if (Test-Path $mt) { Get-Content $mt -Raw } else { "" }
@@ -3124,6 +3127,32 @@ jobs:
           if (-not $alive) { $bad += "Terse died during the test" }
           if ($bad.Count -gt 0) { foreach ($x in $bad) { Write-Warning "PROBE FAIL: $x" }; throw "the freeze probe does not report a stuck UI thread" }
           Write-Host "PROBE OK: a 14 s UI-thread block was reported while it lasted, dumped at 10 s, and the app recovered"
+
+
+      # Every hang dump of this run, read by the debugger on the machine that wrote it: the exact WebView2 runtime is
+      # here (its unwind tables), Microsoft's symbol server has the system DLLs, and this build's Terse.pdb is in the
+      # target folder. A dump read elsewhere unwinds only by stack scanning past WebView2 — guesses.
+      - name: Read the hang dumps with the debugger
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          $dumps = @(Get-ChildItem -Path $dir, artifacts -Recurse -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | Sort-Object Name -Unique)
+          Write-Host "hang dumps: $($dumps.Count)"
+          if ($dumps.Count -eq 0) { return }
+          $cdb = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe', 'C:\Program Files\Windows Kits\10\Debuggers\x64\cdb.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $cdb) { $cdb = Get-ChildItem 'C:\Program Files*\Windows Kits' -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1 }
+          if (-not $cdb) { Write-Warning "no cdb.exe on this runner — dumps kept as artifacts only"; return }
+          $pdb = Join-Path $env:GITHUB_WORKSPACE 'windows-app\src-tauri\target\x86_64-pc-windows-msvc\release'
+          $wv = Get-ChildItem 'C:\Program Files (x86)\Microsoft\EdgeWebView\Application' -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          $img = "$pdb;$(if ($wv) { "$($wv.FullName);$($wv.FullName)\EBWebView\x64" })"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          foreach ($d in $dumps) {
+            Write-Host "── $($d.Name) ($([math]::Round($d.Length / 1KB)) KB)"
+            $out = "artifacts/$($d.BaseName)-stacks.txt"
+            & $cdb.FullName -z $d.FullName -y "srv*C:\symcache*https://msdl.microsoft.com/download/symbols;$pdb" -i $img `
+              -c ".reload /f terse.exe; ~0 kn 60; .echo ===ALL===; ~* kn 25; q" *> $out
+            Get-Content $out | Select-String -Pattern '^ *[0-9a-f]{2} [0-9a-f`]+ [0-9a-f`]+ ' | Select-Object -First 45 | ForEach-Object { Write-Host "  $($_.Line)" }
+          }
 
 
       - name: Upload the evidence

@@ -4943,16 +4943,50 @@ pub fn run() {
             // up against slow-cmd.log and the scanner's phase timings.
             {
                 let app2 = app.handle().clone();
-                std::thread::spawn(move || loop {
-                    std::thread::sleep(std::time::Duration::from_secs(2));
-                    let (tx, rx) = std::sync::mpsc::channel::<()>();
-                    let t = std::time::Instant::now();
-                    if app2.run_on_main_thread(move || { let _ = tx.send(()); }).is_err() { break; }
-                    let _ = rx.recv_timeout(std::time::Duration::from_secs(120));
-                    let ms = t.elapsed().as_millis();
-                    if ms > 1000 {
-                        diag_log("main-thread", &format!("main thread was blocked ~{ms} ms"));
+                std::thread::spawn(move || {
+                    let mut dumped = false;
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(2));
+                        let (tx, rx) = std::sync::mpsc::channel::<()>();
+                        let t = std::time::Instant::now();
+                        if app2.run_on_main_thread(move || { let _ = tx.send(()); }).is_err() { break; }
+                        // Report WHILE it is stuck, every 3 s: the Store's hang reports (HungThreadIsIdle, 14 devices)
+                        // are freezes users ended from Task Manager — a line written only after the thread came back
+                        // was never written for any of them.
+                        loop {
+                            match rx.recv_timeout(std::time::Duration::from_secs(3)) {
+                                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                                    let s = t.elapsed().as_secs();
+                                    let what = IN_CMD.lock().map(|g| g.as_ref().map(|(c, at)| format!(
+                                        "inside command '{c}' (running {} ms)", at.elapsed().as_millis()))).ok().flatten()
+                                        .unwrap_or_else(|| "not inside a command (window / webview / event work)".into());
+                                    diag_log("main-thread", &format!("main thread STILL blocked after {s} s — {what}"));
+                                    if s >= 10 && !dumped {
+                                        dumped = true;              // the line above is on disk before anything risky
+                                        match write_hang_dump() {
+                                            Some(p) => diag_log("main-thread", &format!("hang dump written: {}", p.display())),
+                                            None => diag_log("main-thread", "hang dump could not be written"),
+                                        }
+                                    }
+                                    if s >= 120 { break; }
+                                }
+                                _ => break,
+                            }
+                        }
+                        let ms = t.elapsed().as_millis();
+                        if ms > 1000 {
+                            diag_log("main-thread", &format!("main thread was blocked ~{ms} ms"));
+                        }
                     }
+                });
+            }
+            // CI self-test of the probe above: TERSE_TEST_BLOCK_MAIN_SECS=N blocks the main thread for N s, 15 s after
+            // launch, so a run can prove the probe reports a stuck UI thread and writes its dump. Unset = nothing.
+            if let Some(n) = std::env::var("TERSE_TEST_BLOCK_MAIN_SECS").ok().and_then(|v| v.parse::<u64>().ok()).filter(|n| *n > 0 && *n <= 60) {
+                let app3 = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(15));
+                    let _ = app3.run_on_main_thread(move || std::thread::sleep(std::time::Duration::from_secs(n)));
                 });
             }
             room_link::start(app.handle().clone());
@@ -5352,7 +5386,11 @@ pub fn run() {
             move |invoke: tauri::ipc::Invoke<tauri::Wry>| {
                 let cmd = invoke.message.command().to_string();
                 let t = std::time::Instant::now();
+                // The command running now, for the main-thread probe: a freeze that never ends never reaches the
+                // slow-cmd line below, so the probe names it while it is still stuck.
+                *IN_CMD.lock().unwrap_or_else(|e| e.into_inner()) = Some((cmd.clone(), t));
                 let handled = handler(invoke);
+                *IN_CMD.lock().unwrap_or_else(|e| e.into_inner()) = None;
                 let ms = t.elapsed().as_millis();
                 if ms > 300 {
                     diag_log("slow-cmd", &format!(
@@ -7194,6 +7232,35 @@ fn pin_log(line: &str) {
 /// shape of problem — intermittent, invisible to a style dump — so it gets the
 /// same treatment rather than another round of theories.
 #[cfg(target_os = "windows")]
+/// The command the IPC handler is running right now (set around every invoke). Read by the main-thread probe.
+static IN_CMD: std::sync::Mutex<Option<(String, std::time::Instant)>> = std::sync::Mutex::new(None);
+
+/// A minidump of this process (every thread's stack), written once per run by the main-thread probe when the UI
+/// thread has been stuck 10 s. ~/.terse/hang-<unix time>.dmp, newest two kept. Read with the Terse.pdb of the same
+/// build (CI keeps it). Written from inside the process, which can itself wedge if the stuck thread holds the loader
+/// lock — so the probe logs before calling this.
+fn write_hang_dump() -> Option<std::path::PathBuf> {
+    use std::os::windows::io::AsRawHandle;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Diagnostics::Debug::{MiniDumpWithThreadInfo, MiniDumpWriteDump};
+    use windows::Win32::System::Threading::GetCurrentProcess;
+    let dir = dirs::home_dir()?.join(".terse");
+    let _ = std::fs::create_dir_all(&dir);
+    let mut old: Vec<std::path::PathBuf> = std::fs::read_dir(&dir).ok()?.flatten().map(|e| e.path())
+        .filter(|p| p.file_name().and_then(|n| n.to_str()).map(|n| n.starts_with("hang-") && n.ends_with(".dmp")).unwrap_or(false))
+        .collect();
+    old.sort();
+    while old.len() >= 2 { let _ = std::fs::remove_file(old.remove(0)); }
+    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let path = dir.join(format!("hang-{ts}.dmp"));
+    let f = std::fs::File::create(&path).ok()?;
+    let ok = unsafe {
+        MiniDumpWriteDump(GetCurrentProcess(), std::process::id(), HANDLE(f.as_raw_handle()), MiniDumpWithThreadInfo, None, None, None)
+    }.is_ok();
+    drop(f);
+    if ok { Some(path) } else { let _ = std::fs::remove_file(&path); None }
+}
+
 pub(crate) fn diag_log(name: &str, line: &str) {
     use std::io::Write;
     // Timestamped. Without one, these lines cannot be ordered against anything

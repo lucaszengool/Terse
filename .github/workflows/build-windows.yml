@@ -119,6 +119,17 @@ jobs:
             Get-ChildItem -Recurse "windows-app\src-tauri\target\x86_64-pc-windows-msvc\release" -Depth 3 | Select-Object FullName
           }
 
+      # The symbols of exactly this build: what turns a user's ~/.terse/hang-*.dmp (the main-thread probe writes one
+      # when the UI thread is stuck 10 s) into function names.
+      - name: Upload symbols (Terse.pdb)
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: Terse-Windows-Symbols
+          path: windows-app/src-tauri/target/x86_64-pc-windows-msvc/release/*.pdb
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -3079,6 +3090,40 @@ jobs:
           }
           if ($after.hung -gt 0 -or $after.timeouts -gt 0) { Write-Warning "EXPLORER-STALL FAIL: Terse did not recover after Explorer resumed"; throw "Terse stays frozen" }
           Write-Host "EXPLORER-STALL OK: Explorer stalled for 20 s and Terse kept answering (worst $($during.worst) ms)"
+
+
+      # The freeze probe, proven: the Store's hang reports could not be diagnosed because the probe only wrote a line
+      # after the UI thread came back, and users ended the app first. It now reports while stuck — how long, and in
+      # which command — and writes a minidump at 10 s. TERSE_TEST_BLOCK_MAIN_SECS blocks the UI thread on purpose.
+      - name: A stuck UI thread is reported while stuck, with a dump
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          Remove-Item (Join-Path $dir "main-thread.log") -ErrorAction SilentlyContinue
+          Get-ChildItem $dir -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | Remove-Item -Force
+          $env:TERSE_TEST_BLOCK_MAIN_SECS = '14'
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Remove-Item Env:TERSE_TEST_BLOCK_MAIN_SECS
+          Start-Sleep -Seconds 45
+          $mt = Join-Path $dir "main-thread.log"
+          $log = if (Test-Path $mt) { Get-Content $mt -Raw } else { "" }
+          $log -split "`n" | Where-Object { $_ -match 'blocked|dump' } | Select-Object -Last 8 | ForEach-Object { Write-Host "  $_" }
+          $dmp = Get-ChildItem $dir -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          if (Test-Path $mt) { Copy-Item $mt artifacts/probe-main-thread.log }
+          if ($dmp) { Write-Host ("  dump: {0} ({1:N1} MB)" -f $dmp.Name, ($dmp.Length / 1MB)); Copy-Item $dmp.FullName artifacts/ }
+          $alive = $null -ne (Get-Process -Name Terse -ErrorAction SilentlyContinue)
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          $bad = @()
+          if ($log -notmatch 'STILL blocked after') { $bad += "no 'STILL blocked' line while the UI thread was stuck" }
+          if ($log -notmatch 'hang dump written') { $bad += "no hang dump written" }
+          if (-not $dmp -or $dmp.Length -lt 100000) { $bad += "no usable dump file" }
+          if ($log -notmatch 'main thread was blocked ~1[0-9]\d\d\d ms') { $bad += "the block's end was not logged (did the app recover?)" }
+          if (-not $alive) { $bad += "Terse died during the test" }
+          if ($bad.Count -gt 0) { foreach ($x in $bad) { Write-Warning "PROBE FAIL: $x" }; throw "the freeze probe does not report a stuck UI thread" }
+          Write-Host "PROBE OK: a 14 s UI-thread block was reported while it lasted, dumped at 10 s, and the app recovered"
 
 
       - name: Upload the evidence

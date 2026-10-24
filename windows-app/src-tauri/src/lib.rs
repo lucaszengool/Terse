@@ -37,6 +37,8 @@ mod desk;
 mod approvals;
 mod splash;
 mod music;
+mod girlfriend;
+mod wallpaper_cursor;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
@@ -2438,6 +2440,48 @@ fn hide_room_window(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// AI 女友's chat window (macOS: the same label and page). Built on first use like the other secondary windows; the
+/// microphone is answered for this page only, so voice chat works without WebView2's own prompt.
+#[tauri::command]
+fn gf_chat_open(app: AppHandle) -> Result<(), String> {
+    let w = ensure_window(&app, "gfchat").ok_or("chat window")?;
+    allow_microphone(&w);
+    w.show().map_err(|e| e.to_string())?;
+    let _ = w.unminimize();
+    w.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Answer the chat page's microphone request ourselves (hands.rs answers the tracker's camera the same way).
+///
+/// wry answers WebView2's PermissionRequested for clipboard-read only; left alone, getUserMedia raises WebView2's own
+/// "allow microphone?" prompt on every launch. This window only ever loads our own gf-chat.html, which captures the
+/// voice for her speech recognition on this computer (the engine's /stt on 127.0.0.1).
+fn allow_microphone(w: &tauri::WebviewWindow) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    if DONE.swap(true, Ordering::SeqCst) { return; }        // one handler per window (it is hidden, not destroyed, on close)
+    let _ = w.with_webview(|pw| {
+        use webview2_com::{Microsoft::Web::WebView2::Win32::*, PermissionRequestedEventHandler};
+        unsafe {
+            let Ok(core) = pw.controller().CoreWebView2() else { return };
+            let mut token: i64 = 0;
+            let _ = core.add_PermissionRequested(
+                &PermissionRequestedEventHandler::create(Box::new(|_, args| {
+                    let Some(args) = args else { return Ok(()) };
+                    let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+                    args.PermissionKind(&mut kind)?;
+                    if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE {
+                        args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                    }
+                    Ok(())
+                })),
+                &mut token,
+            );
+        }
+    });
+}
+
 /// 小伙伴的对话窗(和 macOS 同名)。focus=false:它自己冒出来时不抢键盘。
 #[tauri::command]
 fn pet_chat_show(app: AppHandle, focus: Option<bool>) -> Result<(), String> {
@@ -2804,6 +2848,22 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .resizable(true)
                 .skip_taskbar(true)
                 .focused(false)
+                .visible(false)
+                .build()?,
+            16.0,
+        ),
+        "gfchat" => (
+            // AI 女友's chat window (macOS: "和她聊天", 420 × 640). Typing and voice chat with her live here.
+            WebviewWindowBuilder::new(app, "gfchat", WebviewUrl::App("gf-chat.html".into()))
+                .title("和她聊天")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
+                .inner_size(420.0, 640.0)
+                .min_inner_size(340.0, 420.0)
+                .position((screen_width - 460.0).max(40.0) as f64, 100.0)
+                .resizable(true)
+                .focused(true)
                 .visible(false)
                 .build()?,
             16.0,
@@ -4050,6 +4110,13 @@ pub fn run() {
                     window.app_handle().exit(0);
                 }
             }
+            // her chat window keeps its conversation: closing it hides it (macOS does the same)
+            if window.label() == "gfchat" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         // single-instance MUST be registered first; with the deep-link feature it
         // also forwards a `terse://` URL from a second launch to the running app —
@@ -4846,6 +4913,10 @@ pub fn run() {
             // 音乐模式 (off by default): what is playing + its synced lyrics,
             // pushed to the wallpaper as particle text — as on macOS.
             music::start(app.handle().clone());
+            // the wallpaper's hover ripple: the pointer's position, pumped from the system (the wallpaper takes no mouse)
+            wallpaper_cursor::start(app.handle().clone());
+            // AI 女友: a setup that was cut off (Terse closed mid-download) carries on by itself, as on macOS
+            { let h = app.handle().clone(); std::thread::spawn(move || girlfriend::gf_live_autoresume(h)); }
             dock_hook::start(app.handle().clone());
             // The session dock (会话栏): a 14px strip on the left edge that opens
             // when the cursor touches it — started at launch, as on macOS.
@@ -5119,6 +5190,31 @@ pub fn run() {
             splash::app_ready,
             music::music_state,
             music::music_probe,
+            girlfriend::gf_voices,
+            girlfriend::gf_speak,
+            girlfriend::gf_stop,
+            girlfriend::gf_pick_video,
+            girlfriend::gf_pick_file,
+            girlfriend::gf_presets,
+            girlfriend::gf_read_asset,
+            girlfriend::gf_is_speaking,
+            girlfriend::gf_chat,
+            girlfriend::gf_agents,
+            girlfriend::gf_listen,
+            girlfriend::gf_live_status,
+            girlfriend::gf_live_setup,
+            girlfriend::gf_live_cancel,
+            girlfriend::gf_live_start,
+            girlfriend::gf_live_stop,
+            girlfriend::gf_brain_restart,
+            girlfriend::gf_live_fetch_4k,
+            girlfriend::gf_duplex_on,
+            girlfriend::gf_voice,
+            girlfriend::gf_live_chat,
+            girlfriend::gf_live_voice,
+            girlfriend::gf_live_say,
+            girlfriend::gf_live_interrupt,
+            gf_chat_open,
             particle_mode::pm_windows,
             particle_mode::pm_window_rect,
             particle_mode::pm_start,
@@ -7658,6 +7754,18 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     let music_top = cfg.get("music").and_then(|v| v.as_bool()).unwrap_or(false)
         && cfg.get("musicTop").and_then(|v| v.as_bool()).unwrap_or(false)
         && cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+    // The full-frame AI 女友 is the wallpaper itself — one opaque video — so she can only live at desktop level: lifted,
+    // either the page hides her or, for a moment, she covers every window. Like an opaque engine, she vetoes lifting —
+    // but only when she can actually appear (her clips on disk): enabled with no clips yet, the wallpaper lifts as before.
+    // macOS's overlay_allowed and the page's overlayOK() apply the same rule; all three must agree.
+    let gf = cfg.get("girlfriend");
+    let gf_clips = gf.and_then(|g| g.get("characterClips")).and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|p| p.as_str()).any(|p| std::path::Path::new(p).exists()))
+        .unwrap_or(false);
+    let gf_full = cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true)
+        && gf.and_then(|g| g.get("on")).and_then(|v| v.as_bool()).unwrap_or(false)
+        && gf.and_then(|g| g.get("characterFull")).and_then(|v| v.as_bool()).unwrap_or(false)
+        && gf_clips;
     let pro = license::License::load().is_pro();
     // Logged, not inferred. Four diagnoses of the black-sheet overlay were wrong
     // because the inputs to this decision were never printed - a screenshot
@@ -7665,11 +7773,11 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     diag_log(
         "wallpaper",
         &format!(
-            "overlay_allowed -> {} (flag={on} engine={engine} particle={particle} music_top={music_top} pro={pro})",
-            ((on && particle) || music_top) && pro
+            "overlay_allowed -> {} (flag={on} engine={engine} particle={particle} music_top={music_top} gf_full={gf_full} pro={pro})",
+            ((on && particle) || music_top) && !gf_full && pro
         ),
     );
-    ((on && particle) || music_top) && pro
+    ((on && particle) || music_top) && !gf_full && pro
 }
 
 /// Let a page write into the same diagnostic log the Rust side uses.

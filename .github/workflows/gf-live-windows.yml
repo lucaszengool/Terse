@@ -29,7 +29,8 @@ jobs:
       - name: One-click setup (setup.ps1)
         run: |
           $t0 = Get-Date
-          # Windows PowerShell 5.1 — what Terse runs it with on every PC (powershell.exe, not pwsh)
+          # Windows PowerShell 5.1 — what Terse runs it with on every PC (powershell.exe, not pwsh). Started from this
+          # pwsh step it inherits pwsh's PSModulePath; setup.ps1 resets that itself (a user's environment can do the same).
           $p = Start-Process powershell -PassThru -NoNewWindow -RedirectStandardOutput setup.out -RedirectStandardError setup.err `
                -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "$env:GITHUB_WORKSPACE\src\helpers\gf-live\setup.ps1"
           $p.WaitForExit()

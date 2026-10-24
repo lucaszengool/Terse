@@ -22,6 +22,11 @@ $ProgressPreference = 'SilentlyContinue'
 # Python reads and writes UTF-8 here whatever the Windows locale: her manifest, the lexicons and the engine's log lines are
 # Chinese, and cp1252 (an English Windows) cannot hold them.
 $env:PYTHONUTF8 = '1'
+# Windows PowerShell's own module path. Started from PowerShell 7 (or with an edited environment) this 5.1 process
+# inherits a PSModulePath whose first entries are 7's modules, which 5.1 cannot load — and then even built-in cmdlets
+# are "not recognized" (CI: Get-FileHash, every download rejected as a bad checksum).
+$env:PSModulePath = (@("$env:USERPROFILE\Documents\WindowsPowerShell\Modules", "$env:ProgramFiles\WindowsPowerShell\Modules",
+                       "$env:SystemRoot\System32\WindowsPowerShell\v1.0\Modules") -join ';')
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $HERE = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -109,8 +114,11 @@ if ($TOTAL -le 0) { $TOTAL = 1 }
 function Progress([int64]$extra = 0) { Say ("P {0} {1}" -f [Math]::Min($script:DONE + $extra, $script:TOTAL), $script:TOTAL) }
 
 function ShaOk([string]$f, [string]$sha) {
+    # .NET's SHA-256 directly: no module to load, nothing that can be "not recognized"
     if (-not (Test-Path $f)) { return $false }
-    return ((Get-FileHash -Algorithm SHA256 -Path $f).Hash.ToLower() -eq $sha)
+    $st = [IO.File]::OpenRead($f)
+    try { $h = [Security.Cryptography.SHA256]::Create().ComputeHash($st) } finally { $st.Close() }
+    return ((-join ($h | ForEach-Object { $_.ToString('x2') })) -eq $sha)
 }
 
 # Fetch-Verified: one of the urls → $dest, resumed from $dest.part, then checked against $sha. Progress while it runs.

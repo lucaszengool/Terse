@@ -820,11 +820,21 @@ async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app
         }
     }
 
-    let snapshot = {
+    // The agent's history is read with the monitor lock released (agent_monitor::build_session): it can take seconds,
+    // and sync commands wait on that lock on the main thread.
+    let pending = {
         let mut monitor = lock_or_recover(&state.agent_monitor);
         // Clear suppression so this agent can be detected again
         monitor.unsuppress_agent(&agent_type);
-        monitor.accept_agent(&agent_type)
+        monitor.take_pending(&agent_type)
+    };
+    let snapshot = match pending {
+        Some(p) => {
+            let session = tauri::async_runtime::spawn_blocking(move || agent_monitor::AgentMonitor::build_session(p))
+                .await.map_err(|e| e.to_string())?;
+            Some(lock_or_recover(&state.agent_monitor).insert_session(&agent_type, session))
+        }
+        None => None,
     };
     eprintln!("[terse] accept_agent result: has_snapshot={}", snapshot.is_some());
     if let Some(ref snap) = snapshot {
@@ -1497,7 +1507,7 @@ fn navigate_back(app: AppHandle) {
     navigate_main(&app, "index.html");
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u64, state: tauri::State<'_, AppState>, app: AppHandle) {
     let saved = original_tokens.saturating_sub(optimized_tokens);
     {
@@ -1694,7 +1704,7 @@ fn check_can_optimize(state: tauri::State<'_, AppState>) -> serde_json::Value {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn record_optimization_usage(state: tauri::State<'_, AppState>, app: AppHandle) {
     let mut lic = lock_or_recover(&state.license);
     // Each user-initiated optimization (Send click, Optimize button) costs 0.5 quota
@@ -2310,7 +2320,7 @@ fn focus_island(agent_type: Option<String>, app: AppHandle) {
     let _ = app.emit("island-focus", serde_json::json!({ "agentType": agent_type }));
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_agent_attribution(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     store.get_attribution(&period)
@@ -2329,7 +2339,7 @@ fn get_cowork_config(state: tauri::State<'_, AppState>) -> serde_json::Value {
     snap
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
     let coin_bal = {
@@ -2347,7 +2357,7 @@ fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
 }
 
 /// Returns full pet state + coin balance (1 coin earned per optimization call)
-#[tauri::command]
+#[tauri::command(async)]
 fn get_pet_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
     let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -3638,7 +3648,7 @@ fn open_url(url: String) {
 
 /// Called from popup.js when it detects a new tool call during monitoring.
 /// Adds 1 coin and fires pet-fed with the tool name so the pet can react contextually.
-#[tauri::command]
+#[tauri::command(async)]
 fn pet_work_detected(state: tauri::State<'_, AppState>, app: AppHandle, saved_estimate: u64, tool_name: Option<String>) {
     {
         let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -4004,7 +4014,7 @@ fn trial_grace_status(state: tauri::State<'_, AppState>) -> serde_json::Value {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn unlock_pet(pet_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
     let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     let lifetime_saved = stats.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0);
@@ -4015,7 +4025,7 @@ fn unlock_pet(pet_id: String, state: tauri::State<'_, AppState>) -> Result<(), S
     pet_store.unlock_pet(&pet_id, available)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn unlock_skin(pet_id: String, skin_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
     let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     let lifetime_saved = stats.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0);
@@ -5366,18 +5376,18 @@ pub fn run() {
 
 // ── Parity commands ported from macOS: budget, palette, memory, timeline, connectivity ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_budget(state: tauri::State<'_, AppState>) -> serde_json::Value {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).get_budget()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn set_budget(budget: serde_json::Value, state: tauri::State<'_, AppState>) -> bool {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).set_budget(budget);
     true
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_budget_status(state: tauri::State<'_, AppState>) -> serde_json::Value {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).budget_status()
 }
@@ -5466,7 +5476,7 @@ async fn insert_prompt_text(text: String, state: tauri::State<'_, AppState>, app
 
 // ── Session timeline / shareable replay ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_session_timeline(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let at = agent_type.unwrap_or_default();
     let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
@@ -5609,7 +5619,7 @@ fn claude_md_write(path: String, content: String) -> Result<bool, String> {
 
 // ── Connection Doctor — detect + auto-fix agent connectivity ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn connectivity_scan(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let stalled = {
         let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
@@ -5623,7 +5633,7 @@ fn connectivity_scan(state: tauri::State<'_, AppState>) -> serde_json::Value {
     serde_json::json!({ "checks": checks, "fails": fails, "warns": warns, "fixable": fixable, "status": status })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn connectivity_fix_all(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let stalled = {
         let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());

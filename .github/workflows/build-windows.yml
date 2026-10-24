@@ -3018,6 +3018,69 @@ jobs:
           Write-Host "HANG OK: a 200 MB agent history at launch, and the window answered throughout (worst $worst ms)"
 
 
+      # A stalled Explorer must not freeze Terse. The live wallpaper is a child window of Explorer's desktop (WorkerW /
+      # Progman), and every Terse window runs on the same UI thread — so anything that waits on Explorer, or input
+      # queues shared with it, can freeze the whole app the moment Explorer is busy (after login, a shell extension,
+      # an icon refresh, a restart). A clean CI desktop never stalls, which is how the Store's HungThreadIsIdle hangs
+      # stayed invisible here. Explorer is suspended for 20 s (always resumed), and the main window is watched like the
+      # hang check above.
+      - name: A stalled Explorer must not freeze Terse
+        continue-on-error: true
+        run: |
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class Ex{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool IsHungAppWindow(IntPtr h);[DllImport("user32.dll")]public static extern IntPtr SendMessageTimeoutW(IntPtr h,uint m,IntPtr w,IntPtr l,uint f,uint t,out IntPtr r);[DllImport("ntdll.dll")]public static extern int NtSuspendProcess(IntPtr h);[DllImport("ntdll.dll")]public static extern int NtResumeProcess(IntPtr h);}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          '{"enabled":true,"engine":"mineradio","theme":"neon","quality":44,"angle":42,"intensity":1.0}' |
+            Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
+          Remove-Item (Join-Path $dir "main-thread.log") -ErrorAction SilentlyContinue
+          Start-Process -FilePath "$env:TERSE_EXE"
+          Start-Sleep -Seconds 30                                  # the wallpaper is pinned into Explorer's desktop by now
+          $script:found = [IntPtr]::Zero
+          $cb = [Ex+Cb]{ param($h,$l)
+            $sb = New-Object System.Text.StringBuilder 64
+            [void][Ex]::GetWindowTextW($h, $sb, 64)
+            if ($sb.ToString() -eq 'Terse' -and [Ex]::IsWindowVisible($h)) { $script:found = $h; return $false }
+            return $true }
+          [void][Ex]::EnumWindows($cb, [IntPtr]::Zero)
+          $main = $script:found
+          if ($main -eq [IntPtr]::Zero) { throw "EXPLORER-STALL: no main window" }
+          function Watch([int]$secs) {
+            $hung = 0; $worst = 0; $timeouts = 0
+            for ($i = 0; $i -lt ($secs * 4); $i++) {
+              Start-Sleep -Milliseconds 250
+              if ([Ex]::IsHungAppWindow($main)) { $hung++ }
+              $r = [IntPtr]::Zero; $sw = [Diagnostics.Stopwatch]::StartNew()
+              $ok = [Ex]::SendMessageTimeoutW($main, 0, [IntPtr]::Zero, [IntPtr]::Zero, 0, 3000, [ref]$r)
+              $ms = $sw.ElapsedMilliseconds; if ($ms -gt $worst) { $worst = $ms }
+              if ($ok -eq [IntPtr]::Zero) { $timeouts++ }
+            }
+            return @{ hung = $hung; worst = $worst; timeouts = $timeouts }
+          }
+          $before = Watch 8
+          $ex = @(Get-Process -Name explorer -ErrorAction SilentlyContinue)
+          Write-Host "  suspending $($ex.Count) explorer.exe process(es) for 20 s"
+          try {
+            foreach ($p in $ex) { [void][Ex]::NtSuspendProcess($p.Handle) }
+            $during = Watch 20
+          } finally {
+            foreach ($p in $ex) { [void][Ex]::NtResumeProcess($p.Handle) }
+          }
+          $after = Watch 10
+          $mt = Join-Path $dir "main-thread.log"
+          if (Test-Path $mt) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null; Copy-Item $mt artifacts/explorer-stall-main-thread.log; Get-Content $mt -Tail 6 | ForEach-Object { Write-Host "  main-thread.log: $_" } }
+          foreach ($ph in @(@('before', $before), @('during the stall', $during), @('after', $after))) {
+            $v = $ph[1]; Write-Host ("  {0,-17} hung samples {1,3}   WM_NULL timeouts {2,3}   slowest {3,5} ms" -f $ph[0], $v.hung, $v.timeouts, $v.worst)
+          }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($during.hung -gt 0 -or $during.timeouts -gt 0 -or $during.worst -gt 2000) {
+            Write-Warning "EXPLORER-STALL FAIL: while Explorer was stalled, Terse's window stopped responding (the Store's HungThreadIsIdle)"
+            throw "Terse freezes with Explorer"
+          }
+          if ($after.hung -gt 0 -or $after.timeouts -gt 0) { Write-Warning "EXPLORER-STALL FAIL: Terse did not recover after Explorer resumed"; throw "Terse stays frozen" }
+          Write-Host "EXPLORER-STALL OK: Explorer stalled for 20 s and Terse kept answering (worst $($during.worst) ms)"
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

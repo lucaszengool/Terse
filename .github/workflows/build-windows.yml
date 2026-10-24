@@ -2855,6 +2855,83 @@ jobs:
           }
 
 
+      # The Store's hang reports, reproduced (Partner Center: 31 hangs on 14 devices in 30 days, all
+      # APPLICATION_HANG … HungThreadIsIdle — "frozen on open, cannot even close it"). A heavy user's machine has long
+      # agent transcripts; at launch the scanner auto-connects a running Claude Code and reads its whole history. This
+      # plants ~200 MB of it and a running claude.exe, launches Terse, and watches the main window the way Windows does:
+      # IsHungAppWindow every 250 ms plus a WM_NULL round trip, for 75 s. Any hung sample, or a UI thread blocked > 2 s,
+      # is the bug users hit.
+      - name: A long agent history must not freeze Terse at launch
+        continue-on-error: true
+        run: |
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;using System.Text;public class Hg{public delegate bool Cb(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(Cb c,IntPtr l);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetWindowTextW(IntPtr h,StringBuilder s,int n);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool IsHungAppWindow(IntPtr h);[DllImport("user32.dll")]public static extern IntPtr SendMessageTimeoutW(IntPtr h,uint m,IntPtr w,IntPtr l,uint f,uint t,out IntPtr r);}'
+          $dir = Join-Path $env:USERPROFILE ".terse"
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
+          # ~200 MB of one long Claude Code session, written now (the scanner's "active" window is 30 min)
+          $pd = Join-Path $env:USERPROFILE ".claude\projects\C--Users-runneradmin-Desktop-long-history"
+          New-Item -ItemType Directory -Force -Path $pd | Out-Null
+          $file = Join-Path $pd "$([guid]::NewGuid()).jsonl"
+          $filler = ('export function count(s) { return s.length } ' * 180)
+          $sw = New-Object IO.StreamWriter($file, $false, (New-Object Text.UTF8Encoding($false)))
+          $now = [DateTime]::UtcNow
+          for ($i = 0; $i -lt 50000; $i++) {
+            $ts = $now.AddSeconds(-50000 + $i).ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+            if ($i % 2 -eq 0) {
+              $sw.WriteLine('{"type":"user","sessionId":"long","cwd":"C:\\Users\\runneradmin\\Desktop\\long-history","timestamp":"' + $ts + '","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t' + $i + '","content":"' + $filler + '"}]}}')
+            } else {
+              $sw.WriteLine('{"type":"assistant","sessionId":"long","cwd":"C:\\Users\\runneradmin\\Desktop\\long-history","timestamp":"' + $ts + '","message":{"role":"assistant","model":"claude-opus-5","content":[{"type":"text","text":"step ' + $i + ' done"}],"usage":{"input_tokens":120,"output_tokens":340,"cache_read_input_tokens":15000}}}')
+            }
+          }
+          $sw.Close()
+          Write-Host ("planted {0:N0} MB of transcript" -f ((Get-Item $file).Length / 1MB))
+          # a running Claude Code for the scanner to find and auto-connect
+          $exe = Join-Path $env:TEMP "claude.exe"
+          Copy-Item "$env:WINDIR\System32\cmd.exe" $exe -Force
+          $fake = Start-Process -FilePath $exe -ArgumentList '/c', 'timeout /t 600 /nobreak' -WindowStyle Hidden -PassThru
+          Remove-Item (Join-Path $dir "main-thread.log"), (Join-Path $dir "agent-monitor.log") -ErrorAction SilentlyContinue
+          $t0 = Get-Date
+          Start-Process -FilePath "$env:TERSE_EXE"
+          $main = [IntPtr]::Zero; $hung = 0; $worst = 0; $samples = 0; $firstHung = $null
+          for ($i = 0; $i -lt 300; $i++) {
+            Start-Sleep -Milliseconds 250
+            if ($main -eq [IntPtr]::Zero) {
+              $script:found = [IntPtr]::Zero
+              $cb = [Hg+Cb]{ param($h,$l)
+                $sb = New-Object System.Text.StringBuilder 64
+                [void][Hg]::GetWindowTextW($h, $sb, 64)
+                if ($sb.ToString() -eq 'Terse' -and [Hg]::IsWindowVisible($h)) { $script:found = $h; return $false }
+                return $true }
+              [void][Hg]::EnumWindows($cb, [IntPtr]::Zero)
+              $main = $script:found
+              continue
+            }
+            $samples++
+            if ([Hg]::IsHungAppWindow($main)) { $hung++; if (-not $firstHung) { $firstHung = ((Get-Date) - $t0).TotalSeconds } }
+            $r = [IntPtr]::Zero; $st = [Diagnostics.Stopwatch]::StartNew()
+            [void][Hg]::SendMessageTimeoutW($main, 0, [IntPtr]::Zero, [IntPtr]::Zero, 0, 8000, [ref]$r)
+            if ($st.ElapsedMilliseconds -gt $worst) { $worst = $st.ElapsedMilliseconds }
+          }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          foreach ($n in 'main-thread.log', 'agent-monitor.log') {
+            $p = Join-Path $dir $n
+            if (Test-Path $p) {
+              Copy-Item $p "artifacts/hang-$n"
+              Get-Content $p | Select-String -Pattern 'blocked|slow scanner|accept|history' | Select-Object -Last 12 | ForEach-Object { Write-Host "  ${n}: $($_.Line)" }
+            }
+          }
+          $mt = Join-Path $dir "main-thread.log"
+          $blocks = if (Test-Path $mt) { @(Select-String -Path $mt -Pattern 'blocked ~(\d+) ms' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }) } else { @() }
+          $maxBlock = if ($blocks.Count) { ($blocks | Measure-Object -Maximum).Maximum } else { 0 }
+          Write-Host ("  main window found: {0}; {1} samples; Windows said HUNG in {2} of them{3}; slowest WM_NULL round trip {4} ms; worst logged block {5} ms" -f ($main -ne [IntPtr]::Zero), $samples, $hung, $(if ($firstHung) { " (first at {0:N1} s)" -f $firstHung } else { '' }), $worst, $maxBlock)
+          $fake | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+          Remove-Item -Recurse -Force $pd -ErrorAction SilentlyContinue
+          if ($main -eq [IntPtr]::Zero) { throw "HANG FAIL: the main window never appeared" }
+          if ($hung -gt 0 -or $worst -gt 2000 -or $maxBlock -gt 2000) { Write-Warning "HANG FAIL: Terse froze with a long agent history — the Store's HungThreadIsIdle reports"; throw "Terse freezes at launch" }
+          Write-Host "HANG OK: a 200 MB agent history at launch, and the window answered throughout (worst $worst ms)"
+
+
       - name: Upload the evidence
         continue-on-error: true
         uses: actions/upload-artifact@v4

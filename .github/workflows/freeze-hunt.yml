@@ -23,8 +23,11 @@ jobs:
       run:
         shell: pwsh
     env:
-      BUILD_RUN: '40152435176'
-      ROUNDS: '8'
+      BUILD_RUN: '40160242764'
+      ROUNDS: '12'
+      # 1 = also read the UI thread from outside at 6/12/18 s with cdb (it suspends Terse while attached, so it
+      # disturbs the freezes it is looking at — off unless that view is the question)
+      ATTACH: '0'
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Install that build
@@ -97,7 +100,7 @@ jobs:
               Start-Sleep -Seconds 1
               # The probe only starts at the END of setup(): the first ~20 s of a launch are invisible to it. Look at
               # the UI thread from outside instead (cdb -pv: non-invasive attach, threads resume when it detaches).
-              if ($env:CDB -and $s -in 6, 12, 18) {
+              if ($env:CDB -and $env:ATTACH -eq '1' -and $s -in 6, 12, 18) {
                 $o = "out/round$r-$mode-t$s-attach.txt"
                 & $env:CDB -pv -p $p.Id -y $env:SYMPATH -c ".reload /f terse.exe; .echo ===MAIN===; ~0 kn 50; q" *> $o
                 Write-Host "    t=$s s, UI thread:"

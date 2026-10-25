@@ -1578,6 +1578,10 @@ html.store-build #petPicker,
 html.store-build #palsPage,
 html.store-build .sb-item[data-page="pals"],
 html.store-build #btnPalsTitle { display: none !important; }
+/* AI 女友 is not in the Store build either: her one-click setup downloads and runs programs (Python, llama.cpp,
+   ffmpeg) at run time, and the MSIX does not carry the setup at all. The sideloaded build and the Mac keep her. */
+html.store-build .sb-item[data-page="gf"],
+html.store-build #gfView { display: none !important; }
 
 /* ── 全员广播的那张小卡(broadcast.js)────────────────────────────────────
    平时**不存在** —— 服务端没有在发的公告时,这段 CSS 一个元素都匹配不到。

@@ -846,6 +846,8 @@ pub fn gf_live_status() -> serde_json::Value {
 
 #[tauri::command]
 pub fn gf_live_setup(app: AppHandle) -> Result<(), String> {
+    // the Store build carries no setup and runs no downloaded programs (its page is hidden too: styles.css store-build)
+    if cfg!(feature = "msstore") { return Err("not in the Microsoft Store build".into()); }
     let mut g = SETUP.lock().unwrap_or_else(|e| e.into_inner());
     if g.as_mut().map(|c| matches!(c.try_wait(), Ok(None))).unwrap_or(false) { return Ok(()); }   // already running
     let script = gf_live_res().join("setup.ps1");
@@ -968,6 +970,7 @@ pub fn gf_live_cancel() -> Result<(), String> {
 }
 
 fn gf_engine_ensure() -> Result<(), String> {
+    if cfg!(feature = "msstore") { return Err("not in the Microsoft Store build".into()); }
     let health = format!("http://127.0.0.1:{GF_ENGINE_PORT}/health");
     if gf_http_ok(&health) { return Ok(()); }
     if !gf_live_ready() { return Err("not set up".into()); }

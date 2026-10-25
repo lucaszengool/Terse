@@ -24,7 +24,9 @@ jobs:
         shell: pwsh
     env:
       BUILD_RUN: '40176671405'
-      ROUNDS: '14'
+      ROUNDS: '4'
+      # 1 = in rounds 1-2, read the WebView2 GPU process's busiest threads at 45 s (cdb, slow on a pegged machine)
+      PROFILE: '1'
       # 1 = also read the UI thread from outside at 6/12/18 s with cdb (it suspends Terse while attached, so it
       # disturbs the freezes it is looking at — off unless that view is the question)
       ATTACH: '0'
@@ -115,6 +117,40 @@ jobs:
                 Write-Host "    t=$s s, UI thread:"
                 Get-Content $o | Select-String -Pattern '===MAIN===' -Context 0,50 | ForEach-Object { $_.Context.PostContext |
                   Where-Object { $_ -match '!' } | Select-Object -First 22 | ForEach-Object { Write-Host "      $(($_.Trim() -split '\s+', 4)[3])" } }
+              }
+              # Where the CPU goes with the wallpaper window up (A/B: GPU process ~376% with it, 1% without — and the
+              # page's 10 fps / no-animation guard did not move it): per-process CPU over 5 s, the GPU process's
+              # switches, and its busiest threads with their stacks.
+              if ($env:CDB -and $env:PROFILE -eq '1' -and $r -le 2 -and $s -eq 45) {
+                $wv = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
+                $c0 = @{}; foreach ($w in $wv) { $c0[$w.ProcessId] = (Get-Process -Id $w.ProcessId -ErrorAction SilentlyContinue).CPU }
+                Start-Sleep -Seconds 5
+                Write-Host "    t=45 s, WebView2 CPU over 5 s ($mode):"
+                foreach ($w in $wv) {
+                  $kind = if ($w.CommandLine -match '--type=([a-z-]+)') { $Matches[1] } else { 'browser' }
+                  $d = (Get-Process -Id $w.ProcessId -ErrorAction SilentlyContinue).CPU - $c0[$w.ProcessId]
+                  Write-Host ("      {0,-18} pid {1,-6} {2,5:N0}%" -f $kind, $w.ProcessId, ($d / 5 * 100))
+                }
+                $gpu = $wv | Where-Object { $_.CommandLine -match '--type=gpu-process' } | Select-Object -First 1
+                if ($gpu) {
+                  $flags = ([regex]::Matches($gpu.CommandLine, '--(use-[a-z-]+|disable-[a-z-]+|enable-[a-z-]+|gpu-[a-z-]+)(=[^ ]*)?') | ForEach-Object { $_.Value }) -join ' '
+                  Write-Host "      gpu-process flags: $flags"
+                  $o = "out/round$r-$mode-gpu-runaway.txt"
+                  & $env:CDB -pv -p $gpu.ProcessId -y $env:SYMPATH -c ".echo ===RUN===; !runaway 1; .echo ===END===; q" *> $o
+                  $tops = @(Get-Content $o | Select-String -Pattern '^\s+(\d+):[0-9a-f]+\s+(\d+) days (\S+)' | Select-Object -First 4)
+                  $tops | ForEach-Object { Write-Host "      busiest thread $($_.Matches[0].Groups[1].Value): $($_.Matches[0].Groups[3].Value) user" }
+                  if ($tops.Count) {
+                    $cmds = ($tops | ForEach-Object { $n = $_.Matches[0].Groups[1].Value; ".echo ===T$n===; ~${n}s; kn 28" }) -join '; '
+                    $o2 = "out/round$r-$mode-gpu-stacks.txt"
+                    & $env:CDB -pv -p $gpu.ProcessId -y $env:SYMPATH -c "$cmds; q" *> $o2
+                    foreach ($tt in $tops) {
+                      $n = $tt.Matches[0].Groups[1].Value
+                      Write-Host "      thread $n :"
+                      Get-Content $o2 | Select-String -Pattern "===T$n===" -Context 0,30 | ForEach-Object { $_.Context.PostContext |
+                        Where-Object { $_ -match '!' } | Select-Object -First 16 | ForEach-Object { Write-Host "        $(($_.Trim() -split '\s+', 4)[3])" } }
+                    }
+                  }
+                }
               }
               $found = $false
               $cb = [H+P]{ param($h, $l) $id = 0; [void][H]::GetWindowThreadProcessId($h, [ref]$id)

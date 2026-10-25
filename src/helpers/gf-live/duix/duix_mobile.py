@@ -205,7 +205,11 @@ class DuixMobile:
             self.pool = ThreadPoolExecutor(2, thread_name_prefix='duixm')
         return self.pool.submit(self.render, clip, k, win)
 
-    def finish(self, h):
+    def finish(self, h, alpha=1.0):
+        # alpha: the engine's per-frame voice weight (engine.hd_patches calls finish(h, al), like DuixHD.finish). It is 1 on
+        # every frame that reaches here — silent frames go out as "bare" without rendering — so the patch is the same.
+        # Without the parameter every mouth of the small model failed ("finish() takes 2 positional arguments but 3 were
+        # given"): she talked with her mouth still, on every PC / Intel-graphics Mac that gets this model by default.
         return h.result()
 
     def drop(self, h):

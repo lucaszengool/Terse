@@ -4944,7 +4944,7 @@ pub fn run() {
             {
                 let app2 = app.handle().clone();
                 std::thread::spawn(move || {
-                    let mut dumped = false;
+                    let mut dumps_this_run = 0u32;
                     loop {
                         std::thread::sleep(std::time::Duration::from_secs(2));
                         let (tx, rx) = std::sync::mpsc::channel::<()>();
@@ -4953,6 +4953,7 @@ pub fn run() {
                         // Report WHILE it is stuck, every 3 s: the Store's hang reports (HungThreadIsIdle, 14 devices)
                         // are freezes users ended from Task Manager — a line written only after the thread came back
                         // was never written for any of them.
+                        let mut dumps_this_freeze = 0u32;
                         loop {
                             match rx.recv_timeout(std::time::Duration::from_secs(3)) {
                                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
@@ -4961,8 +4962,11 @@ pub fn run() {
                                         "inside command '{c}' (running {} ms)", at.elapsed().as_millis()))).ok().flatten()
                                         .unwrap_or_else(|| "not inside a command (window / webview / event work)".into());
                                     diag_log("main-thread", &format!("main thread STILL blocked after {s} s — {what}"));
-                                    if s >= 10 && !dumped {
-                                        dumped = true;              // the line above is on disk before anything risky
+                                    // a snapshot at ~5 s and another at ~15 s of the same freeze (does the stack move?),
+                                    // at most six per run
+                                    let due = (dumps_this_freeze == 0 && s >= 5) || (dumps_this_freeze == 1 && s >= 15);
+                                    if due && dumps_this_run < 6 {
+                                        dumps_this_freeze += 1; dumps_this_run += 1;   // the line above is on disk first
                                         match write_hang_dump() {
                                             Some(p) => diag_log("main-thread", &format!("hang dump written: {}", p.display())),
                                             None => diag_log("main-thread", "hang dump could not be written"),
@@ -7235,8 +7239,8 @@ fn pin_log(line: &str) {
 /// The command the IPC handler is running right now (set around every invoke). Read by the main-thread probe.
 static IN_CMD: std::sync::Mutex<Option<(String, std::time::Instant)>> = std::sync::Mutex::new(None);
 
-/// A minidump of this process (every thread's stack), written once per run by the main-thread probe when the UI
-/// thread has been stuck 10 s. ~/.terse/hang-<unix time>.dmp, newest two kept. Read with the Terse.pdb of the same
+/// A minidump of this process (every thread's stack), written by the main-thread probe when the UI thread has been
+/// stuck ~5 s and again at ~15 s (at most six per run). ~/.terse/hang-<unix time>.dmp, newest six kept. Read with the Terse.pdb of the same
 /// build (CI keeps it). Written from inside the process, which can itself wedge if the stuck thread holds the loader
 /// lock — so the probe logs before calling this.
 fn write_hang_dump() -> Option<std::path::PathBuf> {
@@ -7250,7 +7254,7 @@ fn write_hang_dump() -> Option<std::path::PathBuf> {
         .filter(|p| p.file_name().and_then(|n| n.to_str()).map(|n| n.starts_with("hang-") && n.ends_with(".dmp")).unwrap_or(false))
         .collect();
     old.sort();
-    while old.len() >= 2 { let _ = std::fs::remove_file(old.remove(0)); }
+    while old.len() >= 6 { let _ = std::fs::remove_file(old.remove(0)); }
     let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let path = dir.join(format!("hang-{ts}.dmp"));
     let f = std::fs::File::create(&path).ok()?;

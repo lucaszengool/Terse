@@ -88,6 +88,21 @@ jobs:
             }
             Write-Host "[$renderer] warm: $($hl.warm | ConvertTo-Json -Compress)"
             $line = '你好呀，我是 Mia，现在我也住在 Windows 上了。'
+            New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+            if ($renderer -eq 'mobile') {
+              # the small model writes no video: the page asks /patches for each sentence's mouth. Do what the page does.
+              $t1 = Get-Date
+              $json = (& "$h\venv\Scripts\python.exe" "$env:GITHUB_WORKSPACE\windows-app\ci\gf_mouth_check.py" $line) -join ''
+              $secs = ((Get-Date) - $t1).TotalSeconds
+              Write-Host "[$renderer] mouth check: $json"
+              Get-Content $log -ErrorAction SilentlyContinue | Select-String -Pattern 'voice:|DUIX|failed|Error' | Select-Object -Last 12 | ForEach-Object { Write-Host "  log: $($_.Line)" }
+              Copy-Item $log, "$log.err" artifacts/ -ErrorAction SilentlyContinue
+              $mc = $null; try { $mc = $json | ConvertFrom-Json } catch {}
+              $sum = if ($mc) { ($mc.sentences | ForEach-Object { "$($_.patches) mouths/$($_.frames) frames, $($_.moves) changes" }) -join '; ' } else { 'no answer' }
+              $results += ("{0}: {1} — {2} (in {3:N0}s)" -f $renderer, $(if ($mc -and $mc.ok) { 'OK' } else { 'FAIL' }), $sum, $secs)
+              $eng | Stop-Process -Force
+              continue
+            }
             $t1 = Get-Date
             $say = Invoke-RestMethod http://127.0.0.1:8770/say -Method Post -ContentType 'application/json; charset=utf-8' `
                    -Body ([Text.Encoding]::UTF8.GetBytes((@{ text = $line } | ConvertTo-Json))) -TimeoutSec 60
@@ -95,7 +110,7 @@ jobs:
             # the reply's talking video is ONE fragmented MP4 written while it renders — ffprobe reads a duration for whatever
             # is there so far (measured: 1.07 s of a 2.9 s reply mid-render). Done = the duration stopped growing for ~20 s.
             $mp4 = $null; $dur = 0; $lastDur = -1; $stable = 0
-            for ($i = 0; $i -lt 1200; $i++) {
+            for ($i = 0; $i -lt 540; $i++) {                  # 45 min: CPU DUIX here (no GPU on the runner)
               Start-Sleep -Seconds 5
               $f = Get-ChildItem "$h\dh\turn*.mp4" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
               if (-not $f -or $f.Length -lt 20000) { continue }

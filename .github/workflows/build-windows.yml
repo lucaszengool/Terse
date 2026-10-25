@@ -2946,7 +2946,8 @@ jobs:
           '{"enabled":false}' | Set-Content -Path (Join-Path $dir "wallpaper.json") -Encoding ascii
           $bad = @()
           if ($layer -notmatch 'shown' -or $layer -notmatch 'clips=([1-9]\d*)') { $bad += "the page did not build her layer ($layer)" }
-          if ($layer -notmatch 'mode=calm-silent') { $bad += "not the enable mode (calm base, silent): $layer" }
+          # calm-silent until her engine is set up, calm-live once it is (setup completes now that every asset is published)
+          if ($layer -notmatch 'mode=calm-(silent|live)') { $bad += "not her calm mode: $layer" }
           if ($lift -notmatch 'gf_full=true' -or $lift -notmatch '-> false') { $bad += "Rust did not keep the wallpaper at desktop level while she is on ($lift)" }
           if ($bad.Count -gt 0) { foreach ($x in $bad) { Write-Warning "GIRLFRIEND FAIL: $x" }; throw "AI 女友 does not appear on Windows" }
           Write-Host "GIRLFRIEND OK: her layer is built on the Windows wallpaper (calm, silent until set up) and keeps the wallpaper at desktop level"
@@ -3102,7 +3103,8 @@ jobs:
           Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
           Start-Sleep -Seconds 3
           Remove-Item (Join-Path $dir "main-thread.log") -ErrorAction SilentlyContinue
-          Get-ChildItem $dir -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | Remove-Item -Force
+          # earlier dumps stay: they may be real freezes caught by other steps (the debugger step reads them all)
+          $before = @(Get-ChildItem $dir -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
           # Started with an explicit environment: Start-Process goes through ShellExecute, and the first run of this check
           # never saw the variable (no block happened at all — not a line in main-thread.log)
           $psi = New-Object Diagnostics.ProcessStartInfo $env:TERSE_EXE
@@ -3113,7 +3115,7 @@ jobs:
           $mt = Join-Path $dir "main-thread.log"
           $log = if (Test-Path $mt) { Get-Content $mt -Raw } else { "" }
           $log -split "`n" | Where-Object { $_ -match 'blocked|dump' } | Select-Object -Last 8 | ForEach-Object { Write-Host "  $_" }
-          $dmp = Get-ChildItem $dir -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $dmp = Get-ChildItem $dir -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | Where-Object { $before -notcontains $_.Name } | Select-Object -First 1
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           if (Test-Path $mt) { Copy-Item $mt artifacts/probe-main-thread.log }
           if ($dmp) { Write-Host ("  dump: {0} ({1:N1} MB)" -f $dmp.Name, ($dmp.Length / 1MB)); Copy-Item $dmp.FullName artifacts/ }

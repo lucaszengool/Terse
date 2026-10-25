@@ -97,6 +97,11 @@ windows = { version = "0.58", features = [
     # same source as the volume flyout's media tile.
     "Media_Control",
     "Foundation",
+    # AI 女友: the engine, the brain and the setup join a kill-on-close Job Object, so they never outlive Terse.
+    "Win32_System_JobObjects",
+    "Win32_Security",
+    # MiniDumpWriteDump (the main-thread probe's hang dump) is gated on FileSystem + Kernel + Memory.
+    "Win32_Storage_FileSystem",
 ] }
 
 [build-dependencies]
@@ -110,3 +115,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 # Microsoft Store build: compiles out every system input hook (Code Town's
 # town_keys). The Store submission states Terse installs no keyboard hook.
 msstore = []
+
+# Terse.pdb next to Terse.exe (line tables only — the exe is unchanged, the symbols live in the .pdb): what makes a
+# hang dump (~/.terse/hang-*.dmp, the main-thread probe) and the Store's hang reports readable as function names.
+[profile.release]
+debug = "line-tables-only"

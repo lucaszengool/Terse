@@ -309,7 +309,7 @@ export default class PhotoParticles {
 
   _size() {
     const r = this.canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2) * (globalThis.__terseRenderScale || 1);
     this.W = Math.max(2, Math.round((r.width || this.host.clientWidth || 1280) * dpr));
     this.H = Math.max(2, Math.round((r.height || this.host.clientHeight || 720) * dpr));
     this.canvas.width = this.W; this.canvas.height = this.H;

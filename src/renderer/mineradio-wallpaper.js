@@ -222,12 +222,40 @@ uniform vec2 uCenter, uSize, uDrift;
 uniform vec3 uRingN;
 // 每次成型重抽的随机种子 —— 烟花散开(mode 11)每一次都长得不一样
 uniform float uSeed;
+// AI 女友(mode 12 FROM):这句大字的粒子从她指尖出发(字的同一平面坐标)
+uniform vec2 uFrom;
 uniform vec3 uTint;
 // 手势(Pro):agent 日志 / 统计的粒子字也听手的。uHandG = (x, y, 半径, 强度 0..1),
 // uLensG = (x, y, 半径, 倍数;1 = 关)—— 都在字所在的 Group 本地坐标里。没有手时强度 0、倍数 1,下面两段不起作用
 uniform vec4 uHandG, uLensG;
+// 鼠标 hover 水波:和 SILK 层共用的那张环形缓冲(1 列 ×12 行:x, y, age, str)
+uniform sampler2D uRippleTex;
+uniform int uRippleCount;
 varying vec3 vColor;
 varying float vA;
+
+/** 把字这颗粒子落在的世界点上几圈水波的高度加起来。
+    参数曲线和 mineradio-shaders.js 的 rippleSumAt 对齐:同一张纹理、同一个寿命(2s)、
+    同一个 waveR = age * 2.10 —— 这样字跟 SILK 平面是同步波动的,不是各自为政。 */
+float rippleGlyphZ(vec2 p) {
+  float sum = 0.0;
+  for (int ri = 0; ri < 12; ri++) {
+    if (ri >= uRippleCount) break;
+    float vCoord = (float(ri) + 0.5) / 12.0;
+    vec4 rd = texture2D(uRippleTex, vec2(0.5, vCoord));
+    float age = rd.z, str = rd.w;
+    if (str < 0.005 || age < 0.0 || age > 2.0) continue;
+    float dx = p.x - rd.x, dy = p.y - rd.y;
+    float dist = sqrt(dx * dx + dy * dy);
+    float lifeN = age / 2.0;
+    float env = smoothstep(0.0, 0.06, age) * (1.0 - smoothstep(0.7, 1.0, lifeN));
+    float waveR = age * 2.10;
+    float ringW = 0.40 + age * 0.22;
+    float ring = exp(-pow((dist - waveR) / ringW, 2.0));
+    sum += ring * env * str;
+  }
+  return sum;
+}
 
 /** 一颗粒子"还没落位"时,相对它在字上那个目标点的位移。
  *
@@ -235,6 +263,18 @@ varying float vA;
  *  聚 = u 从 1 走到 0,散 = u 从 0 走到 uOutDepth。编号见 GLYPH_MOVE。 */
 vec3 dispAt(float mode, float u, vec2 rel) {
   float a = aRand * 6.2831;
+  if (mode > 11.5 && mode < 13.5) {
+// 12 FROM —— AI 女友:字是她"写"出来的。
+// 13 BLOW —— 她吹一口气把字吹出来:同一条从嘴到笔画的弧线,但这口气越飞越散(jit 随飞行张开),散开位置 = 她的指尖(uFrom);每颗粒子从指尖出发,
+//   沿一条微弯的弧线飞到自己的笔画上。错峰按 aUv.x(见 main):从左往右一笔一笔写出来。
+vec2 f = (uFrom - uCenter) - rel;                       // 从目标点指向指尖
+float L = length(f) + 1e-4;
+vec2 perp = vec2(-f.y, f.x) / L;
+float arc = sin(u * 3.1416) * L * (0.10 + 0.16 * fract(aRand * 5.3)) * (fract(aRand * 2.7) < 0.5 ? 1.0 : -1.0);
+vec2 jit = vec2(cos(a), sin(a)) * (mode > 12.5 ? 0.20 * sin(u * 3.1416) + 0.015 * u
+                                                 : 0.035 * u);   // 指尖处是一小团;吹出来的气在半路散开
+return vec3(f * u + perp * arc + jit, (aRand - 0.5) * 0.35 * sin(u * 3.1416));
+  }
   if (mode < 0.5) {
 // 0 BURST —— 原版:每颗朝自己的方向、按自己的距离炸开
 return vec3(vec2(cos(a), sin(a)) * (0.55 + aRand * 1.35) * u, u * (aRand - 0.5) * 1.6);
@@ -357,12 +397,19 @@ void main(){
   float mode = uOut > 0.0 ? uOutMode : uInMode;
   // 排队依据:随机 = 一片一片地到,aUv.x = 一列一列地到(打字机/扫描)
   float ord = mix(fract(aRand * 7.13), aUv.x, uStaggerUv);
-  float u = clamp((amt - ord * uStagger) / max(1e-3, 1.0 - uStagger), 0.0, 1.0);
+  float stg = uStagger;
+  // mode 12(她写出来的字):一列一列地到 = 从左往右写;笔画里再带一点随机,不是扫描线
+  if (uOut <= 0.0 && mode > 11.5 && mode < 12.5) { ord = aUv.x * 0.85 + fract(aRand * 7.13) * 0.15; stg = 0.62; }
+  // mode 13(她吹出来的字):离嘴近的那一头先被吹到(右边先到),带一半随机 —— 一阵风,不是扫描
+  if (uOut <= 0.0 && mode > 12.5 && mode < 13.5) { ord = (1.0 - aUv.x) * 0.55 + fract(aRand * 7.13) * 0.45; stg = 0.5; }
+  float u = clamp((amt - ord * stg) / max(1e-3, 1.0 - stg), 0.0, 1.0);
   vec3 d = dispAt(mode, u, rel);
   vColor = uTint;
   // uDispFade:散在外面时压暗。0 = 原版(粒子一路都亮着,是"飞"进来的);
   // 接近 1 = 只有落位的粒子才亮,字于是像在原地"显影"。
   vA = on * uVis * (0.62 + 0.38 * sin(uTime * uTwinkle + aRand * 21.0)) * (1.0 - u * uDispFade);
+  // 吹出来的粒子在她嘴唇上是看不见的,离开嘴一点才亮起来 —— 不会在她脸上堆一团亮斑
+  if (uOut <= 0.0 && mode > 12.5 && mode < 13.5) vA *= 1.0 - smoothstep(0.80, 0.97, u);
   if (uOut > 0.0 && mode > 10.5) {
     // 火花各自熄灭:外层的晚一点,每颗都在闪 —— 不是整朵一起淡掉
     float die = 0.55 + 0.42 * fract(aRand * 3.17);
@@ -382,7 +429,14 @@ void main(){
     glf = mix(uLensG.w, 1.0, smoothstep(uLensG.z * 0.35, uLensG.z, lr));
     gp = uLensG.xy + ld * glf;
   }
-  vec4 mv = modelViewMatrix * vec4(gp, d.z, 1.0);
+  // 鼠标 hover 的水波传到字上:**先**把粒子位置换到世界(= SILK 平面)坐标采 ripple,
+  // 波前经过时给它一个 z 的推力 + 一下更亮。字所在的 group 可能被摆位 / 旋转 ——
+  // modelMatrix 这一步就把它搬回采样空间,所以字和平面上的粒子起伏是同步的。
+  vec4 wpos = modelMatrix * vec4(gp, d.z, 1.0);
+  float rr = rippleGlyphZ(wpos.xy);
+  float gz = d.z + rr * 0.60;
+  vA *= 1.0 + rr * 1.40;
+  vec4 mv = modelViewMatrix * vec4(gp, gz, 1.0);
   // 烟花的火花不跟着 uForm 缩小 —— 散开的时候反而要亮成一颗颗星
   float fwk = (uOut > 0.0 && mode > 10.5) ? 1.0 : 0.0;
   gl_PointSize = (2.5 + max(uForm, fwk * 0.9) * 1.5) * uPixel * uPointScale * uBloomSize * glf;
@@ -402,6 +456,9 @@ void main(){
   gl_FragColor = vec4(vColor, a * vA * uAlpha);
 }
 `;
+
+/* 10-22: where the numbers of one patch land around her hand (fractions of the screen) — a loose cluster, not a column */
+const PATCH = [[0, 0], [-0.05, -0.09], [0.04, 0.08], [-0.07, 0.05], [0.05, -0.06]];
 
 export default class MineradioWallpaper {
   /** @param {HTMLCanvasElement} canvas
@@ -463,7 +520,7 @@ export default class MineradioWallpaper {
     // r128 的 three 没有颜色管理;关掉 r169 的自动转换,才和原项目同色
     if (THREE.ColorManagement) THREE.ColorManagement.enabled = false;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, premultipliedAlpha: true });
-    renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1) * (globalThis.__terseRenderScale || 1));
     renderer.setSize(W, H, false);
     renderer.setClearColor(0x000000, 0);
     if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
@@ -549,7 +606,10 @@ export default class MineradioWallpaper {
   _grids() {
     const q = Math.max(24, Math.min(96, this.quality | 0));
     const k = (q - 24) / 72;                        // 0..1
-    return { pulse: Math.round(80 + k * 90), silk: Math.round(64 + k * 70) };
+    // Software WebGL (wallpaper.html's guard): WARP / SwiftShader run every vertex on the CPU, so the point COUNT is
+    // the cost — fewer rows, not fewer pixels (CI profile: 4 cores in WARP's vertex shader + point expansion).
+    const s = globalThis.__terseSoftwareGL ? 0.6 : 1;
+    return { pulse: Math.round((80 + k * 90) * s), silk: Math.round((64 + k * 70) * s) };
   }
 
   _mkLayer(preset, gridY, alpha, pointScale) {
@@ -655,6 +715,9 @@ export default class MineradioWallpaper {
       uSwirl: { value: g.swirl }, uDrift: { value: new THREE.Vector2(1, 0) },
       uRingN: { value: new THREE.Vector3(0, 0, 0) },
       uSeed: { value: 0 },
+      uFrom: { value: new THREE.Vector2(0, 0) },
+      // 鼠标 hover 水波:共用 SILK 层那张 ripple 纹理,把平面波传到字上(z 起伏 + 一下更亮)
+      uRippleTex: this.u.uRippleTex, uRippleCount: this.u.uRippleCount,
     };
     const styleBloom = g.bloomSize;
     // 辉光孪生:同一份几何再画一遍,点更大、核更软、加性叠加(和 Mineradio 一个套路)
@@ -687,8 +750,11 @@ export default class MineradioWallpaper {
     // Cost is real — Pro can have 4 × 60000 points alive, each drawn twice for
     // the additive glow twin — but these are unlit, depth-less, additive points,
     // which is the cheapest thing a GPU draws.
-    const count = this.pro ? 4 : 1;
-    const per = 60000;
+    // Software WebGL: one line of 8000 points instead of up to 4 × 60000, each drawn twice — on WARP that was
+    // ~480k CPU-run vertices a frame, the bulk of the 3.7 cores the GPU process took (see _grids).
+    const soft = !!globalThis.__terseSoftwareGL;
+    const count = this.pro && !soft ? 4 : 1;
+    const per = soft ? 8000 : 60000;
     this._glyphSlots = [];
     // 字全部挂在一个 Group 下,3D 模式里整组朝相机转(见 _applyView)。字是拿来读的:
     // 让它跟着地面一起倾斜,转到 70° 就只剩一条亮线,那不是三维,是没了。
@@ -733,6 +799,7 @@ export default class MineradioWallpaper {
     }
     g.fillText(text, cv.width / 2, cv.height / 2);
     this._sampleGlyphMask(slot);
+    return Math.min(0.92, g.measureText(text).width / cv.width);   // 字实际占 quad 宽度的比例(导演落点要按它夹边)
   }
 
   /** 遮罩 → 粒子:亮像素列表里随机取点写进 aUv,其余粒子 aOn=0 直接不亮。
@@ -914,6 +981,15 @@ export default class MineradioWallpaper {
     const gl = this._glyphLocal(p);
     this.u.uLensG.value.set(gl[0], gl[1], 0.6, 2.1);
   }
+  /** SILK 平面坐标 → 屏幕像素。
+      和 screenToPlane 对偶 —— 给个平面点,算出它在当前相机下落在屏幕哪儿。
+      AI 女友层接到 onGlyphShow(plane) 后用它换算出"字会在屏幕哪儿冒出来"。 */
+  planeToScreen(x, y) {
+    const cam = this._silk && this._silk.cam;
+    if (!cam || !this.W || !this.H) return null;
+    _V3.set(x, y, 0).project(cam);
+    return [(_V3.x + 1) * 0.5 * this.W, (1 - _V3.y) * 0.5 * this.H];
+  }
   /** 屏幕像素 → SILK 平面坐标(uHandXY / uMouseXY 用的就是这个空间)。
       从相机穿过这一点打一条射线,和 z=0 平面求交 —— 自由视角下相机转了也照样对 */
   screenToPlane(px, py) {
@@ -950,6 +1026,11 @@ export default class MineradioWallpaper {
       // 手在画面里时也不放开到 60 —— 那会让整台机器的所有窗口一起掉帧。
       if (dt < (globalThis.__terseGestureOn ? 1 / 25 : 1 / 31)) return;
       this._last = now;
+      // 环境粒子场的整体明暗缓动到 setFieldDim 给的目标(~0.8s),字不受影响
+      if (this._fieldDimTarget != null) {
+        const u = this.u.uParticleDim, d = this._fieldDimTarget - u.value;
+        u.value = Math.abs(d) < 0.004 ? this._fieldDimTarget : u.value + d * Math.min(1, dt * 4);
+      }
       // 手势:握拳拧 = 变速,张掌停住 = 定格。没有手势时 _rate = 1,和以前一模一样
       this._update(this._frozen ? 0 : dt * (this._rate || 1));
       this._render();
@@ -1565,6 +1646,21 @@ export default class MineradioWallpaper {
    *
    *  渲染器本来就是 alpha:true / clearColor(…, 0),所以画布自己是透明的;
    *  唯一不透明的是画布背后那张底图,以及页面的背景色(在 wallpaper.html)。 */
+  /** 环境粒子场(壁纸照片化成的那一层粒子)整体明暗 0..1,缓动过去;agent 大字(glyph)不受影响。
+   *  AI 女友实时模式用整幅原片当背景时压到 0 —— 背景就是她(教程「小雅」的画面:暗场 + 人 + 字)。 */
+  /** 整幅原片的 AI 女友铺满屏幕时:画面只剩她 + 她用手势带出来的 agent 大字 —— 统计小字(+N tok、燃烧速率、轮播的 stage)
+      一律不出(10-21 实测:它们左右交替落点,右边那一半全落在她脸上) */
+  setOnlyDirected(on) {
+    this._onlyDirected = !!on;
+    if (on) this._glyphQueue.length = 0;
+    this._calloutBatch = null;
+  }
+
+  setFieldDim(v) {
+    this._fieldDimTarget = Math.max(0, Math.min(1, +v));
+    if (!this._running) this.u.uParticleDim.value = this._fieldDimTarget;
+  }
+
   setOverlay(on) {
     this._overlay = !!on;
     const host = this.canvas && this.canvas.parentElement;
@@ -1639,8 +1735,60 @@ export default class MineradioWallpaper {
     return n ? n + ' tok' : null;
   }
 
+  /** AI 女友导演:这句大字现在能出了吗?第一次问的时候请她出计划(开始做动作),
+      之后每帧比对时间;到点才放行。没挂导演 → 永远立刻放行。 */
+  _directReady(lp, now) {
+    if (!this.glyphDirector || !lp) return true;
+    if (!lp._plan) {
+      let plan = null;
+      try { plan = this.glyphDirector({ label: lp.label, kind: lp.kind, size: lp.size || 'big' }); } catch (e) {}
+      lp._plan = plan ? { at: now + Math.max(0, +plan.delayMs || 0), screen: plan.screen || null, from: plan.from || null,
+                          // ready(now):导演自己说"现在放"(她吹气吹到嘴最圆的那一帧);8s 兜底,字永远不会卡住
+                          ready: typeof plan.ready === 'function' ? plan.ready : null, giveUp: now + Math.max(8000, +plan.maxWaitMs || 0),
+                          dropped: typeof plan.dropped === 'function' ? plan.dropped : null,   // she skipped the gesture: no line
+                          timing: plan.timing || null, blow: !!plan.blow, drop: !!plan.drop, dropOnTimeout: !!plan.dropOnTimeout,
+                          region: Array.isArray(plan.region) ? plan.region : null } : { at: now };
+    }
+    const P = lp._plan;
+    // 导演说这句不出(AI 女友开着:大字只能由她的手势带出来,冷却期间来的字直接丢,用户 10-19)
+    if (P.drop) return 'drop';
+    if (P.dropped) { let d = false; try { d = !!P.dropped(); } catch (e) {} if (d) return 'drop'; }
+    if (P.ready) {
+      let ok = false; try { ok = !!P.ready(now); } catch (e) { ok = true; }
+      if (ok) return true;
+      // 等不到她的手势:她开着时宁可不出这句(dropOnTimeout),也不让大字自己冒出来
+      if (now >= P.giveUp) return P.dropOnTimeout ? 'drop' : true;
+      return false;
+    }
+    return now >= P.at;
+  }
+
   _queueGlyph(label, kind) {
     if (!label) return;
+    /* the AI 女友 full-frame: every line is one her hands bring out (setOnlyDirected). 10-22 (user: "AI女友不应该只控制 big
+       middle agent text,应该更多不同的手势控制所有的别的粒子 text 的出现"): the statistics too — not dropped any more: the newest
+       one waits (only "what is happening now" matters), her director picks a gesture for its kind and it leaves her hand */
+    if (this._onlyDirected) {
+      /* … and one sweep of her hand paints a PATCH of them (user: "一个动作可以画一片周围小粒子的那种感觉"): the newest ones
+         (as many as there are statistic slots — slot 0 is the headline's) wait together, her director plans one gesture for
+         the batch, and they all leave her hand at once (_updateGlyph) */
+      if (!this.glyphDirector) return;
+      const B = this._calloutBatch || (this._calloutBatch = { items: [], lead: null, go: false });
+      if (B.go) return;                                  // this patch is already leaving her hand
+      if (B.items.some(it => it.label === label)) return;
+      B.items.push({ label, kind: kind || 'saved', act: this._pendingAct || null, col: this._pendingCol || null });
+      // the Pro field's small companion line (_proTrail — derived from the same event) rides in the same patch: outside her
+      // mode it trails the statistic, here her hand paints both
+      if (this.pro && Math.random() < this._style.field.trail) {
+        const trail = this._proTrail(label, kind);
+        if (trail && !B.items.some(it => it.label === trail)) B.items.push({ label: trail, kind: kind || 'saved', trail: true });
+      }
+      const room = Math.max(1, (this._glyphSlots || []).length - 1);
+      while (B.items.length > room) B.items.shift();
+      if (!B.lead) B.lead = { label, kind: 'batch', size: 'mid' };
+      this._pendingAct = null; this._pendingCol = null;
+      return;
+    }
     // 队列压太长就丢旧的:壁纸要的是"此刻在发生什么",不是补播历史
     const cap = this.pro ? 6 : 3;          // Pro keeps more in flight
     if (this._glyphQueue.length >= 8) return;   // hard ceiling shared by every producer
@@ -1768,11 +1916,13 @@ export default class MineradioWallpaper {
   setStageItems(items) {
     const arr = Array.isArray(items) ? items : [];
     if (!arr.length) return;
+    this._stageNow = arr;                                // her patches top up from these (_updateGlyph)
     const now = performance.now();
     if (now - this._lastStageAt < 12000) return;
     this._lastStageAt = now;
     const it = arr[(this._glyphIdx++) % arr.length];
     const label = (it.v != null ? String(it.v) : '') + (it.u ? ' ' + it.u : '');
+    if (/^0(\s|$)/.test(label.trim())) return;          // nothing saved yet: a "0 0%" in particles reads as broken, skip it
     this._queueGlyph(label.trim(), it.saved ? 'saved' : 'cache');
   }
 
@@ -1929,7 +2079,8 @@ export default class MineradioWallpaper {
   }
 
   /** 星轨炸环的"卡点"模式:字的出现/炸开全部落在光束的炸环节拍上(见 _updateGlyph)。 */
-  _beatMode() { return !!(this.pro && this._spindle && this._spindle.target > 0); }
+  // 10-22 (user: "开启AI女友的时候那些周围小粒子也只能被AI女友手势导出"): with her on, no line rides a beat — every one leaves her hand
+  _beatMode() { return !!(this.pro && this._spindle && this._spindle.target > 0 && !this._onlyDirected); }
 
   /** 卡点模式里这一拍炸哪句字。顺序:新来的信息流 → 新的 agent 日志 → 每第三拍插一条统计
    *  → 其余时间轮播最近的日志(新 → 旧)。一句都没有就返回 null,这一拍只炸个小环。 */
@@ -2044,11 +2195,57 @@ export default class MineradioWallpaper {
       } else if (headlineSlot) {
         // 卡点模式下大字只走上面那条路(拍子上);这个槽位留给它,统计字不占
         if (beat || !this._logPending) continue;
+        /* AI 女友导演:大字先**不**出来。先问她要一个计划 —— 她开始指 / 画的动作,
+           告诉引擎"第几毫秒、屏幕哪个点"是手到位的那一刻;引擎就压着这句字,
+           到点了才在她指的位置出现(用户 10-17:"每次都是数字人先指手势画,
+           然后那个位置对应的屏幕上出现我们的 big middle agent log text")。
+           没挂导演 / 导演说不用 → 和原来一样立刻出。 */
+        { const r = this._directReady(this._logPending, now);
+          if (r === 'drop') { this._logPending = null; continue; }
+          if (!r) continue; }
         next = this._logPending;
         this._logPending = null;
+      } else if (this._onlyDirected && this._calloutBatch && this._calloutBatch.items.length && !beat && !(slots.length === 1 && this._logPending)) {
+        // 10-22: a patch of statistics waiting for her sweep (_queueGlyph) — when her hand gets there they burst out around it,
+        // one per free slot ~140 ms apart, the first (a statistic, not a companion line) mid-size and the rest small: a field of
+        // numbers, not a list
+        const B = this._calloutBatch;
+        if (!B.go) {
+          const r = this._directReady(B.lead, now);
+          if (r === 'drop') { this._calloutBatch = null; continue; }
+          if (!r) continue;
+          B.go = true; B.t = now; B.n = 0;
+          // one number alone isn't a patch: fill the free slots with the stage's facts right now (consumed / saveable / each
+          // agent's burn — what the centre stage rotates through, never invented), a different one first each time
+          const st = (this._stageNow || []).map(it => ({ label: ((it.v != null ? String(it.v) : '') + (it.u ? ' ' + it.u : '')).trim(),
+                                                          kind: it.saved ? 'saved' : 'cache' }));
+          for (let k = 0, room = Math.max(1, slots.length - 1); k < st.length && B.items.length < room; k++) {
+            const s = st[(this._stageTop = (this._stageTop || 0) + 1) % st.length];
+            if (s.label && !/^0(\s|$)/.test(s.label) && !B.items.some(x => x.label === s.label)) B.items.push({ label: s.label, kind: s.kind, trail: true });
+          }
+        }
+        // what her hand couldn't bring out with it (slots still held by the last patch) is dropped, not trickled out later
+        // with her hand already down
+        if (now > B.t + 1500) { this._calloutBatch = null; continue; }
+        if (now < B.t + B.n * 140) continue;
+        const lead = B.n === 0 ? Math.max(0, B.items.findIndex(x => !x.trail)) : 0;
+        const it = B.items.splice(lead, 1)[0], P = B.lead._plan || {}, j = PATCH[B.n % PATCH.length];
+        const sw = this.canvas ? this.canvas.clientWidth || innerWidth : innerWidth, sh = this.canvas ? this.canvas.clientHeight || innerHeight : innerHeight;
+        next = Object.assign({}, it, { size: B.n === 0 ? 'mid' : 'small',
+          _plan: P.screen ? Object.assign({}, P, { screen: [P.screen[0] + j[0] * sw, P.screen[1] + j[1] * sh] }) : null });
+        B.n++;
+        if (!B.items.length) this._calloutBatch = null;
       } else {
+        // 只有一个槽位(免费版)时大字也走这里 —— 同样要先等女友把动作做完
+        if (this._logPending && !beat) {
+          const r = this._directReady(this._logPending, now);
+          if (r === 'drop') { this._logPending = null; continue; }
+          if (!r) continue;
+        }
         if (!this._glyphQueue.length && (beat || !this._logPending)) continue;
-        if (now < this._nextFillAt) break;
+        // 导演放行的大字不吃这道节流:她的手已经到位了,字必须**这一帧**就出,晚 1 秒她手都放下了
+        const directed = !!(this._logPending && this._logPending._plan && !beat);
+        if (!directed && now < this._nextFillAt) break;
         this._nextFillAt = now + FILL_GAP;
         // With one slot (free tier) the headline still takes precedence.
         if (this._logPending && !beat) { next = this._logPending; this._logPending = null; }
@@ -2102,6 +2299,39 @@ export default class MineradioWallpaper {
         gx = Math.max(-halfW + hw * 0.9, Math.min(halfW - hw * 0.9, h.x));
         gy = h.y;
       }
+      // 字先画进图集:要知道这一句**实际**多宽(以前用 uSize —— 那还是这个槽上一句的尺寸,长句跟在短句后面就出屏)
+      const textFrac = this._drawGlyphLabel(slot, next.label, tier) || 0.92;
+      // 导演给了落点:大字出现在她手指的那个屏幕位置(换成平面坐标,再夹进画面里)
+      if (next._plan && next._plan.screen) {
+        const p = this.screenToPlane(next._plan.screen[0], next._plan.screen[1]);
+        if (p) {
+          const camD = cam ? cam.position.length() : 6;
+          const halfH = cam ? Math.tan(cam.fov * Math.PI / 360) * camD : 2.4;
+          const halfW = cam ? halfH * cam.aspect : 4.2;
+          const sc = tier === 'big' ? 1.55 : tier === 'small' ? 0.58 : 1;      // 和绘制循环里 uSize 的倍数一致
+          const text = 3.05 * sc * textFrac / 2, pad = halfW * 0.07;
+          let hw = Math.min(halfW * 0.98, text + pad), lo = -halfW, hi = halfW;
+          /* 导演给的安全带(AI 女友:屏幕左缘到她脸的左边,用户 10-21:"手势导出的位置和 agent 粒子 text 要 match"):整句留在带里,
+             以她手的位置为中心;比带还宽就把这句缩小(最多到 0.55),而不是整句往右推、压到她脸上 */
+          const R = next._plan.region;
+          if (R) {
+            const a = this.screenToPlane(R[0], next._plan.screen[1]), b = this.screenToPlane(R[1], next._plan.screen[1]);
+            if (a && b && b[0] > a[0]) {
+              lo = Math.max(lo, a[0]); hi = Math.min(hi, b[0]);
+              const room = (hi - lo) / 2;
+              if (hw > room) { next._scale = Math.max(0.55, (room - pad) / text); hw = Math.min(room, text * next._scale + pad); }
+            }
+          }
+          gx = hw * 2 >= hi - lo ? (lo + hi) / 2 : Math.max(lo + hw, Math.min(hi - hw, p[0]));
+          gy = Math.max(-halfH * 0.82, Math.min(halfH * 0.82, p[1]));
+        }
+      }
+      // AI 女友:每粒新 glyph 冒出来的时候让"她"知道一声 —— 外部订阅者(壁纸页里的
+      // girlfriend-avatar.js)会在同一时间让手伸向这块位置,把字"画"出来。
+      // 没有订阅者就是 no-op,引擎自身一点行为也不变。
+      if (this.onGlyphShow) {
+        try { this.onGlyphShow({ label: next.label, kind: next.kind, size: tier, plane: { x: gx, y: gy } }); } catch (e) {}
+      }
       slot.glyph = { label: next.label, kind: next.kind, act: next.act || null, t0: now, x: gx, y: gy,
                      size: tier, small: tier === 'small', col,
                      // Exactly one life, as in the film (GLYPH_LIFE). The old
@@ -2111,12 +2341,16 @@ export default class MineradioWallpaper {
                      // and a long one ran the curve past its end, where
                      // 1 - smoother(t) goes negative. Lines still stagger — they
                      // start at different times, which is how the film does it.
-                     life: G_LIFE };
+                     life: G_LIFE, scaleMul: next._scale || 1 };
+      // 导演可以给这一句自己的节奏(AI 女友吹出来的字:慢一点流出来、停够读完、轻轻散)
+      if (next._plan && next._plan.timing) {
+        slot.glyph.T = Object.assign({}, T, next._plan.timing);
+        slot.glyph.life = slot.glyph.T.in + slot.glyph.T.hold + slot.glyph.T.out;
+      }
       if (next.beat) {
         // 这句字挂在它的环上:burst 已经在尖头炸了,散的那一帧别再炸
         slot.glyph.beat = true; slot.glyph.burst = true; slot.glyph.ring = beatRing;
       }
-      this._drawGlyphLabel(slot, next.label, tier);
 
       // 每成一次型,单独发两张牌:这条字**怎么聚出来**、**怎么散回去**。两者是分开的,
       // 所以会出现"从上面落下来、又往下沉掉"和"旋进来、原地裂开"这种不同的组合;
@@ -2124,6 +2358,11 @@ export default class MineradioWallpaper {
       // 于是永远发到 0 —— 和改造前完全一样。
       slot.u.uInMode.value = this._bagPick('in', st.in);
       slot.u.uOutMode.value = this._bagPick('out', st.out);
+      // AI 女友在场:这句大字由她"写"出来 —— 粒子从她指尖(屏幕点 → 平面)流到笔画上
+      if (next._plan && next._plan.from) {
+        const f = this.screenToPlane(next._plan.from[0], next._plan.from[1]);
+        if (f) { slot.u.uInMode.value = next._plan.blow ? 13 : 12; slot.u.uFrom.value.set(f[0], f[1]); }
+      }
       slot.u.uOut.value = 0;
       // DRIFT 那一路的流向每次重抽 —— 同一种手法换个朝向就是另一个样子。
       const dAng = Math.random() * Math.PI * 2;
@@ -2161,6 +2400,7 @@ export default class MineradioWallpaper {
       if (!g0) { slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
       const age = now - g0.t0;
       if (age > g0.life) { slot.glyph = null; slot.u.uVis.value = 0; slot.uB.uVis.value = 0; continue; }
+      const T = g0.T || st.timing;          // 这一句自己的节奏(导演给的),没有就用风格的
       let form, vis, out;
       // burstEase(星轨炸环):出膛式 —— 第一帧就是全速,之后减速落定。smootherstep 是慢起的,
       // 拿它来"炸"就会有 0.2 秒什么都没发生,正好错过拍子。没有这个字段的风格走原来的曲线。
@@ -2226,6 +2466,7 @@ export default class MineradioWallpaper {
         let sc = g0.size === 'big' ? 1.55 : g0.size === 'small' ? 0.58 : 1;
         // 跟着环一起张开:刚炸出来时小一圈,环张满时到全尺寸
         if (g0.beat) sc = BEAT_TEXT_SCALE * (g0.persp || 1) * (0.78 + 0.22 * Math.min(1, (now - g0.t0) / 900));
+        sc *= g0.scaleMul || 1;                  // shrunk to fit the director's band (AI 女友: left of her face)
         u.uSize.value.set(3.05 * sc, 0.52 * sc);
         u.uPointScale.value = 1;
       }
@@ -2256,15 +2497,25 @@ export default class MineradioWallpaper {
 
   _render() {
     const r = this.renderer;
-    r.clear();
-    for (const L of this.layers) r.render(L.scene, L.cam);
-    // 星轨炸环的纺锤体:和字共用 SILK 的相机(同一套平面坐标),画在字的下面
-    if (this._spindle && this._spindle.visible) r.render(this._spindle.scene, this._silk.cam);
-    // 字形层用 SILK 的相机(同一套平面坐标),最后画,叠在最上面
     // Any live slot means the layer has something to draw.
     // 缩影和字挂在同一个 Group 下,所以只要有一样活着就得画这一层。
     const glyphLive = (this._glyphSlots || []).some(sl => sl.u.uVis.value > 0.001);
     const projLive = !!(this._projLayer && this._projLayer.u.uVis.value > 0.001);
+    const spinLive = !!(this._spindle && this._spindle.visible);
+    /* 场被压暗到 0(整幅原片的 AI 女友铺满屏幕时)就一个点都看不见 —— 以前照样每秒 30 次画满三层粒子 + 光晕,和她的 DUIX
+       抢同一块显卡(10-21 实测:壁纸开着,她的回复视频慢了 8 倍)。看不见的场不画;字 / 缩影 / 纺锤体还在就只画它们;
+       什么都没有就清一次画布,之后一帧都不画。 */
+    const fieldOn = !(this.u.uParticleDim && this.u.uParticleDim.value <= 0.002);
+    if (!fieldOn && !glyphLive && !projLive && !spinLive) {
+      if (!this._blank) { r.clear(); this._blank = true; }
+      return;
+    }
+    this._blank = false;
+    r.clear();
+    if (fieldOn) for (const L of this.layers) r.render(L.scene, L.cam);
+    // 星轨炸环的纺锤体:和字共用 SILK 的相机(同一套平面坐标),画在字的下面
+    if (spinLive) r.render(this._spindle.scene, this._silk.cam);
+    // 字形层用 SILK 的相机(同一套平面坐标),最后画,叠在最上面
     if (glyphLive || projLive) {
       r.render(this._glyphLayer.scene, this._silk.cam);
     }

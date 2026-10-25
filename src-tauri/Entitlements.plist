@@ -11,5 +11,8 @@
     <!-- 手势控制:hardened runtime 下访问摄像头需要这一条 -->
     <key>com.apple.security.device.camera</key>
     <true/>
+    <!-- AI 女友「按住说话」:hardened runtime 下开麦需要这一条 -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
 </dict>
 </plist>

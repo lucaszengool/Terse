@@ -37,6 +37,8 @@ mod desk;
 mod approvals;
 mod splash;
 mod music;
+mod girlfriend;
+mod wallpaper_cursor;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -831,11 +833,21 @@ async fn accept_agent(agent_type: String, state: tauri::State<'_, AppState>, app
         }
     }
 
-    let snapshot = {
+    // The agent's history is read with the monitor lock released (agent_monitor::build_session): it can take seconds,
+    // and sync commands wait on that lock on the main thread.
+    let pending = {
         let mut monitor = lock_or_recover(&state.agent_monitor);
         // Clear suppression so this agent can be detected again
         monitor.unsuppress_agent(&agent_type);
-        monitor.accept_agent(&agent_type)
+        monitor.take_pending(&agent_type)
+    };
+    let snapshot = match pending {
+        Some(p) => {
+            let session = tauri::async_runtime::spawn_blocking(move || agent_monitor::AgentMonitor::build_session(p))
+                .await.map_err(|e| e.to_string())?;
+            Some(lock_or_recover(&state.agent_monitor).insert_session(&agent_type, session))
+        }
+        None => None,
     };
     eprintln!("[terse] accept_agent result: has_snapshot={}", snapshot.is_some());
     if let Some(ref snap) = snapshot {
@@ -1508,7 +1520,7 @@ fn navigate_back(app: AppHandle) {
     navigate_main(&app, "index.html");
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn record_optimization(source: String, original_tokens: u64, optimized_tokens: u64, state: tauri::State<'_, AppState>, app: AppHandle) {
     let saved = original_tokens.saturating_sub(optimized_tokens);
     {
@@ -1705,7 +1717,7 @@ fn check_can_optimize(state: tauri::State<'_, AppState>) -> serde_json::Value {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn record_optimization_usage(state: tauri::State<'_, AppState>, app: AppHandle) {
     let mut lic = lock_or_recover(&state.license);
     // Each user-initiated optimization (Send click, Optimize button) costs 0.5 quota
@@ -2321,7 +2333,7 @@ fn focus_island(agent_type: Option<String>, app: AppHandle) {
     let _ = app.emit("island-focus", serde_json::json!({ "agentType": agent_type }));
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_agent_attribution(period: String, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let store = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     store.get_attribution(&period)
@@ -2340,7 +2352,7 @@ fn get_cowork_config(state: tauri::State<'_, AppState>) -> serde_json::Value {
     snap
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let mut farm = state.farm_store.lock().unwrap_or_else(|e| e.into_inner());
     let coin_bal = {
@@ -2358,7 +2370,7 @@ fn get_farm_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
 }
 
 /// Returns full pet state + coin balance (1 coin earned per optimization call)
-#[tauri::command]
+#[tauri::command(async)]
 fn get_pet_state(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
     let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -2449,6 +2461,48 @@ fn hide_room_window(app: AppHandle) -> Result<(), String> {
         w.hide().map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// AI 女友's chat window (macOS: the same label and page). Built on first use like the other secondary windows; the
+/// microphone is answered for this page only, so voice chat works without WebView2's own prompt.
+#[tauri::command]
+fn gf_chat_open(app: AppHandle) -> Result<(), String> {
+    let w = ensure_window(&app, "gfchat").ok_or("chat window")?;
+    allow_microphone(&w);
+    w.show().map_err(|e| e.to_string())?;
+    let _ = w.unminimize();
+    w.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Answer the chat page's microphone request ourselves (hands.rs answers the tracker's camera the same way).
+///
+/// wry answers WebView2's PermissionRequested for clipboard-read only; left alone, getUserMedia raises WebView2's own
+/// "allow microphone?" prompt on every launch. This window only ever loads our own gf-chat.html, which captures the
+/// voice for her speech recognition on this computer (the engine's /stt on 127.0.0.1).
+fn allow_microphone(w: &tauri::WebviewWindow) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    if DONE.swap(true, Ordering::SeqCst) { return; }        // one handler per window (it is hidden, not destroyed, on close)
+    let _ = w.with_webview(|pw| {
+        use webview2_com::{Microsoft::Web::WebView2::Win32::*, PermissionRequestedEventHandler};
+        unsafe {
+            let Ok(core) = pw.controller().CoreWebView2() else { return };
+            let mut token: i64 = 0;
+            let _ = core.add_PermissionRequested(
+                &PermissionRequestedEventHandler::create(Box::new(|_, args| {
+                    let Some(args) = args else { return Ok(()) };
+                    let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+                    args.PermissionKind(&mut kind)?;
+                    if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE {
+                        args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                    }
+                    Ok(())
+                })),
+                &mut token,
+            );
+        }
+    });
 }
 
 /// 小伙伴的对话窗(和 macOS 同名)。focus=false:它自己冒出来时不抢键盘。
@@ -2817,6 +2871,22 @@ fn build_lazy_window(app: &AppHandle, label: &str) -> tauri::Result<()> {
                 .resizable(true)
                 .skip_taskbar(true)
                 .focused(false)
+                .visible(false)
+                .build()?,
+            16.0,
+        ),
+        "gfchat" => (
+            // AI 女友's chat window (macOS: "和她聊天", 420 × 640). Typing and voice chat with her live here.
+            WebviewWindowBuilder::new(app, "gfchat", WebviewUrl::App("gf-chat.html".into()))
+                .title("和她聊天")
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
+                .inner_size(420.0, 640.0)
+                .min_inner_size(340.0, 420.0)
+                .position((screen_width - 460.0).max(40.0) as f64, 100.0)
+                .resizable(true)
+                .focused(true)
                 .visible(false)
                 .build()?,
             16.0,
@@ -3607,7 +3677,7 @@ fn open_url(url: String) {
 
 /// Called from popup.js when it detects a new tool call during monitoring.
 /// Adds 1 coin and fires pet-fed with the tool name so the pet can react contextually.
-#[tauri::command]
+#[tauri::command(async)]
 fn pet_work_detected(state: tauri::State<'_, AppState>, app: AppHandle, saved_estimate: u64, tool_name: Option<String>) {
     {
         let mut pet_store = state.pet_store.lock().unwrap_or_else(|e| e.into_inner());
@@ -3985,7 +4055,7 @@ fn trial_grace_status(state: tauri::State<'_, AppState>) -> serde_json::Value {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn unlock_pet(pet_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
     let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     let lifetime_saved = stats.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0);
@@ -3996,7 +4066,7 @@ fn unlock_pet(pet_id: String, state: tauri::State<'_, AppState>) -> Result<(), S
     pet_store.unlock_pet(&pet_id, available)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn unlock_skin(pet_id: String, skin_id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
     let stats = state.stats_store.lock().unwrap_or_else(|e| e.into_inner());
     let lifetime_saved = stats.get_stats("all")["summary"]["tokensSaved"].as_u64().unwrap_or(0);
@@ -4057,6 +4127,14 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        // Every page (re)load of every window, for the main-thread probe and page-load.log: a page that keeps
+        // reloading re-fetches all of its files through the UI thread.
+        .on_page_load(|wv, p| {
+            let ev = match p.event() { tauri::webview::PageLoadEvent::Started => "start", tauri::webview::PageLoadEvent::Finished => "done" };
+            let url = p.url().path().to_string();
+            note_recent(&RECENT_PAGES, format!("{}:{url} {ev}", wv.label()));
+            diag_log("page-load", &format!("{} {ev} {url}", wv.label()));
+        })
         // Every window, however and wherever it is built (setup, lazily on first
         // use, other modules), gets the frame guard the moment its webview
         // exists — so no window can be missed by a per-site list again.
@@ -4089,6 +4167,13 @@ pub fn run() {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     shutdown_children(window.app_handle());
                     window.app_handle().exit(0);
+                }
+            }
+            // her chat window keeps its conversation: closing it hides it (macOS does the same)
+            if window.label() == "gfchat" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
                 }
             }
         })
@@ -4738,19 +4823,7 @@ pub fn run() {
                 start_polling(app_handle4);
             });
 
-            // Kill any existing proxy (from previous session or older Terse version)
-            // so the new proxy can bind port 7860 and re-configure settings.json.
             {
-                let home = dirs::home_dir().unwrap_or_default();
-                let pid_file = home.join(".terse").join("proxy.pid");
-                if let Ok(pid_str) = std::fs::read_to_string(&pid_file) {
-                    if let Ok(pid) = pid_str.trim().parse::<u32>() {
-                        let _ = crate::hidden_command("taskkill")
-                            .args(["/PID", &pid.to_string(), "/F"])
-                            .output();
-                        std::thread::sleep(std::time::Duration::from_millis(400));
-                    }
-                }
                 // Heal a config left behind by any earlier crash, force-kill or
                 // older build, BEFORE the new proxy decides what to write.
                 //
@@ -4773,6 +4846,19 @@ pub fn run() {
             // Start local API proxy for auto model routing
             std::thread::spawn(move || {
                 let home = dirs::home_dir().unwrap_or_default();
+                // Kill any existing proxy (from previous session or older Terse version)
+                // so the new proxy can bind port 7860 and re-configure settings.json.
+                // Here, not in setup: taskkill and its 400 ms wait ran on the UI thread at
+                // every launch (cdb on the freeze hunt caught setup in that sleep at 6 s).
+                let pid_file = home.join(".terse").join("proxy.pid");
+                if let Ok(pid_str) = std::fs::read_to_string(&pid_file) {
+                    if let Ok(pid) = pid_str.trim().parse::<u32>() {
+                        let _ = crate::hidden_command("taskkill")
+                            .args(["/PID", &pid.to_string(), "/F"])
+                            .output();
+                        std::thread::sleep(std::time::Duration::from_millis(400));
+                    }
+                }
                 let proxy_script = home.join(".terse").join("terse-local-proxy.js");
                 // Deploy proxy script if not present or outdated
                 let proxy_src = include_str!("../../../src/helpers/terse-local-proxy.js");
@@ -4891,6 +4977,10 @@ pub fn run() {
             // 音乐模式 (off by default): what is playing + its synced lyrics,
             // pushed to the wallpaper as particle text — as on macOS.
             music::start(app.handle().clone());
+            // the wallpaper's hover ripple: the pointer's position, pumped from the system (the wallpaper takes no mouse)
+            wallpaper_cursor::start(app.handle().clone());
+            // AI 女友: a setup that was cut off (Terse closed mid-download) carries on by itself, as on macOS
+            { let h = app.handle().clone(); std::thread::spawn(move || girlfriend::gf_live_autoresume(h)); }
             dock_hook::start(app.handle().clone());
             // The session dock (会话栏): a 14px strip on the left edge that opens
             // when the cursor touches it — started at launch, as on macOS.
@@ -4906,17 +4996,70 @@ pub fn run() {
             // window at once; the log gives each one's start and length, to line
             // up against slow-cmd.log and the scanner's phase timings.
             {
+                create_raw_ping_window();
                 let app2 = app.handle().clone();
-                std::thread::spawn(move || loop {
-                    std::thread::sleep(std::time::Duration::from_secs(2));
-                    let (tx, rx) = std::sync::mpsc::channel::<()>();
-                    let t = std::time::Instant::now();
-                    if app2.run_on_main_thread(move || { let _ = tx.send(()); }).is_err() { break; }
-                    let _ = rx.recv_timeout(std::time::Duration::from_secs(120));
-                    let ms = t.elapsed().as_millis();
-                    if ms > 1000 {
-                        diag_log("main-thread", &format!("main thread was blocked ~{ms} ms"));
+                std::thread::spawn(move || {
+                    let mut dumps_this_run = 0u32;
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(2));
+                        let (tx, rx) = std::sync::mpsc::channel::<()>();
+                        let t = std::time::Instant::now();
+                        if app2.run_on_main_thread(move || { let _ = tx.send(()); }).is_err() { break; }
+                        // Report WHILE it is stuck, every 3 s: the Store's hang reports (HungThreadIsIdle, 14 devices)
+                        // are freezes users ended from Task Manager — a line written only after the thread came back
+                        // was never written for any of them.
+                        let mut dumps_this_freeze = 0u32;
+                        let (mut kicks, mut last_report) = (0u32, 0u64);
+                        loop {
+                            match rx.recv_timeout(std::time::Duration::from_secs(1)) {
+                                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                                    let s = t.elapsed().as_secs();
+                                    // From 4 s on, a fresh no-op task every second. tao sets aside events that arrive
+                                    // while it is already inside one (a nested message loop — wry waits that way for
+                                    // every webview it creates) and hands them out only when the next event comes in;
+                                    // if nothing new comes, they wait. A fresh event releases them — so whether the
+                                    // freeze ends right after the first kick says which kind it was.
+                                    if s >= 4 { kicks += 1; let _ = app2.run_on_main_thread(|| {}); }
+                                    if s < 3 || s - last_report < 3 { if s >= 120 { break; } continue; }
+                                    last_report = s;
+                                    let what = IN_CMD.lock().map(|g| g.as_ref().map(|(c, at)| format!(
+                                        "inside command '{c}' (running {} ms)", at.elapsed().as_millis()))).ok().flatten()
+                                        .unwrap_or_else(|| "not inside a command (window / webview / event work)".into());
+                                    let raw = match raw_ping(std::time::Duration::from_millis(500)) {
+                                        Some(ms) => format!("UI thread pumping (raw ping {ms} ms)"),
+                                        None => "UI thread NOT pumping (raw ping unanswered 500 ms)".into(),
+                                    };
+                                    diag_log("main-thread", &format!("main thread STILL blocked after {s} s — {what}; {raw}; kicks {kicks} | {}", recent_ui_traffic(5)));
+                                    // a snapshot at ~5 s and another at ~15 s of the same freeze (does the stack move?),
+                                    // at most six per run
+                                    let due = (dumps_this_freeze == 0 && s >= 5) || (dumps_this_freeze == 1 && s >= 15);
+                                    if due && dumps_this_run < 6 {
+                                        dumps_this_freeze += 1; dumps_this_run += 1;   // the line above is on disk first
+                                        match write_hang_dump() {
+                                            Some(p) => diag_log("main-thread", &format!("hang dump written: {}", p.display())),
+                                            None => diag_log("main-thread", "hang dump could not be written"),
+                                        }
+                                    }
+                                    if s >= 120 { break; }
+                                }
+                                _ => break,
+                            }
+                        }
+                        let ms = t.elapsed().as_millis();
+                        if ms > 1000 {
+                            diag_log("main-thread", &format!("main thread was blocked ~{ms} ms (kicks sent {kicks}) | {}",
+                                recent_ui_traffic((ms as u64 / 1000).clamp(3, 60) + 2)));
+                        }
                     }
+                });
+            }
+            // CI self-test of the probe above: TERSE_TEST_BLOCK_MAIN_SECS=N blocks the main thread for N s, 15 s after
+            // launch, so a run can prove the probe reports a stuck UI thread and writes its dump. Unset = nothing.
+            if let Some(n) = std::env::var("TERSE_TEST_BLOCK_MAIN_SECS").ok().and_then(|v| v.parse::<u64>().ok()).filter(|n| *n > 0 && *n <= 60) {
+                let app3 = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(15));
+                    let _ = app3.run_on_main_thread(move || std::thread::sleep(std::time::Duration::from_secs(n)));
                 });
             }
             room_link::start(app.handle().clone());
@@ -5176,6 +5319,31 @@ pub fn run() {
             splash::app_ready,
             music::music_state,
             music::music_probe,
+            girlfriend::gf_voices,
+            girlfriend::gf_speak,
+            girlfriend::gf_stop,
+            girlfriend::gf_pick_video,
+            girlfriend::gf_pick_file,
+            girlfriend::gf_presets,
+            girlfriend::gf_read_asset,
+            girlfriend::gf_is_speaking,
+            girlfriend::gf_chat,
+            girlfriend::gf_agents,
+            girlfriend::gf_listen,
+            girlfriend::gf_live_status,
+            girlfriend::gf_live_setup,
+            girlfriend::gf_live_cancel,
+            girlfriend::gf_live_start,
+            girlfriend::gf_live_stop,
+            girlfriend::gf_brain_restart,
+            girlfriend::gf_live_fetch_4k,
+            girlfriend::gf_duplex_on,
+            girlfriend::gf_voice,
+            girlfriend::gf_live_chat,
+            girlfriend::gf_live_voice,
+            girlfriend::gf_live_say,
+            girlfriend::gf_live_interrupt,
+            gf_chat_open,
             particle_mode::pm_windows,
             particle_mode::pm_window_rect,
             particle_mode::pm_start,
@@ -5303,7 +5471,12 @@ pub fn run() {
             move |invoke: tauri::ipc::Invoke<tauri::Wry>| {
                 let cmd = invoke.message.command().to_string();
                 let t = std::time::Instant::now();
+                note_recent(&RECENT_IPC, format!("{cmd}@{}", invoke.message.webview_ref().label()));
+                // The command running now, for the main-thread probe: a freeze that never ends never reaches the
+                // slow-cmd line below, so the probe names it while it is still stuck.
+                *IN_CMD.lock().unwrap_or_else(|e| e.into_inner()) = Some((cmd.clone(), t));
                 let handled = handler(invoke);
+                *IN_CMD.lock().unwrap_or_else(|e| e.into_inner()) = None;
                 let ms = t.elapsed().as_millis();
                 if ms > 300 {
                     diag_log("slow-cmd", &format!(
@@ -5327,18 +5500,18 @@ pub fn run() {
 
 // ── Parity commands ported from macOS: budget, palette, memory, timeline, connectivity ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_budget(state: tauri::State<'_, AppState>) -> serde_json::Value {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).get_budget()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn set_budget(budget: serde_json::Value, state: tauri::State<'_, AppState>) -> bool {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).set_budget(budget);
     true
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_budget_status(state: tauri::State<'_, AppState>) -> serde_json::Value {
     state.stats_store.lock().unwrap_or_else(|e| e.into_inner()).budget_status()
 }
@@ -5427,7 +5600,7 @@ async fn insert_prompt_text(text: String, state: tauri::State<'_, AppState>, app
 
 // ── Session timeline / shareable replay ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_session_timeline(agent_type: Option<String>, state: tauri::State<'_, AppState>) -> serde_json::Value {
     let at = agent_type.unwrap_or_default();
     let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
@@ -5570,7 +5743,7 @@ fn claude_md_write(path: String, content: String) -> Result<bool, String> {
 
 // ── Connection Doctor — detect + auto-fix agent connectivity ──
 
-#[tauri::command]
+#[tauri::command(async)]
 fn connectivity_scan(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let stalled = {
         let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
@@ -5584,7 +5757,7 @@ fn connectivity_scan(state: tauri::State<'_, AppState>) -> serde_json::Value {
     serde_json::json!({ "checks": checks, "fails": fails, "warns": warns, "fixable": fixable, "status": status })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn connectivity_fix_all(state: tauri::State<'_, AppState>) -> serde_json::Value {
     let stalled = {
         let monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
@@ -7137,6 +7310,121 @@ fn pin_log(line: &str) {
     diag_log("wallpaper-pin", line)
 }
 
+/// The command the IPC handler is running right now (set around every invoke). Read by the main-thread probe.
+static IN_CMD: std::sync::Mutex<Option<(String, std::time::Instant)>> = std::sync::Mutex::new(None);
+
+/// A message-only window on the UI thread with its own window procedure: tao never sees its messages. The probe pings
+/// it to tell two freezes apart — the UI thread itself stuck (no answer) from the UI thread free in GetMessage while tao
+/// holds back queued work (answers at once). The freeze hunt's dumps had the UI thread idle in tao's GetMessage, with
+/// the probe's task still unrun, for 20-85 s.
+static RAW_PING_HWND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+static RAW_PING_ACK: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+const WM_TERSE_PING: u32 = windows::Win32::UI::WindowsAndMessaging::WM_APP + 0x77;
+
+unsafe extern "system" fn raw_ping_proc(
+    h: windows::Win32::Foundation::HWND, m: u32,
+    w: windows::Win32::Foundation::WPARAM, l: windows::Win32::Foundation::LPARAM,
+) -> windows::Win32::Foundation::LRESULT {
+    if m == WM_TERSE_PING {
+        RAW_PING_ACK.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        return windows::Win32::Foundation::LRESULT(0);
+    }
+    windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(h, m, w, l)
+}
+
+/// Called once, on the UI thread (setup).
+fn create_raw_ping_window() {
+    use windows::core::w;
+    use windows::Win32::Foundation::HINSTANCE;
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, RegisterClassW, HWND_MESSAGE, WINDOW_EX_STYLE, WINDOW_STYLE, WNDCLASSW};
+    unsafe {
+        let Ok(module) = GetModuleHandleW(None) else { return };
+        let hinst = HINSTANCE(module.0);
+        let wc = WNDCLASSW { lpfnWndProc: Some(raw_ping_proc), hInstance: hinst, lpszClassName: w!("TerseRawPing"), ..Default::default() };
+        RegisterClassW(&wc);
+        if let Ok(h) = CreateWindowExW(WINDOW_EX_STYLE(0), w!("TerseRawPing"), w!(""), WINDOW_STYLE(0), 0, 0, 0, 0,
+                                       HWND_MESSAGE, None, hinst, None) {
+            RAW_PING_HWND.store(h.0 as isize, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+}
+
+/// Post to the raw window and wait up to `wait` for its procedure to run: Some(ms) = the UI thread is pumping.
+fn raw_ping(wait: std::time::Duration) -> Option<u128> {
+    use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+    let h = RAW_PING_HWND.load(std::sync::atomic::Ordering::SeqCst);
+    if h == 0 { return None; }
+    let before = RAW_PING_ACK.load(std::sync::atomic::Ordering::SeqCst);
+    let t = std::time::Instant::now();
+    if unsafe { windows::Win32::UI::WindowsAndMessaging::PostMessageW(HWND(h as *mut core::ffi::c_void), WM_TERSE_PING, WPARAM(0), LPARAM(0)) }.is_err() {
+        return None;
+    }
+    while t.elapsed() < wait {
+        if RAW_PING_ACK.load(std::sync::atomic::Ordering::SeqCst) > before { return Some(t.elapsed().as_millis()); }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    None
+}
+
+/// What reached the UI thread lately, for the main-thread probe: every invoke (command @ window) and every page load
+/// (window + url). The one freeze dump read so far (CI, 50 s, ~35 s after launch with the wallpaper on) had the UI thread
+/// inside WebView2 handing a response back to a page (`FetchFulfillRequest` → `ChannelWin::Write`) — invoke results and
+/// the app's own files both travel that way, so a freeze line now says which windows were asking for what.
+static RECENT_IPC: std::sync::Mutex<std::collections::VecDeque<(std::time::Instant, String)>> =
+    std::sync::Mutex::new(std::collections::VecDeque::new());
+static RECENT_PAGES: std::sync::Mutex<std::collections::VecDeque<(std::time::Instant, String)>> =
+    std::sync::Mutex::new(std::collections::VecDeque::new());
+
+fn note_recent(ring: &std::sync::Mutex<std::collections::VecDeque<(std::time::Instant, String)>>, what: String) {
+    let mut q = ring.lock().unwrap_or_else(|e| e.into_inner());
+    if q.len() >= 4096 { q.pop_front(); }
+    q.push_back((std::time::Instant::now(), what));
+}
+
+/// "N invokes in the last S s: cmd@window ×n, …; pages: …" — the busiest first.
+fn recent_ui_traffic(secs: u64) -> String {
+    let since = std::time::Duration::from_secs(secs);
+    let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut total = 0usize;
+    for (at, what) in RECENT_IPC.lock().unwrap_or_else(|e| e.into_inner()).iter() {
+        if at.elapsed() <= since { total += 1; *counts.entry(what.clone()).or_default() += 1; }
+    }
+    let mut top: Vec<(String, usize)> = counts.into_iter().collect();
+    top.sort_by(|a, b| b.1.cmp(&a.1));
+    let top = top.iter().take(8).map(|(w, n)| format!("{w} ×{n}")).collect::<Vec<_>>().join(", ");
+    let pages = RECENT_PAGES.lock().unwrap_or_else(|e| e.into_inner()).iter()
+        .filter(|(at, _)| at.elapsed() <= since).map(|(_, w)| w.clone()).collect::<Vec<_>>();
+    let pages = if pages.is_empty() { "none".to_string() } else { format!("{} — {}", pages.len(), pages.iter().rev().take(6).cloned().collect::<Vec<_>>().join(", ")) };
+    format!("{total} invokes in the last {secs} s: {}; page loads: {pages}", if top.is_empty() { "none".into() } else { top })
+}
+
+/// A minidump of this process (every thread's stack), written by the main-thread probe when the UI thread has been
+/// stuck ~5 s and again at ~15 s (at most six per run). ~/.terse/hang-<unix time>.dmp, newest six kept. Read with the Terse.pdb of the same
+/// build (CI keeps it). Written from inside the process, which can itself wedge if the stuck thread holds the loader
+/// lock — so the probe logs before calling this.
+fn write_hang_dump() -> Option<std::path::PathBuf> {
+    use std::os::windows::io::AsRawHandle;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Diagnostics::Debug::{MiniDumpWithThreadInfo, MiniDumpWriteDump};
+    use windows::Win32::System::Threading::GetCurrentProcess;
+    let dir = dirs::home_dir()?.join(".terse");
+    let _ = std::fs::create_dir_all(&dir);
+    let mut old: Vec<std::path::PathBuf> = std::fs::read_dir(&dir).ok()?.flatten().map(|e| e.path())
+        .filter(|p| p.file_name().and_then(|n| n.to_str()).map(|n| n.starts_with("hang-") && n.ends_with(".dmp")).unwrap_or(false))
+        .collect();
+    old.sort();
+    while old.len() >= 6 { let _ = std::fs::remove_file(old.remove(0)); }
+    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let path = dir.join(format!("hang-{ts}.dmp"));
+    let f = std::fs::File::create(&path).ok()?;
+    let ok = unsafe {
+        MiniDumpWriteDump(GetCurrentProcess(), std::process::id(), HANDLE(f.as_raw_handle()), MiniDumpWithThreadInfo, None, None, None)
+    }.is_ok();
+    drop(f);
+    if ok { Some(path) } else { let _ = std::fs::remove_file(&path); None }
+}
+
 /// Append to `~/.terse/<name>.log`, and echo to stderr.
 ///
 /// This is how the wallpaper bug got solved after five builds of guessing from
@@ -7144,7 +7432,6 @@ fn pin_log(line: &str) {
 /// settled in one line what no picture could. The ghost titlebar is the same
 /// shape of problem — intermittent, invisible to a style dump — so it gets the
 /// same treatment rather than another round of theories.
-#[cfg(target_os = "windows")]
 pub(crate) fn diag_log(name: &str, line: &str) {
     use std::io::Write;
     // Timestamped. Without one, these lines cannot be ordered against anything
@@ -7715,6 +8002,18 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     let music_top = cfg.get("music").and_then(|v| v.as_bool()).unwrap_or(false)
         && cfg.get("musicTop").and_then(|v| v.as_bool()).unwrap_or(false)
         && cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+    // The full-frame AI 女友 is the wallpaper itself — one opaque video — so she can only live at desktop level: lifted,
+    // either the page hides her or, for a moment, she covers every window. Like an opaque engine, she vetoes lifting —
+    // but only when she can actually appear (her clips on disk): enabled with no clips yet, the wallpaper lifts as before.
+    // macOS's overlay_allowed and the page's overlayOK() apply the same rule; all three must agree.
+    let gf = cfg.get("girlfriend");
+    let gf_clips = gf.and_then(|g| g.get("characterClips")).and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|p| p.as_str()).any(|p| std::path::Path::new(p).exists()))
+        .unwrap_or(false);
+    let gf_full = cfg.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true)
+        && gf.and_then(|g| g.get("on")).and_then(|v| v.as_bool()).unwrap_or(false)
+        && gf.and_then(|g| g.get("characterFull")).and_then(|v| v.as_bool()).unwrap_or(false)
+        && gf_clips;
     let pro = license::License::load().is_pro();
     // Logged, not inferred. Four diagnoses of the black-sheet overlay were wrong
     // because the inputs to this decision were never printed - a screenshot
@@ -7722,11 +8021,11 @@ fn overlay_allowed(cfg: &serde_json::Value) -> bool {
     diag_log(
         "wallpaper",
         &format!(
-            "overlay_allowed -> {} (flag={on} engine={engine} particle={particle} music_top={music_top} pro={pro})",
-            ((on && particle) || music_top) && pro
+            "overlay_allowed -> {} (flag={on} engine={engine} particle={particle} music_top={music_top} gf_full={gf_full} pro={pro})",
+            ((on && particle) || music_top) && !gf_full && pro
         ),
     );
-    ((on && particle) || music_top) && pro
+    ((on && particle) || music_top) && !gf_full && pro
 }
 
 /// Let a page write into the same diagnostic log the Rust side uses.

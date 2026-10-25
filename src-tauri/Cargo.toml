@@ -37,6 +37,8 @@ plist = "1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
+# 伪终端(openpty):Claude Code 的 `auth login` 画终端界面,AI 女友的一键登录要给它一个(10-22)。已在 Cargo.lock 里(间接依赖),不新增下载
+libc = "0.2"
 # 粒子模式:把别的 app 的窗口逐帧抓下来。
 # **必须在 app 进程里做**,不能交给命令行小工具 —— 屏幕录制是纯 TCC 门禁(没有任何
 # entitlement 能绕过),而直接跑起来的 CLI 根本不会弹授权框,只会静静地拿不到画面。

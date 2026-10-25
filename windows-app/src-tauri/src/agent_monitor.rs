@@ -2190,9 +2190,35 @@ impl AgentMonitor {
     }
 
     pub fn accept_agent(&mut self, agent_type: &str) -> Option<serde_json::Value> {
-        let idx = self.pending.iter().position(|d| d.agent_type == agent_type)?;
-        let detection = self.pending.remove(idx);
+        let detection = self.take_pending(agent_type)?;
+        let session = Self::build_session(detection);
+        Some(self.insert_session(agent_type, session))
+    }
 
+    /// Step 1 of connecting an agent, under the monitor lock: take its detection out of the pending list. Instant.
+    pub fn take_pending(&mut self, agent_type: &str) -> Option<PendingDetection> {
+        let idx = self.pending.iter().position(|d| d.agent_type == agent_type)?;
+        Some(self.pending.remove(idx))
+    }
+
+    /// Step 3, under the lock again: the session goes live. Instant.
+    pub fn insert_session(&mut self, agent_type: &str, mut session: AgentSessionData) -> serde_json::Value {
+        session.connected = true;
+        let snapshot = session.get_snapshot();
+        self.sessions.insert(agent_type.to_string(), session);
+        snapshot
+    }
+
+    /// Step 2, WITHOUT the monitor lock: read the agent's history from disk.
+    ///
+    /// This is the slow part — every active Claude Code transcript read and parsed whole, Cursor's SQLite
+    /// conversations, a Codex rollout decompressed — and it used to run inside accept_agent, i.e. under the monitor
+    /// lock, at every launch (auto-connect). Fourteen sync commands take that lock ON THE MAIN THREAD, so on a PC with
+    /// long histories the whole UI waited on it: Partner Center logged 31 hangs on 14 devices in 30 days,
+    /// APPLICATION_HANG … HungThreadIsIdle (the UI thread idle in a wait), "frozen on open, cannot even close it".
+    pub fn build_session(detection: PendingDetection) -> AgentSessionData {
+        let agent_type = detection.agent_type.clone();
+        let agent_type = agent_type.as_str();
         let mut session = AgentSessionData::new(
             &detection.agent_type, &detection.name, &detection.icon, detection.pid,
         );
@@ -2298,10 +2324,7 @@ impl AgentMonitor {
             }
         }
 
-        session.connected = true;
-        let snapshot = session.get_snapshot();
-        self.sessions.insert(agent_type.to_string(), session);
-        Some(snapshot)
+        session
     }
 
     pub fn dismiss_agent(&mut self, agent_type: &str) {
@@ -2913,8 +2936,23 @@ pub fn start_scanning(app: AppHandle) {
         const AUTO_CONNECT: &[&str] = &["claude-code", "cursor-agent", "codex"];
         for (_, detection) in &new_detections {
             if AUTO_CONNECT.contains(&detection.agent_type.as_str()) {
-                let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
-                if let Some(snap) = monitor.accept_agent(&detection.agent_type) {
+                // Lock only to take the detection and to insert the result — reading the agent's history (seconds on a
+                // PC with long transcripts) happens with the lock released, so nothing waiting on it freezes.
+                let pending = {
+                    let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+                    monitor.take_pending(&detection.agent_type)
+                };
+                if let Some(p) = pending {
+                    let t0 = std::time::Instant::now();
+                    let session = AgentMonitor::build_session(p);
+                    let ms = t0.elapsed().as_millis();
+                    if ms > 1000 {
+                        crate::diag_log("agent-monitor", &format!("history of '{}' read in {ms} ms (lock not held)", detection.agent_type));
+                    }
+                    let snap = {
+                        let mut monitor = state.agent_monitor.lock().unwrap_or_else(|e| e.into_inner());
+                        monitor.insert_session(&detection.agent_type, session)
+                    };
                     eprintln!("[terse-agent] auto-connected {}", detection.agent_type);
                     let _ = app.emit("agent-connected", serde_json::json!({"session": snap}));
                 }

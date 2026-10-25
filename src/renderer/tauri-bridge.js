@@ -11,6 +11,33 @@
 if (window.__TAURI__) {
   const { invoke } = window.__TAURI__.core;
   const { listen } = window.__TAURI__.event;
+  /* 本机绝对路径 → 可以直接当 <video src>/<img src> 用的 URL。
+     走 Rust 的 gf_read_asset 读字节,打包成 blob。
+     缓存按路径去重,同一张图/同一个视频在不同层出现时只读一次 ——
+     这既避免了重复 fetch,也避免了同一个 blob URL 的频繁 revoke 把正在播的 <video> 搞断。 */
+  const _blobCache = new Map(); // path -> promise<url>
+  window.terseAssetUrl = async (p) => {
+    if (!p) return p;
+    if (_blobCache.has(p)) return _blobCache.get(p);
+    const promise = (async () => {
+      try {
+        const bytes = await invoke('gf_read_asset', { path: p });
+        const u8 = new Uint8Array(bytes);
+        const ext = (p.split('.').pop() || '').toLowerCase();
+        const mime = ext === 'mp4' ? 'video/mp4'
+                   : ext === 'webm' ? 'video/webm'
+                   : ext === 'mov' ? 'video/quicktime'     // HEVC 带透明通道的片子,WebKit 认这个类型
+                   : ext === 'm4v' ? 'video/mp4'
+                   : ext === 'png' ? 'image/png'
+                   : ext === 'webp' ? 'image/webp'
+                   : ext === 'gif' ? 'image/gif'
+                   : 'image/jpeg';
+        return URL.createObjectURL(new Blob([u8], { type: mime }));
+      } catch (e) { console.warn('terseAssetUrl', p, e); return ''; }
+    })();
+    _blobCache.set(p, promise);
+    return promise;
+  };
 
   // Registry of JS-side listeners (same API as Electron's ipcRenderer.on)
   const _listeners = {};
@@ -177,6 +204,29 @@ if (window.__TAURI__) {
     musicState: () => invoke('music_state'),
     // 问一次系统"现在认出了什么"——不依赖常驻 reader,音乐页用它自证
     musicProbe: () => invoke('music_probe'),
+    // AI 女友:系统 TTS(macOS `say`),外加列声音 / 停 / 问状态
+    gfVoices: () => invoke('gf_voices'),
+    gfSpeak: (text, voice, rate) => invoke('gf_speak', { text, voice: voice || null, rate: rate || null }),
+    gfStop: () => invoke('gf_stop'),
+    gfPickVideo: () => invoke('gf_pick_video'),
+    gfPickFile: (kind) => invoke('gf_pick_file', { kind: kind || 'video' }),
+    gfPresets: () => invoke('gf_presets'),
+    gfIsSpeaking: () => invoke('gf_is_speaking'),
+    gfChat: (agent, text, history, name, model) => invoke('gf_chat', { agent, text, history: history || [], name: name || null, model: model || null }),
+    gfAgents: () => invoke('gf_agents'),
+    gfListen: (cmd, locale, autoMs) => invoke('gf_listen', { cmd, locale: locale || null, autoMs: autoMs || null }),
+    gfLiveStatus: () => invoke('gf_live_status'),
+    gfLiveSetup: () => invoke('gf_live_setup'),
+    gfLiveCancel: () => invoke('gf_live_cancel'),
+    gfLiveStart: () => invoke('gf_live_start'),
+    gfLiveStop: () => invoke('gf_live_stop'),
+    gfBrainRestart: () => invoke('gf_brain_restart'),
+    gfLiveFetch4k: () => invoke('gf_live_fetch_4k'),      // her 4K clips, downloaded only when 4K is picked
+    gfLiveChat: (text, history, name, persona) => invoke('gf_live_chat', { text, history: history || [], name: name || null, persona: persona || null }),
+    gfLiveVoice: (settings) => invoke('gf_live_voice', { settings: settings || {} }),
+    gfChatOpen: () => invoke('gf_chat_open'),
+    gfLiveSay: (text) => invoke('gf_live_say', { text }),
+    gfLiveInterrupt: () => invoke('gf_live_interrupt'),
     // 用户当前那张真桌面壁纸(1920 宽 JPEG data URL)—— mineradio 引擎的底图
     getDesktopPicture: (force) => invoke('get_desktop_picture', { force: !!force }),
     setWallpaperConfig: (config) => invoke('set_wallpaper_config', { config }),

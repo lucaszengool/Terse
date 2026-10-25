@@ -1125,7 +1125,7 @@ export default class TokenWallpaper3D {
     if (cssW < 1 || cssH < 1) return;
     this.W = cssW; this.H = cssH;
     // Base DPR capped for WKWebView; an adaptive scale (_dprScale, ≤1) trims it further on slow GPUs.
-    this._dprBase = Math.min(window.devicePixelRatio || 1, 1.35);
+    this._dprBase = Math.min(window.devicePixelRatio || 1, 1.35) * (globalThis.__terseRenderScale || 1);
     this.renderer.setSize(cssW, cssH, false);
     this.camera.aspect = cssW / cssH;
     this.camera.updateProjectionMatrix();

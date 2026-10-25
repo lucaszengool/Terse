@@ -102,6 +102,14 @@ for (const rs of ['../../src-tauri/src/lib.rs', '../../windows-app/src-tauri/src
   // Genuinely platform-bound: no Windows equivalent exists to port.
   const PLATFORM_ONLY = new Map([
     ['ax-status', 'macOS Accessibility authorisation; Windows has no equivalent state'],
+    // AI 女友 voice input: on macOS the terse-listen helper captures the mic (and plays her voice for the echo
+    // canceller) and Rust relays it as these events. Windows has no helper: gf-chat.html opens the microphone itself
+    // (getUserMedia, echo-cancelled) — gf_listen("duplex") answers "webview-mic" — and emits its own
+    // girlfriend-heard status for the wallpaper. Nothing on Windows produces these from Rust, by design.
+    ['gf-mic', 'macOS mic helper audio chunks; Windows: the chat page captures the mic itself'],
+    ['gf-voice', 'macOS mic helper playback position; Windows: her voice plays in the wallpaper page'],
+    ['gf-duplex', 'macOS mic helper duplex state; Windows: gf_duplex_on is always false'],
+    ['girlfriend-heard', 'macOS Apple Speech results via terse-listen; Windows: gf-chat.html emits it itself'],
   ]);
   const DEFERRED_CMDS = new Map([
   ]);

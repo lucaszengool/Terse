@@ -1,0 +1,222 @@
+name: Windows freeze hunt
+
+# The Store's hang reports ("opens, then nothing answers and it will not close") have been caught twice on CI, both
+# ~35 s after a launch with the wallpaper on, 21 s and 50 s long, each time in a different step of build-windows.yml and
+# never on demand. This launches a build again and again in that state and keeps every freeze: main-thread.log (whose
+# lines now name the invokes and page loads hitting the UI thread) and the probe's hang dumps, read here with cdb.
+# Change BUILD_RUN (a "Build Windows Installer" run with Terse-Windows-Installer + Terse-Windows-Symbols) and push.
+on:
+  push:
+    branches: [feat/windows-parity]
+    paths:
+      - '.github/workflows/freeze-hunt.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  hunt:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      BUILD_RUN: '40192257733'
+      ROUNDS: '10'
+      # 1 = in rounds 1-2, read the WebView2 GPU process's busiest threads at 45 s (cdb, slow on a pegged machine)
+      PROFILE: '1'
+      # 1 = also read the UI thread from outside at 6/12/18 s with cdb (it suspends Terse while attached, so it
+      # disturbs the freezes it is looking at — off unless that view is the question)
+      ATTACH: '0'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Install that build
+        run: |
+          gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY -n Terse-Windows-Installer -D inst
+          gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY -n Terse-Windows-Symbols -D syms
+          $setup = Get-ChildItem inst -Recurse -Filter *-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          Start-Sleep -Seconds 5
+          $exe = Get-ChildItem "C:\Program Files\Terse" -Recurse -Filter Terse.exe | Select-Object -First 1
+          if (-not $exe) { throw "Terse.exe not found after install" }
+          "TERSE_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "installed $($setup.Name) -> $($exe.FullName)"
+
+      - name: The state both freezes happened in
+        run: |
+          # agents: a live Claude Code transcript, a Codex rollout, and processes named like them for the scanner
+          $cwd = "C:\Users\runneradmin\Desktop\terse-ci"
+          $dir = Join-Path $env:USERPROFILE ".claude\projects\C--Users-runneradmin-Desktop-terse-ci"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $sid = [guid]::NewGuid().ToString(); $lines = New-Object System.Collections.ArrayList
+          $t0 = [DateTime]::UtcNow.AddMinutes(-6)
+          for ($i = 0; $i -lt 8; $i++) {
+            $ts = $t0.AddSeconds($i * 40).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            [void]$lines.Add((ConvertTo-Json -Compress -Depth 12 @{ type='user'; cwd=$cwd; sessionId=$sid; timestamp=$ts; uuid=[guid]::NewGuid().ToString(); message=@{ role='user'; content="Refactor the token counter, pass $i" } }))
+            [void]$lines.Add((ConvertTo-Json -Compress -Depth 12 @{ type='assistant'; cwd=$cwd; sessionId=$sid; timestamp=$ts; uuid=[guid]::NewGuid().ToString(); message=@{ role='assistant'; model='claude-opus-5'; type='message'; content=@(@{ type='text'; text="Done - pass $i." }); usage=@{ input_tokens=(120 + $i * 30); output_tokens=(340 + $i * 55); cache_creation_input_tokens=2200; cache_read_input_tokens=(15000 + $i * 2600) } } }))
+          }
+          Set-Content -Path (Join-Path $dir "$sid.jsonl") -Value $lines -Encoding utf8
+          $cd = Join-Path $env:USERPROFILE (".codex\sessions\{0:yyyy}\{0:MM}\{0:dd}" -f (Get-Date))
+          New-Item -ItemType Directory -Force -Path $cd | Out-Null
+          @((ConvertTo-Json -Compress @{ type='session_meta'; timestamp=(Get-Date).ToUniversalTime().ToString("o"); payload=@{ model='gpt-5-codex'; id=[guid]::NewGuid().ToString() } }),
+            (ConvertTo-Json -Compress -Depth 6 @{ type='event_msg'; timestamp=(Get-Date).ToUniversalTime().ToString("o"); payload=@{ type='user_message'; message='Audit the cache accounting' } })) |
+            Set-Content (Join-Path $cd ("rollout-{0:yyyy-MM-ddTHH-mm-ss}-ci.jsonl" -f (Get-Date))) -Encoding utf8
+          foreach ($n in @('claude','codex')) {
+            $e = Join-Path $env:TEMP "$n.exe"; Copy-Item "$env:WINDIR\System32\cmd.exe" $e -Force
+            Start-Process -FilePath $e -ArgumentList '/c','timeout /t 3000 /nobreak' -WindowStyle Hidden
+          }
+          # Pro (the cinematic field and the overlay are Pro), a desktop picture
+          $t = Join-Path $env:USERPROFILE ".terse"; New-Item -ItemType Directory -Force -Path $t | Out-Null
+          ConvertTo-Json -Depth 6 @{ tier='pro'; status='active'; limits=@{ optimizations_per_week=-1; max_sessions=-1; max_devices=-1 }; clerkUserId='ci_smoke_user'; expiresAt=(Get-Date).AddDays(30).ToString('yyyy-MM-ddTHH:mm:sszzz'); trialEnd=$null; weekly_usage=0.0; usage_week=[int](Get-Date -UFormat %V) } |
+            Set-Content (Join-Path $t "license.json") -Encoding ascii
+          $img = Get-ChildItem -Recurse "$env:WINDIR\Web\Wallpaper" -Include *.jpg -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($img) {
+            Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class Wp { [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool SystemParametersInfo(uint a, uint b, string c, uint d); }'
+            $null = [Wp]::SystemParametersInfo(20, 0, $img.FullName, 3)
+          }
+
+      - name: Launch it again and again
+        run: |
+          $cdb = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe', 'C:\Program Files\Windows Kits\10\Debuggers\x64\cdb.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($cdb) { $env:CDB = $cdb.FullName }
+          $env:SYMPATH = "srv*C:\symcache*https://msdl.microsoft.com/download/symbols;$((Resolve-Path syms).Path)"
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class H{public delegate bool P(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(P p,IntPtr l);[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr h,out uint p);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool IsHungAppWindow(IntPtr h);}'
+          $t = Join-Path $env:USERPROFILE ".terse"
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          $configs = @(
+            '{"enabled":true,"overlay":true,"engine":"cinematic","theme":"neon","quality":56,"angle":55,"intensity":1.0}',
+            '{"enabled":true,"engine":"cinematic","theme":"neon","quality":56,"angle":55,"intensity":1.0}'
+          )
+          for ($r = 1; $r -le [int]$env:ROUNDS; $r++) {
+            Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 3
+            # What a force-killed Terse leaves behind: WebView2 processes still running (and burning CPU) with no
+            # host. The first half of the rounds leave them alone, the second half end them before the launch — if
+            # the freezes follow the leftovers, the starved machine is the cause.
+            $left = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
+            $leftCpu = ($left | ForEach-Object { (Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue).CPU } | Measure-Object -Sum).Sum
+            $clean = $r -gt [int]([int]$env:ROUNDS / 2)
+            Write-Host ("round {0,2} starts with {1} WebView2 process(es) left from earlier runs ({2:N0} s CPU between them){3}" -f $r, $left.Count, $leftCpu, $(if ($clean) { " — ending them first" } else { "" }))
+            $left | Group-Object { if ($_.CommandLine -match '--type=([a-z-]+)') { $Matches[1] } else { 'browser' } } | ForEach-Object { Write-Host ("      {0,-16} x{1}" -f $_.Name, $_.Count) }
+            if ($clean -and $left.Count) { $left | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 2 }
+            $cfg = $configs[($r - 1) % $configs.Count]
+            Set-Content (Join-Path $t "wallpaper.json") $cfg -Encoding ascii
+            Remove-Item (Join-Path $t "main-thread.log") -ErrorAction SilentlyContinue
+            $mode = if ($cfg -match '"overlay":true') { 'overlay' } else { 'desktop' }
+            $p = Start-Process -FilePath $env:TERSE_EXE -PassThru
+            $hung = 0; $first = $null; $run = 0; $caught = 0
+            for ($s = 1; $s -le 75; $s++) {
+              Start-Sleep -Seconds 1
+              # The probe only starts at the END of setup(): the first ~20 s of a launch are invisible to it. Look at
+              # the UI thread from outside instead (cdb -pv: non-invasive attach, threads resume when it detaches).
+              if ($env:CDB -and $env:ATTACH -eq '1' -and $s -in 6, 12, 18) {
+                $o = "out/round$r-$mode-t$s-attach.txt"
+                & $env:CDB -pv -p $p.Id -y $env:SYMPATH -c ".reload /f terse.exe; .echo ===MAIN===; ~0 kn 50; q" *> $o
+                Write-Host "    t=$s s, UI thread:"
+                Get-Content $o | Select-String -Pattern '===MAIN===' -Context 0,50 | ForEach-Object { $_.Context.PostContext |
+                  Where-Object { $_ -match '!' } | Select-Object -First 22 | ForEach-Object { Write-Host "      $(($_.Trim() -split '\s+', 4)[3])" } }
+              }
+              # Where the CPU goes with the wallpaper window up (A/B: GPU process ~376% with it, 1% without — and the
+              # page's 10 fps / no-animation guard did not move it): per-process CPU over 5 s, the GPU process's
+              # switches, and its busiest threads with their stacks.
+              if ($env:CDB -and $env:PROFILE -eq '1' -and $r -le 2 -and $s -eq 45) {
+                $wv = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
+                $c0 = @{}; foreach ($w in $wv) { $c0[$w.ProcessId] = (Get-Process -Id $w.ProcessId -ErrorAction SilentlyContinue).CPU }
+                Start-Sleep -Seconds 5
+                Write-Host "    t=45 s, WebView2 CPU over 5 s ($mode):"
+                foreach ($w in $wv) {
+                  $kind = if ($w.CommandLine -match '--type=([a-z-]+)') { $Matches[1] } else { 'browser' }
+                  $d = (Get-Process -Id $w.ProcessId -ErrorAction SilentlyContinue).CPU - $c0[$w.ProcessId]
+                  Write-Host ("      {0,-18} pid {1,-6} {2,5:N0}%" -f $kind, $w.ProcessId, ($d / 5 * 100))
+                }
+                $gpu = $wv | Where-Object { $_.CommandLine -match '--type=gpu-process' } | Select-Object -First 1
+                if ($gpu) {
+                  $flags = ([regex]::Matches($gpu.CommandLine, '--(use-[a-z-]+|disable-[a-z-]+|enable-[a-z-]+|gpu-[a-z-]+)(=[^ ]*)?') | ForEach-Object { $_.Value }) -join ' '
+                  Write-Host "      gpu-process flags: $flags"
+                  $o = "out/round$r-$mode-gpu-runaway.txt"
+                  & $env:CDB -pv -p $gpu.ProcessId -y $env:SYMPATH -c ".echo ===RUN===; !runaway 1; .echo ===END===; q" *> $o
+                  $tops = @(Get-Content $o | Select-String -Pattern '^\s+(\d+):[0-9a-f]+\s+(\d+) days (\S+)' | Select-Object -First 4)
+                  $tops | ForEach-Object { Write-Host "      busiest thread $($_.Matches[0].Groups[1].Value): $($_.Matches[0].Groups[3].Value) user" }
+                  if ($tops.Count) {
+                    $cmds = ($tops | ForEach-Object { $n = $_.Matches[0].Groups[1].Value; ".echo ===T$n===; ~${n}s; kn 28" }) -join '; '
+                    $o2 = "out/round$r-$mode-gpu-stacks.txt"
+                    & $env:CDB -pv -p $gpu.ProcessId -y $env:SYMPATH -c "$cmds; q" *> $o2
+                    foreach ($tt in $tops) {
+                      $n = $tt.Matches[0].Groups[1].Value
+                      Write-Host "      thread $n :"
+                      Get-Content $o2 | Select-String -Pattern "===T$n===" -Context 0,30 | ForEach-Object { $_.Context.PostContext |
+                        Where-Object { $_ -match '!' } | Select-Object -First 16 | ForEach-Object { Write-Host "        $(($_.Trim() -split '\s+', 4)[3])" } }
+                    }
+                  }
+                }
+              }
+              $found = $false
+              $cb = [H+P]{ param($h, $l) $id = 0; [void][H]::GetWindowThreadProcessId($h, [ref]$id)
+                if ($id -eq $p.Id -and [H]::IsWindowVisible($h) -and [H]::IsHungAppWindow($h)) { $script:found = $true }; $true }
+              [void][H]::EnumWindows($cb, [IntPtr]::Zero)
+              if ($found) { $hung++; $run++; if (-not $first) { $first = $s } } else { $run = 0 }
+              # Terse's UI thread blocks writing to its pipe to WebView2's browser process (BlockedOn_FileIO in
+              # ChannelWin::Write): the browser process stops reading. Look at THAT process while it happens —
+              # its UI thread, and whether the machine is simply out of CPU.
+              if ($env:CDB -and ($run -eq 3 -or $run -eq 20) -and $caught -lt 2) {
+                $caught++
+                $procs = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where-Object { $_.ParentProcessId -eq $p.Id })
+                $browser = $procs | Where-Object { $_.CommandLine -notmatch '--type=' } | Select-Object -First 1
+                $cpu = (Get-Counter '\Processor(_Total)\% Processor Time' -SampleInterval 1 -MaxSamples 1 -ErrorAction SilentlyContinue).CounterSamples.CookedValue
+                Write-Host ("    hung {0} s in a row at t={1} s — CPU {2:N0}%, {3} WebView2 processes, browser pid {4}" -f $run, $s, $cpu, $procs.Count, $browser.ProcessId)
+                Get-Process | Sort-Object CPU -Descending | Select-Object -First 6 | ForEach-Object { Write-Host ("      {0,-22} cpu {1,8:N1}s  ws {2,6:N0} MB" -f $_.ProcessName, $_.CPU, ($_.WorkingSet64 / 1MB)) }
+                if ($browser) {
+                  $o = "out/round$r-$mode-t$s-browser.txt"
+                  & $env:CDB -pv -p $browser.ProcessId -y $env:SYMPATH -c ".echo ===UI===; ~0 kn 45; .echo ===ALL===; ~* kn 16; q" *> $o
+                  Write-Host "      browser process UI thread:"
+                  Get-Content $o | Select-String -Pattern '===UI===' -Context 0,45 | ForEach-Object { $_.Context.PostContext |
+                    Where-Object { $_ -match '!' } | Select-Object -First 30 | ForEach-Object { Write-Host "        $(($_.Trim() -split '\s+', 4)[3])" } }
+                }
+                $o = "out/round$r-$mode-t$s-terse.txt"
+                & $env:CDB -pv -p $p.Id -y $env:SYMPATH -c ".echo ===UI===; ~0 kn 30; q" *> $o
+                Write-Host "      Terse UI thread:"
+                Get-Content $o | Select-String -Pattern '===UI===' -Context 0,30 | ForEach-Object { $_.Context.PostContext |
+                  Where-Object { $_ -match '!' } | Select-Object -First 16 | ForEach-Object { Write-Host "        $(($_.Trim() -split '\s+', 4)[3])" } }
+              }
+            }
+            $log = Join-Path $t "main-thread.log"
+            $lines = if (Test-Path $log) { @(Get-Content $log) } else { @() }
+            $worst = ($lines | ForEach-Object { if ($_ -match 'was blocked ~(\d+) ms') { [int]$Matches[1] } } | Measure-Object -Maximum).Maximum
+            Write-Host ("round {0,2} {1,-8} hung samples {2,2}{3}  worst block {4} ms" -f $r, $mode, $hung, $(if ($first) { " (first at ${first} s)" } else { "" }), $(if ($worst) { $worst } else { 0 }))
+            $lines | Where-Object { $_ -match 'STILL blocked|was blocked ~[0-9]{4,}|hang dump' } | ForEach-Object { Write-Host "    $_" }
+            if ($lines.Count) { Copy-Item $log "out/round$r-$mode-main-thread.log" }
+            foreach ($f in @('page-load.log', 'slow-cmd.log', 'wallpaper.log')) {
+              if (Test-Path (Join-Path $t $f)) { Copy-Item (Join-Path $t $f) "out/round$r-$mode-$f" }
+            }
+            Get-ChildItem $t -Filter 'hang-*.dmp' -ErrorAction SilentlyContinue | ForEach-Object { Move-Item $_.FullName "out/round$r-$mode-$($_.Name)" -Force }
+          }
+          Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      - name: Read the dumps
+        if: always()
+        run: |
+          $dumps = @(Get-ChildItem out -Filter '*.dmp' -ErrorAction SilentlyContinue)
+          Write-Host "hang dumps: $($dumps.Count)"
+          if ($dumps.Count -eq 0) { return }
+          $cdb = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe', 'C:\Program Files\Windows Kits\10\Debuggers\x64\cdb.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $cdb) { Write-Warning "no cdb.exe"; return }
+          $syms = (Resolve-Path syms).Path; $bin = Split-Path $env:TERSE_EXE
+          $srv = 'srv*C:\symcache*https://msdl.microsoft.com/download/symbols'
+          foreach ($d in $dumps) {
+            $o = "out/$($d.BaseName)-stacks.txt"
+            Write-Host "════ $($d.Name)"
+            & $cdb.FullName -z $d.FullName -y "$srv;$syms" -i "$bin;$syms;$srv" `
+              -c ".symopt+ 0x40; .reload /f; .echo ===MAIN===; ~0 kn 60; .echo ===ANALYZE===; !analyze -v -hang; .echo ===ALL===; ~* kn 40; q" *> $o
+            Get-Content $o | Select-String -Pattern '===MAIN===' -Context 0,40 | ForEach-Object { $_.Context.PostContext | ForEach-Object { Write-Host "  $_" } }
+            Get-Content $o | Select-String -Pattern 'FAILURE_BUCKET_ID' | ForEach-Object { Write-Host "  $($_.Line)" }
+          }
+
+      - name: Upload what was caught
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freeze-hunt
+          path: out/**
+          retention-days: 30

@@ -23,8 +23,8 @@ jobs:
       run:
         shell: pwsh
     env:
-      BUILD_RUN: '40176671405'
-      ROUNDS: '4'
+      BUILD_RUN: '40192257733'
+      ROUNDS: '10'
       # 1 = in rounds 1-2, read the WebView2 GPU process's busiest threads at 45 s (cdb, slow on a pegged machine)
       PROFILE: '1'
       # 1 = also read the UI thread from outside at 6/12/18 s with cdb (it suspends Terse while attached, so it

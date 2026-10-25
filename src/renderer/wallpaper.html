@@ -180,7 +180,8 @@
       var lose = gl && gl.getExtension('WEBGL_lose_context');
       if (lose) lose.loseContext();
     } catch (e) {}
-    var soft = /SwiftShader|Basic Render|WARP|llvmpipe|softpipe|Software/i.test(info);
+    // ?softgl=1 forces it on — to try the software path on a machine with a GPU
+    var soft = /SwiftShader|Basic Render|WARP|llvmpipe|softpipe|Software/i.test(info) || /[?&]softgl=1\b/.test(location.search);
     window.__terseSoftwareGL = soft;
     try { if (window.terse && window.terse.diagNote) window.terse.diagNote('wallpaper',
       'webgl renderer: ' + (info || '(none)') + (soft ? ' — SOFTWARE: 10 fps, half resolution, no CSS animation / blur' : '')).catch(function(){}); } catch (e) {}

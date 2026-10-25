@@ -606,7 +606,10 @@ export default class MineradioWallpaper {
   _grids() {
     const q = Math.max(24, Math.min(96, this.quality | 0));
     const k = (q - 24) / 72;                        // 0..1
-    return { pulse: Math.round(80 + k * 90), silk: Math.round(64 + k * 70) };
+    // Software WebGL (wallpaper.html's guard): WARP / SwiftShader run every vertex on the CPU, so the point COUNT is
+    // the cost — fewer rows, not fewer pixels (CI profile: 4 cores in WARP's vertex shader + point expansion).
+    const s = globalThis.__terseSoftwareGL ? 0.6 : 1;
+    return { pulse: Math.round((80 + k * 90) * s), silk: Math.round((64 + k * 70) * s) };
   }
 
   _mkLayer(preset, gridY, alpha, pointScale) {
@@ -747,8 +750,11 @@ export default class MineradioWallpaper {
     // Cost is real — Pro can have 4 × 60000 points alive, each drawn twice for
     // the additive glow twin — but these are unlit, depth-less, additive points,
     // which is the cheapest thing a GPU draws.
-    const count = this.pro ? 4 : 1;
-    const per = 60000;
+    // Software WebGL: one line of 8000 points instead of up to 4 × 60000, each drawn twice — on WARP that was
+    // ~480k CPU-run vertices a frame, the bulk of the 3.7 cores the GPU process took (see _grids).
+    const soft = !!globalThis.__terseSoftwareGL;
+    const count = this.pro && !soft ? 4 : 1;
+    const per = soft ? 8000 : 60000;
     this._glyphSlots = [];
     // 字全部挂在一个 Group 下,3D 模式里整组朝相机转(见 _applyView)。字是拿来读的:
     // 让它跟着地面一起倾斜,转到 70° 就只剩一条亮线,那不是三维,是没了。

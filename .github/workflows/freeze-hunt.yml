@@ -90,6 +90,15 @@ jobs:
           for ($r = 1; $r -le [int]$env:ROUNDS; $r++) {
             Get-Process -Name Terse -ErrorAction SilentlyContinue | Stop-Process -Force
             Start-Sleep -Seconds 3
+            # What a force-killed Terse leaves behind: WebView2 processes still running (and burning CPU) with no
+            # host. The first half of the rounds leave them alone, the second half end them before the launch — if
+            # the freezes follow the leftovers, the starved machine is the cause.
+            $left = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
+            $leftCpu = ($left | ForEach-Object { (Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue).CPU } | Measure-Object -Sum).Sum
+            $clean = $r -gt [int]([int]$env:ROUNDS / 2)
+            Write-Host ("round {0,2} starts with {1} WebView2 process(es) left from earlier runs ({2:N0} s CPU between them){3}" -f $r, $left.Count, $leftCpu, $(if ($clean) { " — ending them first" } else { "" }))
+            $left | Group-Object { if ($_.CommandLine -match '--type=([a-z-]+)') { $Matches[1] } else { 'browser' } } | ForEach-Object { Write-Host ("      {0,-16} x{1}" -f $_.Name, $_.Count) }
+            if ($clean -and $left.Count) { $left | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 2 }
             $cfg = $configs[($r - 1) % $configs.Count]
             Set-Content (Join-Path $t "wallpaper.json") $cfg -Encoding ascii
             Remove-Item (Join-Path $t "main-thread.log") -ErrorAction SilentlyContinue

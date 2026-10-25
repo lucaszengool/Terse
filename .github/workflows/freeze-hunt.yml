@@ -24,7 +24,7 @@ jobs:
         shell: pwsh
     env:
       BUILD_RUN: '40160242764'
-      ROUNDS: '12'
+      ROUNDS: '14'
       # 1 = also read the UI thread from outside at 6/12/18 s with cdb (it suspends Terse while attached, so it
       # disturbs the freezes it is looking at — off unless that view is the question)
       ATTACH: '0'
@@ -95,7 +95,7 @@ jobs:
             Remove-Item (Join-Path $t "main-thread.log") -ErrorAction SilentlyContinue
             $mode = if ($cfg -match '"overlay":true') { 'overlay' } else { 'desktop' }
             $p = Start-Process -FilePath $env:TERSE_EXE -PassThru
-            $hung = 0; $first = $null
+            $hung = 0; $first = $null; $run = 0; $caught = 0
             for ($s = 1; $s -le 75; $s++) {
               Start-Sleep -Seconds 1
               # The probe only starts at the END of setup(): the first ~20 s of a launch are invisible to it. Look at
@@ -111,7 +111,30 @@ jobs:
               $cb = [H+P]{ param($h, $l) $id = 0; [void][H]::GetWindowThreadProcessId($h, [ref]$id)
                 if ($id -eq $p.Id -and [H]::IsWindowVisible($h) -and [H]::IsHungAppWindow($h)) { $script:found = $true }; $true }
               [void][H]::EnumWindows($cb, [IntPtr]::Zero)
-              if ($found) { $hung++; if (-not $first) { $first = $s } }
+              if ($found) { $hung++; $run++; if (-not $first) { $first = $s } } else { $run = 0 }
+              # Terse's UI thread blocks writing to its pipe to WebView2's browser process (BlockedOn_FileIO in
+              # ChannelWin::Write): the browser process stops reading. Look at THAT process while it happens —
+              # its UI thread, and whether the machine is simply out of CPU.
+              if ($env:CDB -and ($run -eq 3 -or $run -eq 20) -and $caught -lt 2) {
+                $caught++
+                $procs = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where-Object { $_.ParentProcessId -eq $p.Id })
+                $browser = $procs | Where-Object { $_.CommandLine -notmatch '--type=' } | Select-Object -First 1
+                $cpu = (Get-Counter '\Processor(_Total)\% Processor Time' -SampleInterval 1 -MaxSamples 1 -ErrorAction SilentlyContinue).CounterSamples.CookedValue
+                Write-Host ("    hung {0} s in a row at t={1} s — CPU {2:N0}%, {3} WebView2 processes, browser pid {4}" -f $run, $s, $cpu, $procs.Count, $browser.ProcessId)
+                Get-Process | Sort-Object CPU -Descending | Select-Object -First 6 | ForEach-Object { Write-Host ("      {0,-22} cpu {1,8:N1}s  ws {2,6:N0} MB" -f $_.ProcessName, $_.CPU, ($_.WorkingSet64 / 1MB)) }
+                if ($browser) {
+                  $o = "out/round$r-$mode-t$s-browser.txt"
+                  & $env:CDB -pv -p $browser.ProcessId -y $env:SYMPATH -c ".echo ===UI===; ~0 kn 45; .echo ===ALL===; ~* kn 16; q" *> $o
+                  Write-Host "      browser process UI thread:"
+                  Get-Content $o | Select-String -Pattern '===UI===' -Context 0,45 | ForEach-Object { $_.Context.PostContext |
+                    Where-Object { $_ -match '!' } | Select-Object -First 30 | ForEach-Object { Write-Host "        $(($_.Trim() -split '\s+', 4)[3])" } }
+                }
+                $o = "out/round$r-$mode-t$s-terse.txt"
+                & $env:CDB -pv -p $p.Id -y $env:SYMPATH -c ".echo ===UI===; ~0 kn 30; q" *> $o
+                Write-Host "      Terse UI thread:"
+                Get-Content $o | Select-String -Pattern '===UI===' -Context 0,30 | ForEach-Object { $_.Context.PostContext |
+                  Where-Object { $_ -match '!' } | Select-Object -First 16 | ForEach-Object { Write-Host "        $(($_.Trim() -split '\s+', 4)[3])" } }
+              }
             }
             $log = Join-Path $t "main-thread.log"
             $lines = if (Test-Path $log) { @(Get-Content $log) } else { @() }

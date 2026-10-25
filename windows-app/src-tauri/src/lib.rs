@@ -4778,19 +4778,7 @@ pub fn run() {
                 start_polling(app_handle4);
             });
 
-            // Kill any existing proxy (from previous session or older Terse version)
-            // so the new proxy can bind port 7860 and re-configure settings.json.
             {
-                let home = dirs::home_dir().unwrap_or_default();
-                let pid_file = home.join(".terse").join("proxy.pid");
-                if let Ok(pid_str) = std::fs::read_to_string(&pid_file) {
-                    if let Ok(pid) = pid_str.trim().parse::<u32>() {
-                        let _ = crate::hidden_command("taskkill")
-                            .args(["/PID", &pid.to_string(), "/F"])
-                            .output();
-                        std::thread::sleep(std::time::Duration::from_millis(400));
-                    }
-                }
                 // Heal a config left behind by any earlier crash, force-kill or
                 // older build, BEFORE the new proxy decides what to write.
                 //
@@ -4813,6 +4801,19 @@ pub fn run() {
             // Start local API proxy for auto model routing
             std::thread::spawn(move || {
                 let home = dirs::home_dir().unwrap_or_default();
+                // Kill any existing proxy (from previous session or older Terse version)
+                // so the new proxy can bind port 7860 and re-configure settings.json.
+                // Here, not in setup: taskkill and its 400 ms wait ran on the UI thread at
+                // every launch (cdb on the freeze hunt caught setup in that sleep at 6 s).
+                let pid_file = home.join(".terse").join("proxy.pid");
+                if let Ok(pid_str) = std::fs::read_to_string(&pid_file) {
+                    if let Ok(pid) = pid_str.trim().parse::<u32>() {
+                        let _ = crate::hidden_command("taskkill")
+                            .args(["/PID", &pid.to_string(), "/F"])
+                            .output();
+                        std::thread::sleep(std::time::Duration::from_millis(400));
+                    }
+                }
                 let proxy_script = home.join(".terse").join("terse-local-proxy.js");
                 // Deploy proxy script if not present or outdated
                 let proxy_src = include_str!("../../../src/helpers/terse-local-proxy.js");
@@ -4950,6 +4951,7 @@ pub fn run() {
             // window at once; the log gives each one's start and length, to line
             // up against slow-cmd.log and the scanner's phase timings.
             {
+                create_raw_ping_window();
                 let app2 = app.handle().clone();
                 std::thread::spawn(move || {
                     let mut dumps_this_run = 0u32;
@@ -4962,14 +4964,27 @@ pub fn run() {
                         // are freezes users ended from Task Manager — a line written only after the thread came back
                         // was never written for any of them.
                         let mut dumps_this_freeze = 0u32;
+                        let (mut kicks, mut last_report) = (0u32, 0u64);
                         loop {
-                            match rx.recv_timeout(std::time::Duration::from_secs(3)) {
+                            match rx.recv_timeout(std::time::Duration::from_secs(1)) {
                                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
                                     let s = t.elapsed().as_secs();
+                                    // From 4 s on, a fresh no-op task every second. tao sets aside events that arrive
+                                    // while it is already inside one (a nested message loop — wry waits that way for
+                                    // every webview it creates) and hands them out only when the next event comes in;
+                                    // if nothing new comes, they wait. A fresh event releases them — so whether the
+                                    // freeze ends right after the first kick says which kind it was.
+                                    if s >= 4 { kicks += 1; let _ = app2.run_on_main_thread(|| {}); }
+                                    if s < 3 || s - last_report < 3 { if s >= 120 { break; } continue; }
+                                    last_report = s;
                                     let what = IN_CMD.lock().map(|g| g.as_ref().map(|(c, at)| format!(
                                         "inside command '{c}' (running {} ms)", at.elapsed().as_millis()))).ok().flatten()
                                         .unwrap_or_else(|| "not inside a command (window / webview / event work)".into());
-                                    diag_log("main-thread", &format!("main thread STILL blocked after {s} s — {what} | {}", recent_ui_traffic(5)));
+                                    let raw = match raw_ping(std::time::Duration::from_millis(500)) {
+                                        Some(ms) => format!("UI thread pumping (raw ping {ms} ms)"),
+                                        None => "UI thread NOT pumping (raw ping unanswered 500 ms)".into(),
+                                    };
+                                    diag_log("main-thread", &format!("main thread STILL blocked after {s} s — {what}; {raw}; kicks {kicks} | {}", recent_ui_traffic(5)));
                                     // a snapshot at ~5 s and another at ~15 s of the same freeze (does the stack move?),
                                     // at most six per run
                                     let due = (dumps_this_freeze == 0 && s >= 5) || (dumps_this_freeze == 1 && s >= 15);
@@ -4987,7 +5002,7 @@ pub fn run() {
                         }
                         let ms = t.elapsed().as_millis();
                         if ms > 1000 {
-                            diag_log("main-thread", &format!("main thread was blocked ~{ms} ms | {}",
+                            diag_log("main-thread", &format!("main thread was blocked ~{ms} ms (kicks sent {kicks}) | {}",
                                 recent_ui_traffic((ms as u64 / 1000).clamp(3, 60) + 2)));
                         }
                     }
@@ -7240,6 +7255,60 @@ fn pin_log(line: &str) {
 
 /// The command the IPC handler is running right now (set around every invoke). Read by the main-thread probe.
 static IN_CMD: std::sync::Mutex<Option<(String, std::time::Instant)>> = std::sync::Mutex::new(None);
+
+/// A message-only window on the UI thread with its own window procedure: tao never sees its messages. The probe pings
+/// it to tell two freezes apart — the UI thread itself stuck (no answer) from the UI thread free in GetMessage while tao
+/// holds back queued work (answers at once). The freeze hunt's dumps had the UI thread idle in tao's GetMessage, with
+/// the probe's task still unrun, for 20-85 s.
+static RAW_PING_HWND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+static RAW_PING_ACK: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+const WM_TERSE_PING: u32 = windows::Win32::UI::WindowsAndMessaging::WM_APP + 0x77;
+
+unsafe extern "system" fn raw_ping_proc(
+    h: windows::Win32::Foundation::HWND, m: u32,
+    w: windows::Win32::Foundation::WPARAM, l: windows::Win32::Foundation::LPARAM,
+) -> windows::Win32::Foundation::LRESULT {
+    if m == WM_TERSE_PING {
+        RAW_PING_ACK.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        return windows::Win32::Foundation::LRESULT(0);
+    }
+    windows::Win32::UI::WindowsAndMessaging::DefWindowProcW(h, m, w, l)
+}
+
+/// Called once, on the UI thread (setup).
+fn create_raw_ping_window() {
+    use windows::core::w;
+    use windows::Win32::Foundation::HINSTANCE;
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, RegisterClassW, HWND_MESSAGE, WINDOW_EX_STYLE, WINDOW_STYLE, WNDCLASSW};
+    unsafe {
+        let Ok(module) = GetModuleHandleW(None) else { return };
+        let hinst = HINSTANCE(module.0);
+        let wc = WNDCLASSW { lpfnWndProc: Some(raw_ping_proc), hInstance: hinst, lpszClassName: w!("TerseRawPing"), ..Default::default() };
+        RegisterClassW(&wc);
+        if let Ok(h) = CreateWindowExW(WINDOW_EX_STYLE(0), w!("TerseRawPing"), w!(""), WINDOW_STYLE(0), 0, 0, 0, 0,
+                                       HWND_MESSAGE, None, hinst, None) {
+            RAW_PING_HWND.store(h.0 as isize, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+}
+
+/// Post to the raw window and wait up to `wait` for its procedure to run: Some(ms) = the UI thread is pumping.
+fn raw_ping(wait: std::time::Duration) -> Option<u128> {
+    use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+    let h = RAW_PING_HWND.load(std::sync::atomic::Ordering::SeqCst);
+    if h == 0 { return None; }
+    let before = RAW_PING_ACK.load(std::sync::atomic::Ordering::SeqCst);
+    let t = std::time::Instant::now();
+    if unsafe { windows::Win32::UI::WindowsAndMessaging::PostMessageW(HWND(h as *mut core::ffi::c_void), WM_TERSE_PING, WPARAM(0), LPARAM(0)) }.is_err() {
+        return None;
+    }
+    while t.elapsed() < wait {
+        if RAW_PING_ACK.load(std::sync::atomic::Ordering::SeqCst) > before { return Some(t.elapsed().as_millis()); }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    None
+}
 
 /// What reached the UI thread lately, for the main-thread probe: every invoke (command @ window) and every page load
 /// (window + url). The one freeze dump read so far (CI, 50 s, ~35 s after launch with the wallpaper on) had the UI thread

@@ -1,0 +1,65 @@
+name: Read a Windows hang dump
+
+# Reads the hang-*.dmp files an earlier "Build Windows Installer" run caught (artifact windows-smoke-test) with cdb:
+# that run's terse.exe (from its MSI) and Terse.pdb, and WebView2 / Windows binaries + symbols from Microsoft's
+# symbol server — the dump only records module names, sizes and timestamps, so the exact runtime build is fetched
+# even when this runner has a newer one. Change RUN_ID and push to read another run's dumps.
+on:
+  push:
+    branches: [feat/windows-parity]
+    paths:
+      - '.github/workflows/read-hang-dump.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  read:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      RUN_ID: '40130033458'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Fetch that run's dumps, binary and symbols
+        run: |
+          gh run download $env:RUN_ID --repo $env:GITHUB_REPOSITORY -n windows-smoke-test -D smoke
+          gh run download $env:RUN_ID --repo $env:GITHUB_REPOSITORY -n Terse-Windows-Symbols -D syms
+          gh run download $env:RUN_ID --repo $env:GITHUB_REPOSITORY -n Terse-Windows-Installer -D inst
+          $msi = Get-ChildItem inst -Recurse -Filter *.msi | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path C:\tx | Out-Null
+          Start-Process msiexec.exe -ArgumentList '/a', "`"$($msi.FullName)`"", '/qn', 'TARGETDIR=C:\tx' -Wait
+          $exe = Get-ChildItem C:\tx -Recurse -Filter terse.exe | Select-Object -First 1
+          if (-not $exe) { throw "no terse.exe in $($msi.Name)" }
+          Copy-Item $exe.FullName syms\
+          Get-ChildItem syms | ForEach-Object { Write-Host "  $($_.Name) $($_.Length)" }
+          Get-ChildItem smoke -Recurse -Filter 'hang-*.dmp' | ForEach-Object { Write-Host "  dump $($_.FullName) $($_.Length)" }
+
+      - name: Read them
+        run: |
+          $cdb = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe', 'C:\Program Files\Windows Kits\10\Debuggers\x64\cdb.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $cdb) { $cdb = Get-ChildItem 'C:\Program Files*\Windows Kits' -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1 }
+          if (-not $cdb) { throw "no cdb.exe on this runner" }
+          $syms = (Resolve-Path syms).Path
+          $srv = 'srv*C:\symcache*https://msdl.microsoft.com/download/symbols'
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          foreach ($d in Get-ChildItem smoke -Recurse -Filter 'hang-*.dmp' | Sort-Object FullName) {
+            $out = "out/$($d.Directory.Name)-$($d.BaseName).txt"
+            Write-Host "════ $($d.FullName)"
+            & $cdb.FullName -z $d.FullName -y "$srv;$syms" -i "$syms;$srv" `
+              -c ".symopt+ 0x40; .reload /f; .echo ===MAIN===; ~0 kn 100; .echo ===ANALYZE===; !analyze -v -hang; .echo ===ALL===; ~* kn 40; .echo ===MODULES===; lm; q" *> $out
+            Get-Content $out | Select-String -Pattern '===MAIN===' -Context 0,100 | ForEach-Object { $_.Context.PostContext | ForEach-Object { Write-Host "  $_" } }
+            Get-Content $out | Select-String -Pattern 'STACK_TEXT|FAILURE_BUCKET_ID|PROBLEM_CLASSES|BLOCKING_THREAD|DERIVED_WAIT_CHAIN|WAIT_CHAIN_COMMAND|LOCK_ADDRESS' -Context 0,6 | ForEach-Object { Write-Host "  $($_.Line)"; $_.Context.PostContext | ForEach-Object { Write-Host "    $_" } }
+          }
+
+      - name: Upload the readout
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hang-dump-readout
+          path: out/**
+          retention-days: 30

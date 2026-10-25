@@ -24,7 +24,7 @@ jobs:
         shell: pwsh
     env:
       BUILD_RUN: '40152435176'
-      ROUNDS: '12'
+      ROUNDS: '8'
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Install that build
@@ -74,6 +74,9 @@ jobs:
 
       - name: Launch it again and again
         run: |
+          $cdb = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe', 'C:\Program Files\Windows Kits\10\Debuggers\x64\cdb.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($cdb) { $env:CDB = $cdb.FullName }
+          $env:SYMPATH = "srv*C:\symcache*https://msdl.microsoft.com/download/symbols;$((Resolve-Path syms).Path)"
           Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class H{public delegate bool P(IntPtr h,IntPtr l);[DllImport("user32.dll")]public static extern bool EnumWindows(P p,IntPtr l);[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr h,out uint p);[DllImport("user32.dll")]public static extern bool IsWindowVisible(IntPtr h);[DllImport("user32.dll")]public static extern bool IsHungAppWindow(IntPtr h);}'
           $t = Join-Path $env:USERPROFILE ".terse"
           New-Item -ItemType Directory -Force -Path out | Out-Null
@@ -92,6 +95,15 @@ jobs:
             $hung = 0; $first = $null
             for ($s = 1; $s -le 75; $s++) {
               Start-Sleep -Seconds 1
+              # The probe only starts at the END of setup(): the first ~20 s of a launch are invisible to it. Look at
+              # the UI thread from outside instead (cdb -pv: non-invasive attach, threads resume when it detaches).
+              if ($env:CDB -and $s -in 6, 12, 18) {
+                $o = "out/round$r-$mode-t$s-attach.txt"
+                & $env:CDB -pv -p $p.Id -y $env:SYMPATH -c ".reload /f terse.exe; .echo ===MAIN===; ~0 kn 50; q" *> $o
+                Write-Host "    t=$s s, UI thread:"
+                Get-Content $o | Select-String -Pattern '===MAIN===' -Context 0,50 | ForEach-Object { $_.Context.PostContext |
+                  Where-Object { $_ -match '!' } | Select-Object -First 22 | ForEach-Object { Write-Host "      $(($_.Trim() -split '\s+', 4)[3])" } }
+              }
               $found = $false
               $cb = [H+P]{ param($h, $l) $id = 0; [void][H]::GetWindowThreadProcessId($h, [ref]$id)
                 if ($id -eq $p.Id -and [H]::IsWindowVisible($h) -and [H]::IsHungAppWindow($h)) { $script:found = $true }; $true }

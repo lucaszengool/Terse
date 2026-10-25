@@ -396,7 +396,7 @@ export class ChladniPlate {
     this.c = canvas;
     /* 按设备像素渲染:2x 屏上画布固定 1280 宽的话,最后会被浏览器拉大一倍,
        再怎么调渲染也是软的 —— 糊在最后那一步插值上。 */
-    this.DPR = Math.min(opts.dpr || (typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1), 2);
+    this.DPR = Math.min(opts.dpr || (typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : 1), 2) * (globalThis.__terseRenderScale || 1);
     this.W = Math.round(opts.w || canvas.clientWidth) || 1280;
     this.H = Math.round(opts.h || canvas.clientHeight) || 720;
     this.W = Math.round(this.W * this.DPR); this.H = Math.round(this.H * this.DPR);

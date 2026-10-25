@@ -520,7 +520,7 @@ export default class MineradioWallpaper {
     // r128 的 three 没有颜色管理;关掉 r169 的自动转换,才和原项目同色
     if (THREE.ColorManagement) THREE.ColorManagement.enabled = false;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, premultipliedAlpha: true });
-    renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1) * (globalThis.__terseRenderScale || 1));
     renderer.setSize(W, H, false);
     renderer.setClearColor(0x000000, 0);
     if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.LinearSRGBColorSpace;

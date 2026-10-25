@@ -30,12 +30,16 @@ jobs:
           gh run download $env:RUN_ID --repo $env:GITHUB_REPOSITORY -n windows-smoke-test -D smoke
           gh run download $env:RUN_ID --repo $env:GITHUB_REPOSITORY -n Terse-Windows-Symbols -D syms
           gh run download $env:RUN_ID --repo $env:GITHUB_REPOSITORY -n Terse-Windows-Installer -D inst
-          $msi = Get-ChildItem inst -Recurse -Filter *.msi | Select-Object -First 1
+          Get-ChildItem inst -Recurse | ForEach-Object { Write-Host "  installer: $($_.Name) $($_.Length)" }
           New-Item -ItemType Directory -Force -Path C:\tx | Out-Null
-          Start-Process msiexec.exe -ArgumentList '/a', "`"$($msi.FullName)`"", '/qn', 'TARGETDIR=C:\tx' -Wait
+          $msi = Get-ChildItem inst -Recurse -Filter *.msi | Select-Object -First 1
+          if ($msi) { Start-Process msiexec.exe -ArgumentList '/a', "`"$($msi.FullName)`"", '/qn', 'TARGETDIR=C:\tx' -Wait }
+          else {                                        # the NSIS setup: 7-Zip unpacks it
+            $nsis = Get-ChildItem inst -Recurse -Filter *.exe | Select-Object -First 1
+            & 7z x $nsis.FullName -oC:\tx -y | Out-Null
+          }
           $exe = Get-ChildItem C:\tx -Recurse -Filter terse.exe | Select-Object -First 1
-          if (-not $exe) { throw "no terse.exe in $($msi.Name)" }
-          Copy-Item $exe.FullName syms\
+          if ($exe) { Copy-Item $exe.FullName syms\ } else { Write-Warning "no terse.exe unpacked — Terse frames will not unwind" }
           Get-ChildItem syms | ForEach-Object { Write-Host "  $($_.Name) $($_.Length)" }
           Get-ChildItem smoke -Recurse -Filter 'hang-*.dmp' | ForEach-Object { Write-Host "  dump $($_.FullName) $($_.Length)" }
 

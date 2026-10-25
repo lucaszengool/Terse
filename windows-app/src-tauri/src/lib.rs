@@ -4086,6 +4086,14 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        // Every page (re)load of every window, for the main-thread probe and page-load.log: a page that keeps
+        // reloading re-fetches all of its files through the UI thread.
+        .on_page_load(|wv, p| {
+            let ev = match p.event() { tauri::webview::PageLoadEvent::Started => "start", tauri::webview::PageLoadEvent::Finished => "done" };
+            let url = p.url().path().to_string();
+            note_recent(&RECENT_PAGES, format!("{}:{url} {ev}", wv.label()));
+            diag_log("page-load", &format!("{} {ev} {url}", wv.label()));
+        })
         // Every window, however and wherever it is built (setup, lazily on first
         // use, other modules), gets the frame guard the moment its webview
         // exists — so no window can be missed by a per-site list again.
@@ -4961,7 +4969,7 @@ pub fn run() {
                                     let what = IN_CMD.lock().map(|g| g.as_ref().map(|(c, at)| format!(
                                         "inside command '{c}' (running {} ms)", at.elapsed().as_millis()))).ok().flatten()
                                         .unwrap_or_else(|| "not inside a command (window / webview / event work)".into());
-                                    diag_log("main-thread", &format!("main thread STILL blocked after {s} s — {what}"));
+                                    diag_log("main-thread", &format!("main thread STILL blocked after {s} s — {what} | {}", recent_ui_traffic(5)));
                                     // a snapshot at ~5 s and another at ~15 s of the same freeze (does the stack move?),
                                     // at most six per run
                                     let due = (dumps_this_freeze == 0 && s >= 5) || (dumps_this_freeze == 1 && s >= 15);
@@ -4979,7 +4987,8 @@ pub fn run() {
                         }
                         let ms = t.elapsed().as_millis();
                         if ms > 1000 {
-                            diag_log("main-thread", &format!("main thread was blocked ~{ms} ms"));
+                            diag_log("main-thread", &format!("main thread was blocked ~{ms} ms | {}",
+                                recent_ui_traffic((ms as u64 / 1000).clamp(3, 60) + 2)));
                         }
                     }
                 });
@@ -5390,6 +5399,7 @@ pub fn run() {
             move |invoke: tauri::ipc::Invoke<tauri::Wry>| {
                 let cmd = invoke.message.command().to_string();
                 let t = std::time::Instant::now();
+                note_recent(&RECENT_IPC, format!("{cmd}@{}", invoke.message.webview_ref().label()));
                 // The command running now, for the main-thread probe: a freeze that never ends never reaches the
                 // slow-cmd line below, so the probe names it while it is still stuck.
                 *IN_CMD.lock().unwrap_or_else(|e| e.into_inner()) = Some((cmd.clone(), t));
@@ -7228,16 +7238,40 @@ fn pin_log(line: &str) {
     diag_log("wallpaper-pin", line)
 }
 
-/// Append to `~/.terse/<name>.log`, and echo to stderr.
-///
-/// This is how the wallpaper bug got solved after five builds of guessing from
-/// screenshots: the log said `defview_on_progman=true ... chosen=0x2009a` and
-/// settled in one line what no picture could. The ghost titlebar is the same
-/// shape of problem — intermittent, invisible to a style dump — so it gets the
-/// same treatment rather than another round of theories.
-#[cfg(target_os = "windows")]
 /// The command the IPC handler is running right now (set around every invoke). Read by the main-thread probe.
 static IN_CMD: std::sync::Mutex<Option<(String, std::time::Instant)>> = std::sync::Mutex::new(None);
+
+/// What reached the UI thread lately, for the main-thread probe: every invoke (command @ window) and every page load
+/// (window + url). The one freeze dump read so far (CI, 50 s, ~35 s after launch with the wallpaper on) had the UI thread
+/// inside WebView2 handing a response back to a page (`FetchFulfillRequest` → `ChannelWin::Write`) — invoke results and
+/// the app's own files both travel that way, so a freeze line now says which windows were asking for what.
+static RECENT_IPC: std::sync::Mutex<std::collections::VecDeque<(std::time::Instant, String)>> =
+    std::sync::Mutex::new(std::collections::VecDeque::new());
+static RECENT_PAGES: std::sync::Mutex<std::collections::VecDeque<(std::time::Instant, String)>> =
+    std::sync::Mutex::new(std::collections::VecDeque::new());
+
+fn note_recent(ring: &std::sync::Mutex<std::collections::VecDeque<(std::time::Instant, String)>>, what: String) {
+    let mut q = ring.lock().unwrap_or_else(|e| e.into_inner());
+    if q.len() >= 4096 { q.pop_front(); }
+    q.push_back((std::time::Instant::now(), what));
+}
+
+/// "N invokes in the last S s: cmd@window ×n, …; pages: …" — the busiest first.
+fn recent_ui_traffic(secs: u64) -> String {
+    let since = std::time::Duration::from_secs(secs);
+    let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut total = 0usize;
+    for (at, what) in RECENT_IPC.lock().unwrap_or_else(|e| e.into_inner()).iter() {
+        if at.elapsed() <= since { total += 1; *counts.entry(what.clone()).or_default() += 1; }
+    }
+    let mut top: Vec<(String, usize)> = counts.into_iter().collect();
+    top.sort_by(|a, b| b.1.cmp(&a.1));
+    let top = top.iter().take(8).map(|(w, n)| format!("{w} ×{n}")).collect::<Vec<_>>().join(", ");
+    let pages = RECENT_PAGES.lock().unwrap_or_else(|e| e.into_inner()).iter()
+        .filter(|(at, _)| at.elapsed() <= since).map(|(_, w)| w.clone()).collect::<Vec<_>>();
+    let pages = if pages.is_empty() { "none".to_string() } else { format!("{} — {}", pages.len(), pages.iter().rev().take(6).cloned().collect::<Vec<_>>().join(", ")) };
+    format!("{total} invokes in the last {secs} s: {}; page loads: {pages}", if top.is_empty() { "none".into() } else { top })
+}
 
 /// A minidump of this process (every thread's stack), written by the main-thread probe when the UI thread has been
 /// stuck ~5 s and again at ~15 s (at most six per run). ~/.terse/hang-<unix time>.dmp, newest six kept. Read with the Terse.pdb of the same
@@ -7265,6 +7299,13 @@ fn write_hang_dump() -> Option<std::path::PathBuf> {
     if ok { Some(path) } else { let _ = std::fs::remove_file(&path); None }
 }
 
+/// Append to `~/.terse/<name>.log`, and echo to stderr.
+///
+/// This is how the wallpaper bug got solved after five builds of guessing from
+/// screenshots: the log said `defview_on_progman=true ... chosen=0x2009a` and
+/// settled in one line what no picture could. The ghost titlebar is the same
+/// shape of problem — intermittent, invisible to a style dump — so it gets the
+/// same treatment rather than another round of theories.
 pub(crate) fn diag_log(name: &str, line: &str) {
     use std::io::Write;
     // Timestamped. Without one, these lines cannot be ordered against anything

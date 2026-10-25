@@ -156,6 +156,38 @@
     }, 8000);
   })();
   </script>
+  <!-- Software WebGL guard. With no usable GPU (a blocklisted driver, a VM, remote desktop, the CI runners) WebView2
+       draws WebGL on the CPU through SwiftShader / WARP, and the 3D field at 30 fps took 3.7 of 4 cores there — in a
+       GPU process whose threads run above normal priority, so the UI thread and the browser's IPC thread starved for
+       20-260 s at a time: the "opens, nothing answers, will not close" freeze, caught 12 times by the Windows freeze
+       hunt. Here every engine of this page gets at most 10 frames a second at half resolution — ~10x less work. Runs
+       before the engine modules (classic script, they are deferred), so their loops and pixel ratios pick it up. -->
+  <script>
+  (function softwareGLGuard(){
+    var gl = null, info = '';
+    try {
+      var c = document.createElement('canvas');
+      gl = c.getContext('webgl2') || c.getContext('webgl');
+      var ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      info = gl ? String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '') : '';
+      var lose = gl && gl.getExtension('WEBGL_lose_context');
+      if (lose) lose.loseContext();
+    } catch (e) {}
+    var soft = /SwiftShader|Basic Render|WARP|llvmpipe|softpipe|Software/i.test(info);
+    window.__terseSoftwareGL = soft;
+    try { if (window.terse && window.terse.diagNote) window.terse.diagNote('wallpaper',
+      'webgl renderer: ' + (info || '(none)') + (soft ? ' — SOFTWARE: capped to 10 fps, half resolution' : '')).catch(function(){}); } catch (e) {}
+    if (!soft) return;
+    var FRAME = 100;
+    window.requestAnimationFrame = function (cb) {
+      var now = performance.now();
+      return setTimeout(function () { cb(performance.now()); }, FRAME - (now % FRAME));
+    };
+    window.cancelAnimationFrame = function (id) { clearTimeout(id); };
+    var dpr = Math.min(window.devicePixelRatio || 1, 1) * 0.5;
+    try { Object.defineProperty(window, 'devicePixelRatio', { get: function () { return dpr; }, configurable: true }); } catch (e) {}
+  })();
+  </script>
   <script type="module">
     // Earliest possible proof of life, before any import can throw. The switch
     // above is armed until this is set.

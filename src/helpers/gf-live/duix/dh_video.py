@@ -362,8 +362,8 @@ class DHStream:
         if os.name == 'nt':                               # Windows has no FIFOs: a named pipe ffmpeg opens like a file
             import _winapi
             self.fifo = r'\\.\pipe\gf-dh-%d-%d' % (os.getpid(), id(self))
-            self._pipe = _winapi.CreateNamedPipe(self.fifo, _winapi.PIPE_ACCESS_OUTBOUND,
-                                                 _winapi.PIPE_TYPE_BYTE | _winapi.PIPE_WAIT, 1, 1 << 20, 1 << 20, 0, _winapi.NULL)
+            # _winapi has no PIPE_ACCESS_OUTBOUND / PIPE_TYPE_BYTE: 0x2 = outbound, 0 = byte stream, blocking (PIPE_WAIT)
+            self._pipe = _winapi.CreateNamedPipe(self.fifo, 0x00000002, 0, 1, 1 << 20, 1 << 20, 0, _winapi.NULL)
         else:
             self.fifo = os.path.join(tempfile.mkdtemp(prefix='gf-dh-'), 'voice.pcm'); os.mkfifo(self.fifo)
         fps = int(round(dv.fps))

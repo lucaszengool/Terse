@@ -18,9 +18,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $h = @{ Authorization = "Bearer $env:GH_TOKEN"; 'X-GitHub-Api-Version' = '2022-11-28' }
-          $rel = Invoke-RestMethod -Headers $h -Uri "https://api.github.com/repos/${{ github.repository }}/releases/451347267"
           New-Item -ItemType Directory -Force out, out/shots | Out-Null
+          $h = @{ Authorization = "Bearer $env:GH_TOKEN"; 'X-GitHub-Api-Version' = '2022-11-28' }
+          $rel = (Invoke-RestMethod -Headers $h -Uri "https://api.github.com/repos/${{ github.repository }}/releases?per_page=50") | Where-Object { $_.tag_name -eq 'sleeprooms-desktop-1.0.0' } | Select-Object -First 1
+          if (-not $rel) { throw 'draft release sleeprooms-desktop-1.0.0 not found' }
+          "release $($rel.id) draft=$($rel.draft)" | Tee-Object -Append out/summary.txt
           foreach ($a in $rel.assets) {
             if ($a.name -notlike '*win*') { continue }
             $h2 = $h.Clone(); $h2.Accept = 'application/octet-stream'

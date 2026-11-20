@@ -1,0 +1,64 @@
+name: sleeprooms-steam-wintest
+# Test-only: the Steam content folder (dist/steam/win64, zipped into a DRAFT release) on a real Windows machine,
+# the way SteamPipe would install it: unpack, run the WebView2 bootstrapper like installscript_win.vdf, self-test, launch.
+on:
+  push:
+    branches: [ci/sleeprooms-desktop-wintest]
+    paths: ['.github/workflows/sleeprooms-steam-wintest.yml']
+  workflow_dispatch:
+permissions:
+  contents: write   # read assets of a draft release
+jobs:
+  steamtest:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download the Steam content zip from the draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force out, out/shots | Out-Null
+          $h = @{ Authorization = "Bearer $env:GH_TOKEN"; 'X-GitHub-Api-Version' = '2022-11-28' }
+          $rel = (Invoke-RestMethod -Headers $h -Uri "https://api.github.com/repos/${{ github.repository }}/releases?per_page=50") | Where-Object { $_.tag_name -eq 'sleeprooms-steam-wintest' } | Select-Object -First 1
+          if (-not $rel) { throw 'draft release sleeprooms-steam-wintest not found' }
+          $a = $rel.assets | Where-Object { $_.name -eq 'SleepRooms-steam-win64.zip' } | Select-Object -First 1
+          $h2 = $h.Clone(); $h2.Accept = 'application/octet-stream'
+          Invoke-WebRequest -Headers $h2 -Uri $a.url -OutFile steam.zip
+          "zip: $((Get-Item steam.zip).Length) bytes (release says $($a.size))" | Tee-Object -Append out/summary.txt
+          Expand-Archive steam.zip -DestinationPath 'C:\SteamLibrary\steamapps\common\入睡旅馆'
+          Get-ChildItem 'C:\SteamLibrary\steamapps\common\入睡旅馆' | ForEach-Object { "content: $($_.Name)" } | Tee-Object -Append out/summary.txt
+
+      - name: Bootstrapper signature, install script step, self-test, launch
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot([string]$name) { $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height; $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size); $bmp.Save("out/shots/$name.png"); $g.Dispose(); $bmp.Dispose() }
+          function Log([string]$s) { $s | Tee-Object -Append out/summary.txt }
+          $dir = 'C:\SteamLibrary\steamapps\common\入睡旅馆'
+          $boot = Join-Path $dir '_CommonRedist\WebView2\MicrosoftEdgeWebview2Setup.exe'
+          $sig = Get-AuthenticodeSignature $boot
+          Log "bootstrapper signature: $($sig.Status) signer=$($sig.SignerCertificate.Subject)"
+          $p = Start-Process -FilePath $boot -ArgumentList '/silent', '/install' -Wait -PassThru
+          Log "bootstrapper exit code: $($p.ExitCode)"
+          $exe = Join-Path $dir 'SleepRooms.exe'
+          $app = Start-Process -FilePath $exe -ArgumentList '--selftest' -PassThru
+          for ($i = 0; $i -lt 30; $i++) { Start-Sleep -Seconds 12; if ($i % 4 -eq 1) { Shot ("selftest-{0:d2}" -f $i) }; if ($app.HasExited) { break } }
+          if (-not $app.HasExited) { Log 'self-test still running after 6 min: killing'; Stop-Process -Id $app.Id -Force }
+          Log "self-test exit code: $($app.ExitCode)"
+          $logs = Join-Path $env:LOCALAPPDATA 'org.sleeprooms.tonight\logs'
+          if (Test-Path $logs) { Copy-Item -Recurse $logs out/logs }
+          $run = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 30; Shot 'steam-30s'
+          Start-Sleep -Seconds 30; Shot 'steam-60s'
+          Log "still running after 60 s: $(-not $run.HasExited)"
+          Stop-Process -Id $run.Id -Force -ErrorAction SilentlyContinue
+          Get-Content out/summary.txt
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sleeprooms-steam-wintest
+          path: out

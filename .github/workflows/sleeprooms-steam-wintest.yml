@@ -1,5 +1,5 @@
 name: sleeprooms-steam-wintest
-# run: 2 (after the early-document fix)
+# run: 3 (after the early-document fix)
 # Test-only: the Steam content folder (dist/steam/win64, zipped into a DRAFT release) on a real Windows machine,
 # the way SteamPipe would install it: unpack, run the WebView2 bootstrapper like installscript_win.vdf, self-test, launch.
 on:
